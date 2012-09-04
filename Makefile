@@ -1,4 +1,4 @@
-# Copyright 2012 Opscode, Inc. All Rights Reserved.
+# Copyright 2012 Erlware, LLC. All Rights Reserved.
 #
 # This file is provided to you under the Apache License,
 # Version 2.0 (the "License"); you may not use this file
@@ -16,7 +16,7 @@
 #
 ERL = $(shell which erl)
 
-ERLFLAGS= -pa $(CURDIR)/.eunit -pa $(CURDIR)/ebin -pa $(CURDIR)/*/ebin
+ERLFLAGS= -pa $(CURDIR)/.eunit -pa $(CURDIR)/ebin -pa $(CURDIR)/deps/**/ebin
 
 REBAR=$(shell which rebar)
 
@@ -26,7 +26,7 @@ endif
 
 RELCOOL_PLT=$(CURDIR)/.relcool_plt
 
-.PHONY: all compile doc clean eunit dialyzer typer shell distclean pdf get-deps
+.PHONY: all compile doc clean eunit dialyzer typer shell distclean pdf get-deps escript
 
 all: compile eunit dialyzer
 
@@ -37,8 +37,11 @@ get-deps:
 compile:
 	$(REBAR) skip_deps=true compile
 
+escript:
+	$(REBAR) escriptize
+
 doc:
-	$(REBAR) doc
+	$(REBAR) skip_deps=true doc
 
 eunit: compile
 	$(REBAR) skip_deps=true eunit
@@ -55,13 +58,13 @@ dialyzer: $(RELCOOL_PLT)
 typer:
 	typer --plt $(RELCOOL_PLT) -r ./src
 
-shell: compile
+shell: get-deps compile
 # You often want *rebuilt* rebar tests to be available to the
 # shell you have to call eunit (to get the tests
 # rebuilt). However, eunit runs the tests, which probably
 # fails (thats probably why You want them in the shell). This
 # runs eunit but tells make to ignore the result.
-	- @$(REBAR) eunit
+	- @$(REBAR) skip_deps=true eunit
 	@$(ERL) $(ERLFLAGS)
 
 pdf:
