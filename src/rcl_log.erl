@@ -32,11 +32,13 @@
          error/2,
          error/3,
          log_level/1,
-         atom_log_level/1]).
+         atom_log_level/1,
+         format/1]).
 
 -export_type([int_log_level/0,
               log_level/0,
-              state/0]).
+              log_fun/0,
+              t/0]).
 
 -include_lib("relcool/include/relcool.hrl").
 
@@ -48,13 +50,15 @@
 %% Why no warn? because for our purposes there is no difference between error
 %% and warn
 -type log_level() :: error | info | debug.
--opaque state() :: {?MODULE, log_level()}.
+-opaque t() :: {?MODULE, int_log_level()}.
+
+-type log_fun() :: fun(() -> iolist()).
 
 %%============================================================================
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(int_log_level() | log_level()) -> state().
+-spec new(int_log_level() | log_level()) -> t().
 new(LogLevel) when LogLevel >= 0, LogLevel =< 2 ->
     {?MODULE, LogLevel};
 new(AtomLogLevel)
@@ -68,44 +72,66 @@ new(AtomLogLevel)
                end,
     new(LogLevel).
 
-%% @doc log at the debug level given the current log state with a string
--spec debug(state(), string()) -> none().
+
+%% @doc log at the debug level given the current log state with a string or
+%% function that returns a string
+-spec debug(t(), string() | log_fun()) -> ok.
+debug(LogState, Fun)
+  when erlang:is_function(Fun) ->
+    log(LogState, ?RCL_DEBUG, Fun);
 debug(LogState, String) ->
     debug(LogState, "~s~n", [String]).
 
 %% @doc log at the debug level given the current log state with a format string
 %% and argements @see io:format/2
--spec debug(state(), string(), [any()]) -> none().
+-spec debug(t(), string(), [any()]) -> ok.
 debug(LogState, FormatString, Args) ->
     log(LogState, ?RCL_DEBUG, FormatString, Args).
 
-%% @doc log at the info level given the current log state with a string
--spec info(state(), string()) -> none().
+%% @doc log at the info level given the current log state with a string or
+%% function that returns a string
+-spec info(t(), string() | log_fun()) -> ok.
+info(LogState, Fun)
+    when erlang:is_function(Fun) ->
+    log(LogState, ?RCL_INFO, Fun);
 info(LogState, String) ->
     info(LogState, "~s~n", [String]).
 
 %% @doc log at the info level given the current log state with a format string
 %% and argements @see io:format/2
--spec info(state(), string(), [any()]) -> none().
+-spec info(t(), string(), [any()]) -> ok.
 info(LogState, FormatString, Args) ->
     log(LogState, ?RCL_INFO, FormatString, Args).
 
-%% @doc log at the error level given the current log state with a string
--spec error(state(), string()) -> none().
+%% @doc log at the error level given the current log state with a string or
+%% format string that returns a function
+-spec error(t(), string() | log_fun()) -> ok.
+error(LogState, Fun)
+    when erlang:is_function(Fun) ->
+    log(LogState, ?RCL_ERROR, Fun);
 error(LogState, String) ->
     error(LogState, "~s~n", [String]).
 
 %% @doc log at the error level given the current log state with a format string
 %% and argements @see io:format/2
--spec error(state(), string(), [any()]) -> none().
+-spec error(t(), string(), [any()]) -> ok.
 error(LogState, FormatString, Args) ->
     log(LogState, ?RCL_ERROR, FormatString, Args).
 
+%% @doc Execute the fun passed in if log level is as expected.
+-spec log(t(), int_log_level(), log_fun()) -> ok.
+log({?MODULE, DetailLogLevel}, LogLevel, Fun)
+    when DetailLogLevel >= LogLevel ->
+    io:format("~s~n", [Fun()]);
+log(_, _, _) ->
+    ok.
+
+
 %% @doc when the module log level is less then or equal to the log level for the
 %% call then write the log info out. When its not then ignore the call.
--spec log(state(), int_log_level(), string(), [any()]) -> ok.
+-spec log(t(), int_log_level(), string(), [any()]) -> ok.
 log({?MODULE, DetailLogLevel}, LogLevel, FormatString, Args)
-  when DetailLogLevel =< LogLevel,
+  when DetailLogLevel >= LogLevel,
        erlang:is_list(Args) ->
     io:format(FormatString, Args);
 log(_, _, _, _) ->
@@ -113,7 +139,7 @@ log(_, _, _, _) ->
 
 %% @doc return a boolean indicating if the system should log for the specified
 %% levelg
--spec should(state(), int_log_level()) -> ok.
+-spec should(t(), int_log_level() | any()) -> boolean().
 should({?MODULE, DetailLogLevel}, LogLevel)
   when DetailLogLevel >= LogLevel ->
     true;
@@ -121,18 +147,25 @@ should(_, _) ->
     false.
 
 %% @doc get the current log level as an integer
--spec log_level(state()) -> int_log_level().
+-spec log_level(t()) -> int_log_level().
 log_level({?MODULE, DetailLogLevel}) ->
     DetailLogLevel.
 
 %% @doc get the current log level as an atom
--spec atom_log_level(state()) -> log_level().
+-spec atom_log_level(t()) -> log_level().
 atom_log_level({?MODULE, ?RCL_ERROR}) ->
     error;
 atom_log_level({?MODULE, ?RCL_INFO}) ->
     info;
 atom_log_level({?MODULE, ?RCL_DEBUG}) ->
     debug.
+
+-spec format(t()) -> iolist().
+format(Log) ->
+    [<<"(">>,
+     erlang:integer_to_list(log_level(Log)), <<":">>,
+     erlang:atom_to_list(atom_log_level(Log)),
+     <<")">>].
 
 %%%===================================================================
 %%% Test Functions
@@ -143,23 +176,23 @@ atom_log_level({?MODULE, ?RCL_DEBUG}) ->
 
 should_test() ->
     ErrorLogState = new(error),
-    ?assert(should(ErrorLogState, ?RCL_ERROR)),
-    ?assert(not should(ErrorLogState, ?RCL_INFO)),
-    ?assert(not should(ErrorLogState, ?RCL_DEBUG)),
+    ?assertMatch(true, should(ErrorLogState, ?RCL_ERROR)),
+    ?assertMatch(true, not should(ErrorLogState, ?RCL_INFO)),
+    ?assertMatch(true, not should(ErrorLogState, ?RCL_DEBUG)),
     ?assertEqual(?RCL_ERROR, log_level(ErrorLogState)),
     ?assertEqual(error, atom_log_level(ErrorLogState)),
 
     InfoLogState = new(info),
-    ?assert(should(InfoLogState, ?RCL_ERROR)),
-    ?assert(should(InfoLogState, ?RCL_INFO)),
-    ?assert(not should(InfoLogState, ?RCL_DEBUG)),
+    ?assertMatch(true, should(InfoLogState, ?RCL_ERROR)),
+    ?assertMatch(true, should(InfoLogState, ?RCL_INFO)),
+    ?assertMatch(true, not should(InfoLogState, ?RCL_DEBUG)),
     ?assertEqual(?RCL_INFO, log_level(InfoLogState)),
     ?assertEqual(info, atom_log_level(InfoLogState)),
 
     DebugLogState = new(debug),
-    ?assert(should(DebugLogState, ?RCL_ERROR)),
-    ?assert(should(DebugLogState, ?RCL_INFO)),
-    ?assert(should(DebugLogState, ?RCL_DEBUG)),
+    ?assertMatch(true, should(DebugLogState, ?RCL_ERROR)),
+    ?assertMatch(true, should(DebugLogState, ?RCL_INFO)),
+    ?assertMatch(true, should(DebugLogState, ?RCL_DEBUG)),
     ?assertEqual(?RCL_DEBUG, log_level(DebugLogState)),
     ?assertEqual(debug, atom_log_level(DebugLogState)).
 

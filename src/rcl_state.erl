@@ -24,29 +24,71 @@
 -module(rcl_state).
 
 -export([new/1,
-        log/1]).
+         log/1,
+         output_dir/1,
+         lib_dirs/1,
+         goals/1,
+         format/1,
+         format/2]).
 
--export_type([state/0]).
+-export_type([t/0,
+              cmd_args/0]).
 
--record(?MODULE, {log :: rcl_log:state()}).
+-record(?MODULE, {log :: rcl_log:t(),
+                  output_dir :: file:name(),
+                  lib_dirs=[] :: [file:name()],
+                  goals=[] :: [depsolver:constraint()]}).
 
 %%============================================================================
 %% types
 %%============================================================================
--opaque state() :: record(?MODULE).
+
+-type cmd_args() :: proplists:proplist().
+-opaque t() :: record(?MODULE).
 
 %%============================================================================
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(proplists:proplist()) -> state().
+-spec new(proplists:proplist()) -> t().
 new(PropList) when erlang:is_list(PropList) ->
-    #?MODULE{log = proplists:get_value(log, PropList, rcl_log:new(error))}.
+    #?MODULE{log = proplists:get_value(log, PropList, rcl_log:new(error)),
+             output_dir=proplists:get_value(output_dir, PropList, ""),
+             lib_dirs=proplists:get_value(lib_dirs, PropList, []),
+             goals=proplists:get_value(goals, PropList, [])}.
 
 %% @doc get the current log state for the system
--spec log(state()) -> rc_log:state().
+-spec log(t()) -> rcl_log:t().
 log(#?MODULE{log=LogState}) ->
     LogState.
+
+-spec output_dir(t()) -> file:name().
+output_dir(#?MODULE{output_dir=OutDir}) ->
+    OutDir.
+
+-spec lib_dirs(t()) -> [file:name()].
+lib_dirs(#?MODULE{lib_dirs=LibDir}) ->
+    LibDir.
+
+-spec goals(t()) -> [depsolver:constraints()].
+goals(#?MODULE{goals=TS}) ->
+    TS.
+
+-spec format(t()) -> iolist().
+format(Mod) ->
+    format(Mod, 0).
+
+-spec format(t(), non_neg_integer()) -> iolist().
+format(#?MODULE{log=LogState, output_dir=OutDir, lib_dirs=LibDirs, goals=Goals},
+       Indent) ->
+    [rcl_util:indent(Indent),
+     <<"state:\n">>,
+     rcl_util:indent(Indent + 1), <<"log: ">>, rcl_log:format(LogState), <<",\n">>,
+     rcl_util:indent(Indent + 1), "goals: \n",
+     [[rcl_util:indent(Indent + 2), depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
+     rcl_util:indent(Indent + 1), "output_dir: ", OutDir, "\n",
+     rcl_util:indent(Indent + 1), "lib_dirs: \n",
+     [[rcl_util:indent(Indent + 2), LibDir, ",\n"] || LibDir <- LibDirs]].
 
 %%%===================================================================
 %%% Test Functions

@@ -27,8 +27,8 @@ additional specification information for releases.
 -v *STRING*, \--relvsn=*STRING*
 :   Specify the version for the release
 
--t *STRING*, \--target-spec *STRING*
-:   Specify a target constraint on the system. These are usually the OTP
+-g *STRING*, \--goals *STRING*
+:   Specify a goal to the system. These are usually the OTP
   Apps that are part of the release
 
 -o *STRING*, \--output-dir *STRING*

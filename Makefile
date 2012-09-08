@@ -14,9 +14,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
+
+ERLFLAGS= -pa $(CURDIR)/.eunit -pa $(CURDIR)/ebin -pa $(CURDIR)/deps/*/ebin
+
+RELCOOL_PLT=$(CURDIR)/.relcool_plt
+
+# =============================================================================
+# Verify that the programs we need to run are installed on this system
+# =============================================================================
 ERL = $(shell which erl)
 
-ERLFLAGS= -pa $(CURDIR)/.eunit -pa $(CURDIR)/ebin -pa $(CURDIR)/deps/**/ebin
+ifeq ($(ERL),)
+$(error "Erlang not available on this system")
+endif
 
 REBAR=$(shell which rebar)
 
@@ -24,11 +35,12 @@ ifeq ($(REBAR),)
 $(error "Rebar not available on this system")
 endif
 
-RELCOOL_PLT=$(CURDIR)/.relcool_plt
+# =============================================================================
+# Rules to build the system
+# =============================================================================
+.PHONY: all compile doc clean test dialyzer typer shell distclean pdf get-deps escript
 
-.PHONY: all compile doc clean eunit dialyzer typer shell distclean pdf get-deps escript
-
-all: compile eunit dialyzer
+all: compile escript test dialyzer
 
 get-deps:
 	$(REBAR) get-deps
@@ -46,6 +58,11 @@ doc:
 eunit: compile
 	$(REBAR) skip_deps=true eunit
 
+ct: compile
+	$(REBAR) skip_deps=true ct
+
+test: compile eunit ct
+
 $(RELCOOL_PLT):
 	@echo Building local plt at $(RELCOOL_PLT)
 	@echo
@@ -53,7 +70,7 @@ $(RELCOOL_PLT):
 	   --apps erts kernel stdlib -r deps
 
 dialyzer: $(RELCOOL_PLT)
-	dialyzer --plt $(RELCOOL_PLT) -Wrace_conditions --src src
+	dialyzer --plt $(RELCOOL_PLT) -Wrace_conditions -I include -pa $(CURDIR)/ebin --src src
 
 typer:
 	typer --plt $(RELCOOL_PLT) -r ./src
@@ -71,8 +88,11 @@ pdf:
 	pandoc README.md -o README.pdf
 
 clean:
-	$(REBAR) clean
+	- rm -rf $(CURDIR)/test/*.beam
+	- rm -rf $(CURDIR)/test/*_SUITE_data
+	- rm -rf $(CURDIR)/logs
+	$(REBAR) skip_deps=true clean
 
 distclean: clean
-	rm -rf $(RELCOOL_PLT)
-	rm -rvf $(CURDIR)/deps/*
+	- rm -rf $(RELCOOL_PLT)
+	- rm -rvf $(CURDIR)/deps/*

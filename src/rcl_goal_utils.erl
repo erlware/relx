@@ -3,7 +3,7 @@
 %%%
 %%% This file is provided to you under the Apache License,
 %%% Version 2.0 (the "License"); you may not use this file
-%%% except in compliance with the License.  You may obtain
+%%% except in compliance with the  License.  You may obtain
 %%% a copy of the License at
 %%%
 %%%   http://www.apache.org/licenses/LICENSE-2.0
@@ -28,7 +28,6 @@
 %%============================================================================
 %% types
 %%============================================================================
-
 
 %%============================================================================
 %% API
@@ -67,7 +66,6 @@ to_op(<<":btwn:">>) ->
     'between';
 to_op(<<":between:">>) ->
     'between'.
-
 
 to_vsn(Version) when erlang:is_list(Version) ->
     to_vsn(erlang:iolist_to_binary(Version));

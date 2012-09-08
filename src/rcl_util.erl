@@ -21,8 +21,10 @@
 %%% @doc Trivial utility file to help handle common tasks
 -module(rcl_util).
 
--export([mkdir_p/1]).
+-export([mkdir_p/1,
+         indent/1]).
 
+-define(ONE_LEVEL_INDENT, "    ").
 %%============================================================================
 %% types
 %%============================================================================
@@ -40,6 +42,11 @@ mkdir_p(Path) ->
     %% and not have any worries about path names
     DirName = filename:join([filename:absname(Path), "tmp"]),
     filelib:ensure_dir(DirName).
+
+%% @doc ident to the level specified
+-spec indent(non_neg_integer()) -> iolist().
+indent(Amount) when erlang:is_integer(Amount) ->
+    [?ONE_LEVEL_INDENT || _ <- lists:seq(1, Amount)].
 
 %%%===================================================================
 %%% Test Functions
