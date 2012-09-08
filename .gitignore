@@ -4,3 +4,5 @@ ebin/*
 .eunit
 .relcool_plt
 relcool
+# This is a generated file that should be ignored
+src/rcl_goal.erl

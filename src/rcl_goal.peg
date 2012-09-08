@@ -1,0 +1,54 @@
+
+constraint <-   ws? app_name ws? between_op  ws? version ws? "," ws? version ws? !.
+              / ws? app_name ws? constraint_op ws? version ws? !.
+              / ws? app_name ws? !.
+
+           `
+           case Node of
+                [_,AppName,_, _] ->
+                    {ok, erlang:iolist_to_binary(AppName)};
+                [_,AppName,_,Op,_,Vsn,_, _] ->
+                    {ok,
+                        {erlang:iolist_to_binary(AppName),
+                         rcl_goal_utils:to_vsn(Vsn),
+                         rcl_goal_utils:to_op(Op)}};
+                [_,AppName,_,Op,_,Vsn1,_,_,_,Vsn2,_,_] ->
+                    {ok,
+                        {erlang:iolist_to_binary(AppName),
+                         rcl_goal_utils:to_vsn(Vsn1),
+                         rcl_goal_utils:to_vsn(Vsn2),
+                         rcl_goal_utils:to_op(Op)}};
+                _ ->
+                 io:format("~p~n", [Node])
+           end
+           ` ;
+
+ws <- [ \t\n\s\r] ;
+
+app_name <- [a-zA-Z0-9_]+ ;
+
+between_op <-
+             ":" ws? ( "btwn" / "between" ) ws? ":"
+                   ` case Node of
+                       [C,_,Op,_,C] -> erlang:iolist_to_binary([C,Op,C]);
+                       _ -> Node
+                      end
+                   ` ;
+
+constraint_op <- "=" / "-" / "<=" / "<" / "~>" / ">=" / ">" / word_constraint_op / ":" ;
+
+word_constraint_op <-
+                   ":" ws? ( "gte" / "lte" / "gt" / "lt"  / "pes" ) ws? ":"
+                   ` case Node of
+                           [C,_,Op,_,C] -> erlang:iolist_to_binary([C,Op,C]);
+                       _ -> Node
+                      end
+                   ` ;
+
+
+version <- [0-9a-zA-Z-+.]+ ;
+
+%% This only exists to get around a bug in erlang where if
+%% warnings_as_errors is specified `nowarn` directives are ignored
+
+ `-compile(export_all).`
