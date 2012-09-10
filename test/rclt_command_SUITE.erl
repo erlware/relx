@@ -26,7 +26,8 @@
          normal_passing_case/1,
          lib_fail_case/1,
          output_fail_case/1,
-         spec_parse_fail_case/1]).
+         spec_parse_fail_case/1,
+         config_fail_case/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -41,7 +42,7 @@ end_per_suite(_Config) ->
     ok.
 
 all() ->
-    [normal_passing_case, lib_fail_case, output_fail_case].
+    [normal_passing_case, lib_fail_case, output_fail_case, config_fail_case].
 
 normal_passing_case(Config) ->
     DataDir = proplists:get_value(data_dir, Config),
@@ -97,4 +98,10 @@ spec_parse_fail_case(_Config) ->
     Spec = "aaeu:3333:33.22a44",
     CmdLine = ["-g", Spec],
     ?assertMatch({error, {failed_to_parse, _Spec}},
+                 rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
+
+config_fail_case(_Config) ->
+    ConfigFile = "does-not-exist",
+    CmdLine = [ConfigFile],
+    ?assertMatch({error, {invalid_config_file, ConfigFile}},
                  rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).

@@ -23,11 +23,12 @@
 %%% have a more mutable api.
 -module(rcl_state).
 
--export([new/1,
+-export([new/2,
          log/1,
          output_dir/1,
          lib_dirs/1,
          goals/1,
+         config_files/1,
          format/1,
          format/2]).
 
@@ -37,6 +38,7 @@
 -record(?MODULE, {log :: rcl_log:t(),
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
+                  config_files=[] :: [file:filename()],
                   goals=[] :: [depsolver:constraint()]}).
 
 %%============================================================================
@@ -50,11 +52,12 @@
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(proplists:proplist()) -> t().
-new(PropList) when erlang:is_list(PropList) ->
+-spec new(proplists:proplist(), [file:filename()]) -> t().
+new(PropList, Targets) when erlang:is_list(PropList) ->
     #?MODULE{log = proplists:get_value(log, PropList, rcl_log:new(error)),
              output_dir=proplists:get_value(output_dir, PropList, ""),
              lib_dirs=proplists:get_value(lib_dirs, PropList, []),
+             config_files=Targets,
              goals=proplists:get_value(goals, PropList, [])}.
 
 %% @doc get the current log state for the system
@@ -74,16 +77,23 @@ lib_dirs(#?MODULE{lib_dirs=LibDir}) ->
 goals(#?MODULE{goals=TS}) ->
     TS.
 
+-spec config_files(t()) -> [file:filename()].
+config_files(#?MODULE{config_files=ConfigFiles}) ->
+    ConfigFiles.
+
 -spec format(t()) -> iolist().
 format(Mod) ->
     format(Mod, 0).
 
 -spec format(t(), non_neg_integer()) -> iolist().
-format(#?MODULE{log=LogState, output_dir=OutDir, lib_dirs=LibDirs, goals=Goals},
+format(#?MODULE{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
+                goals=Goals, config_files=ConfigFiles},
        Indent) ->
     [rcl_util:indent(Indent),
      <<"state:\n">>,
      rcl_util:indent(Indent + 1), <<"log: ">>, rcl_log:format(LogState), <<",\n">>,
+     rcl_util:indent(Indent + 1), "config files: \n",
+     [[rcl_util:indent(Indent + 2), ConfigFile, ",\n"] || ConfigFile <- ConfigFiles],
      rcl_util:indent(Indent + 1), "goals: \n",
      [[rcl_util:indent(Indent + 2), depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
      rcl_util:indent(Indent + 1), "output_dir: ", OutDir, "\n",
@@ -99,7 +109,7 @@ format(#?MODULE{log=LogState, output_dir=OutDir, lib_dirs=LibDirs, goals=Goals},
 
 new_test() ->
     LogState = rcl_log:new(error),
-    RCLState = new([{log, LogState}]),
+    RCLState = new([{log, LogState}], []),
     ?assertMatch(LogState, log(RCLState)).
 
 -endif.

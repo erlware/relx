@@ -31,7 +31,6 @@
 %%============================================================================
 -spec main([string()]) -> ok.
 main(Args) ->
-    io:format("~p~n", [Args]),
     OptSpecList = opt_spec_list(),
     case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
         {ok, {State, _Target}} ->
@@ -90,6 +89,8 @@ to_error({error,{invalid_option_arg, Arg}}) ->
         {log_level, LogLevel} ->
             io_lib:format("Invalid Library Directory argument -n ~p~n", [LogLevel])
     end;
+to_error({error, {invalid_config_file, Config}}) ->
+    io_lib:format("Invalid configuration file specified: ~s", [Config]);
 to_error({error, {failed_to_parse, Spec}}) ->
     io_lib:format("Unable to parse spec ~s", [Spec]);
 to_error({error, {unable_to_create_output_dir, OutputDir}}) ->

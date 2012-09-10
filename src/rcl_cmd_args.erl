@@ -45,12 +45,39 @@ args2state({ok, {Opts, Targets}}) ->
         Error = {error, _} ->
             Error;
         {ok, CommandLineConfig} ->
-            {ok, {rcl_state:new(CommandLineConfig), Targets}}
+            case validate_configs(Targets) of
+                Error = {error, _} ->
+                    Error;
+                {ok, Configs} ->
+                    {ok, {rcl_state:new(CommandLineConfig, Configs), Configs}}
+            end
     end.
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+-spec validate_configs([file:filename()]) ->
+                              {ok, [file:filename()]} | {error, Reason::term()}.
+validate_configs(Configs) ->
+    Result =
+        lists:foldl(fun(_Config, Err = {error, _}) ->
+                            Err;
+                       (Config, Acc) ->
+                            case filelib:is_regular(Config) of
+                                true ->
+                                    [filename:absname(Config) | Acc];
+                                false ->
+                                    {error, {invalid_config_file, Config}}
+                            end
+                    end, [], Configs),
+    case Result of
+        {error, _} ->
+            Result;
+        _ ->
+            %% Order may be important so lets make sure they remain in the same
+            %% order they came in as
+            {ok, lists:reverse(Result)}
+    end.
 
 -spec create_log([getopt:option()], rcl_state:cmd_args()) ->
                         {ok, rcl_state:cmd_args()} | {error, Reason::term()}.
@@ -110,7 +137,7 @@ create_lib_dirs(Opts, Acc) ->
         Error = {error, _} ->
             Error;
         ok ->
-            {ok, [{lib_dirs, Dirs} | Acc]}
+            {ok, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc]}
     end.
 
 -spec check_lib_dirs([string()]) -> ok | {error, {Reason::atom(), Dir::string()}}.
