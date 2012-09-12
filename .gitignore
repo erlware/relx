@@ -7,3 +7,4 @@ relcool
 # This is a generated file that should be ignored
 src/rcl_goal.erl
 logs
+test/*_data
