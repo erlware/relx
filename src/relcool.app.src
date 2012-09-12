@@ -22,4 +22,4 @@
  [{description, "Release assembler for Erlang/OTP Releases"},
   {vsn, "0.0.1"},
   {modules, []},
-  {applications, [kernel, stdlib, getopt, depsolver]}]}.
+  {applications, [kernel, stdlib, getopt, depsolver, erlware_commons]}]}.
