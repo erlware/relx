@@ -35,12 +35,22 @@ ifeq ($(REBAR),)
 $(error "Rebar not available on this system")
 endif
 
-# =============================================================================
-# Rules to build the system
-# =============================================================================
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf get-deps escript
 
 all: compile escript test dialyzer
+
+# =============================================================================
+# Include relevant sub-makefiles.
+# =============================================================================
+# These are not subdirs, they are just additional makefile information
+# that happens to live subdirectories
+
+include $(CURDIR)/docs/docs.mkf
+
+
+# =============================================================================
+# Rules to build the system
+# =============================================================================
 
 get-deps:
 	$(REBAR) get-deps
