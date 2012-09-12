@@ -22,6 +22,7 @@
 -module(rcl_util).
 
 -export([mkdir_p/1,
+         to_binary/1,
          indent/1]).
 
 -define(ONE_LEVEL_INDENT, "    ").
@@ -47,6 +48,13 @@ mkdir_p(Path) ->
 -spec indent(non_neg_integer()) -> iolist().
 indent(Amount) when erlang:is_integer(Amount) ->
     [?ONE_LEVEL_INDENT || _ <- lists:seq(1, Amount)].
+
+-spec to_binary(iolist() | binary()) -> binary().
+to_binary(String) when erlang:is_list(String) ->
+    erlang:iolist_to_binary(String);
+to_binary(Bin) when erlang:is_binary(Bin) ->
+    Bin.
+
 
 %%%===================================================================
 %%% Test Functions
