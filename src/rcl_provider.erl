@@ -8,7 +8,7 @@
 -module(rcl_provider).
 
 %% API
--export([new/2, do/2, format/1]).
+-export([new/2, do/2, format_error/2, format/1]).
 
 -export_type([t/0]).
 
@@ -20,7 +20,7 @@
 
 -callback init(rcl_state:t()) -> {ok, rcl_state:t()} | {error, Reason::term()}.
 -callback do(rcl_state:t()) -> {error, Reason::term()} | {ok, rcl_state:t()}.
--callback format({error, Reason::term()}) -> iolist().
+-callback format_error({error, Reason::term()}) -> iolist().
 
 %%%===================================================================
 %%% API
@@ -31,7 +31,8 @@
 %%
 %% @param ModuleName The module name.
 %% @param State0 The current state of the system
--spec new(module(), rcl_state:t()) -> {t(), {ok, rcl_state:t()} | {error, Reason::term()}}.
+-spec new(module(), rcl_state:t()) ->
+                 {t(), {ok, rcl_state:t()} | {error, Reason::term()}}.
 new(ModuleName, State0) when is_atom(ModuleName) ->
     State1 = ModuleName:init(State0),
     case code:which(ModuleName) of
@@ -46,9 +47,16 @@ new(ModuleName, State0) when is_atom(ModuleName) ->
 %%
 %% @param Provider the provider object
 %% @param State the current state of the system
--spec do(Provider::t(), rcl_state:t()) -> rcl_state:t().
+-spec do(Provider::t(), rcl_state:t()) ->
+                {error, Reason::term()} | {ok, rcl_state:t()}.
 do({?MODULE, Mod}, State) ->
     Mod:do(State).
+
+%% @doc format an error produced from a provider.
+-spec format_error(t(), {error, Reason::term()}) -> iolist().
+format_error({?MODULE, Mod}, Error) ->
+    Mod:format_error(Error).
+
 
 %% @doc print the provider module name
 %%
