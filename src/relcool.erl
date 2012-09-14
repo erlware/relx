@@ -60,7 +60,40 @@ run_relcool_process(State) ->
                   fun() ->
                           rcl_state:format(State)
                   end),
-    ok.
+    run_providers(State).
+
+%% @doc for now the 'config' provider is special in that it generates the
+%% providers used by the rest of the system. We expect the config provider to be
+%% the first provider in the system. Once the config provider is run, we get the
+%% providers again and run the rest of them (because they could have been
+%% updated by the config process).
+run_providers(State0) ->
+    [ConfigProvider | _] = rcl_state:providers(State0),
+    State1 = run_provider(ConfigProvider, State0),
+
+    Providers = rcl_state:providers(State1),
+    case Providers of
+        [ConfigProvider | Rest] ->
+            %% IF the config provider is still the first provider do not run it
+            %% again just run the rest.
+            run_providers(Rest, State1);
+        _ ->
+            run_providers(Providers, State1)
+    end,
+    init:stop(0).
+
+run_providers(Providers, State0) ->
+    lists:foldl(fun run_provider/2, State0, Providers).
+
+
+-spec run_provider(rcl_provider:t(), rcl_state:t()) -> rcl_state:t().
+run_provider(Provider, State0) ->
+    case rcl_provider:do(Provider, State0) of
+        {ok, State1} ->
+            State1;
+        E={error, _} ->
+            report_error(rcl_provider:format_error(Provider, E))
+    end.
 
 -spec usage() -> ok.
 usage() ->
@@ -73,7 +106,9 @@ report_error(Error) ->
     usage(),
     erlang:halt(127).
 
--spec to_error({error, Reason::term()}) -> string().
+-spec to_error(string() | {error, Reason::term()}) -> string().
+to_error(String) when erlang:is_list(String) ->
+    String;
 to_error({error,{invalid_option_arg, Arg}}) ->
     case Arg of
         {goals, Goal} ->
