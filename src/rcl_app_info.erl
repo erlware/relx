@@ -47,7 +47,8 @@
          active_deps/1,
          active_deps/2,
          library_deps/1,
-         library_deps/2]).
+         library_deps/2,
+         format/1]).
 
 -export_type([t/0]).
 
@@ -125,7 +126,14 @@ library_deps(AppInfo=#app_info_t{}, LibraryDeps)
   when erlang:is_list(LibraryDeps) ->
     AppInfo#app_info_t{library_deps=LibraryDeps}.
 
-
+-spec format(t()) -> iolist().
+format(#app_info_t{name=Name, vsn=Vsn, dir=Dir,
+                   active_deps=Deps, library_deps=LibDeps}) ->
+    [erlang:atom_to_list(Name), "-", Vsn, ": ", Dir, "\n",
+     rcl_util:indent(1), "Active Dependencies:\n",
+     [[rcl_util:indent(2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],
+     rcl_util:indent(1), "Library Dependencies:\n",
+     [[rcl_util:indent(2), erlang:atom_to_list(LibDep), ",\n"] || LibDep <- LibDeps]].
 
 
 
