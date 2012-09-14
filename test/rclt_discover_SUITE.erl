@@ -72,7 +72,9 @@ normal_case(Config) ->
              || App <-
                     [{create_random_name("lib_app2_"), create_random_vsn()}
                  || _ <- lists:seq(1, 100)]],
-    State0 = proplists:get_value(state, Config),
+    State0 = rcl_state:put(rcl_state:put(proplists:get_value(state, Config),
+                                         discover_exclude_rebar, true),
+                           discover_exclude_system, true),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
     {ok, State2} = rcl_provider:do(DiscoverProvider, State1),
     lists:foreach(fun(App) ->

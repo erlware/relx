@@ -23,12 +23,11 @@
 %%% those OTP Applications it loads the information about them and adds them to
 %%% the state of available apps. This implements the rcl_provider behaviour.
 -module(rcl_prv_discover).
-
 -behaviour(rcl_provider).
 
 -export([init/1,
          do/1,
-         format/1]).
+         format_error/1]).
 
 %%============================================================================
 %% API
@@ -37,15 +36,23 @@
 init(State) ->
     {ok, State}.
 
+%% @doc recursively dig down into the library directories specified in the state
+%% looking for OTP Applications
 -spec do(rcl_state:t()) -> {error, Reason::term()} | {ok, rcl_state:t()}.
 do(State) ->
-    LibDirs = rcl_state:lib_dirs(State),
-    AppMeta = lists:flatten(ec_plists:map(fun discover_dir/1, LibDirs)),
+    LibDirs = get_lib_dirs(State),
+    rcl_log:info(rcl_state:log(State),
+                  fun() ->
+                          ["Resolving OTP Applications from directories:\n",
+                           [[LibDir, "\n"] || LibDir <- LibDirs]]
+                  end),
+
+    AppMeta0 = lists:flatten(ec_plists:map(fun discover_dir/1, LibDirs)),
     Errors = [case El of
                   {error, Ret} -> Ret;
                   _ -> El
               end
-              || El <- AppMeta,
+              || El <- AppMeta0,
                  case El of
                      {error, _} ->
                          true;
@@ -55,21 +62,69 @@ do(State) ->
 
     lists:filter(fun({error, _}) -> true;
                     (_) -> false
-                 end, AppMeta),
+                 end, AppMeta0),
     case Errors of
         [] ->
-            {ok, rcl_state:available_apps(State, lists:flatten(AppMeta))};
+            AppMeta1 = lists:flatten(AppMeta0),
+            rcl_log:debug(rcl_state:log(State),
+                          fun() ->
+                                  ["Resolved the following OTP Applications from the system: \n",
+                                   [[rcl_app_info:format(App), "\n"] || App <- AppMeta1]]
+                          end),
+            {ok, rcl_state:available_apps(State, AppMeta1)};
         _ ->
             {error, Errors}
     end.
 
--spec format({error, [ErrorDetail::term()]}) -> iolist().
-format({error, ErrorDetails}) ->
+-spec format_error({error, [ErrorDetail::term()]}) -> iolist().
+format_error({error, ErrorDetails}) ->
     [[format_detail(ErrorDetail), "\n"] || ErrorDetail <- ErrorDetails].
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+get_lib_dirs(State) ->
+    LibDirs0 = rcl_state:lib_dirs(State),
+    add_rebar_deps_dir(State, LibDirs0).
+
+-spec add_rebar_deps_dir(rcl_state:t(), [file:name()]) -> [file:name()].
+add_rebar_deps_dir(State, LibDirs) ->
+    ExcludeRebar = rcl_state:get(State, discover_exclude_rebar, false),
+    case ExcludeRebar of
+        true ->
+            add_system_lib_dir(State, LibDirs);
+        false ->
+            %% Check to see if there is a rebar.config. If so then look for a deps
+            %% dir. If both are there then we add that to the lib dirs.
+            {ok, Cwd} = file:get_cwd(),
+
+            RebarConfig = filename:join([Cwd, "rebar.config"]),
+            DepsDir = filename:join([Cwd, "deps"]),
+            case filelib:is_regular(RebarConfig) andalso filelib:is_dir(DepsDir) of
+                true ->
+                    add_system_lib_dir(State, [filename:absname(Cwd) | LibDirs]);
+                false ->
+                    add_system_lib_dir(State, LibDirs)
+            end
+    end.
+
+-spec add_system_lib_dir(rcl_state:t(), [file:name()]) -> [file:name()].
+add_system_lib_dir(State, LibDirs) ->
+    ExcludeSystem = rcl_state:get(State, discover_exclude_system, false),
+
+    case ExcludeSystem of
+        true ->
+            LibDirs;
+        false ->
+            SystemLibDir0 = code:lib_dir(),
+            case filelib:is_dir(SystemLibDir0) of
+                true ->
+                    [SystemLibDir0 | LibDirs];
+                false ->
+                    LibDirs
+            end
+    end.
+
 -spec format_detail(ErrorDetail::term()) -> iolist().
 format_detail({accessing, File, eaccess}) ->
     io_lib:format("permission denied accessing file ~s", [File]);
