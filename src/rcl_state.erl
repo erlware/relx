@@ -42,6 +42,8 @@
          get/2,
          get/3,
          put/3,
+         caller/1,
+         caller/2,
          format/1,
          format/2]).
 
@@ -51,6 +53,7 @@
               cmd_args/0]).
 
 -record(state_t, {log :: rcl_log:t(),
+                  caller :: caller(),
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_files=[] :: [file:filename()],
@@ -72,6 +75,7 @@
                                               rcl_release:vsn()},
                                              rcl_release:t()).
 -type cmd_args() :: proplists:proplist().
+-type caller() :: command_line | api.
 -opaque t() :: record(state_t).
 
 %%============================================================================
@@ -178,17 +182,27 @@ put(M=#state_t{config_values=Config}, Key, Value)
   when erlang:is_atom(Key) ->
     M#state_t{config_values=ec_dictionary:add(Key, Value, Config)}.
 
+-spec caller(t()) -> caller().
+caller(#state_t{caller=Caller}) ->
+    Caller.
+
+-spec caller(t(), caller()) -> t().
+caller(S, Caller) ->
+    S#state_t{caller=Caller}.
+
 -spec format(t()) -> iolist().
 format(Mod) ->
     format(Mod, 0).
 
 -spec format(t(), non_neg_integer()) -> iolist().
 format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
+                caller=Caller, config_values=Values0,
                 goals=Goals, config_files=ConfigFiles,
-               providers=Providers},
+                providers=Providers},
        Indent) ->
+    Values1 = ec_dictionary:to_list(Values0),
     [rcl_util:indent(Indent),
-     <<"state:\n">>,
+     <<"state(">>, erlang:atom_to_list(Caller), <<"):\n">>,
      rcl_util:indent(Indent + 1), <<"log: ">>, rcl_log:format(LogState), <<",\n">>,
      rcl_util:indent(Indent + 1), "config files: \n",
      [[rcl_util:indent(Indent + 2), ConfigFile, ",\n"] || ConfigFile <- ConfigFiles],
