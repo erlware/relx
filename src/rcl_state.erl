@@ -33,6 +33,7 @@
          providers/2,
          add_release/2,
          get_release/3,
+         update_release/2,
          releases/1,
          default_release/1,
          default_release/3,
@@ -121,6 +122,13 @@ providers(M, NewProviders) ->
 
 -spec add_release(t(), rcl_release:t()) -> t().
 add_release(M=#state_t{releases=Releases}, Release) ->
+    M#state_t{releases=ec_dictionary:add({rcl_release:name(Release),
+                                          rcl_release:vsn(Release)},
+                                         Release,
+                                         Releases)}.
+
+-spec update_release(t(), rcl_release:t()) -> t().
+update_release(M=#state_t{releases=Releases}, Release) ->
     M#state_t{releases=ec_dictionary:add({rcl_release:name(Release),
                                           rcl_release:vsn(Release)},
                                          Release,
