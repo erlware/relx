@@ -20,7 +20,9 @@
 %%% @doc
 -module(relcool).
 
--export([main/1, opt_spec_list/0]).
+-export([main/1,
+         do/7,
+         opt_spec_list/0]).
 
 %%============================================================================
 %% types
@@ -34,10 +36,31 @@ main(Args) ->
     OptSpecList = opt_spec_list(),
     case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
         {ok, {State, _Target}} ->
-            run_relcool_process(State);
+            run_relcool_process(rcl_state:caller(State, command_line));
         Error={error, _} ->
-            report_error(Error)
+            report_error(rcl_state:caller(rcl_state:new([], []),
+                                          command_line), Error)
     end.
+
+
+%% @doc provides an API to run the Relcool process from erlang applications
+%%
+%% @param RelName - The release name to build (maybe `undefined`)
+%% @param RelVsn - The release version to build (maybe `undefined`)
+%% @param Goals - The release goals for the system in depsolver or Relcool goal
+%% format
+%% @param LibDirs - The library dirs that should be used for the system
+%% @param OutputDir - The directory where the release should be built to
+%% @param Configs - The list of config files for the system
+do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
+    State = rcl_state:new([{relname, RelName},
+                           {relvsn, RelVsn},
+                           {goals, Goals},
+                           {output_dir, OutputDir},
+                           {lib_dirs, LibDirs},
+                           {log, rcl_log:new(LogLevel)}],
+                          Configs),
+    run_relcool_process(rcl_state:caller(State, api)).
 
 -spec opt_spec_list() -> [getopt:option_spec()].
 opt_spec_list() ->
@@ -69,30 +92,40 @@ run_relcool_process(State) ->
 %% updated by the config process).
 run_providers(State0) ->
     [ConfigProvider | _] = rcl_state:providers(State0),
-    State1 = run_provider(ConfigProvider, State0),
+    case run_provider(ConfigProvider, {ok, State0}) of
+        Err = {error, _} ->
+            Err;
+        {ok, State1} ->
+            Providers = rcl_state:providers(State1),
+            Result = run_providers(ConfigProvider, Providers, State1),
+            case rcl_state:caller(State1) of
+                command_line ->
+                    init:stop(0);
+                api ->
+                    Result
+            end
+    end.
 
-    Providers = rcl_state:providers(State1),
+run_providers(ConfigProvider, Providers, State0) ->
     case Providers of
         [ConfigProvider | Rest] ->
             %% IF the config provider is still the first provider do not run it
             %% again just run the rest.
-            run_providers(Rest, State1);
+            lists:foldl(fun run_provider/2, {ok, State0}, Rest);
         _ ->
-            run_providers(Providers, State1)
-    end,
-    init:stop(0).
+            lists:foldl(fun run_provider/2, {ok, State0}, Providers)
+    end.
 
-run_providers(Providers, State0) ->
-    lists:foldl(fun run_provider/2, State0, Providers).
-
-
--spec run_provider(rcl_provider:t(), rcl_state:t()) -> rcl_state:t().
-run_provider(Provider, State0) ->
+-spec run_provider(rcl_provider:t(), {ok, rcl_state:t()} | {error, Reason::term()}) ->
+                          {ok, rcl_state:t()} | {error, Reason::term()}.
+run_provider(_Provider, Error = {error, _}) ->
+    Error;
+run_provider(Provider, {ok, State0}) ->
     case rcl_provider:do(Provider, State0) of
         {ok, State1} ->
-            State1;
+            {ok, State1};
         E={error, _} ->
-            report_error(rcl_provider:format_error(Provider, E))
+            report_error(State0, rcl_provider:format_error(Provider, E))
     end.
 
 -spec usage() -> ok.
@@ -100,11 +133,16 @@ usage() ->
     getopt:usage(opt_spec_list(), "relcool", "[*release-specification-file*]").
 
 
--spec report_error(term()) -> none().
-report_error(Error) ->
+-spec report_error(rcl_state:t(), term()) -> none().
+report_error(State, Error) ->
     io:format("~s~n", [to_error(Error)]),
     usage(),
-    erlang:halt(127).
+    case rcl_state:caller(State) of
+        command_line ->
+            erlang:halt(127);
+        api ->
+            Error
+    end.
 
 -spec to_error(string() | {error, Reason::term()}) -> string().
 to_error(String) when erlang:is_list(String) ->
