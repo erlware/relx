@@ -46,7 +46,6 @@
 
 
 -export_type([t/0,
-              app_descriptor/0,
               releases/0,
               cmd_args/0]).
 
@@ -56,7 +55,7 @@
                   config_files=[] :: [file:filename()],
                   goals=[] :: [depsolver:constraint()],
                   providers = [] :: [rcl_provider:t()],
-                  available_apps = [] :: [app_descriptor()],
+                  available_apps = [] :: [rcl_app_info:t()],
                   default_release :: {rcl_release:name(), rcl_release:vsn()},
                   releases :: ec_dictionary:dictionary({ReleaseName::atom(),
                                                         ReleaseVsn::string()},
@@ -67,8 +66,6 @@
 %%============================================================================
 %% types
 %%============================================================================
-
--type app_descriptor() :: {rcl_release:app_name(), rcl_release:app_vsn(), file:name()}.
 
 -type releases() :: ec_dictionary:dictionary({rcl_release:name(),
                                               rcl_release:vsn()},
@@ -145,11 +142,11 @@ default_release(#state_t{default_release=Def}) ->
 default_release(M, Name, Vsn) ->
     M#state_t{default_release={Name, Vsn}}.
 
--spec available_apps(t()) -> [app_descriptor()].
+-spec available_apps(t()) -> [rcl_app_info:t()].
 available_apps(#state_t{available_apps=Apps}) ->
     Apps.
 
--spec available_apps(t(), [app_descriptor()]) -> t().
+-spec available_apps(t(), [rcl_app_info:t()]) -> t().
 available_apps(M, NewApps) ->
     M#state_t{available_apps=NewApps}.
 
