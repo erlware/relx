@@ -92,7 +92,9 @@ new(PropList, Targets) when erlang:is_list(PropList) ->
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
                  releases=ec_dictionary:new(ec_dict),
-                 config_values=ec_dictionary:new(ec_dict)},
+                 config_values=ec_dictionary:new(ec_dict),
+                 default_release={proplists:get_value(relname, PropList, undefined),
+                                  proplists:get_value(relvsn, PropList, undefined)}},
     create_logic_providers(State0).
 
 %% @doc get the current log state for the system
@@ -146,7 +148,8 @@ get_release(#state_t{releases=Releases}, Name, Vsn) ->
 releases(#state_t{releases=Releases}) ->
     Releases.
 
--spec default_release(t()) -> {rcl_release:name(), rcl_release:vsn()}.
+-spec default_release(t()) ->
+                             {rcl_release:name() | undefined, rcl_release:vsn() | undefined}.
 default_release(#state_t{default_release=Def}) ->
     Def.
 
