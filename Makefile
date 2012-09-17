@@ -37,7 +37,7 @@ endif
 
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf get-deps escript
 
-all: compile escript test dialyzer
+all: compile escript dialyzer test
 
 # =============================================================================
 # Include relevant sub-makefiles.
