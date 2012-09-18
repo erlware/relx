@@ -85,7 +85,7 @@ load_terms({add_providers, Providers0}, {ok, State0}) ->
 load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
     Release0 = rcl_release:new(RelName, Vsn),
     case rcl_release:goals(Release0, Applications) of
-       {_, E={error, _}} ->
+        E={error, _} ->
             E;
         {ok, Release1} ->
             {ok, rcl_state:add_release(State0, Release1)}
@@ -94,7 +94,7 @@ load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
             Applications}, {ok, State}) ->
     Release0 = rcl_release:erts(rcl_release:new(RelName, Vsn), ErtsVsn),
     case rcl_release:goals(Release0, Applications) of
-        {_, E={error, _}} ->
+        E={error, _} ->
             E;
         {ok, Release1} ->
             {ok, rcl_state:add_release(State, Release1)}

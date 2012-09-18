@@ -24,7 +24,7 @@
          end_per_suite/1,
          init_per_testcase/2,
          all/0,
-         normal_case/1]).
+         make_release/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -47,9 +47,9 @@ init_per_testcase(_, Config) ->
      {state, State} | Config].
 
 all() ->
-    [normal_case].
+    [make_release].
 
-normal_case(Config) ->
+make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
     [(fun({Name, Vsn}) ->
               create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
@@ -64,7 +64,6 @@ normal_case(Config) ->
     create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
     create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
-
 
     ConfigFile = filename:join([LibDir1, "relcool.config"]),
     write_config(ConfigFile,
@@ -84,9 +83,6 @@ normal_case(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
-
-
-
 
 %%%===================================================================
 %%% Helper Functions

@@ -80,7 +80,8 @@ $(RELCOOL_PLT):
 	   --apps erts kernel stdlib -r deps
 
 dialyzer: $(RELCOOL_PLT)
-	dialyzer --plt $(RELCOOL_PLT) --fullpath -Wrace_conditions -I include -pa $(CURDIR)/ebin --src src
+	dialyzer --plt $(RELCOOL_PLT) --fullpath -Wrace_conditions \
+	-I include -pa $(CURDIR)/ebin --src src
 
 typer:
 	typer --plt $(RELCOOL_PLT) -r ./src
