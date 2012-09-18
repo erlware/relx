@@ -8,9 +8,15 @@
 -module(rcl_provider).
 
 %% API
--export([new/2, do/2, format_error/2, format/1]).
+-export([new/2,
+         do/2,
+         format_error/1,
+         format_error/2,
+         format/1]).
 
 -export_type([t/0]).
+
+-include_lib("relcool/include/relcool.hrl").
 
 %%%===================================================================
 %%% Types
@@ -18,9 +24,9 @@
 
 -opaque t() :: {?MODULE, module()}.
 
--callback init(rcl_state:t()) -> {ok, rcl_state:t()} | {error, Reason::term()}.
--callback do(rcl_state:t()) -> {error, Reason::term()} | {ok, rcl_state:t()}.
--callback format_error({error, Reason::term()}) -> iolist().
+-callback init(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
+-callback do(rcl_state:t()) ->  {ok, rcl_state:t()} | relcool:error().
+-callback format_error(Reason::term()) -> iolist().
 
 %%%===================================================================
 %%% API
@@ -32,31 +38,34 @@
 %% @param ModuleName The module name.
 %% @param State0 The current state of the system
 -spec new(module(), rcl_state:t()) ->
-                 {t(), {ok, rcl_state:t()} | {error, Reason::term()}}.
+                 {t(), {ok, rcl_state:t()}} | relcool:error().
 new(ModuleName, State0) when is_atom(ModuleName) ->
     State1 = ModuleName:init(State0),
     case code:which(ModuleName) of
         non_existing ->
-            erlang:error({non_existing, ModuleName});
+            ?RCL_ERROR({non_existing, ModuleName});
         _ ->
-            ok
-    end,
-    {{?MODULE, ModuleName}, State1}.
+            {{?MODULE, ModuleName}, State1}
+    end.
 
 %% @doc Manipulate the state of the system, that new state
 %%
 %% @param Provider the provider object
 %% @param State the current state of the system
 -spec do(Provider::t(), rcl_state:t()) ->
-                {error, Reason::term()} | {ok, rcl_state:t()}.
+                {ok, rcl_state:t()} | relcool:error().
 do({?MODULE, Mod}, State) ->
     Mod:do(State).
 
 %% @doc format an error produced from a provider.
--spec format_error(t(), {error, Reason::term()}) -> iolist().
+-spec format_error(Reason::term()) -> iolist().
+format_error({non_existing, ModuleName}) ->
+    io_lib:format("~p does not exist in the system", [ModuleName]).
+
+%% @doc format an error produced from a provider.
+-spec format_error(t(), Reason::term()) -> iolist().
 format_error({?MODULE, Mod}, Error) ->
     Mod:format_error(Error).
-
 
 %% @doc print the provider module name
 %%

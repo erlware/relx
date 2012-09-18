@@ -79,7 +79,7 @@ lib_fail_case(Config) ->
     ok = rcl_util:mkdir_p(Lib1),
 
     CmdLine = ["-l", Lib1, "-l", Lib2],
-    ?assertMatch({error, {not_directory, Lib2}},
+    ?assertMatch({error, {_, {not_directory, Lib2}}},
                  rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
 
 
@@ -91,17 +91,17 @@ output_fail_case(Config) ->
     CanNotCreate = filename:join([UnwritableDir, "out-dir-should-not-create"]),
 
     CmdLine = ["-o", CanNotCreate],
-    ?assertMatch({error, {unable_to_create_output_dir, CanNotCreate}},
+    ?assertMatch({error, {_, {unable_to_create_output_dir, CanNotCreate}}},
                  rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
 
 spec_parse_fail_case(_Config) ->
     Spec = "aaeu:3333:33.22a44",
     CmdLine = ["-g", Spec],
-    ?assertMatch({error, {failed_to_parse, _Spec}},
+    ?assertMatch({error, {_, {failed_to_parse, _Spec}}},
                  rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
 
 config_fail_case(_Config) ->
     ConfigFile = "does-not-exist",
     CmdLine = [ConfigFile],
-    ?assertMatch({error, {invalid_config_file, ConfigFile}},
+    ?assertMatch({error, {_, {invalid_config_file, ConfigFile}}},
                  rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).

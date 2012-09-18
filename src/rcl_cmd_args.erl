@@ -21,19 +21,17 @@
 %%% @doc Trivial utility file to help handle common tasks
 -module(rcl_cmd_args).
 
--export([args2state/1]).
+-export([args2state/1,
+         format_error/1]).
 
-%%============================================================================
-%% types
-%%============================================================================
-
+-include_lib("relcool/include/relcool.hrl").
 
 %%============================================================================
 %% API
 %%============================================================================
 -spec args2state({error, Reason::term()} | {[getopt:option()], [string()]}) ->
-                        {error, Reason::term()} |
-                        {ok, {rcl_state:t(), [string()]}}.
+                        {ok, {rcl_state:t(), [string()]}} |
+                        relcool:error().
 args2state(Error={error, _}) ->
     Error;
 args2state({ok, {Opts, Targets}}) ->
@@ -53,11 +51,40 @@ args2state({ok, {Opts, Targets}}) ->
             end
     end.
 
+-spec format_error(Reason::term()) -> iolist().
+format_error({invalid_option_arg, Arg}) ->
+    case Arg of
+        {goals, Goal} ->
+            io_lib:format("Invalid Goal argument -g ~p~n", [Goal]);
+        {relname, RelName} ->
+            io_lib:format("Invalid Release Name argument -n ~p~n", [RelName]);
+        {relvsn, RelVsn} ->
+            io_lib:format("Invalid Release Version argument -n ~p~n", [RelVsn]);
+        {output_dir, Outdir} ->
+            io_lib:format("Invalid Output Directory argument -n ~p~n", [Outdir]);
+        {lib_dir, LibDir} ->
+            io_lib:format("Invalid Library Directory argument -n ~p~n", [LibDir]);
+        {log_level, LogLevel} ->
+            io_lib:format("Invalid Library Directory argument -n ~p~n", [LogLevel])
+    end;
+format_error({invalid_config_file, Config}) ->
+    io_lib:format("Invalid configuration file specified: ~s", [Config]);
+format_error({failed_to_parse, Spec}) ->
+    io_lib:format("Unable to parse spec ~s", [Spec]);
+format_error({unable_to_create_output_dir, OutputDir}) ->
+    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
+                  [OutputDir]);
+format_error({not_directory, Dir}) ->
+    io_lib:format("Library directory does not exist: ~s", [Dir]);
+format_error({invalid_log_level, LogLevel}) ->
+    io_lib:format("Invalid log level specified -V ~p, log level must be in the"
+                  " range 0..2", [LogLevel]).
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 -spec validate_configs([file:filename()]) ->
-                              {ok, [file:filename()]} | {error, Reason::term()}.
+                              {ok, [file:filename()]} | relcool:error().
 validate_configs(Configs) ->
     Result =
         lists:foldl(fun(_Config, Err = {error, _}) ->
@@ -67,7 +94,7 @@ validate_configs(Configs) ->
                                 true ->
                                     [filename:absname(Config) | Acc];
                                 false ->
-                                    {error, {invalid_config_file, Config}}
+                                    ?RCL_ERROR({invalid_config_file, Config})
                             end
                     end, [], Configs),
     case Result of
@@ -80,29 +107,29 @@ validate_configs(Configs) ->
     end.
 
 -spec create_log([getopt:option()], rcl_state:cmd_args()) ->
-                        {ok, rcl_state:cmd_args()} | {error, Reason::term()}.
+                        {ok, rcl_state:cmd_args()} | relcool:error().
 create_log(Opts, Acc) ->
     LogLevel = proplists:get_value(log_level, Opts, 0),
     if
         LogLevel >= 0, LogLevel =< 2 ->
             create_goals(Opts, [{log, rcl_log:new(LogLevel)} | Acc]);
         true ->
-            {error, {invalid_log_level, LogLevel}}
+            ?RCL_ERROR({invalid_log_level, LogLevel})
     end.
 
 -spec create_goals([getopt:option()], rcl_state:cmd_args()) ->
-                          {ok, rcl_state:cmd_args()} | {error, Reason::term()}.
+                          {ok, rcl_state:cmd_args()} | relcool:error().
 create_goals(Opts, Acc) ->
     case convert_goals(proplists:get_all_values(goals, Opts), []) of
-        Error={error, {failed_to_parse, _Spec}} ->
+        Error={error, _} ->
             Error;
         {ok, Specs} ->
             create_output_dir(Opts, [{goals, Specs} | Acc])
     end.
 
 -spec convert_goals([string()], [depsolver:constraint()]) ->
-                           {error,{failed_to_parse, string()}} |
-                           {ok,[depsolver:constraint()]}.
+                           {ok,[depsolver:constraint()]} |
+                           relcool:error().
 convert_goals([], Specs) ->
     %% Reverse the specs because order matters to depsolver
     {ok, lists:reverse(Specs)};
@@ -111,10 +138,10 @@ convert_goals([RawSpec | Rest], Acc) ->
         {ok, Spec} ->
             convert_goals(Rest, [Spec | Acc]);
         {fail, _} ->
-            {error, {failed_to_parse, RawSpec}}
+            ?RCL_ERROR({failed_to_parse, RawSpec})
     end.
 -spec create_output_dir([getopt:option()], rcl_state:cmd_args()) ->
-                               {ok, rcl_state:cmd_args()} | {error, Reason::term()}.
+                               {ok, rcl_state:cmd_args()} | relcool:error().
 create_output_dir(Opts, Acc) ->
     OutputDir = proplists:get_value(output_dir, Opts, "./relcool_output"),
     case filelib:is_dir(OutputDir) of
@@ -123,14 +150,14 @@ create_output_dir(Opts, Acc) ->
                 ok ->
                     create_lib_dirs(Opts, [{output_dir, OutputDir} | Acc]);
                 {error, _} ->
-                    {error, {unable_to_create_output_dir, OutputDir}}
+                    ?RCL_ERROR({unable_to_create_output_dir, OutputDir})
             end;
         true ->
             create_lib_dirs(Opts, [{output_dir, OutputDir} | Acc])
     end.
 
 -spec create_lib_dirs([getopt:option()], rcl_state:cmd_args()) ->
-                               {ok, rcl_state:cmd_args()} | {error, Reason::term()}.
+                               {ok, rcl_state:cmd_args()} | relcool:error().
 create_lib_dirs(Opts, Acc) ->
     Dirs = proplists:get_all_values(lib_dir, Opts),
     case check_lib_dirs(Dirs) of
@@ -140,13 +167,13 @@ create_lib_dirs(Opts, Acc) ->
             {ok, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc]}
     end.
 
--spec check_lib_dirs([string()]) -> ok | {error, {Reason::atom(), Dir::string()}}.
+-spec check_lib_dirs([string()]) -> ok | relcool:error().
 check_lib_dirs([]) ->
     ok;
 check_lib_dirs([Dir | Rest]) ->
     case filelib:is_dir(Dir) of
         false ->
-            {error, {not_directory, Dir}};
+            ?RCL_ERROR({not_directory, Dir});
         true ->
             check_lib_dirs(Rest)
     end.

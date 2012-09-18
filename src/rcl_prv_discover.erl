@@ -29,6 +29,8 @@
          do/1,
          format_error/1]).
 
+-include_lib("relcool/include/relcool.hrl").
+
 %%============================================================================
 %% API
 %%============================================================================
@@ -38,7 +40,7 @@ init(State) ->
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rcl_state:t()) -> {error, Reason::term()} | {ok, rcl_state:t()}.
+-spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
 do(State) ->
     LibDirs = get_lib_dirs(State),
     rcl_log:info(rcl_state:log(State),
@@ -73,11 +75,12 @@ do(State) ->
                           end),
             {ok, rcl_state:available_apps(State, AppMeta1)};
         _ ->
-            {error, Errors}
+            ?RCL_ERROR(Errors)
     end.
 
--spec format_error({error, [ErrorDetail::term()]}) -> iolist().
-format_error({error, ErrorDetails}) ->
+-spec format_error([ErrorDetail::term()]) -> iolist().
+format_error(ErrorDetails)
+  when erlang:is_list(ErrorDetails) ->
     [[format_detail(ErrorDetail), "\n"] || ErrorDetail <- ErrorDetails].
 
 %%%===================================================================
@@ -126,9 +129,9 @@ add_system_lib_dir(State, LibDirs) ->
     end.
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
-format_detail({accessing, File, eaccess}) ->
+format_detail({error, {accessing, File, eaccess}}) ->
     io_lib:format("permission denied accessing file ~s", [File]);
-format_detail({accessing, File, Type}) ->
+format_detail({error, {accessing, File, Type}}) ->
     io_lib:format("error (~p) accessing file ~s", [Type, File]);
 format_detail({error, {no_beam_files, EbinDir}}) ->
     io_lib:format("no beam files found in directory ~s", [EbinDir]);
@@ -143,8 +146,7 @@ format_detail({error, {unversioned_app, AppDir, _AppName}}) ->
     io_lib:format("Application metadata exists but version is not available: ~s",
                   [AppDir]);
 format_detail({error, {app_info_error, Detail}}) ->
-    rcl_app_info:format_error({error, Detail}).
-
+    rcl_app_info:format_error(Detail).
 
 -spec discover_dir(file:name()) ->
                           [rcl_app_info:t() | {error, Reason::term()}] |

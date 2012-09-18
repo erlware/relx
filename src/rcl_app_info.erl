@@ -42,6 +42,7 @@
          name/2,
          vsn/1,
          vsn/2,
+         vsn_as_string/1,
          dir/1,
          dir/2,
          active_deps/1,
@@ -53,6 +54,8 @@
          format/1]).
 
 -export_type([t/0]).
+
+-include_lib("relcool/include/relcool.hrl").
 
 -record(app_info_t, {name :: atom(),
                      vsn :: ec_semver:semver(),
@@ -76,7 +79,7 @@ new() ->
 
 %% @doc build a complete version of the app info with all fields set.
 -spec new(atom(), string(), file:name(), [atom()], [atom()]) ->
-                 {ok, t()} | {error, Reason::term()}.
+                 {ok, t()} | relcool:error().
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps)
   when erlang:is_atom(AppName),
        erlang:is_list(Dir),
@@ -84,7 +87,7 @@ new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps)
        erlang:is_list(LibraryDeps) ->
     case parse_version(Vsn) of
         {fail, _} ->
-            {error, {vsn_parse, AppName}};
+            ?RCL_ERROR({vsn_parse, AppName});
         ParsedVsn ->
             {ok, #app_info_t{name=AppName, vsn=ParsedVsn, dir=Dir,
                              active_deps=ActiveDeps,
@@ -104,16 +107,19 @@ name(AppInfo=#app_info_t{}, AppName)
 vsn(#app_info_t{vsn=Vsn}) ->
     Vsn.
 
--spec vsn(t(), string()) -> {ok, t()} | {error, Reason::term()}.
+-spec vsn_as_string(t()) -> string().
+vsn_as_string(#app_info_t{vsn=Vsn}) ->
+    erlang:binary_to_list(erlang:iolist_to_binary(ec_semver:format(Vsn))).
+
+-spec vsn(t(), string()) -> {ok, t()} | relcool:error().
 vsn(AppInfo=#app_info_t{name=AppName}, AppVsn)
   when erlang:is_list(AppVsn) ->
     case parse_version(AppVsn) of
         {fail, _} ->
-            {error, {vsn_parse, AppName}};
+            ?RCL_ERROR({vsn_parse, AppName});
         ParsedVsn ->
             {ok, AppInfo#app_info_t{vsn=ParsedVsn}}
     end.
-
 
 -spec dir(t()) -> file:name().
 dir(#app_info_t{dir=Dir}) ->
@@ -139,10 +145,10 @@ library_deps(AppInfo=#app_info_t{}, LibraryDeps)
   when erlang:is_list(LibraryDeps) ->
     AppInfo#app_info_t{library_deps=LibraryDeps}.
 
--spec format_error({error, Reason::term()}) -> iolist().
-format_error({error, {vsn_parse, AppName, AppDir}}) ->
-    io_lib:format("Error parsing version for ~p at ~s",
-                  [AppName, AppDir]).
+-spec format_error(Reason::term()) -> iolist().
+format_error({vsn_parse, AppName}) ->
+    io_lib:format("Error parsing version for ~p",
+                  [AppName]).
 
 -spec format(t()) -> iolist().
 format(AppInfo) ->
@@ -157,8 +163,6 @@ format(Indent, #app_info_t{name=Name, vsn=Vsn, dir=Dir,
      [[rcl_util:indent(Indent + 2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],
      rcl_util:indent(Indent + 1), "Library Dependencies:\n",
      [[rcl_util:indent(Indent + 2), erlang:atom_to_list(LibDep), ",\n"] || LibDep <- LibDeps]].
-
-
 
 %%%===================================================================
 %%% Internal Functions

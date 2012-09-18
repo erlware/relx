@@ -24,14 +24,18 @@
          do/7,
          opt_spec_list/0]).
 
+-export_type([error/0]).
+
 %%============================================================================
 %% types
 %%============================================================================
 
+-type error() :: {error, {Module::module(), Reason::term()}}.
+
 %%============================================================================
 %% API
 %%============================================================================
--spec main([string()]) -> ok.
+-spec main([string()]) -> ok | error() | {ok, rcl_state:t()}.
 main(Args) ->
     OptSpecList = opt_spec_list(),
     case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
@@ -41,7 +45,6 @@ main(Args) ->
             report_error(rcl_state:caller(rcl_state:new([], []),
                                           command_line), Error)
     end.
-
 
 %% @doc provides an API to run the Relcool process from erlang applications
 %%
@@ -116,8 +119,8 @@ run_providers(ConfigProvider, Providers, State0) ->
             lists:foldl(fun run_provider/2, {ok, State0}, Providers)
     end.
 
--spec run_provider(rcl_provider:t(), {ok, rcl_state:t()} | {error, Reason::term()}) ->
-                          {ok, rcl_state:t()} | {error, Reason::term()}.
+-spec run_provider(rcl_provider:t(), {ok, rcl_state:t()} | error()) ->
+                          {ok, rcl_state:t()} | error().
 run_provider(_Provider, Error = {error, _}) ->
     Error;
 run_provider(Provider, {ok, State0}) ->
@@ -125,7 +128,7 @@ run_provider(Provider, {ok, State0}) ->
         {ok, State1} ->
             {ok, State1};
         E={error, _} ->
-            report_error(State0, rcl_provider:format_error(Provider, E))
+            report_error(State0, E)
     end.
 
 -spec usage() -> ok.
@@ -133,9 +136,9 @@ usage() ->
     getopt:usage(opt_spec_list(), "relcool", "[*release-specification-file*]").
 
 
--spec report_error(rcl_state:t(), term()) -> none().
-report_error(State, Error) ->
-    io:format("~s~n", [to_error(Error)]),
+-spec report_error(rcl_state:t(), error()) -> none() | error().
+report_error(State, Error={error, {Module, Reason}}) ->
+    io:format("~s~n", [Module:format_error(Reason)]),
     usage(),
     case rcl_state:caller(State) of
         command_line ->
@@ -143,36 +146,3 @@ report_error(State, Error) ->
         api ->
             Error
     end.
-
--spec to_error(string() | {error, Reason::term()}) -> string().
-to_error(String) when erlang:is_list(String) ->
-    String;
-to_error({error,{invalid_option_arg, Arg}}) ->
-    case Arg of
-        {goals, Goal} ->
-            io_lib:format("Invalid Goal argument -g ~p~n", [Goal]);
-        {relname, RelName} ->
-            io_lib:format("Invalid Release Name argument -n ~p~n", [RelName]);
-        {relvsn, RelVsn} ->
-            io_lib:format("Invalid Release Version argument -n ~p~n", [RelVsn]);
-        {output_dir, Outdir} ->
-            io_lib:format("Invalid Output Directory argument -n ~p~n", [Outdir]);
-        {lib_dir, LibDir} ->
-            io_lib:format("Invalid Library Directory argument -n ~p~n", [LibDir]);
-        {log_level, LogLevel} ->
-            io_lib:format("Invalid Library Directory argument -n ~p~n", [LogLevel])
-    end;
-to_error({error, {invalid_config_file, Config}}) ->
-    io_lib:format("Invalid configuration file specified: ~s", [Config]);
-to_error({error, {failed_to_parse, Spec}}) ->
-    io_lib:format("Unable to parse spec ~s", [Spec]);
-to_error({error, {unable_to_create_output_dir, OutputDir}}) ->
-    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
-                  [OutputDir]);
-to_error({error, {not_directory, Dir}}) ->
-    io_lib:format("Library directory does not exist: ~s", [Dir]);
-to_error({error, {invalid_log_level, LogLevel}}) ->
-    io_lib:format("Invalid log level specified -V ~p, log level must be in the"
-                  " range 0..2", [LogLevel]);
-to_error({error, Error}) ->
-    io_lib:format("~p~n", [Error]).

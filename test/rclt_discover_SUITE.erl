@@ -113,7 +113,7 @@ no_beam_case(Config) ->
     State0 = proplists:get_value(state, Config),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
     EbinDir = filename:join([LibDir2, BadName, "ebin"]),
-    ?assertMatch({error, [{no_beam_files, EbinDir}]},
+    ?assertMatch({error, {_, [{no_beam_files, EbinDir}]}},
                  rcl_provider:do(DiscoverProvider, State1)).
 
 bad_ebin_case(Config) ->
@@ -144,7 +144,7 @@ bad_ebin_case(Config) ->
     State0 = proplists:get_value(state, Config),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
 
-    ?assertMatch({error, [{invalid_app_file, Filename}]},
+    ?assertMatch({error, {_, [{invalid_app_file, Filename}]}},
                  rcl_provider:do(DiscoverProvider, State1)).
 
 

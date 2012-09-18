@@ -18,3 +18,10 @@
 -define(RCL_ERROR, 0).
 -define(RCL_INFO, 1).
 -define(RCL_DEBUG, 2).
+
+%% This is the default form of error messages for the Relcool
+%% system. It is expected that everything that returns an error use
+%% this and that they all expose a format_error/1 message that returns
+%% an iolist.
+-define(RCL_ERROR(Reason),
+        {error, {?MODULE, Reason}}).

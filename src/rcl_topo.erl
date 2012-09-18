@@ -20,6 +20,8 @@
 -export([sort_apps/1,
          format_error/1]).
 
+-include_lib("relcool/include/relcool.hrl").
+
 %%====================================================================
 %% Types
 %%====================================================================
@@ -38,7 +40,7 @@
 %% sorted.
 -spec sort_apps([rcl_app_info:t()]) ->
                        {ok, [rcl_app_info:t()]} |
-                       {error, Reason::term()}.
+                       relcool:error().
 sort_apps(Apps) ->
     Pairs = apps_to_pairs(Apps),
     case sort(Pairs) of
@@ -48,8 +50,8 @@ sort_apps(Apps) ->
             E
     end.
 %% @doc nicely format the error from the sort.
--spec format_error({error, Reason::term()}) -> iolist().
-format_error({error, {cycle, Pairs}}) ->
+-spec format_error(Reason::term()) -> iolist().
+format_error({cycle, Pairs}) ->
     ["Cycle detected in dependency graph, this must be resolved "
      "before we can continue:\n",
     case Pairs of
@@ -62,12 +64,11 @@ format_error({error, {cycle, Pairs}}) ->
             []
     end].
 
-
 %%====================================================================
 %% Internal Functions
 %%====================================================================
 %% @doc Do a topological sort on the list of pairs.
--spec sort([pair()]) -> {ok, [atom()]} | {error, {cycle, [pair()]}}.
+-spec sort([pair()]) -> {ok, [atom()]} | relcool:error().
 sort(Pairs) ->
     iterate(Pairs, [], all(Pairs)).
 
@@ -97,13 +98,13 @@ app_to_pairs(App) ->
 
 %% @doc Iterate over the system.  @private
 -spec iterate([pair()], [name()], [name()]) ->
-    {ok, [name()]} | {error, {cycle, [pair()]}}.
+    {ok, [name()]} | relcool:error().
 iterate([], L, All) ->
     {ok, remove_duplicates(L ++ subtract(All, L))};
 iterate(Pairs, L, All) ->
     case subtract(lhs(Pairs), rhs(Pairs)) of
         []  ->
-            {error, {cycle, Pairs}};
+            ?RCL_ERROR({cycle, Pairs});
         Lhs ->
             iterate(remove_pairs(Lhs, Pairs), L ++ Lhs, All)
     end.
@@ -173,14 +174,14 @@ topo_2_test() ->
 
 topo_pairs_cycle_test() ->
     Pairs = [{app2, app1}, {app1, app2}, {stdlib, app1}],
-    ?assertMatch({error, {cycle, [{app2, app1}, {app1, app2}]}},
+    ?assertMatch({error, {_, {cycle, [{app2, app1}, {app1, app2}]}}},
                  sort(Pairs)).
 
 topo_apps_cycle_test() ->
     {ok, App1} = rcl_app_info:new(app1, "0.1", "/no-dir", [app2], [stdlib]),
     {ok, App2} = rcl_app_info:new(app2, "0.1", "/no-dir", [app1], []),
     Apps = [App1, App2],
-    ?assertMatch({error, {cycle, [{app2,app1},{app1,app2}]}},
+    ?assertMatch({error, {_, {cycle, [{app2,app1},{app1,app2}]}}},
                  sort_apps(Apps)).
 
 topo_apps_good_test() ->

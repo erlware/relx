@@ -45,6 +45,8 @@
               application_spec/0,
               application_goal/0]).
 
+-include_lib("relcool/include/relcool.hrl").
+
 -record(release_t, {name :: atom(),
                     vsn :: ec_semver:any_version(),
                     erts :: ec_semver:any_version(),
@@ -102,7 +104,7 @@ erts(Release, Vsn) ->
 erts(#release_t{erts=Vsn}) ->
     Vsn.
 
--spec goals(t(), [application_goal()]) -> {ok, t()} | {error, Reason::term()}.
+-spec goals(t(), [application_goal()]) -> {ok, t()} | relcool:error().
 goals(Release, Goals0) ->
     lists:foldl(fun parse_goal0/2,
                 {ok, Release}, Goals0).
@@ -112,14 +114,14 @@ goals(#release_t{goals=Goals}) ->
     Goals.
 
 -spec realize(t(), [{app_name(), app_vsn()}], [rcl_app_info:t()]) ->
-                     {ok, t()} | {error, Reason::term()}.
+                     {ok, t()} | relcool:error().
 realize(Rel, Pkgs0, World0) ->
     World1 = subset_world(Pkgs0, World0),
     case rcl_topo:sort_apps(World1) of
         {ok, Pkgs1} ->
             process_specs(realize_erts(Rel), Pkgs1);
-        {error, E} ->
-            {error, {topo_error, E}}
+        Error={error, _} ->
+            Error
     end.
 
 %% @doc this gives the application specs for the release. This can only be
@@ -165,8 +167,14 @@ format_goal({Constraint, AppType, AppInc}) ->
 format_goal(Constraint) ->
     depsolver:format_constraint(Constraint).
 
-format_error({error, {topo_error, E}}) ->
-    rcl_topo:format_error({error, E}).
+-spec format_error(Reason::term()) -> iolist().
+format_error({topo_error, E}) ->
+    rcl_topo:format_error(E);
+format_error({failed_to_parse, Con}) ->
+    io_lib:format("Failed to parse constraint ~p", [Con]);
+format_error({invalid_constraint, Con}) ->
+    io_lib:format("Invalid constraint specified ~p", [Con]).
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
@@ -177,7 +185,7 @@ realize_erts(Rel) ->
     Rel.
 
 -spec process_specs(t(), [rcl_app_info:t()]) ->
-                           {ok, t()} | {error, Reason::term()}.
+                           {ok, t()}.
 process_specs(Rel=#release_t{annotations=Annots,
                              goals=Goals}, World) ->
     ActiveApps = lists:flatten([rcl_app_info:active_deps(El) || El <- World] ++
@@ -245,8 +253,8 @@ get_app_info({PkgName, PkgVsn}, World) ->
                       end, World),
     WorldEl.
 
--spec parse_goal0(application_goal(), {ok, t()} | {error, Reason::term()}) ->
-                         {ok, t()} | {error, Reason::term()}.
+-spec parse_goal0(application_goal(), {ok, t()} | relcool:error()) ->
+                         {ok, t()} | relcool:error().
 parse_goal0({Constraint0, Annots}, {ok, Release})
   when erlang:is_atom(Annots) ->
     parse_goal1(Release, Constraint0, {Annots, none});
@@ -261,8 +269,8 @@ parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
 parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
   when erlang:is_list(Constraint0) ->
     case rcl_goal:parse(Constraint0) of
-        E = {error, _} ->
-            E;
+        {error, _Detail} ->
+            ?RCL_ERROR({failed_to_parse, Constraint0});
         Constraint1 ->
             {ok, Release#release_t{goals = [Constraint1 | Goals]}}
     end;
@@ -271,12 +279,12 @@ parse_goal0(_, E = {error, _}) ->
 
 -spec parse_goal1(t(), depsolver:constraint() | string(),
                   app_type() | incl_apps() | {app_type(), incl_apps() | none}) ->
-                         {ok, t()} | {error, Reason::term()}.
+                         {ok, t()} | relcool:error().
 parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
             Constraint0, NewAnnots) ->
    case rcl_goal:parse(Constraint0) of
-       E0 = {error, _} ->
-           E0;
+      {error, _} ->
+           ?RCL_ERROR({failed_to_parse, Constraint0});
        Constraint1 ->
            case get_app_name(Constraint1) of
                E1 = {error, _} ->
@@ -289,7 +297,7 @@ parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
    end.
 
 -spec get_app_name(depsolver:constraint()) ->
-                          AppName::atom() | {error, {invalid_constraint, term()}}.
+                          AppName::atom() | relcool:error().
 get_app_name(AppName) when erlang:is_atom(AppName) ->
     AppName;
 get_app_name({AppName, _, _}) when erlang:is_atom(AppName) ->
@@ -297,4 +305,4 @@ get_app_name({AppName, _, _}) when erlang:is_atom(AppName) ->
 get_app_name({AppName, _, _, _}) when erlang:is_atom(AppName) ->
     AppName;
 get_app_name(V) ->
-    {error, {invalid_constraint, V}}.
+    ?RCL_ERROR({invalid_constraint, V}).

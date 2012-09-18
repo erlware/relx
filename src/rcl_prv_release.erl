@@ -30,6 +30,8 @@
          do/1,
          format_error/1]).
 
+-include_lib("relcool/include/relcool.hrl").
+
 %%============================================================================
 %% API
 %%============================================================================
@@ -39,23 +41,23 @@ init(State) ->
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rcl_state:t()) -> {error, Reason::term()} | {ok, rcl_state:t()}.
+-spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
 do(State) ->
     DepGraph = create_dep_graph(State),
     find_default_release(State, DepGraph).
 
--spec format_error({error, ErrorDetail::term()}) -> iolist().
-format_error({error, {no_release_name, Vsn}}) ->
+-spec format_error(ErrorDetail::term()) -> iolist().
+format_error({no_release_name, Vsn}) ->
     io_lib:format("A target release version was specified (~s) but no name", [Vsn]);
-format_error({error, {invalid_release_info, Info}}) ->
+format_error({invalid_release_info, Info}) ->
     io_lib:format("Target release information is in an invalid format ~p", [Info]);
-format_error({error, {multiple_release_names, RelA, RelB}}) ->
+format_error({multiple_release_names, RelA, RelB}) ->
     io_lib:format("No default release name was specified and there are multiple "
                   "releases in the config: ~s, ~s",
                   [RelA, RelB]);
-format_error({error, no_releases_in_system}) ->
+format_error(no_releases_in_system) ->
     "No releases have been specified in the system!";
-format_error({error, {no_releases_for, RelName}}) ->
+format_error({no_releases_for, RelName}) ->
     io_lib:format("No releases exist in the system for ~s!", [RelName]);
 format_error({release_not_found, {RelName, RelVsn}}) ->
     io_lib:format("No releases exist in the system for ~p:~s!", [RelName, RelVsn]);
@@ -83,7 +85,7 @@ create_dep_graph(State) ->
 
 
 -spec find_default_release(rcl_state:t(), depsolver:t()) ->
-                                  {ok, rcl_state:t()} | {error, Reason::term()}.
+                                  {ok, rcl_state:t()} | relcool:error().
 find_default_release(State, DepGraph) ->
     case rcl_state:default_release(State) of
         {undefined, undefined} ->
@@ -91,7 +93,7 @@ find_default_release(State, DepGraph) ->
         {RelName, undefined} ->
             resolve_default_version(State, DepGraph, RelName);
         {undefined, Vsn} ->
-            {error, {no_release_name, Vsn}};
+            ?RCL_ERROR({no_release_name, Vsn});
         {RelName, RelVsn} ->
             solve_release(State, DepGraph, RelName, RelVsn)
     end.
@@ -112,6 +114,7 @@ resolve_default_release(State0, DepGraph) ->
             ?RCL_ERROR(no_releases_in_system)
     end.
 
+
 resolve_default_version(State0, DepGraph, RelName) ->
     %% Here we will just get the lastest version and run that.
     AllReleases = ec_dictionary:to_list(rcl_state:releases(State0)),
@@ -130,7 +133,6 @@ resolve_default_version(State0, DepGraph, RelName) ->
             ?RCL_ERROR({no_releases_for, RelName})
     end.
 
-
 -spec release_sort({{rcl_release:name(),rcl_release:vsn()}, term()},
                    {{rcl_release:name(),rcl_release:vsn()}, term()}) ->
                           boolean().
@@ -145,8 +147,6 @@ release_sort({{RelNameA, RelVsnA}, _}, {{RelNameB, RelVsnB}, _}) ->
     erlang:atom_to_list(RelNameA) =< erlang:atom_to_list(RelNameB) andalso
         ec_semver:lte(RelVsnA, RelVsnB).
 
-
-
 solve_release(State0, DepGraph, RelName, RelVsn) ->
     try
         Release = rcl_state:get_release(State0, RelName, RelVsn),
@@ -155,11 +155,11 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
             {ok, Pkgs} ->
                 set_resolved(State0, Release, Pkgs);
             {error, Error} ->
-                {error, {failed_solve, Error}}
+                ?RCL_ERROR({failed_solve, Error})
         end
     catch
         throw:not_found ->
-            {error, {release_not_found, RelName, RelVsn}}
+            ?RCL_ERROR({release_not_found, RelName, RelVsn})
     end.
 
 set_resolved(State, Release0, Pkgs) ->
@@ -175,9 +175,8 @@ set_resolved(State, Release0, Pkgs) ->
                          end),
            {ok, rcl_state:update_release(State, Release1)};
        {error, E} ->
-           {error, {release_error, E}}
+           ?RCL_ERROR({release_error, E})
    end.
-
 
 %%%===================================================================
 %%% Test Functions
