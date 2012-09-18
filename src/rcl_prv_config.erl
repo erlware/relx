@@ -12,7 +12,7 @@
 %% API
 -export([init/1,
          do/1,
-         format/1]).
+         format_error/1]).
 
 
 %%%===================================================================
@@ -24,15 +24,18 @@
 init(State) ->
     {ok, State}.
 
-%% @doc
-%%
+%% @doc parse all the configs currently specified in the state,
+%% populating the state as a result.
 -spec do(rcl_state:t()) ->{ok,  rcl_state:t()} | {error, Reason::term()}.
 do(State) ->
     ConfigFiles = rcl_state:config_files(State),
     lists:foldl(fun load_config/2, {ok, State}, ConfigFiles).
 
-format({error, {consult, Reason}}) ->
-    file:format_error(Reason).
+-spec format_error({error, Reason::term()}) -> iolist().
+format_error({error, {consult, Reason}}) ->
+    file:format_error(Reason);
+format_error({error, {invalid_term, Term}}) ->
+    io_lib:format("Invalid term in config file: ~p", [Term]).
 
 %%%===================================================================
 %%% Internal Functions
@@ -51,6 +54,8 @@ load_config(ConfigFile, {ok, State}) ->
     ok = file:set_cwd(CurrentCwd),
     Result.
 
+load_terms({default_release, RelName, RelVsn}, {ok, State}) ->
+    {ok, rcl_state:default_release(State, RelName, RelVsn)};
 load_terms({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
     {ok, State};
@@ -88,7 +93,13 @@ load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
             E;
         {ok, Release1} ->
             {ok, rcl_state:add_release(State, Release1)}
-    end.
+    end;
+load_terms({Name, Value}, {ok, State})
+  when erlang:is_atom(Name) ->
+    {ok, rcl_state:put(State, Name, Value)};
+load_terms(InvalidTerm, _) ->
+    {error, {invalid_term, InvalidTerm}}.
+
 
 gen_providers(Providers, State) ->
     lists:foldl(fun(ProviderName, {Providers1, {ok, State1}}) ->

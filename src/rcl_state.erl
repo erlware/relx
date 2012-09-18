@@ -38,6 +38,9 @@
          default_release/3,
          available_apps/1,
          available_apps/2,
+         get/2,
+         get/3,
+         put/3,
          format/1,
          format/2]).
 
@@ -57,7 +60,9 @@
                   default_release :: {rcl_release:name(), rcl_release:vsn()},
                   releases :: ec_dictionary:dictionary({ReleaseName::atom(),
                                                         ReleaseVsn::string()},
-                                                       rcl_release:t())}).
+                                                       rcl_release:t()),
+                  config_values :: ec_dictionary:dictionary(Key::atom(),
+                                                            Value::term())}).
 
 %%============================================================================
 %% types
@@ -84,7 +89,8 @@ new(PropList, Targets) when erlang:is_list(PropList) ->
                  config_files=Targets,
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
-                 releases=ec_dictionary:new(ec_dict)},
+                 releases=ec_dictionary:new(ec_dict),
+                 config_values=ec_dictionary:new(ec_dict)},
     create_logic_providers(State0).
 
 %% @doc get the current log state for the system
@@ -147,6 +153,26 @@ available_apps(#state_t{available_apps=Apps}) ->
 available_apps(M, NewApps) ->
     M#state_t{available_apps=NewApps}.
 
+-spec get(t(), atom()) -> term().
+get(#state_t{config_values=Config}, Key)
+  when erlang:is_atom(Key) ->
+    ec_dictionary:get(Key, Config).
+
+-spec get(t(), atom(), DefaultValue::term()) -> term().
+get(#state_t{config_values=Config}, Key, DefaultValue)
+  when erlang:is_atom(Key) ->
+  try
+      ec_dictionary:get(Key, Config)
+  catch
+      throw:not_found ->
+          DefaultValue
+  end.
+
+-spec put(t(), atom(), term()) ->t().
+put(M=#state_t{config_values=Config}, Key, Value)
+  when erlang:is_atom(Key) ->
+    M#state_t{config_values=ec_dictionary:add(Key, Value, Config)}.
+
 -spec format(t()) -> iolist().
 format(Mod) ->
     format(Mod, 0).
@@ -167,7 +193,9 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
      rcl_util:indent(Indent + 1), "lib_dirs: \n",
      [[rcl_util:indent(Indent + 2), LibDir, ",\n"] || LibDir <- LibDirs],
      rcl_util:indent(Indent + 1), "providers: \n",
-     [[rcl_util:indent(Indent + 2), rcl_provider:format(Provider), ",\n"] || Provider <- Providers]].
+     [[rcl_util:indent(Indent + 2), rcl_provider:format(Provider), ",\n"] || Provider <- Providers],
+     rcl_util:indent(Indent + 1), "provider config values: \n",
+     [[rcl_util:indent(Indent + 2), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
 
 %%%===================================================================
 %%% Internal Functions
@@ -186,7 +214,8 @@ get_lib_dirs(CmdDirs) ->
 create_logic_providers(State0) ->
     {ConfigProvider, {ok, State1}} = rcl_provider:new(rcl_prv_config, State0),
     {DiscoveryProvider, {ok, State2}} = rcl_provider:new(rcl_prv_discover, State1),
-    State2#state_t{providers=[ConfigProvider, DiscoveryProvider]}.
+    {ReleaseProvider, {ok, State3}} = rcl_provider:new(rcl_prv_release, State2),
+    State3#state_t{providers=[ConfigProvider, DiscoveryProvider, ReleaseProvider]}.
 
 %%%===================================================================
 %%% Test Functions
