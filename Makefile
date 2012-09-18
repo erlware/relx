@@ -60,7 +60,7 @@ compile:
 	$(REBAR) skip_deps=true compile
 
 escript:
-	$(REBAR) escriptize
+	$(REBAR) skip_deps=true escriptize
 
 doc:
 	$(REBAR) skip_deps=true doc
