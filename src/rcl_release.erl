@@ -29,8 +29,12 @@
          goals/1,
          name/1,
          vsn/1,
+         realize/3,
+         applications/1,
+         application_details/1,
          format/1,
-         format/2]).
+         format/2,
+         format_error/1]).
 
 -export_type([t/0,
               name/0,
@@ -46,11 +50,9 @@
                     erts :: ec_semver:any_version(),
                     goals = [] :: [depsolver:constraint()],
                     realized = false :: boolean(),
-                    annotations = undefined :: ec_dictionary:dictionary(app_name(),
-                                                                        app_type() |
-                                                                        incl_apps() |
-                                                                        {app_type(), incl_apps()}),
-                    applications = []:: [application_spec()]}).
+                    annotations = undefined :: annotations(),
+                    applications = [] ::  [application_spec()],
+                    app_detail = [] :: [rcl_app_info:t()]}).
 
 %%============================================================================
 %% types
@@ -69,6 +71,10 @@
 -type application_goal() :: depsolver:constraint() |
                             {depsolver:constraint(), app_type() | incl_apps()} |
                             {depsolver:constraint(), app_type(), incl_apps()}.
+
+-type annotations() ::  ec_dictionary:dictionary(app_name(),
+                                                 {app_type(), incl_apps() | none}).
+
 
 -opaque t() :: record(release_t).
 
@@ -105,23 +111,49 @@ goals(Release, Goals0) ->
 goals(#release_t{goals=Goals}) ->
     Goals.
 
+-spec realize(t(), [{app_name(), app_vsn()}], [rcl_app_info:t()]) ->
+                     {ok, t()} | {error, Reason::term()}.
+realize(Rel, Pkgs0, World0) ->
+    World1 = subset_world(Pkgs0, World0),
+    case rcl_topo:sort_apps(World1) of
+        {ok, Pkgs1} ->
+            process_specs(realize_erts(Rel), Pkgs1);
+        {error, E} ->
+            {error, {topo_error, E}}
+    end.
+
+%% @doc this gives the application specs for the release. This can only be
+%% populated by the 'realize' call in this module.
+-spec applications(t()) -> [application_spec()].
+applications(#release_t{applications=Apps}) ->
+    Apps.
+
+%% @doc this gives the rcl_app_info objects representing the applications in
+%% this release. These can only be populated by the 'realize' call in this
+%% module.
+-spec application_details(t()) -> [rcl_app_info:t()].
+application_details(#release_t{app_detail=App}) ->
+    App.
+
+
 -spec format(t()) -> iolist().
 format(Release) ->
     format(0, Release).
 
 -spec format(non_neg_integer(), t()) -> iolist().
 format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
-                         goals = Goals, applications = Apps}) ->
+                         goals = Goals, applications=Apps}) ->
     BaseIndent = rcl_util:indent(Indent),
-    [BaseIndent, "release: ", erlang:atom_to_list(Name), "-", Vsn,
-     " erts-", ErtsVsn, ", realized = ",  erlang:atom_to_list(Realized), "\n",
+    [BaseIndent, "release: ", erlang:atom_to_list(Name), "-", Vsn, "\n",
+     rcl_util:indent(Indent + 1), " erts-", ErtsVsn,
+     ", realized = ",  erlang:atom_to_list(Realized), "\n",
      BaseIndent, "goals: \n",
      [[rcl_util:indent(Indent + 1),  format_goal(Goal), ",\n"] || Goal <- Goals],
      case Realized of
          true ->
              [BaseIndent, "applications: \n",
-              [[rcl_util:indent(Indent + 1),  io_lib:format("~p", [App]), ",\n"]
-               || App <- Apps]];
+              [[rcl_util:indent(Indent + 1),  io_lib:format("~p", [App]), ",\n"] ||
+                  App <- Apps]];
          false ->
              []
      end].
@@ -133,16 +165,101 @@ format_goal({Constraint, AppType, AppInc}) ->
 format_goal(Constraint) ->
     depsolver:format_constraint(Constraint).
 
+format_error({error, {topo_error, E}}) ->
+    rcl_topo:format_error({error, E}).
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+-spec realize_erts(t()) -> t().
+realize_erts(Rel=#release_t{erts=undefined}) ->
+    Rel#release_t{erts=erlang:system_info(version)};
+realize_erts(Rel) ->
+    Rel.
+
+-spec process_specs(t(), [rcl_app_info:t()]) ->
+                           {ok, t()} | {error, Reason::term()}.
+process_specs(Rel=#release_t{annotations=Annots,
+                             goals=Goals}, World) ->
+    ActiveApps = lists:flatten([rcl_app_info:active_deps(El) || El <- World] ++
+                                   [case get_app_name(Goal) of
+                                        {error, _} -> [];
+                                        G -> G
+                                    end || Goal <- Goals]),
+    LibraryApps = lists:flatten([rcl_app_info:library_deps(El) || El <- World]),
+    Specs = [create_app_spec(Annots, App, ActiveApps, LibraryApps) || App <- World],
+    {ok, Rel#release_t{annotations=Annots,
+                       applications=Specs,
+                       app_detail=World,
+                       realized=true}}.
+
+-spec create_app_spec(annotations(), rcl_app_info:t(), [app_name()],
+                      [app_name()]) ->
+                             application_spec().
+create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
+    %% If the app only exists as a dependency in a library app then it should
+    %% get the 'load' annotation unless the release spec has provided something
+    %% else
+    AppName = rcl_app_info:name(App),
+    TypeAnnot =
+        case (lists:member(AppName, LibraryApps) and
+              (not lists:member(AppName, ActiveApps))) of
+            true ->
+                load;
+            false ->
+                none
+        end,
+    BaseAnnots =
+        try
+            case ec_dictionary:get(AppName, Annots) of
+                {none, Incld} ->
+                    {TypeAnnot, Incld};
+                Else ->
+                    Else
+            end
+        catch
+            throw:not_found ->
+                {TypeAnnot, none}
+        end,
+    Vsn = rcl_app_info:vsn_as_string(App),
+    case BaseAnnots of
+        {none, none} ->
+            {AppName, Vsn};
+        {Type, none} ->
+            {AppName, Vsn, Type};
+        {none, Incld0} ->
+            {AppName, Vsn, Incld0};
+        {Type, Incld1} ->
+            {AppName, Vsn, Type, Incld1}
+    end.
+
+-spec subset_world([{app_name(), app_vsn()}], [rcl_app_info:t()]) -> [rcl_app_info:t()].
+subset_world(Pkgs, World) ->
+    [get_app_info(Pkg, World) || Pkg <- Pkgs].
+
+-spec get_app_info({app_name(), app_vsn()}, [rcl_app_info:t()]) -> rcl_app_info:t().
+get_app_info({PkgName, PkgVsn}, World) ->
+    {ok, WorldEl} =
+        ec_lists:find(fun(El) ->
+                              rcl_app_info:name(El) =:= PkgName andalso
+                                  rcl_app_info:vsn(El) =:= PkgVsn
+                      end, World),
+    WorldEl.
+
 -spec parse_goal0(application_goal(), {ok, t()} | {error, Reason::term()}) ->
                          {ok, t()} | {error, Reason::term()}.
-parse_goal0({Constraint0, Annots}, {ok, Release}) ->
-    parse_goal1(Release, Constraint0, Annots);
+parse_goal0({Constraint0, Annots}, {ok, Release})
+  when erlang:is_atom(Annots) ->
+    parse_goal1(Release, Constraint0, {Annots, none});
+parse_goal0({Constraint0, Annots}, {ok, Release})
+  when erlang:is_list(Annots) ->
+    parse_goal1(Release, Constraint0, {none, Annots});
 parse_goal0({Constraint0, AnnotsA, AnnotsB}, {ok, Release}) ->
     parse_goal1(Release, Constraint0, {AnnotsA, AnnotsB});
-parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}}) ->
+parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
+  when erlang:is_atom(Constraint0) ->
+    {ok, Release#release_t{goals = [Constraint0 | Goals]}};
+parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
+  when erlang:is_list(Constraint0) ->
     case rcl_goal:parse(Constraint0) of
         E = {error, _} ->
             E;
@@ -153,7 +270,7 @@ parse_goal0(_, E = {error, _}) ->
     E.
 
 -spec parse_goal1(t(), depsolver:constraint() | string(),
-                  app_type() | incl_apps() | {app_type(), incl_apps()}) ->
+                  app_type() | incl_apps() | {app_type(), incl_apps() | none}) ->
                          {ok, t()} | {error, Reason::term()}.
 parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
             Constraint0, NewAnnots) ->
