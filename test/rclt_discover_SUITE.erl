@@ -58,7 +58,7 @@ all() ->
 normal_case(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
     Apps1 = [(fun({Name, Vsn}) ->
-                     create_app(LibDir1, Name, Vsn)
+                      create_app(LibDir1, Name, Vsn)
               end)(App)
              ||
                 App <-
@@ -113,7 +113,6 @@ no_beam_case(Config) ->
     State0 = proplists:get_value(state, Config),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
     EbinDir = filename:join([LibDir2, BadName, "ebin"]),
-    %% Ignore apps that do not contain any beam files
     ?assertMatch({error, [{no_beam_files, EbinDir}]},
                  rcl_provider:do(DiscoverProvider, State1)).
 
@@ -145,20 +144,20 @@ bad_ebin_case(Config) ->
     State0 = proplists:get_value(state, Config),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
 
-    %% Ignore apps that do not contain any beam files
     ?assertMatch({error, [{invalid_app_file, Filename}]},
                  rcl_provider:do(DiscoverProvider, State1)).
 
 
-
-%%% API
+%%%===================================================================
+%%% Helper functions
 %%%===================================================================
 create_app(Dir, Name, Vsn) ->
     AppDir = filename:join([Dir, Name]),
     write_app_file(AppDir, Name, Vsn),
     write_beam_file(AppDir, Name),
-    rcl_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
-                     [kernel, stdlib], []).
+    {ok, App} = rcl_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
+                                 [kernel, stdlib], []),
+    App.
 
 write_beam_file(Dir, Name) ->
     Beam = filename:join([Dir, "ebin", "not_a_real_beam" ++ Name ++ ".beam"]),

@@ -44,7 +44,7 @@ do(State) ->
     rcl_log:info(rcl_state:log(State),
                   fun() ->
                           ["Resolving OTP Applications from directories:\n",
-                           [[LibDir, "\n"] || LibDir <- LibDirs]]
+                           [[rcl_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
                   end),
 
     AppMeta0 = lists:flatten(ec_plists:map(fun discover_dir/1, LibDirs)),
@@ -69,7 +69,7 @@ do(State) ->
             rcl_log:debug(rcl_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Applications from the system: \n",
-                                   [[rcl_app_info:format(App), "\n"] || App <- AppMeta1]]
+                                   [[rcl_app_info:format(1, App), "\n"] || App <- AppMeta1]]
                           end),
             {ok, rcl_state:available_apps(State, AppMeta1)};
         _ ->
@@ -141,7 +141,10 @@ format_detail({error, {invalid_app_file, File}}) ->
                   [File]);
 format_detail({error, {unversioned_app, AppDir, _AppName}}) ->
     io_lib:format("Application metadata exists but version is not available: ~s",
-                  [AppDir]).
+                  [AppDir]);
+format_detail({error, {app_info_error, Detail}}) ->
+    rcl_app_info:format_error({error, Detail}).
+
 
 -spec discover_dir(file:name()) ->
                           [rcl_app_info:t() | {error, Reason::term()}] |
@@ -210,11 +213,16 @@ get_vsn(AppDir, AppName, AppDetail) ->
         undefined ->
             {error, {unversioned_app, AppDir, AppName}};
         AppVsn ->
-            get_deps(AppDir, AppName, AppVsn, AppDetail)
+            case get_deps(AppDir, AppName, AppVsn, AppDetail) of
+                {ok, App} ->
+                    App;
+                {error, Detail} ->
+                    {error, {app_info_error, Detail}}
+            end
     end.
 
 -spec get_deps(file:name(), atom(), string(), proplists:proplist()) ->
-                      rcl_app_info:t().
+                      {ok, rcl_app_info:t()} | {error, Reason::term()}.
 get_deps(AppDir, AppName, AppVsn, AppDetail) ->
     ActiveApps = proplists:get_value(applications, AppDetail, []),
     LibraryApps = proplists:get_value(included_applications, AppDetail, []),

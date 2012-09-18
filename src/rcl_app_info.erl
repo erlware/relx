@@ -48,12 +48,14 @@
          active_deps/2,
          library_deps/1,
          library_deps/2,
+         format_error/1,
+         format/2,
          format/1]).
 
 -export_type([t/0]).
 
 -record(app_info_t, {name :: atom(),
-                     vsn :: string(),
+                     vsn :: ec_semver:semver(),
                      dir :: file:name(),
                      active_deps :: [atom()],
                      library_deps :: [atom()]}).
@@ -68,21 +70,26 @@
 %% ============================================================================
 %% @doc Build a new, empty, app info value. This is not of a lot of use and you
 %% probably wont be doing this much.
--spec new() -> t().
+-spec new() -> {ok, t()}.
 new() ->
-    #app_info_t{}.
+    {ok, #app_info_t{}}.
 
 %% @doc build a complete version of the app info with all fields set.
--spec new(atom(), string(), file:name(), [atom()], [atom()]) -> t().
+-spec new(atom(), string(), file:name(), [atom()], [atom()]) ->
+                 {ok, t()} | {error, Reason::term()}.
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps)
   when erlang:is_atom(AppName),
-       erlang:is_list(Vsn),
        erlang:is_list(Dir),
        erlang:is_list(ActiveDeps),
        erlang:is_list(LibraryDeps) ->
-    #app_info_t{name=AppName, vsn=Vsn, dir=Dir,
-                active_deps=ActiveDeps,
-                library_deps=LibraryDeps}.
+    case parse_version(Vsn) of
+        {fail, _} ->
+            {error, {vsn_parse, AppName}};
+        ParsedVsn ->
+            {ok, #app_info_t{name=AppName, vsn=ParsedVsn, dir=Dir,
+                             active_deps=ActiveDeps,
+                             library_deps=LibraryDeps}}
+    end.
 
 -spec name(t()) -> atom().
 name(#app_info_t{name=Name}) ->
@@ -93,14 +100,20 @@ name(AppInfo=#app_info_t{}, AppName)
   when erlang:is_atom(AppName) ->
     AppInfo#app_info_t{name=AppName}.
 
--spec vsn(t()) -> string().
+-spec vsn(t()) -> ec_semver:semver().
 vsn(#app_info_t{vsn=Vsn}) ->
     Vsn.
 
--spec vsn(t(), string()) -> t().
-vsn(AppInfo=#app_info_t{}, AppVsn)
+-spec vsn(t(), string()) -> {ok, t()} | {error, Reason::term()}.
+vsn(AppInfo=#app_info_t{name=AppName}, AppVsn)
   when erlang:is_list(AppVsn) ->
-    AppInfo#app_info_t{vsn=AppVsn}.
+    case parse_version(AppVsn) of
+        {fail, _} ->
+            {error, {vsn_parse, AppName}};
+        ParsedVsn ->
+            {ok, AppInfo#app_info_t{vsn=ParsedVsn}}
+    end.
+
 
 -spec dir(t()) -> file:name().
 dir(#app_info_t{dir=Dir}) ->
@@ -126,17 +139,32 @@ library_deps(AppInfo=#app_info_t{}, LibraryDeps)
   when erlang:is_list(LibraryDeps) ->
     AppInfo#app_info_t{library_deps=LibraryDeps}.
 
+-spec format_error({error, Reason::term()}) -> iolist().
+format_error({error, {vsn_parse, AppName, AppDir}}) ->
+    io_lib:format("Error parsing version for ~p at ~s",
+                  [AppName, AppDir]).
+
 -spec format(t()) -> iolist().
-format(#app_info_t{name=Name, vsn=Vsn, dir=Dir,
-                   active_deps=Deps, library_deps=LibDeps}) ->
-    [erlang:atom_to_list(Name), "-", Vsn, ": ", Dir, "\n",
-     rcl_util:indent(1), "Active Dependencies:\n",
-     [[rcl_util:indent(2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],
-     rcl_util:indent(1), "Library Dependencies:\n",
-     [[rcl_util:indent(2), erlang:atom_to_list(LibDep), ",\n"] || LibDep <- LibDeps]].
+format(AppInfo) ->
+    format(0, AppInfo).
+
+-spec format(non_neg_integer(), t()) -> iolist().
+format(Indent, #app_info_t{name=Name, vsn=Vsn, dir=Dir,
+                           active_deps=Deps, library_deps=LibDeps}) ->
+    [rcl_util:indent(Indent), erlang:atom_to_list(Name), "-", depsolver:format_version(Vsn),
+     ": ", Dir, "\n",
+     rcl_util:indent(Indent + 1), "Active Dependencies:\n",
+     [[rcl_util:indent(Indent + 2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],
+     rcl_util:indent(Indent + 1), "Library Dependencies:\n",
+     [[rcl_util:indent(Indent + 2), erlang:atom_to_list(LibDep), ",\n"] || LibDep <- LibDeps]].
 
 
 
 %%%===================================================================
-%%% Test Functions
+%%% Internal Functions
 %%%===================================================================
+parse_version(Vsn)
+  when erlang:is_list(Vsn) ->
+    ec_semver:parse(Vsn);
+parse_version(Vsn = {_, {_, _}}) ->
+    Vsn.
