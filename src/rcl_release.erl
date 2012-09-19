@@ -32,6 +32,7 @@
          realize/3,
          applications/1,
          application_details/1,
+         realized/1,
          format/1,
          format/2,
          format_error/1]).
@@ -50,7 +51,7 @@
 -record(release_t, {name :: atom(),
                     vsn :: ec_semver:any_version(),
                     erts :: ec_semver:any_version(),
-                    goals = [] :: [depsolver:constraint()],
+                    goals = [] :: [rcl_depsolver:constraint()],
                     realized = false :: boolean(),
                     annotations = undefined :: annotations(),
                     applications = [] ::  [application_spec()],
@@ -70,9 +71,9 @@
                             {app_name(), app_vsn(), app_type() | incl_apps()} |
                             {app_name(), app_vsn(), app_type(), incl_apps()}.
 
--type application_goal() :: depsolver:constraint() |
-                            {depsolver:constraint(), app_type() | incl_apps()} |
-                            {depsolver:constraint(), app_type(), incl_apps()}.
+-type application_goal() :: rcl_depsolver:constraint() |
+                            {rcl_depsolver:constraint(), app_type() | incl_apps()} |
+                            {rcl_depsolver:constraint(), app_type(), incl_apps()}.
 
 -type annotations() ::  ec_dictionary:dictionary(app_name(),
                                                  {app_type(), incl_apps() | none}).
@@ -137,6 +138,9 @@ applications(#release_t{applications=Apps}) ->
 application_details(#release_t{app_detail=App}) ->
     App.
 
+-spec realized(t()) -> boolean().
+realized(#release_t{realized=Realized}) ->
+    Realized.
 
 -spec format(t()) -> iolist().
 format(Release) ->
@@ -161,11 +165,11 @@ format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
      end].
 -spec format_goal(application_goal()) -> iolist().
 format_goal({Constraint, AppType}) ->
-    io_lib:format("~p", [{depsolver:format_constraint(Constraint), AppType}]);
+    io_lib:format("~p", [{rcl_depsolver:format_constraint(Constraint), AppType}]);
 format_goal({Constraint, AppType, AppInc}) ->
-    io_lib:format("~p", [{depsolver:format_constraint(Constraint), AppType, AppInc}]);
+    io_lib:format("~p", [{rcl_depsolver:format_constraint(Constraint), AppType, AppInc}]);
 format_goal(Constraint) ->
-    depsolver:format_constraint(Constraint).
+    rcl_depsolver:format_constraint(Constraint).
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({topo_error, E}) ->
@@ -277,7 +281,7 @@ parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
 parse_goal0(_, E = {error, _}) ->
     E.
 
--spec parse_goal1(t(), depsolver:constraint() | string(),
+-spec parse_goal1(t(), rcl_depsolver:constraint() | string(),
                   app_type() | incl_apps() | {app_type(), incl_apps() | none}) ->
                          {ok, t()} | relcool:error().
 parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
@@ -296,7 +300,7 @@ parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
            end
    end.
 
--spec get_app_name(depsolver:constraint()) ->
+-spec get_app_name(rcl_depsolver:constraint()) ->
                           AppName::atom() | relcool:error().
 get_app_name(AppName) when erlang:is_atom(AppName) ->
     AppName;

@@ -1,0 +1,620 @@
+Creating VersionProblem inst# 5893 with 64 packages, 1 stats, 1 debug
+DepSelector inst# 5893 - Adding package id 0/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding package id 1/64: min = -1, max = 5, current version 0
+DepSelector inst# 5893 - Adding package id 2/64: min = -1, max = 5, current version 0
+DepSelector inst# 5893 - Adding VC for 1 @ 5 depPkg 2 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 3/64: min = -1, max = 5, current version 0
+DepSelector inst# 5893 - Adding VC for 1 @ 5 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 1 @ 4 depPkg 2 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 1 @ 3 depPkg 2 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 1 @ 2 depPkg 2 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 1 @ 1 depPkg 2 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 1 @ 0 depPkg 2 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 4/64: min = -1, max = 3, current version 0
+DepSelector inst# 5893 - Adding VC for 2 @ 5 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding package id 5/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 2 @ 5 depPkg 5 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 4 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 4 depPkg 5 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 3 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 3 depPkg 5 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 2 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 2 depPkg 5 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 1 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 1 depPkg 5 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 0 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 2 @ 0 depPkg 5 [ 0, 0 ]
+DepSelector inst# 5893 - Adding package id 6/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding package id 7/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 8/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 9/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 10/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding package id 11/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 12/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding package id 13/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 14/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding package id 15/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 16/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 17/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding package id 18/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 19/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding package id 20/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 21/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding package id 22/64: min = -1, max = 3, current version 0
+DepSelector inst# 5893 - Adding package id 23/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding VC for 23 @ 1 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 23 @ 0 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 23 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 24/64: min = -1, max = 3, current version 0
+DepSelector inst# 5893 - Adding package id 25/64: min = -1, max = 5, current version 0
+DepSelector inst# 5893 - Adding package id 26/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 27/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding package id 28/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 27 @ 2 depPkg 28 [ 0, 0 ]
+DepSelector inst# 5893 - Adding package id 29/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding package id 30/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 31/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 30 @ 0 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding package id 32/64: min = -1, max = 24, current version 0
+DepSelector inst# 5893 - Adding package id 33/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 32 @ 24 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 24 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 23 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 23 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 22 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 22 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 21 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 21 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 20 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 20 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 19 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 19 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 18 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 18 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 17 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 17 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 16 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 16 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 15 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 15 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 14 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 14 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 13 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 13 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 12 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 12 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 11 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 11 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 10 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 10 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 9 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 9 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 8 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 8 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 7 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 7 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 6 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 6 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 5 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 5 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 4 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 4 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 3 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 3 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 2 depPkg 33 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 2 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 32 @ 1 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 34/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 33 @ 0 depPkg 34 [ 0, 0 ]
+DepSelector inst# 5893 - Adding package id 35/64: min = -1, max = 4, current version 0
+DepSelector inst# 5893 - Adding VC for 34 @ 0 depPkg 35 [ 0, 4 ]
+DepSelector inst# 5893 - Adding VC for 35 @ 4 depPkg 1 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 35 @ 3 depPkg 1 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 35 @ 2 depPkg 1 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 36/64: min = -1, max = 3, current version 0
+DepSelector inst# 5893 - Adding VC for 36 @ 3 depPkg 35 [ 0, 4 ]
+DepSelector inst# 5893 - Adding VC for 36 @ 2 depPkg 35 [ 0, 4 ]
+DepSelector inst# 5893 - Adding VC for 36 @ 1 depPkg 35 [ 0, 4 ]
+DepSelector inst# 5893 - Adding VC for 36 @ 0 depPkg 35 [ 0, 4 ]
+DepSelector inst# 5893 - Adding package id 37/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding package id 38/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding package id 39/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 40/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding package id 41/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding VC for 40 @ 1 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding package id 42/64: min = -1, max = 3, current version 0
+DepSelector inst# 5893 - Adding VC for 40 @ 1 depPkg 42 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 40 @ 1 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 43/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 40 @ 1 depPkg 43 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 40 @ 0 depPkg 42 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 40 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 40 @ 0 depPkg 43 [ 0, 0 ]
+DepSelector inst# 5893 - Adding package id 44/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 42 @ 3 depPkg 44 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 42 @ 2 depPkg 44 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 42 @ 1 depPkg 44 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 42 @ 0 depPkg 44 [ 0, 0 ]
+DepSelector inst# 5893 - Adding package id 45/64: min = -1, max = 22, current version 0
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding package id 46/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding package id 47/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding package id 48/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding package id 49/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 50/64: min = -1, max = 6, current version 0
+DepSelector inst# 5893 - Adding VC for 45 @ 22 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 21 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 20 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding package id 51/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 19 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 18 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 17 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 16 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 15 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 14 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 13 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 12 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 11 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 10 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 9 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 8 depPkg 50 [ 0, 6 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 7 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 6 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 5 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 4 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 3 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 2 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 1 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 41 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 47 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 48 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 45 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 46 @ 2 depPkg 39 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 46 @ 2 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 46 @ 1 depPkg 39 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 46 @ 1 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 46 @ 0 depPkg 39 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 46 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 52/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding VC for 47 @ 1 depPkg 52 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 47 @ 1 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 47 @ 0 depPkg 52 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 47 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 53/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding VC for 49 @ 0 depPkg 53 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 2 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding package id 54/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding VC for 51 @ 2 depPkg 54 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 2 depPkg 39 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 2 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 1 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 1 depPkg 54 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 1 depPkg 39 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 1 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 0 depPkg 46 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 0 depPkg 54 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 0 depPkg 39 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 51 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 55/64: min = -1, max = 4, current version 0
+DepSelector inst# 5893 - Adding package id 56/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 56 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 56 @ 0 depPkg 40 [ 0, 1 ]
+DepSelector inst# 5893 - Adding package id 57/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 57 @ 0 depPkg 51 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 57 @ 0 depPkg 49 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 57 @ 0 depPkg 40 [ 0, 1 ]
+DepSelector inst# 5893 - Adding package id 58/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding VC for 58 @ 1 depPkg 35 [ 0, 4 ]
+DepSelector inst# 5893 - Adding package id 59/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding VC for 59 @ 0 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 59 @ 0 depPkg 35 [ 0, 4 ]
+DepSelector inst# 5893 - Adding package id 60/64: min = -1, max = 0, current version 0
+DepSelector inst# 5893 - Adding package id 61/64: min = -1, max = 1, current version 0
+DepSelector inst# 5893 - Adding package id 62/64: min = -1, max = 2, current version 0
+DepSelector inst# 5893 - Adding VC for 61 @ 1 depPkg 62 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 1 depPkg 55 [ 0, 4 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 1 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 1 depPkg 40 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 1 depPkg 43 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 0 depPkg 62 [ 0, 2 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 0 depPkg 55 [ 0, 4 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 0 depPkg 31 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 0 depPkg 40 [ 0, 1 ]
+DepSelector inst# 5893 - Adding VC for 61 @ 0 depPkg 43 [ 0, 0 ]
+DepSelector inst# 5893 - Adding VC for 62 @ 2 depPkg 4 [ 0, 3 ]
+DepSelector inst# 5893 - Adding VC for 62 @ 2 depPkg 2 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 62 @ 2 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 62 @ 1 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding VC for 62 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Adding package id 63/64: min = 0, max = 0, current version 0
+DepSelector inst# 5893 - Marking Package Preferred Latest 0 weight 10
+DepSelector inst# 5893 - Marking Package Required 0
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 0 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 1 weight 10
+DepSelector inst# 5893 - Marking Package Required 1
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 1 [ 0, 5 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 6 weight 10
+DepSelector inst# 5893 - Marking Package Required 6
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 6 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 7 weight 10
+DepSelector inst# 5893 - Marking Package Required 7
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 7 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 8 weight 10
+DepSelector inst# 5893 - Marking Package Required 8
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 8 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 9 weight 10
+DepSelector inst# 5893 - Marking Package Required 9
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 9 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 10 weight 10
+DepSelector inst# 5893 - Marking Package Required 10
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 10 [ 0, 1 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 11 weight 10
+DepSelector inst# 5893 - Marking Package Required 11
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 11 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 12 weight 10
+DepSelector inst# 5893 - Marking Package Required 12
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 12 [ 0, 1 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 13 weight 10
+DepSelector inst# 5893 - Marking Package Required 13
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 13 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 14 weight 10
+DepSelector inst# 5893 - Marking Package Required 14
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 14 [ 0, 1 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 15 weight 10
+DepSelector inst# 5893 - Marking Package Required 15
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 15 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 16 weight 10
+DepSelector inst# 5893 - Marking Package Required 16
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 16 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 17 weight 10
+DepSelector inst# 5893 - Marking Package Required 17
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 17 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 18 weight 10
+DepSelector inst# 5893 - Marking Package Required 18
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 18 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 19 weight 10
+DepSelector inst# 5893 - Marking Package Required 19
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 19 weight 10
+DepSelector inst# 5893 - Marking Package Required 19
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 19 [ 0, 1 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 20 weight 10
+DepSelector inst# 5893 - Marking Package Required 20
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 20 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 21 weight 10
+DepSelector inst# 5893 - Marking Package Required 21
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 21 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 22 weight 10
+DepSelector inst# 5893 - Marking Package Required 22
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 22 [ 0, 3 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 23 weight 10
+DepSelector inst# 5893 - Marking Package Required 23
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 23 [ 0, 1 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 24 weight 10
+DepSelector inst# 5893 - Marking Package Required 24
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 24 [ 0, 3 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 25 weight 10
+DepSelector inst# 5893 - Marking Package Required 25
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 25 [ 0, 5 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 26 weight 10
+DepSelector inst# 5893 - Marking Package Required 26
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 26 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 26 weight 10
+DepSelector inst# 5893 - Marking Package Required 26
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 26 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 27 weight 10
+DepSelector inst# 5893 - Marking Package Required 27
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 27 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 29 weight 10
+DepSelector inst# 5893 - Marking Package Required 29
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 29 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 30 weight 10
+DepSelector inst# 5893 - Marking Package Required 30
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 30 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 30 weight 10
+DepSelector inst# 5893 - Marking Package Required 30
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 30 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 32 weight 10
+DepSelector inst# 5893 - Marking Package Required 32
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 32 [ 0, 24 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 36 weight 10
+DepSelector inst# 5893 - Marking Package Required 36
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 36 [ 0, 3 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 37 weight 10
+DepSelector inst# 5893 - Marking Package Required 37
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 37 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 38 weight 10
+DepSelector inst# 5893 - Marking Package Required 38
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 38 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 38 weight 10
+DepSelector inst# 5893 - Marking Package Required 38
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 38 [ 0, 2 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 3 weight 10
+DepSelector inst# 5893 - Marking Package Required 3
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 3 weight 10
+DepSelector inst# 5893 - Marking Package Required 3
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 3 [ 0, 5 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 39 weight 10
+DepSelector inst# 5893 - Marking Package Required 39
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 39 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 35 weight 10
+DepSelector inst# 5893 - Marking Package Required 35
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 35 [ 0, 4 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 40 weight 10
+DepSelector inst# 5893 - Marking Package Required 40
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 40 [ 0, 1 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 45 weight 10
+DepSelector inst# 5893 - Marking Package Required 45
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 45 [ 0, 22 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 45 weight 10
+DepSelector inst# 5893 - Marking Package Required 45
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 45 [ 0, 22 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 45 weight 10
+DepSelector inst# 5893 - Marking Package Required 45
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 45 [ 0, 22 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 55 weight 10
+DepSelector inst# 5893 - Marking Package Required 55
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 55 [ 0, 4 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 56 weight 10
+DepSelector inst# 5893 - Marking Package Required 56
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 56 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 57 weight 10
+DepSelector inst# 5893 - Marking Package Required 57
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 57 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 58 weight 10
+DepSelector inst# 5893 - Marking Package Required 58
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 58 [ 0, 1 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 59 weight 10
+DepSelector inst# 5893 - Marking Package Required 59
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 59 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 59 weight 10
+DepSelector inst# 5893 - Marking Package Required 59
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 59 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 59 weight 10
+DepSelector inst# 5893 - Marking Package Required 59
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 59 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 59 weight 10
+DepSelector inst# 5893 - Marking Package Required 59
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 59 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 60 weight 10
+DepSelector inst# 5893 - Marking Package Required 60
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 60 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 60 weight 10
+DepSelector inst# 5893 - Marking Package Required 60
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 60 [ 0, 0 ]
+DepSelector inst# 5893 - Marking Package Preferred Latest 61 weight 10
+DepSelector inst# 5893 - Marking Package Required 61
+DepSelector inst# 5893 - Adding VC for 63 @ 0 depPkg 61 [ 0, 1 ]
+dep_selector solve: SOLVED 64 packages, 422 constraints, Time: 21.8ms Stats: 1 steps, 2309619 bytes, 2542 props, 108 nodes, 107 depth

@@ -127,11 +127,11 @@ create_goals(Opts, Acc) ->
             create_output_dir(Opts, [{goals, Specs} | Acc])
     end.
 
--spec convert_goals([string()], [depsolver:constraint()]) ->
-                           {ok,[depsolver:constraint()]} |
+-spec convert_goals([string()], [rcl_depsolver:constraint()]) ->
+                           {ok,[rcl_depsolver:constraint()]} |
                            relcool:error().
 convert_goals([], Specs) ->
-    %% Reverse the specs because order matters to depsolver
+    %% Reverse the specs because order matters to rcl_depsolver
     {ok, lists:reverse(Specs)};
 convert_goals([RawSpec | Rest], Acc) ->
     case rcl_goal:parse(RawSpec) of

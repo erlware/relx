@@ -1,0 +1,90 @@
+dep_pkg1 dep_pkg2 dep_pkg16=1.0.2 app9 app13=0.0.1 app6 app1 app4 app18 app28 app38 app48 app58 app68 app78 dep_pkg20 dep_pkg22 dep_pkg14 app88 app98 app108
+dep_pkg1 0.0.2
+dep_pkg2 0.0.2
+dep_pkg2 0.0.3
+dep_pkg2 0.0.4
+dep_pkg2 0.0.5
+dep_pkg3 0.0.2
+dep_pkg4 0.0.2
+dep_pkg5 0.0.2
+dep_pkg5 0.0.3
+dep_pkg6 0.0.2
+dep_pkg7 0.0.2
+dep_pkg7 0.0.5
+dep_pkg7 0.1.2
+  dep_pkg1 = 0.0.2
+  dep_pkg2 >= 0.0.2
+  dep_pkg5 >= 0.0.2
+dep_pkg8 0.0.2
+dep_pkg9 0.0.2
+dep_pkg10 0.0.2
+dep_pkg10 1.2.2
+dep_pkg10 1.3.2
+dep_pkg10 1.4.2
+dep_pkg10 1.6.2
+dep_pkg10 1.5.2
+dep_pkg11 0.0.2
+dep_pkg12 0.0.2
+dep_pkg13 0.0.2
+dep_pkg14 0.0.2
+dep_pkg15 0.0.2
+dep_pkg16 0.0.2
+dep_pkg16 0.0.6
+dep_pkg16 1.0.2
+dep_pkg16 3.0.2
+dep_pkg18 0.0.2
+dep_pkg19 0.0.2
+dep_pkg20 0.0.2
+dep_pkg21 0.0.2
+dep_pkg22 0.0.2
+app1 0.0.1
+app2 0.0.1
+app3 0.0.1
+app4 0.0.1
+app4 0.0.3
+app4 0.0.5
+app4 0.0.6
+app4 0.0.7
+app5 0.0.1
+app6 0.0.1
+app7 0.0.1
+app8 0.0.1
+app9 0.0.1
+ dep_pkg2 >= 0.0.5
+ dep_pkg1 = 0.0.2
+ dep_pkg7 = 0.1.2
+app10 0.0.1
+app11 0.0.1
+  dep_pkg11 = 0.0.2
+app13 0.0.0
+  dep_pkg12 = 0.0.2
+  dep_pkg10 = 0.0.2
+  dep_pkg1 = 0.0.2
+  dep_pkg11 = 0.0.2
+app13 0.0.1
+  dep_pkg13 = 0.0.2
+app14 0.0.1
+app15 0.0.1
+app16 0.0.1
+app17 0.0.1
+ dep_pkg1 = 0.0.2
+ dep_pkg2 = 0.0.2
+ dep_pkg3 = 0.0.2
+ dep_pkg5 = 0.0.2
+ dep_pkg6 = 0.0.2
+ dep_pkg7 = 0.0.2
+ dep_pkg8 = 0.0.2
+ dep_pkg9 = 0.0.2
+ dep_pkg14 = 0.0.2
+ dep_pkg15 = 0.0.2
+ dep_pkg16 = 0.0.2
+app18 0.0.1
+app28 0.0.1
+app38 0.0.1
+app48 0.0.7
+app58 0.0.1
+app68 0.0.1
+app78 0.0.1
+app88 0.0.1
+app98 0.0.1
+app108 0.0.1

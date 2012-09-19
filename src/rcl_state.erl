@@ -57,7 +57,7 @@
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_files=[] :: [file:filename()],
-                  goals=[] :: [depsolver:constraint()],
+                  goals=[] :: [rcl_depsolver:constraint()],
                   providers = [] :: [rcl_provider:t()],
                   available_apps = [] :: [rcl_app_info:t()],
                   default_release :: {rcl_release:name(), rcl_release:vsn()},
@@ -110,7 +110,7 @@ output_dir(#state_t{output_dir=OutDir}) ->
 lib_dirs(#state_t{lib_dirs=LibDir}) ->
     LibDir.
 
--spec goals(t()) -> [depsolver:constraints()].
+-spec goals(t()) -> [rcl_depsolver:constraints()].
 goals(#state_t{goals=TS}) ->
     TS.
 
@@ -210,7 +210,7 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
      rcl_util:indent(Indent + 1), "config files: \n",
      [[rcl_util:indent(Indent + 2), ConfigFile, ",\n"] || ConfigFile <- ConfigFiles],
      rcl_util:indent(Indent + 1), "goals: \n",
-     [[rcl_util:indent(Indent + 2), depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
+     [[rcl_util:indent(Indent + 2), rcl_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
      rcl_util:indent(Indent + 1), "output_dir: ", OutDir, "\n",
      rcl_util:indent(Indent + 1), "lib_dirs: \n",
      [[rcl_util:indent(Indent + 2), LibDir, ",\n"] || LibDir <- LibDirs],

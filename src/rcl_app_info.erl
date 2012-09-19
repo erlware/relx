@@ -157,7 +157,7 @@ format(AppInfo) ->
 -spec format(non_neg_integer(), t()) -> iolist().
 format(Indent, #app_info_t{name=Name, vsn=Vsn, dir=Dir,
                            active_deps=Deps, library_deps=LibDeps}) ->
-    [rcl_util:indent(Indent), erlang:atom_to_list(Name), "-", depsolver:format_version(Vsn),
+    [rcl_util:indent(Indent), erlang:atom_to_list(Name), "-", ec_semver:format(Vsn),
      ": ", Dir, "\n",
      rcl_util:indent(Indent + 1), "Active Dependencies:\n",
      [[rcl_util:indent(Indent + 2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],

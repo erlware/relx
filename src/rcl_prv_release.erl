@@ -63,28 +63,28 @@ format_error({release_not_found, {RelName, RelVsn}}) ->
     io_lib:format("No releases exist in the system for ~p:~s!", [RelName, RelVsn]);
 format_error({failed_solve, Error}) ->
     io_lib:format("Failed to solve release:\n ~s",
-                  [depsolver:format_error({error, Error})]).
+                  [rcl_depsolver:format_error({error, Error})]).
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec create_dep_graph(rcl_state:t()) -> depsolver:t().
+-spec create_dep_graph(rcl_state:t()) -> rcl_depsolver:t().
 create_dep_graph(State) ->
     Apps = rcl_state:available_apps(State),
-    Graph0 = depsolver:new_graph(),
+    Graph0 = rcl_depsolver:new_graph(),
     lists:foldl(fun(App, Graph1) ->
                         AppName = rcl_app_info:name(App),
                         AppVsn = rcl_app_info:vsn(App),
                         Deps = rcl_app_info:active_deps(App) ++
                             rcl_app_info:library_deps(App),
-                        depsolver:add_package_version(Graph1,
+                        rcl_depsolver:add_package_version(Graph1,
                                                       AppName,
                                                       AppVsn,
                                                       Deps)
                 end, Graph0, Apps).
 
 
--spec find_default_release(rcl_state:t(), depsolver:t()) ->
+-spec find_default_release(rcl_state:t(), rcl_depsolver:t()) ->
                                   {ok, rcl_state:t()} | relcool:error().
 find_default_release(State, DepGraph) ->
     case rcl_state:default_release(State) of
@@ -151,7 +151,7 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
     try
         Release = rcl_state:get_release(State0, RelName, RelVsn),
         Goals = rcl_release:goals(Release),
-        case depsolver:solve(DepGraph, Goals) of
+        case rcl_depsolver:solve(DepGraph, Goals) of
             {ok, Pkgs} ->
                 set_resolved(State0, Release, Pkgs);
             {error, Error} ->

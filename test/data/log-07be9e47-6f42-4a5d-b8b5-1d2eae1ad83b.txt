@@ -1,0 +1,122 @@
+Creating VersionProblem inst# 3471 with 27 packages, 1 stats, 1 debug
+DepSelector inst# 3471 - Adding package id 0/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 1/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 2/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 1 @ 0 depPkg 2 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 3/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 4/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 5/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 6/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 7/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 8/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 8 @ 0 depPkg 2 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 9/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 10/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 11/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 12/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 13/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 14/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 15/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 16/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 17/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 16 @ 0 depPkg 17 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 18/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 19/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 19 @ 0 depPkg 17 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 20/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 19 @ 0 depPkg 20 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 21/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 21 @ 0 depPkg 20 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 22/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding package id 23/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 23 @ 0 depPkg 2 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 24/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 24 @ 0 depPkg 2 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 25/27: min = -1, max = 0, current version 0
+DepSelector inst# 3471 - Adding VC for 25 @ 0 depPkg 24 [ 0, 0 ]
+DepSelector inst# 3471 - Adding VC for 25 @ 0 depPkg 17 [ 0, 0 ]
+DepSelector inst# 3471 - Adding package id 26/27: min = 0, max = 0, current version 0
+DepSelector inst# 3471 - Marking Package Preferred Latest 0 weight 10
+DepSelector inst# 3471 - Marking Package Required 0
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 0 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 0 weight 10
+DepSelector inst# 3471 - Marking Package Required 0
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 0 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 0 weight 10
+DepSelector inst# 3471 - Marking Package Required 0
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 0 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 1 weight 10
+DepSelector inst# 3471 - Marking Package Required 1
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 1 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 3 weight 10
+DepSelector inst# 3471 - Marking Package Required 3
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 3 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 4 weight 10
+DepSelector inst# 3471 - Marking Package Required 4
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 4 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 5 weight 10
+DepSelector inst# 3471 - Marking Package Required 5
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 5 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 6 weight 10
+DepSelector inst# 3471 - Marking Package Required 6
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 6 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 7 weight 10
+DepSelector inst# 3471 - Marking Package Required 7
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 7 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 8 weight 10
+DepSelector inst# 3471 - Marking Package Required 8
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 8 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 8 weight 10
+DepSelector inst# 3471 - Marking Package Required 8
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 8 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 9 weight 10
+DepSelector inst# 3471 - Marking Package Required 9
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 9 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 10 weight 10
+DepSelector inst# 3471 - Marking Package Required 10
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 10 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 11 weight 10
+DepSelector inst# 3471 - Marking Package Required 11
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 11 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 12 weight 10
+DepSelector inst# 3471 - Marking Package Required 12
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 12 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 13 weight 10
+DepSelector inst# 3471 - Marking Package Required 13
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 13 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 14 weight 10
+DepSelector inst# 3471 - Marking Package Required 14
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 14 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 15 weight 10
+DepSelector inst# 3471 - Marking Package Required 15
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 15 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 16 weight 10
+DepSelector inst# 3471 - Marking Package Required 16
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 16 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 18 weight 10
+DepSelector inst# 3471 - Marking Package Required 18
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 18 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 19 weight 10
+DepSelector inst# 3471 - Marking Package Required 19
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 19 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 21 weight 10
+DepSelector inst# 3471 - Marking Package Required 21
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 21 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 22 weight 10
+DepSelector inst# 3471 - Marking Package Required 22
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 22 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 23 weight 10
+DepSelector inst# 3471 - Marking Package Required 23
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 23 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 24 weight 10
+DepSelector inst# 3471 - Marking Package Required 24
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 24 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 24 weight 10
+DepSelector inst# 3471 - Marking Package Required 24
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 24 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 25 weight 10
+DepSelector inst# 3471 - Marking Package Required 25
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 25 [ 0, 0 ]
+DepSelector inst# 3471 - Marking Package Preferred Latest 25 weight 10
+DepSelector inst# 3471 - Marking Package Required 25
+DepSelector inst# 3471 - Adding VC for 26 @ 0 depPkg 25 [ 0, 0 ]

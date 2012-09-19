@@ -1,0 +1,78 @@
+Creating VersionProblem inst# 3445 with 20 packages, 1 stats, 1 debug
+DepSelector inst# 3445 - Adding package id 0/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding package id 1/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding package id 2/20: min = -1, max = 1, current version 0
+DepSelector inst# 3445 - Adding package id 3/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding package id 4/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding package id 5/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding package id 6/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding package id 7/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding package id 8/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding VC for 7 @ 0 depPkg 8 [ 0, 0 ]
+DepSelector inst# 3445 - Adding package id 9/20: min = -1, max = 1, current version 0
+DepSelector inst# 3445 - Adding VC for 7 @ 0 depPkg 9 [ 0, 1 ]
+DepSelector inst# 3445 - Adding package id 10/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding package id 11/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding VC for 10 @ 0 depPkg 11 [ 0, 0 ]
+DepSelector inst# 3445 - Adding VC for 10 @ 0 depPkg 8 [ 0, 0 ]
+DepSelector inst# 3445 - Adding package id 12/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding VC for 10 @ 0 depPkg 12 [ 0, 0 ]
+DepSelector inst# 3445 - Adding package id 13/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding VC for 11 @ 0 depPkg 13 [ 0, 0 ]
+DepSelector inst# 3445 - Adding package id 14/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding VC for 14 @ 0 depPkg 10 [ 0, 0 ]
+DepSelector inst# 3445 - Adding package id 15/20: min = -1, max = 1, current version 0
+DepSelector inst# 3445 - Adding package id 16/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding VC for 15 @ 1 depPkg 16 [ 0, 0 ]
+DepSelector inst# 3445 - Adding VC for 15 @ 0 depPkg 2 [ 0, 1 ]
+DepSelector inst# 3445 - Adding VC for 15 @ 0 depPkg 13 [ 0, 0 ]
+DepSelector inst# 3445 - Adding VC for 15 @ 0 depPkg 16 [ 0, 0 ]
+DepSelector inst# 3445 - Adding package id 17/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding VC for 17 @ 0 depPkg 12 [ 0, 0 ]
+DepSelector inst# 3445 - Adding VC for 17 @ 0 depPkg 16 [ 0, 0 ]
+DepSelector inst# 3445 - Adding package id 18/20: min = -1, max = 0, current version 0
+DepSelector inst# 3445 - Adding VC for 18 @ 0 depPkg 12 [ 0, 0 ]
+DepSelector inst# 3445 - Adding package id 19/20: min = 0, max = 0, current version 0
+DepSelector inst# 3445 - Marking Package Preferred Latest 0 weight 10
+DepSelector inst# 3445 - Marking Package Required 0
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 0 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 1 weight 10
+DepSelector inst# 3445 - Marking Package Required 1
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 1 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 2 weight 10
+DepSelector inst# 3445 - Marking Package Required 2
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 2 [ 0, 1 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 3 weight 10
+DepSelector inst# 3445 - Marking Package Required 3
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 3 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 4 weight 10
+DepSelector inst# 3445 - Marking Package Required 4
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 4 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 5 weight 10
+DepSelector inst# 3445 - Marking Package Required 5
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 5 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 6 weight 10
+DepSelector inst# 3445 - Marking Package Required 6
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 6 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 7 weight 10
+DepSelector inst# 3445 - Marking Package Required 7
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 7 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 10 weight 10
+DepSelector inst# 3445 - Marking Package Required 10
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 10 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 14 weight 10
+DepSelector inst# 3445 - Marking Package Required 14
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 14 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 15 weight 10
+DepSelector inst# 3445 - Marking Package Required 15
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 15 [ 0, 1 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 15 weight 10
+DepSelector inst# 3445 - Marking Package Required 15
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 15 [ 0, 1 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 17 weight 10
+DepSelector inst# 3445 - Marking Package Required 17
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 17 [ 0, 0 ]
+DepSelector inst# 3445 - Marking Package Preferred Latest 18 weight 10
+DepSelector inst# 3445 - Marking Package Required 18
+DepSelector inst# 3445 - Adding VC for 19 @ 0 depPkg 18 [ 0, 0 ]
+dep_selector solve: SOLVED 20 packages, 28 constraints, Time: 0.343ms Stats: 1 steps, 70191 bytes, 183 props, 243459 nodes, 23 depth
