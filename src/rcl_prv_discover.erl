@@ -129,23 +129,23 @@ add_system_lib_dir(State, LibDirs) ->
     end.
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
-format_detail({error, {accessing, File, eaccess}}) ->
+format_detail({accessing, File, eaccess}) ->
     io_lib:format("permission denied accessing file ~s", [File]);
-format_detail({error, {accessing, File, Type}}) ->
+format_detail({accessing, File, Type}) ->
     io_lib:format("error (~p) accessing file ~s", [Type, File]);
-format_detail({error, {no_beam_files, EbinDir}}) ->
+format_detail({no_beam_files, EbinDir}) ->
     io_lib:format("no beam files found in directory ~s", [EbinDir]);
-format_detail({error, {not_a_directory, EbinDir}}) ->
+format_detail({not_a_directory, EbinDir}) ->
     io_lib:format("~s is not a directory when it should be a directory", [EbinDir]);
-format_detail({error, {unable_to_load_app, AppDir, _}}) ->
+format_detail({unable_to_load_app, AppDir, _}) ->
     io_lib:format("Unable to load the application metadata from ~s", [AppDir]);
-format_detail({error, {invalid_app_file, File}}) ->
+format_detail({invalid_app_file, File}) ->
     io_lib:format("Application metadata file exists but is malformed: ~s",
                   [File]);
-format_detail({error, {unversioned_app, AppDir, _AppName}}) ->
+format_detail({unversioned_app, AppDir, _AppName}) ->
     io_lib:format("Application metadata exists but version is not available: ~s",
                   [AppDir]);
-format_detail({error, {app_info_error, Detail}}) ->
+format_detail({app_info_error, Detail}) ->
     rcl_app_info:format_error(Detail).
 
 -spec discover_dir(file:name()) ->
