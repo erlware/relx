@@ -107,7 +107,7 @@ copy_app(LibDir, App) ->
                   end, ["ebin",
                         "include",
                         "priv",
-                        "src"
+                        "src",
                         "c_src",
                         "README",
                         "LICENSE"]).
@@ -234,7 +234,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
     Name = erlang:atom_to_list(rcl_release:name(Release)),
     ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
     rcl_log:debug(rcl_state:log(State),
-                  "Creating script from release file ~s \n with options ~p",
+                  "Creating script from release file ~s ~n with options ~p ~n",
                   [ReleaseFile, Options]),
     case make_script(Name, Options)  of
         ok ->
