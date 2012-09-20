@@ -99,6 +99,8 @@ load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
         {ok, Release1} ->
             {ok, rcl_state:add_release(State, Release1)}
     end;
+load_terms({sys_config, SysConfig}, {ok, State}) ->
+    {ok, rcl_state:sys_config(State, filename:absname(SysConfig))};
 load_terms({Name, Value}, {ok, State})
   when erlang:is_atom(Name) ->
     {ok, rcl_state:put(State, Name, Value)};

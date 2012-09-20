@@ -31,6 +31,8 @@
          config_files/1,
          providers/1,
          providers/2,
+         sys_config/1,
+         sys_config/2,
          add_release/2,
          get_release/3,
          update_release/2,
@@ -61,6 +63,7 @@
                   providers = [] :: [rcl_provider:t()],
                   available_apps = [] :: [rcl_app_info:t()],
                   default_release :: {rcl_release:name(), rcl_release:vsn()},
+                  sys_config :: file:filename() | undefined,
                   releases :: ec_dictionary:dictionary({ReleaseName::atom(),
                                                         ReleaseVsn::string()},
                                                        rcl_release:t()),
@@ -121,6 +124,14 @@ config_files(#state_t{config_files=ConfigFiles}) ->
 -spec providers(t()) -> [rcl_provider:t()].
 providers(#state_t{providers=Providers}) ->
     Providers.
+
+-spec sys_config(t()) -> file:filename() | undefined.
+sys_config(#state_t{sys_config=SysConfig}) ->
+    SysConfig.
+
+-spec sys_config(t(), file:filename()) -> t().
+sys_config(State, SysConfig) ->
+    State#state_t{sys_config=SysConfig}.
 
 -spec providers(t(), [rcl_provider:t()]) -> t().
 providers(M, NewProviders) ->
@@ -237,7 +248,9 @@ create_logic_providers(State0) ->
     {ConfigProvider, {ok, State1}} = rcl_provider:new(rcl_prv_config, State0),
     {DiscoveryProvider, {ok, State2}} = rcl_provider:new(rcl_prv_discover, State1),
     {ReleaseProvider, {ok, State3}} = rcl_provider:new(rcl_prv_release, State2),
-    State3#state_t{providers=[ConfigProvider, DiscoveryProvider, ReleaseProvider]}.
+    {AssemblerProvider, {ok, State4}} = rcl_provider:new(rcl_prv_assembler, State3),
+    State4#state_t{providers=[ConfigProvider, DiscoveryProvider,
+                              ReleaseProvider, AssemblerProvider]}.
 
 %%%===================================================================
 %%% Test Functions

@@ -110,6 +110,7 @@ get_app_metadata(Name, Vsn, Deps, LibDeps) ->
       {vsn, Vsn},
       {modules, []},
       {included_applications, LibDeps},
+      {registered, []},
       {applications, Deps}]}.
 
 create_random_name(Name) ->

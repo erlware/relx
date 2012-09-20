@@ -33,6 +33,7 @@
          applications/1,
          application_details/1,
          realized/1,
+         metadata/1,
          format/1,
          format/2,
          format_error/1]).
@@ -142,6 +143,17 @@ application_details(#release_t{app_detail=App}) ->
 realized(#release_t{realized=Realized}) ->
     Realized.
 
+-spec metadata(t()) -> term().
+metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=Apps,
+                    realized=Realized}) ->
+    case Realized of
+        true ->
+            {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
+                  Apps}};
+        false ->
+            ?RCL_ERROR({not_realized, Name, Vsn})
+    end.
+
 -spec format(t()) -> iolist().
 format(Release) ->
     format(0, Release).
@@ -177,7 +189,10 @@ format_error({topo_error, E}) ->
 format_error({failed_to_parse, Con}) ->
     io_lib:format("Failed to parse constraint ~p", [Con]);
 format_error({invalid_constraint, Con}) ->
-    io_lib:format("Invalid constraint specified ~p", [Con]).
+    io_lib:format("Invalid constraint specified ~p", [Con]);
+format_error({not_realized, Name, Vsn}) ->
+    io_lib:format("Unable to produce metadata release: ~p-~s has not been realized",
+                  [Name, Vsn]).
 
 %%%===================================================================
 %%% Internal Functions

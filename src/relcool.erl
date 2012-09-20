@@ -22,9 +22,12 @@
 
 -export([main/1,
          do/7,
+         format_error/1,
          opt_spec_list/0]).
 
 -export_type([error/0]).
+
+-include_lib("relcool/include/relcool.hrl").
 
 %%============================================================================
 %% types
@@ -76,6 +79,11 @@ opt_spec_list() ->
      {lib_dir, $l, "lib-dir", string, "Additional dirs that should be searched for OTP Apps"},
      {log_level, $V, "verbose", {integer, 2}, "Verbosity level, maybe between 0 and 2"}
     ].
+
+-spec format_error(Reason::term()) -> iolist().
+format_error({invalid_return_value, Provider, Value}) ->
+    [rcl_provider:format(Provider), " returned an invalid value ",
+     io_lib:format("~p", [Value])].
 
 %%============================================================================
 %% internal api

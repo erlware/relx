@@ -35,7 +35,8 @@ ifeq ($(REBAR),)
 $(error "Rebar not available on this system")
 endif
 
-.PHONY: all compile doc clean test dialyzer typer shell distclean pdf get-deps escript
+.PHONY: all compile doc clean test dialyzer typer shell distclean pdf \
+	get-deps escript clean-common-test-data
 
 all: compile escript dialyzer test
 
@@ -65,10 +66,10 @@ escript:
 doc:
 	$(REBAR) skip_deps=true doc
 
-eunit: compile
+eunit: compile clean-common-test-data
 	$(REBAR) skip_deps=true eunit
 
-ct: compile
+ct: compile clean-common-test-data
 	$(REBAR) skip_deps=true ct
 
 test: compile eunit ct
@@ -98,9 +99,13 @@ shell: get-deps compile
 pdf:
 	pandoc README.md -o README.pdf
 
-clean:
-	- rm -rf $(CURDIR)/test/*.beam
+clean-common-test-data:
+# We have to do this because of the unique way we generate test
+# data. Without this rebar eunit gets very confused
 	- rm -rf $(CURDIR)/test/*_SUITE_data
+
+clean: clean-common-test-data
+	- rm -rf $(CURDIR)/test/*.beam
 	- rm -rf $(CURDIR)/logs
 	$(REBAR) skip_deps=true clean
 
