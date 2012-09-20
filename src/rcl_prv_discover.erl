@@ -42,6 +42,7 @@ init(State) ->
 %% looking for OTP Applications
 -spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
 do(State) ->
+    OutputDir = rcl_state:output_dir(State),
     LibDirs = get_lib_dirs(State),
     rcl_log:info(rcl_state:log(State),
                   fun() ->
@@ -49,7 +50,10 @@ do(State) ->
                            [[rcl_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
                   end),
 
-    AppMeta0 = lists:flatten(ec_plists:map(fun discover_dir/1, LibDirs)),
+    AppMeta0 = lists:flatten(ec_plists:map(fun(LibDir) ->
+                                               discover_dir([OutputDir],
+                                                            LibDir)
+                                           end, LibDirs)),
     Errors = [case El of
                   {error, Ret} -> Ret;
                   _ -> El
@@ -148,17 +152,21 @@ format_detail({unversioned_app, AppDir, _AppName}) ->
 format_detail({app_info_error, Detail}) ->
     rcl_app_info:format_error(Detail).
 
--spec discover_dir(file:name()) ->
+-spec discover_dir([file:name()],
+                   file:name()) ->
                           [rcl_app_info:t() | {error, Reason::term()}] |
                           rcl_app_info:t() | {error, Reason::term()}.
-discover_dir(File) ->
-    case filelib:is_dir(File) of
+discover_dir(IgnoreDirs, File) ->
+    case (not lists:member(File, IgnoreDirs))
+        andalso filelib:is_dir(File) of
         true ->
             case file:list_dir(File) of
                 {error, Reason} ->
                     {error, {accessing, File, Reason}};
                 {ok, List} ->
-                    ec_plists:map(fun discover_dir/1, [filename:join([File, Dir]) || Dir <- List])
+                    ec_plists:map(fun(LibDir) ->
+                                     discover_dir(IgnoreDirs, LibDir)
+                                  end, [filename:join([File, Dir]) || Dir <- List])
             end;
         false ->
             is_valid_otp_app(File)

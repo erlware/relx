@@ -89,7 +89,7 @@
 new(PropList, Targets) when erlang:is_list(PropList) ->
     State0 =
         #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
-                 output_dir=proplists:get_value(output_dir, PropList, ""),
+                 output_dir=filename:absname(proplists:get_value(output_dir, PropList, "")),
                  lib_dirs=get_lib_dirs(proplists:get_value(lib_dirs, PropList, [])),
                  config_files=Targets,
                  goals=proplists:get_value(goals, PropList, []),

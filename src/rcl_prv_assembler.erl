@@ -119,11 +119,10 @@ copy_dir(AppDir, TargetDir, SubDir) ->
         true ->
             case filelib:is_dir(SubTarget) of
                 true ->
-                    ec_file:remove(SubTarget, [recursive]);
+                    ok = ec_file:remove(SubTarget, [recursive]);
                 false ->
                     ok
             end,
-            ok = ec_file:mkdir_p(SubTarget),
             case ec_file:copy(SubSource, SubTarget, [recursive]) of
                 {error, E} ->
                     ?RCL_ERROR({ec_file_error, AppDir, TargetDir, E});
@@ -133,8 +132,6 @@ copy_dir(AppDir, TargetDir, SubDir) ->
         false ->
             ok
     end.
-
-
 
 create_release_info(State, Release, OutputDir) ->
     RelName = erlang:atom_to_list(rcl_release:name(Release)),
