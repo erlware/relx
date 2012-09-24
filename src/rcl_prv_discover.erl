@@ -149,8 +149,8 @@ format_detail({invalid_app_file, File}) ->
 format_detail({unversioned_app, AppDir, _AppName}) ->
     io_lib:format("Application metadata exists but version is not available: ~s",
                   [AppDir]);
-format_detail({app_info_error, Detail}) ->
-    rcl_app_info:format_error(Detail).
+format_detail({app_info_error, {Module, Detail}}) ->
+    Module:format_error(Detail).
 
 -spec discover_dir([file:name()],
                    file:name()) ->
