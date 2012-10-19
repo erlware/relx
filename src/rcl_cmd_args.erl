@@ -32,8 +32,8 @@
 -spec args2state({error, Reason::term()} | {[getopt:option()], [string()]}) ->
                         {ok, {rcl_state:t(), [string()]}} |
                         relcool:error().
-args2state(Error={error, _}) ->
-    Error;
+args2state({error, Detail}) ->
+    ?RCL_ERROR({opt_parse, Detail});
 args2state({ok, {Opts, Targets}}) ->
     RelName = proplists:get_value(relname, Opts, undefined),
     RelVsn = proplists:get_value(relvsn, Opts, undefined),
@@ -52,6 +52,10 @@ args2state({ok, {Opts, Targets}}) ->
     end.
 
 -spec format_error(Reason::term()) -> iolist().
+format_error({opt_parse, {invalid_option, Opt}}) ->
+    io_lib:format("invalid option ~s~n", [Opt]);
+format_error({opt_parse, Arg}) ->
+    io_lib:format("~p~n", [Arg]);
 format_error({invalid_option_arg, Arg}) ->
     case Arg of
         {goals, Goal} ->

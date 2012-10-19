@@ -235,10 +235,14 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
                   [ReleaseFile, Options]),
     case make_script(Name, Options)  of
         ok ->
+            rcl_log:error(rcl_state:log(State),
+                          "release successfully created!"),
             {ok, State};
         error ->
             ?RCL_ERROR({release_script_generation_error, ReleaseFile});
         {ok, _, []} ->
+            rcl_log:error(rcl_state:log(State),
+                          "release successfully created!"),
             {ok, State};
         {ok,Module,Warnings} ->
             ?RCL_ERROR({release_script_generation_warn, Module, Warnings});
