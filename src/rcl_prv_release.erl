@@ -166,10 +166,10 @@ set_resolved(State, Release0, Pkgs) ->
    case rcl_release:realize(Release0, Pkgs, rcl_state:available_apps(State)) of
        {ok, Release1} ->
            rcl_log:info(rcl_state:log(State),
-                        "Resolved ~p-~s",
+                        "Resolved ~p-~s~n",
                         [rcl_release:name(Release1),
                          rcl_release:vsn(Release1)]),
-           rcl_log:debug(rcl_state:log(State),
+           rcl_log:info(rcl_state:log(State),
                          fun() ->
                                  rcl_release:format(1, Release1)
                          end),
