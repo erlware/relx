@@ -18,7 +18,7 @@
 
 ERLFLAGS= -pa $(CURDIR)/.eunit -pa $(CURDIR)/ebin -pa $(CURDIR)/deps/*/ebin
 
-RELCOOL_PLT=$(CURDIR)/.relcool_plt
+DEPS_PLT=$(CURDIR)/.deps_plt
 
 # =============================================================================
 # Verify that the programs we need to run are installed on this system
@@ -36,7 +36,7 @@ $(error "Rebar not available on this system")
 endif
 
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf \
-	get-deps escript clean-common-test-data
+	get-deps escript clean-common-test-data rebuild
 
 all: compile escript dialyzer test
 
@@ -74,18 +74,18 @@ ct: compile clean-common-test-data
 
 test: compile eunit ct
 
-$(RELCOOL_PLT):
-	@echo Building local plt at $(RELCOOL_PLT)
+$(DEPS_PLT):
+	@echo Building local plt at $(DEPS_PLT)
 	@echo
-	dialyzer --output_plt $(RELCOOL_PLT) --build_plt \
+	dialyzer --output_plt $(DEPS_PLT) --build_plt \
 	   --apps erts kernel stdlib -r deps
 
-dialyzer: $(RELCOOL_PLT)
-	dialyzer --plt $(RELCOOL_PLT) --fullpath -Wrace_conditions \
+dialyzer: $(DEPS_PLT)
+	dialyzer --plt $(DEPS_PLT) --fullpath -Wrace_conditions \
 	-I include -pa $(CURDIR)/ebin --src src
 
 typer:
-	typer --plt $(RELCOOL_PLT) -r ./src
+	typer --plt $(DEPS_PLT) -r ./src
 
 shell: get-deps compile
 # You often want *rebuilt* rebar tests to be available to the
@@ -110,5 +110,7 @@ clean: clean-common-test-data
 	$(REBAR) skip_deps=true clean
 
 distclean: clean
-	- rm -rf $(RELCOOL_PLT)
+	- rm -rf $(DEPS_PLT)
 	- rm -rvf $(CURDIR)/deps/*
+
+rebuild: distclean get-deps compile dialyzer test
