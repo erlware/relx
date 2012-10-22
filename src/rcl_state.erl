@@ -91,7 +91,7 @@ new(PropList, Targets) when erlang:is_list(PropList) ->
         #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
                  output_dir=filename:absname(proplists:get_value(output_dir, PropList, "")),
                  lib_dirs=get_lib_dirs(proplists:get_value(lib_dirs, PropList, [])),
-                 config_files=Targets,
+                 config_files=handle_configs(Targets),
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
                  releases=ec_dictionary:new(ec_dict),
@@ -251,6 +251,18 @@ create_logic_providers(State0) ->
     {AssemblerProvider, {ok, State4}} = rcl_provider:new(rcl_prv_assembler, State3),
     State4#state_t{providers=[ConfigProvider, DiscoveryProvider,
                               ReleaseProvider, AssemblerProvider]}.
+
+
+%% @doc explicitly handle single config file path
+-spec handle_configs(string() | [string()]) -> [string()].
+handle_configs(Configs = [Config | _])
+  when erlang:is_list(Config) ->
+    Configs;
+handle_configs(Config = [Char | _])
+  when erlang:is_integer(Char) ->
+    [Config];
+handle_configs([]) ->
+    [].
 
 %%%===================================================================
 %%% Test Functions

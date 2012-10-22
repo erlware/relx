@@ -43,7 +43,12 @@ main(Args) ->
     OptSpecList = opt_spec_list(),
     case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
         {ok, {State, _Target}} ->
-            run_relcool_process(rcl_state:caller(State, command_line));
+            case run_relcool_process(rcl_state:caller(State, command_line)) of
+                Result = {ok, _} ->
+                    Result;
+                Error={error, _} ->
+                    report_error(State, Error)
+            end;
         Error={error, _} ->
             report_error(rcl_state:caller(rcl_state:new([], []),
                                           command_line), Error)
@@ -77,13 +82,16 @@ opt_spec_list() ->
       "usually the OTP"},
      {output_dir, $o, "output-dir", string, "The output directory for the release. This is `./` by default."},
      {lib_dir, $l, "lib-dir", string, "Additional dirs that should be searched for OTP Apps"},
-     {log_level, $V, "verbose", {integer, 1}, "Verbosity level, maybe between 0 and 2"}
+     {log_level, $V, "verbose", {integer, 2}, "Verbosity level, maybe between 0 and 2"}
     ].
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({invalid_return_value, Provider, Value}) ->
     [rcl_provider:format(Provider), " returned an invalid value ",
-     io_lib:format("~p", [Value])].
+     io_lib:format("~p", [Value])];
+format_error({error, {Module, Reason}}) ->
+    io_lib:format("~s", [Module:format_error(Reason)]).
+
 
 %%============================================================================
 %% internal api
@@ -136,13 +144,12 @@ run_provider(Provider, {ok, State0}) ->
         {ok, State1} ->
             {ok, State1};
         E={error, _} ->
-            report_error(State0, E)
+            E
     end.
 
 -spec usage() -> ok.
 usage() ->
     getopt:usage(opt_spec_list(), "relcool", "[*release-specification-file*]").
-
 
 -spec report_error(rcl_state:t(), error()) -> none() | error().
 report_error(State, Error={error, {Module, Reason}}) ->
