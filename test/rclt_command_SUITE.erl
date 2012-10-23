@@ -65,11 +65,11 @@ normal_passing_case(Config) ->
                  rcl_state:lib_dirs(State)),
     ?assertMatch(Outdir, rcl_state:output_dir(State)),
 
-    ?assertMatch([{<<"app1">>,{{33,33},{[],[<<"build4">>]}},lte},
-                  {<<"app2">>,
+    ?assertMatch([{app1,{{33,33},{[],[<<"build4">>]}},lte},
+                  {app2,
                    {{33,22},{[],[]}},
-                   {{45,22},{[],[<<"build">>,21]}},
-                   between}], rcl_state:goals(State)).
+                   {{45,22},{[],[<<"build">>,21]}}, between}],
+                 rcl_state:goals(State)).
 
 
 lib_fail_case(Config) ->

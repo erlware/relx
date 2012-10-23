@@ -288,9 +288,9 @@ parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
 parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
   when erlang:is_list(Constraint0) ->
     case rcl_goal:parse(Constraint0) of
-        {error, _Detail} ->
+        {fail, _Detail} ->
             ?RCL_ERROR({failed_to_parse, Constraint0});
-        Constraint1 ->
+        {ok, Constraint1} ->
             {ok, Release#release_t{goals = [Constraint1 | Goals]}}
     end;
 parse_goal0(_, E = {error, _}) ->

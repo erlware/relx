@@ -6,15 +6,15 @@ constraint <-   ws? app_name ws? between_op  ws? version ws? "," ws? version ws?
            `
            case Node of
                 [_,AppName,_, _] ->
-                    {ok, erlang:iolist_to_binary(AppName)};
+                    {ok, AppName};
                 [_,AppName,_,Op,_,Vsn,_, _] ->
                     {ok,
-                        {erlang:iolist_to_binary(AppName),
+                        {AppName,
                          rcl_goal_utils:to_vsn(Vsn),
                          rcl_goal_utils:to_op(Op)}};
                 [_,AppName,_,Op,_,Vsn1,_,_,_,Vsn2,_,_] ->
                     {ok,
-                        {erlang:iolist_to_binary(AppName),
+                        {AppName,
                          rcl_goal_utils:to_vsn(Vsn1),
                          rcl_goal_utils:to_vsn(Vsn2),
                          rcl_goal_utils:to_op(Op)}};
@@ -25,7 +25,8 @@ constraint <-   ws? app_name ws? between_op  ws? version ws? "," ws? version ws?
 
 ws <- [ \t\n\s\r] ;
 
-app_name <- [a-zA-Z0-9_]+ ;
+app_name <- [a-zA-Z0-9_]+
+         ` erlang:list_to_atom(erlang:binary_to_list(erlang:iolist_to_binary(Node))) ` ;
 
 between_op <-
              ":" ws? ( "btwn" / "between" ) ws? ":"
