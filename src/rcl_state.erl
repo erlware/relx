@@ -85,13 +85,13 @@
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(proplists:proplist(), [file:filename()]) -> t().
+-spec new(proplists:proplist(), [file:filename()] | file:filename()) -> t().
 new(PropList, Targets) when erlang:is_list(PropList) ->
     State0 =
         #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
                  output_dir=filename:absname(proplists:get_value(output_dir, PropList, "")),
                  lib_dirs=get_lib_dirs(proplists:get_value(lib_dirs, PropList, [])),
-                 config_files=handle_configs(Targets),
+                 config_files=process_config_files(Targets),
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
                  releases=ec_dictionary:new(ec_dict),
@@ -253,15 +253,15 @@ create_logic_providers(State0) ->
                               ReleaseProvider, AssemblerProvider]}.
 
 
-%% @doc explicitly handle single config file path
--spec handle_configs(string() | [string()]) -> [string()].
-handle_configs(Configs = [Config | _])
-  when erlang:is_list(Config) ->
-    Configs;
-handle_configs(Config = [Char | _])
+%% @doc config files can come in as either a single file name or as a list of
+%% files. We what to support both where possible.
+process_config_files(File = [Char | _])
   when erlang:is_integer(Char) ->
-    [Config];
-handle_configs([]) ->
+    [File];
+process_config_files(Files = [File | _])
+  when erlang:is_list(File) ->
+    Files;
+process_config_files([]) ->
     [].
 
 %%%===================================================================
