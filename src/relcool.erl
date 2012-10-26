@@ -83,7 +83,10 @@ opt_spec_list() ->
 -spec format_error(Reason::term()) -> iolist().
 format_error({invalid_return_value, Provider, Value}) ->
     [rcl_provider:format(Provider), " returned an invalid value ",
-     io_lib:format("~p", [Value])].
+     io_lib:format("~p", [Value])];
+format_error({error, {Module, Reason}}) ->
+    io_lib:format("~s~n", [Module:format_error(Reason)]).
+
 
 %%============================================================================
 %% internal api
@@ -136,7 +139,7 @@ run_provider(Provider, {ok, State0}) ->
         {ok, State1} ->
             {ok, State1};
         E={error, _} ->
-            report_error(State0, E)
+            E
     end.
 
 -spec usage() -> ok.
@@ -145,8 +148,8 @@ usage() ->
 
 
 -spec report_error(rcl_state:t(), error()) -> none() | error().
-report_error(State, Error={error, {Module, Reason}}) ->
-    io:format("~s~n", [Module:format_error(Reason)]),
+report_error(State, Error) ->
+    io:format(format_error(Error)),
     usage(),
     case rcl_state:caller(State) of
         command_line ->
