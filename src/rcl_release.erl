@@ -302,9 +302,9 @@ parse_goal0(_, E = {error, _}) ->
 parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
             Constraint0, NewAnnots) ->
    case rcl_goal:parse(Constraint0) of
-      {error, _} ->
+      {fail, _} ->
            ?RCL_ERROR({failed_to_parse, Constraint0});
-       Constraint1 ->
+       {ok, Constraint1} ->
            case get_app_name(Constraint1) of
                E1 = {error, _} ->
                    E1;
