@@ -33,8 +33,9 @@ do(State) ->
     lists:foldl(fun load_config/2, {ok, State}, ConfigFiles).
 
 -spec format_error(Reason::term()) -> iolist().
-format_error({consult, Reason}) ->
-    file:format_error(Reason);
+format_error({consult, ConfigFile, Reason}) ->
+        io_lib:format("Unable to read file ~s: ~s", [ConfigFile,
+                                                     file:format_error(Reason)]);
 format_error({invalid_term, Term}) ->
     io_lib:format("Invalid term in config file: ~p", [Term]).
 
@@ -50,7 +51,7 @@ load_config(ConfigFile, {ok, State}) ->
     ok = file:set_cwd(filename:dirname(ConfigFile)),
     Result = case file:consult(ConfigFile) of
                  {error, Reason} ->
-                     ?RCL_ERROR({consult, Reason});
+                     ?RCL_ERROR({consult, ConfigFile, Reason});
                  {ok, Terms} ->
                      lists:foldl(fun load_terms/2, {ok, State}, Terms)
              end,
