@@ -72,9 +72,10 @@
                             {app_name(), app_vsn(), app_type() | incl_apps()} |
                             {app_name(), app_vsn(), app_type(), incl_apps()}.
 
--type application_goal() :: rcl_depsolver:constraint() |
-                            {rcl_depsolver:constraint(), app_type() | incl_apps()} |
-                            {rcl_depsolver:constraint(), app_type(), incl_apps()}.
+-type application_constraint() :: rcl_depsolver:constraint() | string() | binary().
+-type application_goal() :: application_constraint()
+                          | {application_constraint(), app_type() | incl_apps()}
+                          | {application_constraint(), app_type(), incl_apps() | none}.
 
 -type annotations() ::  ec_dictionary:dictionary(app_name(),
                                                  {app_type(), incl_apps() | none}).
@@ -272,48 +273,75 @@ get_app_info({PkgName, PkgVsn}, World) ->
                       end, World),
     WorldEl.
 
--spec parse_goal0(application_goal(), {ok, t()} | relcool:error()) ->
-                         {ok, t()} | relcool:error().
 parse_goal0({Constraint0, Annots}, {ok, Release})
-  when erlang:is_atom(Annots) ->
-    parse_goal1(Release, Constraint0, {Annots, none});
-parse_goal0({Constraint0, Annots}, {ok, Release})
-  when erlang:is_list(Annots) ->
-    parse_goal1(Release, Constraint0, {none, Annots});
-parse_goal0({Constraint0, AnnotsA, AnnotsB}, {ok, Release}) ->
-    parse_goal1(Release, Constraint0, {AnnotsA, AnnotsB});
-parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
-  when erlang:is_atom(Constraint0) ->
-    {ok, Release#release_t{goals = [Constraint0 | Goals]}};
-parse_goal0(Constraint0, {ok, Release = #release_t{goals=Goals}})
-  when erlang:is_list(Constraint0) ->
-    case rcl_goal:parse(Constraint0) of
-        {fail, _Detail} ->
-            ?RCL_ERROR({failed_to_parse, Constraint0});
+  when Annots =:= permanent;
+       Annots =:= transient;
+       Annots =:= temporary;
+       Annots =:= load;
+       Annots =:= none ->
+    case parse_constraint(Constraint0) of
         {ok, Constraint1} ->
-            {ok, Release#release_t{goals = [Constraint1 | Goals]}}
+            parse_goal1(Release, Constraint1, {Annots, none});
+        Error  ->
+            Error
+    end;
+parse_goal0({Constraint0, Annots, Incls}, {ok, Release})
+  when (Annots =:= permanent orelse
+            Annots =:= transient orelse
+            Annots =:= temporary orelse
+            Annots =:= load orelse
+            Annots =:= none),
+       erlang:is_list(Incls) ->
+    case parse_constraint(Constraint0) of
+        {ok, Constraint1} ->
+            parse_goal1(Release, Constraint1, {Annots, Incls});
+        Error  ->
+            Error
+    end;
+parse_goal0(Constraint0, {ok, Release}) ->
+    case parse_constraint(Constraint0) of
+        {ok, Constraint1} ->
+            parse_goal1(Release, Constraint1, {none, none});
+        Error  ->
+            Error
     end;
 parse_goal0(_, E = {error, _}) ->
-    E.
+    E;
+parse_goal0(Constraint, _) ->
+    ?RCL_ERROR({invalid_constraint, Constraint}).
 
--spec parse_goal1(t(), rcl_depsolver:constraint() | string(),
-                  app_type() | incl_apps() | {app_type(), incl_apps() | none}) ->
-                         {ok, t()} | relcool:error().
 parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
-            Constraint0, NewAnnots) ->
-   case rcl_goal:parse(Constraint0) of
-      {fail, _} ->
-           ?RCL_ERROR({failed_to_parse, Constraint0});
-       {ok, Constraint1} ->
-           case get_app_name(Constraint1) of
-               E1 = {error, _} ->
-                   E1;
-               AppName ->
-                   {ok,
-                    Release#release_t{annotations=ec_dictionary:add(AppName, NewAnnots, Annots),
-                                    goals = [Constraint1 | Goals]}}
-           end
-   end.
+            Constraint, NewAnnots) ->
+    case get_app_name(Constraint) of
+        E1 = {error, _} ->
+            E1;
+        AppName ->
+            {ok,
+             Release#release_t{annotations=ec_dictionary:add(AppName, NewAnnots, Annots),
+                               goals = [Constraint | Goals]}}
+    end.
+
+-spec parse_constraint(application_constraint()) ->
+                              rcl_depsolver:constraint() | relcool:error().
+parse_constraint(Constraint0)
+  when erlang:is_list(Constraint0); erlang:is_binary(Constraint0) ->
+    case rcl_goal:parse(Constraint0) of
+        {fail, _} ->
+            ?RCL_ERROR({failed_to_parse, Constraint0});
+        {ok, Constraint1} ->
+            {ok, Constraint1}
+    end;
+parse_constraint(Constraint)
+  when erlang:is_tuple(Constraint);
+       erlang:is_atom(Constraint) ->
+    case rcl_depsolver:is_valid_constraint(Constraint) of
+        false ->
+            ?RCL_ERROR({invalid_constraint, Constraint});
+        true ->
+            {ok, Constraint}
+    end;
+parse_constraint(Constraint) ->
+    ?RCL_ERROR({invalid_constraint, Constraint}).
 
 -spec get_app_name(rcl_depsolver:constraint()) ->
                           AppName::atom() | relcool:error().
