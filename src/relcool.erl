@@ -22,6 +22,7 @@
 
 -export([main/1,
          do/7,
+         do/8,
          format_error/1,
          opt_spec_list/0]).
 
@@ -59,14 +60,29 @@ main(Args) ->
 %% @param OutputDir - The directory where the release should be built to
 %% @param Configs - The list of config files for the system
 do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
+    do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
+
+%% @doc provides an API to run the Relcool process from erlang applications
+%%
+%% @param RelName - The release name to build (maybe `undefined`)
+%% @param RelVsn - The release version to build (maybe `undefined`)
+%% @param Goals - The release goals for the system in depsolver or Relcool goal
+%% format
+%% @param LibDirs - The library dirs that should be used for the system
+%% @param OutputDir - The directory where the release should be built to
+%% @param Overrides - A list of overrides for the system
+%% @param Configs - The list of config files for the system
+do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Configs) ->
     State = rcl_state:new([{relname, RelName},
                            {relvsn, RelVsn},
                            {goals, Goals},
+                           {overrides, Overrides},
                            {output_dir, OutputDir},
                            {lib_dirs, LibDirs},
                            {log, rcl_log:new(LogLevel)}],
                           Configs),
     run_relcool_process(rcl_state:caller(State, api)).
+
 
 -spec opt_spec_list() -> [getopt:option_spec()].
 opt_spec_list() ->

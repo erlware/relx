@@ -82,7 +82,8 @@ load_terms({add_providers, Providers0}, {ok, State0}) ->
             ExistingProviders = rcl_state:providers(State1),
             {ok, rcl_state:providers(State1, ExistingProviders ++ Providers3)}
     end;
-
+load_terms({overrides, Overrides0}, {ok, State0}) ->
+    {ok, rcl_state:overrides(State0, Overrides0)};
 load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
     Release0 = rcl_release:new(RelName, Vsn),
     case rcl_release:goals(Release0, Applications) of
