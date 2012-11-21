@@ -100,15 +100,20 @@ copy_app(LibDir, App) ->
     AppVsn = rcl_app_info:vsn_as_string(App),
     AppDir = rcl_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
-    ec_plists:map(fun(SubDir) ->
-                          copy_dir(AppDir, TargetDir, SubDir)
-                  end, ["ebin",
-                        "include",
-                        "priv",
-                        "src",
-                        "c_src",
-                        "README",
-                        "LICENSE"]).
+    case rcl_app_info:link(App) of
+        true ->
+            file:make_symlink(AppDir, TargetDir);
+        false ->
+            ec_plists:map(fun(SubDir) ->
+                                  copy_dir(AppDir, TargetDir, SubDir)
+                          end, ["ebin",
+                                "include",
+                                "priv",
+                                "src",
+                                "c_src",
+                                "README",
+                                "LICENSE"])
+    end.
 
 copy_dir(AppDir, TargetDir, SubDir) ->
     SubSource = filename:join(AppDir, SubDir),
