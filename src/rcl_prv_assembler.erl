@@ -73,8 +73,6 @@ format_error({release_script_generation_error, Module, Errors}) ->
     ["Errors generating release \n",
      rcl_util:indent(1), Module:format_error(Errors)].
 
-
-
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================

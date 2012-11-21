@@ -49,7 +49,17 @@ do(State) ->
                           ["Resolving OTP Applications from directories:\n",
                            [[rcl_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
                   end),
+    resolve_app_metadata(State, LibDirs, OutputDir).
 
+-spec format_error([ErrorDetail::term()]) -> iolist().
+format_error(ErrorDetails)
+  when erlang:is_list(ErrorDetails) ->
+    [[format_detail(ErrorDetail), "\n"] || ErrorDetail <- ErrorDetails].
+
+%%%===================================================================
+%%% Internal Functions
+%%%===================================================================
+resolve_app_metadata(State, LibDirs, OutputDir) ->
     AppMeta0 = lists:flatten(ec_plists:map(fun(LibDir) ->
                                                discover_dir([OutputDir],
                                                             LibDir)
@@ -66,9 +76,6 @@ do(State) ->
                          false
                  end],
 
-    lists:filter(fun({error, _}) -> true;
-                    (_) -> false
-                 end, AppMeta0),
     case Errors of
         [] ->
             AppMeta1 = lists:flatten(AppMeta0),
@@ -82,14 +89,7 @@ do(State) ->
             ?RCL_ERROR(Errors)
     end.
 
--spec format_error([ErrorDetail::term()]) -> iolist().
-format_error(ErrorDetails)
-  when erlang:is_list(ErrorDetails) ->
-    [[format_detail(ErrorDetail), "\n"] || ErrorDetail <- ErrorDetails].
 
-%%%===================================================================
-%%% Internal Functions
-%%%===================================================================
 get_lib_dirs(State) ->
     LibDirs0 = rcl_state:lib_dirs(State),
     add_rebar_deps_dir(State, LibDirs0).
