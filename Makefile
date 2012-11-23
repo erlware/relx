@@ -98,6 +98,7 @@ clean-common-test-data:
 clean: clean-common-test-data
 	- rm -rf $(CURDIR)/test/*.beam
 	- rm -rf $(CURDIR)/logs
+	- rm -rf $(CURDIR)/ebin
 	$(REBAR) skip_deps=true clean
 
 distclean: clean
