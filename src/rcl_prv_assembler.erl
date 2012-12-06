@@ -160,7 +160,10 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     ok = ec_file:mkdir_p(BinDir),
     VsnRel = filename:join(BinDir, RelName ++ "-" ++ RelVsn),
     BareRel = filename:join(BinDir, RelName),
-    StartFile = bin_file_contents(RelName, RelVsn, rcl_release:erts(Release)),
+    ErlOpts = rcl_state:get(State, erl_opts, ""),
+    StartFile = bin_file_contents(RelName, RelVsn,
+                                  rcl_release:erts(Release),
+ ErlOpts),
     ok = file:write_file(VsnRel, StartFile),
     ok = file:change_mode(VsnRel, 8#777),
     ok = file:write_file(BareRel, StartFile),
@@ -278,7 +281,7 @@ get_code_paths(Release, OutDir) ->
                         rcl_app_info:vsn_as_string(App), "ebin"]) ||
         App <- rcl_release:application_details(Release)].
 
-bin_file_contents(RelName, RelVsn, ErtsVsn) ->
+bin_file_contents(RelName, RelVsn, ErtsVsn, ErlOpts) ->
     [<<"#!/bin/sh
 
 set -e
@@ -289,6 +292,7 @@ REL_NAME=">>, RelName, <<"
 REL_VSN=">>, RelVsn, <<"
 ERTS_VSN=">>, ErtsVsn, <<"
 REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_NAME-$REL_VSN
+ERL_OPTS=">>, ErlOpts, <<"
 
 ERTS_DIR=
 SYS_CONFIG=
@@ -327,6 +331,4 @@ export EMU=beam
 export PROGNAME=erl
 export LD_LIBRARY_PATH=$ERTS_DIR/lib
 
-
-
-$BINDIR/erlexec $SYS_CONFIG -boot $REL_DIR/$REL_NAME $@">>].
+$BINDIR/erlexec $ERL_OPTS $SYS_CONFIG -boot $REL_DIR/$REL_NAME $@">>].
