@@ -128,13 +128,16 @@ run_providers(State0) ->
         {ok, State1} ->
             Providers = rcl_state:providers(State1),
             Result = run_providers(ConfigProvider, Providers, State1),
-            case rcl_state:caller(State1) of
-                command_line ->
-                    init:stop(0);
-                api ->
-                    Result
-            end
+            handle_output(State1, rcl_state:caller(State1), Result)
     end.
+
+handle_output(State, command_line, E={error, _}) ->
+    report_error(State, E),
+    init:stop(127);
+handle_output(_State, command_line, _) ->
+    init:stop(0);
+handle_output(_State, api, Result) ->
+    Result.
 
 run_providers(ConfigProvider, Providers, State0) ->
     case Providers of
@@ -151,10 +154,13 @@ run_providers(ConfigProvider, Providers, State0) ->
 run_provider(_Provider, Error = {error, _}) ->
     Error;
 run_provider(Provider, {ok, State0}) ->
+    rcl_log:debug(rcl_state:log(State0), "Running provider ~p~n",
+                  [rcl_provider:impl(Provider)]),
     case rcl_provider:do(Provider, State0) of
         {ok, State1} ->
             {ok, State1};
         E={error, _} ->
+
             E
     end.
 
