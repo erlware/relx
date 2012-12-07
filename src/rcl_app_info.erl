@@ -49,6 +49,8 @@
          active_deps/2,
          library_deps/1,
          library_deps/2,
+         link/1,
+         link/2,
          format_error/1,
          format/2,
          format/1]).
@@ -60,6 +62,7 @@
 -record(app_info_t, {name :: atom(),
                      vsn :: ec_semver:semver(),
                      dir :: file:name(),
+                     link=false :: boolean(),
                      active_deps :: [atom()],
                      library_deps :: [atom()]}).
 
@@ -80,7 +83,13 @@ new() ->
 %% @doc build a complete version of the app info with all fields set.
 -spec new(atom(), string(), file:name(), [atom()], [atom()]) ->
                  {ok, t()} | relcool:error().
-new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps)
+new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps) ->
+    new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, false).
+
+%% @doc build a complete version of the app info with all fields set.
+-spec new(atom(), string(), file:name(), [atom()], [atom()], boolean()) ->
+                 {ok, t()} | relcool:error().
+new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)
   when erlang:is_atom(AppName),
        erlang:is_list(Dir),
        erlang:is_list(ActiveDeps),
@@ -91,7 +100,8 @@ new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps)
         ParsedVsn ->
             {ok, #app_info_t{name=AppName, vsn=ParsedVsn, dir=Dir,
                              active_deps=ActiveDeps,
-                             library_deps=LibraryDeps}}
+                             library_deps=LibraryDeps,
+                             link=Link}}
     end.
 
 -spec name(t()) -> atom().
@@ -145,6 +155,14 @@ library_deps(AppInfo=#app_info_t{}, LibraryDeps)
   when erlang:is_list(LibraryDeps) ->
     AppInfo#app_info_t{library_deps=LibraryDeps}.
 
+-spec link(t()) -> boolean().
+link(#app_info_t{link=Link}) ->
+    Link.
+
+-spec link(t(), boolean()) -> t().
+link(AppInfo, NewLink) ->
+    AppInfo#app_info_t{link=NewLink}.
+
 -spec format_error(Reason::term()) -> iolist().
 format_error({vsn_parse, AppName}) ->
     io_lib:format("Error parsing version for ~p",
@@ -156,9 +174,11 @@ format(AppInfo) ->
 
 -spec format(non_neg_integer(), t()) -> iolist().
 format(Indent, #app_info_t{name=Name, vsn=Vsn, dir=Dir,
-                           active_deps=Deps, library_deps=LibDeps}) ->
+                           active_deps=Deps, library_deps=LibDeps,
+                           link=Link}) ->
     [rcl_util:indent(Indent), erlang:atom_to_list(Name), "-", ec_semver:format(Vsn),
      ": ", Dir, "\n",
+     rcl_util:indent(Indent + 1), "Symlink: ", erlang:atom_to_list(Link), "\n",
      rcl_util:indent(Indent + 1), "Active Dependencies:\n",
      [[rcl_util:indent(Indent + 2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],
      rcl_util:indent(Indent + 1), "Library Dependencies:\n",

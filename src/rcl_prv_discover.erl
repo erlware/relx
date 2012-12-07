@@ -49,38 +49,7 @@ do(State) ->
                           ["Resolving OTP Applications from directories:\n",
                            [[rcl_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
                   end),
-
-    AppMeta0 = lists:flatten(ec_plists:map(fun(LibDir) ->
-                                               discover_dir([OutputDir],
-                                                            LibDir)
-                                           end, LibDirs)),
-    Errors = [case El of
-                  {error, Ret} -> Ret;
-                  _ -> El
-              end
-              || El <- AppMeta0,
-                 case El of
-                     {error, _} ->
-                         true;
-                     _ ->
-                         false
-                 end],
-
-    lists:filter(fun({error, _}) -> true;
-                    (_) -> false
-                 end, AppMeta0),
-    case Errors of
-        [] ->
-            AppMeta1 = lists:flatten(AppMeta0),
-            rcl_log:debug(rcl_state:log(State),
-                          fun() ->
-                                  ["Resolved the following OTP Applications from the system: \n",
-                                   [[rcl_app_info:format(1, App), "\n"] || App <- AppMeta1]]
-                          end),
-            {ok, rcl_state:available_apps(State, AppMeta1)};
-        _ ->
-            ?RCL_ERROR(Errors)
-    end.
+    resolve_app_metadata(State, LibDirs, OutputDir).
 
 -spec format_error([ErrorDetail::term()]) -> iolist().
 format_error(ErrorDetails)
@@ -90,6 +59,57 @@ format_error(ErrorDetails)
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+resolve_app_metadata(State, LibDirs, OutputDir) ->
+    AppMeta0 = lists:flatten(ec_plists:map(fun(LibDir) ->
+                                               discover_dir([OutputDir],
+                                                            LibDir)
+                                           end, LibDirs)),
+    AppMeta1 = setup_overrides(State, AppMeta0),
+
+    Errors = [case El of
+                  {error, Ret} -> Ret;
+                  _ -> El
+              end
+              || El <- AppMeta1,
+                 case El of
+                     {error, _} ->
+                         true;
+                     _ ->
+                         false
+                 end],
+
+    case Errors of
+        [] ->
+            AppMeta2 = lists:flatten(AppMeta1),
+            rcl_log:debug(rcl_state:log(State),
+                          fun() ->
+                                  ["Resolved the following OTP Applications from the system: \n",
+                                   [[rcl_app_info:format(1, App), "\n"] || App <- AppMeta2]]
+                          end),
+            {ok, rcl_state:available_apps(State, AppMeta2)};
+        _ ->
+            ?RCL_ERROR(Errors)
+    end.
+
+app_name({error, _}) ->
+    undefined;
+app_name(AppMeta) ->
+    rcl_app_info:name(AppMeta).
+
+setup_overrides(State, AppMetas0) ->
+    Overrides = rcl_state:overrides(State),
+    AppMetas1 = [AppMeta || AppMeta <- AppMetas0,
+                            not lists:keymember(app_name(AppMeta), 1, Overrides)],
+    [case is_valid_otp_app(filename:join([FileName, "ebin",
+                                         erlang:atom_to_list(AppName) ++ ".app"])) of
+         [] ->
+             {error, {invalid_override, AppName, FileName}};
+         Error = {error, _} ->
+             Error;
+         App ->
+             rcl_app_info:link(App, true)
+     end || {AppName, FileName} <- Overrides] ++ AppMetas1.
+
 get_lib_dirs(State) ->
     LibDirs0 = rcl_state:lib_dirs(State),
     add_rebar_deps_dir(State, LibDirs0).
@@ -133,6 +153,9 @@ add_system_lib_dir(State, LibDirs) ->
     end.
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
+format_detail({error, {invalid_override, AppName, FileName}}) ->
+    io_lib:format("Override {~p, ~p} is not a valid OTP App. Perhaps you forgot to build it?",
+                  [AppName, FileName]);
 format_detail({accessing, File, eaccess}) ->
     io_lib:format("permission denied accessing file ~s", [File]);
 format_detail({accessing, File, Type}) ->
@@ -172,7 +195,7 @@ discover_dir(IgnoreDirs, File) ->
             is_valid_otp_app(File)
     end.
 
--spec is_valid_otp_app(file:name()) -> [rcl_app_info:t() | {error, Reason::term()} | []].
+-spec is_valid_otp_app(file:name()) -> rcl_app_info:t() | {error, Reason::term()} | [].
 is_valid_otp_app(File) ->
     %% Is this an ebin dir?
     EbinDir = filename:dirname(File),

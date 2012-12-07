@@ -10,6 +10,7 @@
 %% API
 -export([new/2,
          do/2,
+         impl/1,
          format_error/1,
          format_error/2,
          format/1]).
@@ -56,6 +57,12 @@ new(ModuleName, State0) when is_atom(ModuleName) ->
                 {ok, rcl_state:t()} | relcool:error().
 do({?MODULE, Mod}, State) ->
     Mod:do(State).
+
+%%% @doc get the name of the module that implements the provider
+%%% @param Provider the provider object
+-spec impl(Provider::t()) -> module().
+impl({?MODULE, Mod}) ->
+    Mod.
 
 %% @doc format an error produced from a provider.
 -spec format_error(Reason::term()) -> iolist().

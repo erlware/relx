@@ -8,5 +8,5 @@ relcool
 src/rcl_goal.erl
 logs
 test/*_data
-relcool_output/*
+_rel/*
 .*

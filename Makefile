@@ -41,15 +41,6 @@ endif
 all: compile escript dialyzer test
 
 # =============================================================================
-# Include relevant sub-makefiles.
-# =============================================================================
-# These are not subdirs, they are just additional makefile information
-# that happens to live subdirectories
-
-include $(CURDIR)/docs/docs.mkf
-
-
-# =============================================================================
 # Rules to build the system
 # =============================================================================
 
@@ -107,6 +98,7 @@ clean-common-test-data:
 clean: clean-common-test-data
 	- rm -rf $(CURDIR)/test/*.beam
 	- rm -rf $(CURDIR)/logs
+	- rm -rf $(CURDIR)/ebin
 	$(REBAR) skip_deps=true clean
 
 distclean: clean
