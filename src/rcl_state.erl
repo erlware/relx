@@ -31,6 +31,7 @@
          overrides/2,
          goals/1,
          config_files/1,
+         config_files/2,
          providers/1,
          providers/2,
          sys_config/1,
@@ -139,6 +140,10 @@ goals(#state_t{goals=TS}) ->
 -spec config_files(t()) -> [file:filename()].
 config_files(#state_t{config_files=ConfigFiles}) ->
     ConfigFiles.
+
+-spec config_files(t(), [file:filename()]) -> t().
+config_files(State, ConfigFiles) ->
+    State#state_t{config_files=ConfigFiles}.
 
 -spec providers(t()) -> [rcl_provider:t()].
 providers(#state_t{providers=Providers}) ->

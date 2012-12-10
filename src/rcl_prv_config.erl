@@ -29,8 +29,12 @@ init(State) ->
 %% populating the state as a result.
 -spec do(rcl_state:t()) ->{ok,  rcl_state:t()} | relcool:error().
 do(State) ->
-    ConfigFiles = rcl_state:config_files(State),
-    lists:foldl(fun load_config/2, {ok, State}, ConfigFiles).
+    case  rcl_state:config_files(State) of
+        [] ->
+            search_for_dominating_config(State);
+        ConfigFiles ->
+            lists:foldl(fun load_config/2, {ok, State}, ConfigFiles)
+    end.
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({consult, ConfigFile, Reason}) ->
@@ -42,6 +46,48 @@ format_error({invalid_term, Term}) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+search_for_dominating_config({ok, Cwd}) ->
+    ConfigFile = filename:join(Cwd, "relcool.config"),
+    case ec_file:exists(ConfigFile) of
+        true ->
+            {ok, ConfigFile};
+        false ->
+            search_for_dominating_config(parent_dir(Cwd))
+    end;
+search_for_dominating_config({error, _}) ->
+    no_config;
+search_for_dominating_config(State0) ->
+    {ok, Cwd} = file:get_cwd(),
+    case search_for_dominating_config({ok, Cwd}) of
+        {ok, Config} ->
+            %% we need to set the root dir on state as well
+            {ok, RootDir} = parent_dir(Config),
+            State1 = rcl_state:root_dir(State0, RootDir),
+            load_config(Config, {ok, rcl_state:config_files(State1, [Config])});
+        no_config ->
+            {ok, State0}
+    end.
+
+%% @doc Given a directory returns the name of the parent directory.
+-spec parent_dir(Filename::string()) ->
+                        {ok, DirName::string()} | {error, no_parent_dir}.
+parent_dir(Filename) ->
+    parent_dir(filename:split(Filename), []).
+
+%% @doc Given list of directories, splits the list and returns all dirs but the
+%%  last as a path.
+-spec parent_dir([string()], [string()]) ->
+                        {ok, DirName::string()} | {error, no_parent_dir}.
+parent_dir([_H], []) ->
+    {error, no_parent_dir};
+parent_dir([], []) ->
+    {error, no_parent_dir};
+parent_dir([_H], Acc) ->
+    {ok, filename:join(lists:reverse(Acc))};
+parent_dir([H | T], Acc) ->
+    parent_dir(T, [H | Acc]).
+
+
 -spec load_config(file:filename(), {ok, rcl_state:t()} | relcool:error()) ->
                          {ok, rcl_state:t()} | relcool:error().
 load_config(_, Err = {error, _}) ->

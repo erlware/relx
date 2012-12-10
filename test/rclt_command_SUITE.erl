@@ -25,7 +25,6 @@
          all/0,
          normal_passing_case/1,
          lib_fail_case/1,
-         output_fail_case/1,
          spec_parse_fail_case/1,
          config_fail_case/1]).
 
@@ -42,7 +41,7 @@ end_per_suite(_Config) ->
     ok.
 
 all() ->
-    [normal_passing_case, lib_fail_case, output_fail_case, config_fail_case].
+    [normal_passing_case, lib_fail_case, config_fail_case].
 
 normal_passing_case(Config) ->
     DataDir = proplists:get_value(data_dir, Config),
@@ -80,18 +79,6 @@ lib_fail_case(Config) ->
 
     CmdLine = ["-l", Lib1, "-l", Lib2],
     ?assertMatch({error, {_, {not_directory, Lib2}}},
-                 rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
-
-
-output_fail_case(Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
-    UnwritableDir = filename:join([DataDir, "unwritable"]),
-    ok = rcl_util:mkdir_p(UnwritableDir),
-    ok = file:change_mode(UnwritableDir, 8#555),
-    CanNotCreate = filename:join([UnwritableDir, "out-dir-should-not-create"]),
-
-    CmdLine = ["-o", CanNotCreate],
-    ?assertMatch({error, {_, {unable_to_create_output_dir, CanNotCreate}}},
                  rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
 
 spec_parse_fail_case(_Config) ->
