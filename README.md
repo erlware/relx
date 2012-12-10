@@ -47,3 +47,5 @@ Configuration files
 # SEE ALSO
 
 `reltool` (1).
+
+[relcool wiki](https://github.com/erlware/relcool/wiki)
