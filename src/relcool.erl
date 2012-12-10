@@ -93,7 +93,7 @@ opt_spec_list() ->
       "usually the OTP"},
      {output_dir, $o, "output-dir", string, "The output directory for the release. This is `./` by default."},
      {lib_dir, $l, "lib-dir", string, "Additional dirs that should be searched for OTP Apps"},
-     {log_level, $V, "verbose", {integer, 2}, "Verbosity level, maybe between 0 and 2"}
+     {log_level, $V, "verbose", {integer, 0}, "Verbosity level, maybe between 0 and 2"}
     ].
 
 -spec format_error(Reason::term()) -> iolist().
