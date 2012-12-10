@@ -35,6 +35,8 @@
          providers/2,
          sys_config/1,
          sys_config/2,
+         root_dir/1,
+         root_dir/2,
          add_release/2,
          get_release/3,
          update_release/2,
@@ -57,6 +59,7 @@
               cmd_args/0]).
 
 -record(state_t, {log :: rcl_log:t(),
+                  root_dir :: file:name(),
                   caller :: caller(),
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
@@ -90,9 +93,10 @@
 %% @doc Create a new 'log level' for the system
 -spec new(proplists:proplist(), [file:filename()] | file:filename()) -> t().
 new(PropList, Targets) when erlang:is_list(PropList) ->
+    {ok, Root} = file:get_cwd(),
     State0 =
         #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
-                 output_dir=filename:absname(proplists:get_value(output_dir, PropList, "")),
+                 output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=get_lib_dirs(proplists:get_value(lib_dirs, PropList, [])),
                  config_files=process_config_files(Targets),
                  goals=proplists:get_value(goals, PropList, []),
@@ -100,6 +104,7 @@ new(PropList, Targets) when erlang:is_list(PropList) ->
                  releases=ec_dictionary:new(ec_dict),
                  config_values=ec_dictionary:new(ec_dict),
                  overrides = proplists:get_value(overrides, PropList, []),
+                 root_dir = proplists:get_value(root_dir, PropList, Root),
                  default_release={proplists:get_value(relname, PropList, undefined),
                                   proplists:get_value(relvsn, PropList, undefined)}},
     create_logic_providers(State0).
@@ -146,6 +151,14 @@ sys_config(#state_t{sys_config=SysConfig}) ->
 -spec sys_config(t(), file:filename()) -> t().
 sys_config(State, SysConfig) ->
     State#state_t{sys_config=SysConfig}.
+
+-spec root_dir(t()) -> file:filename() | undefined.
+root_dir(#state_t{root_dir=RootDir}) ->
+    RootDir.
+
+-spec root_dir(t(), file:filename()) -> t().
+root_dir(State, RootDir) ->
+    State#state_t{root_dir=RootDir}.
 
 -spec providers(t(), [rcl_provider:t()]) -> t().
 providers(M, NewProviders) ->

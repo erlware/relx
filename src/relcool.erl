@@ -126,6 +126,8 @@ run_providers(State0) ->
         Err = {error, _} ->
             Err;
         {ok, State1} ->
+            RootDir = rcl_state:root_dir(State1),
+            ok = file:set_cwd(RootDir),
             Providers = rcl_state:providers(State1),
             Result = run_providers(ConfigProvider, Providers, State1),
             handle_output(State1, rcl_state:caller(State1), Result)
