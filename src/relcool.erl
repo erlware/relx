@@ -93,7 +93,7 @@ opt_spec_list() ->
       "usually the OTP"},
      {output_dir, $o, "output-dir", string, "The output directory for the release. This is `./` by default."},
      {lib_dir, $l, "lib-dir", string, "Additional dirs that should be searched for OTP Apps"},
-     {log_level, $V, "verbose", {integer, 2}, "Verbosity level, maybe between 0 and 2"}
+     {log_level, $V, "verbose", {integer, 0}, "Verbosity level, maybe between 0 and 2"}
     ].
 
 -spec format_error(Reason::term()) -> iolist().
@@ -126,6 +126,8 @@ run_providers(State0) ->
         Err = {error, _} ->
             Err;
         {ok, State1} ->
+            RootDir = rcl_state:root_dir(State1),
+            ok = file:set_cwd(RootDir),
             Providers = rcl_state:providers(State1),
             Result = run_providers(ConfigProvider, Providers, State1),
             handle_output(State1, rcl_state:caller(State1), Result)

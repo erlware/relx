@@ -75,9 +75,6 @@ format_error({invalid_config_file, Config}) ->
     io_lib:format("Invalid configuration file specified: ~s", [Config]);
 format_error({failed_to_parse, Spec}) ->
     io_lib:format("Unable to parse spec ~s", [Spec]);
-format_error({unable_to_create_output_dir, OutputDir}) ->
-    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
-                  [OutputDir]);
 format_error({not_directory, Dir}) ->
     io_lib:format("Library directory does not exist: ~s", [Dir]);
 format_error({invalid_log_level, LogLevel}) ->
@@ -148,17 +145,7 @@ convert_goals([RawSpec | Rest], Acc) ->
                                {ok, rcl_state:cmd_args()} | relcool:error().
 create_output_dir(Opts, Acc) ->
     OutputDir = proplists:get_value(output_dir, Opts, "./_rel"),
-    case filelib:is_dir(OutputDir) of
-        false ->
-            case rcl_util:mkdir_p(OutputDir) of
-                ok ->
-                    create_lib_dirs(Opts, [{output_dir, OutputDir} | Acc]);
-                {error, _} ->
-                    ?RCL_ERROR({unable_to_create_output_dir, OutputDir})
-            end;
-        true ->
-            create_lib_dirs(Opts, [{output_dir, OutputDir} | Acc])
-    end.
+    create_lib_dirs(Opts, [{output_dir, OutputDir} | Acc]).
 
 -spec create_lib_dirs([getopt:option()], rcl_state:cmd_args()) ->
                                {ok, rcl_state:cmd_args()} | relcool:error().
