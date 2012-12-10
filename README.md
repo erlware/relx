@@ -14,7 +14,7 @@ applications it will generate a release output. That output depends
 heavily on what plugins available and what options are defined, but
 usually it is simple a well configured release directory.
 
-   relcool -d ~/my-dirs  --relname foo --relvsn 0.0.1 --target-spec myapp --target-spec getopt>=0.5.1 -o output-dir --targz
+   relcool -l ~/my-dirs  --relname foo --relvsn 0.0.1 --target-spec myapp --target-spec getopt>=0.5.1 -o output-dir --targz
 
 The *release-specification-file* is optional but otherwise contains
 additional specification information for releases.
