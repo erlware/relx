@@ -44,11 +44,16 @@ do(State) ->
     {RelName, RelVsn} = rcl_state:default_release(State),
     Release = rcl_state:get_release(State, RelName, RelVsn),
     OutputDir = rcl_state:output_dir(State),
-    case rcl_release:realized(Release) of
-        true ->
-            copy_app_directories_to_output(State, Release, OutputDir);
-        false ->
-            ?RCL_ERROR({unresolved_release, RelName, RelVsn})
+    case create_output_dir(OutputDir) of
+        ok ->
+            case rcl_release:realized(Release) of
+                true ->
+                    copy_app_directories_to_output(State, Release, OutputDir);
+                false ->
+                    ?RCL_ERROR({unresolved_release, RelName, RelVsn})
+            end;
+        Error ->
+            Error
     end.
 
 -spec format_error(ErrorDetail::term()) -> iolist().
@@ -69,6 +74,9 @@ format_error({release_script_generation_error, RelFile}) ->
 format_error({release_script_generation_warning, Module, Warnings}) ->
     ["Warnings generating release \s",
      rcl_util:indent(1), Module:format_warning(Warnings)];
+format_error({unable_to_create_output_dir, OutputDir}) ->
+    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
+                  [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
     ["Errors generating release \n",
      rcl_util:indent(1), Module:format_error(Errors)].
@@ -76,6 +84,21 @@ format_error({release_script_generation_error, Module, Errors}) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+-spec create_output_dir(file:name()) ->
+                               ok | {error, Reason::term()}.
+create_output_dir(OutputDir) ->
+    case filelib:is_dir(OutputDir) of
+        false ->
+            case rcl_util:mkdir_p(OutputDir) of
+                ok ->
+                    ok;
+                {error, _} ->
+                    ?RCL_ERROR({unable_to_create_output_dir, OutputDir})
+            end;
+        true ->
+            ok
+    end.
+
 copy_app_directories_to_output(State, Release, OutputDir) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = ec_file:mkdir_p(LibDir),
