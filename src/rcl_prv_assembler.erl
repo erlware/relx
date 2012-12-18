@@ -131,6 +131,7 @@ copy_app(LibDir, App) ->
         true ->
             link_directory(AppDir, TargetDir);
         false ->
+            ok = rcl_util:mkdir_p(TargetDir),
             ec_plists:map(fun(SubDir) ->
                                   copy_dir(AppDir, TargetDir, SubDir)
                           end, ["ebin",
