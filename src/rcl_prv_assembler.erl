@@ -79,7 +79,11 @@ format_error({unable_to_create_output_dir, OutputDir}) ->
                   [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
     ["Errors generating release \n",
-     rcl_util:indent(1), Module:format_error(Errors)].
+     rcl_util:indent(1), Module:format_error(Errors)];
+format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
+    io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
+                  [AppDir, TargetDir, rcl_util:indent(1),
+                   file:format_error(Reason)]).
 
 %%%===================================================================
 %%% Internal Functions
@@ -125,7 +129,7 @@ copy_app(LibDir, App) ->
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
     case rcl_app_info:link(App) of
         true ->
-            file:make_symlink(AppDir, TargetDir);
+            link_directory(AppDir, TargetDir);
         false ->
             ec_plists:map(fun(SubDir) ->
                                   copy_dir(AppDir, TargetDir, SubDir)
@@ -136,6 +140,20 @@ copy_app(LibDir, App) ->
                                 "c_src",
                                 "README",
                                 "LICENSE"])
+    end.
+
+link_directory(AppDir, TargetDir) ->
+    case ec_file:exists(TargetDir) of
+        true ->
+            ec_file:remove(TargetDir);
+        false ->
+            ok
+    end,
+    case file:make_symlink(AppDir, TargetDir) of
+        {error, Reason} ->
+            ?RCL_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
+        ok ->
+            ok
     end.
 
 copy_dir(AppDir, TargetDir, SubDir) ->
@@ -167,7 +185,7 @@ create_release_info(State, Release, OutputDir) ->
                                     rcl_release:vsn(Release)]),
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     ok = ec_file:mkdir_p(ReleaseDir),
-        case rcl_release:metadata(Release) of
+    case rcl_release:metadata(Release) of
         {ok, Meta} ->
                 ok = ec_file:write_term(ReleaseFile, Meta),
                 write_bin_file(State, Release, OutputDir, ReleaseDir);
