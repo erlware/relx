@@ -112,9 +112,9 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
                               (_) ->
                                    false
                            end,
-                           ec_plists:map(fun(App) ->
-                                                 copy_app(LibDir, App)
-                                         end, Apps)),
+                          lists:flatten(ec_plists:map(fun(App) ->
+                                                              copy_app(LibDir, App)
+                                                      end, Apps))),
     case Result of
         [E | _] ->
             E;
