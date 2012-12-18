@@ -168,6 +168,7 @@ copy_dir(AppDir, TargetDir, SubDir) ->
                 false ->
                     ok
             end,
+            ok = filelib:ensure_dir(SubTarget),
             case ec_file:copy(SubSource, SubTarget, [recursive]) of
                 {error, E} ->
                     ?RCL_ERROR({ec_file_error, AppDir, TargetDir, E});
