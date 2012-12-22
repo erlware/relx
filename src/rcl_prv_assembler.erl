@@ -79,7 +79,11 @@ format_error({unable_to_create_output_dir, OutputDir}) ->
                   [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
     ["Errors generating release \n",
-     rcl_util:indent(1), Module:format_error(Errors)].
+     rcl_util:indent(1), Module:format_error(Errors)];
+format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
+    io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
+                  [AppDir, TargetDir, rcl_util:indent(1),
+                   file:format_error(Reason)]).
 
 %%%===================================================================
 %%% Internal Functions
@@ -108,9 +112,9 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
                               (_) ->
                                    false
                            end,
-                           ec_plists:map(fun(App) ->
-                                                 copy_app(LibDir, App)
-                                         end, Apps)),
+                          lists:flatten(ec_plists:map(fun(App) ->
+                                                              copy_app(LibDir, App)
+                                                      end, Apps))),
     case Result of
         [E | _] ->
             E;
@@ -123,35 +127,55 @@ copy_app(LibDir, App) ->
     AppVsn = rcl_app_info:vsn_as_string(App),
     AppDir = rcl_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
+    remove_symlink_or_directory(TargetDir),
     case rcl_app_info:link(App) of
         true ->
-            file:make_symlink(AppDir, TargetDir);
+            link_directory(AppDir, TargetDir);
         false ->
-            ec_plists:map(fun(SubDir) ->
-                                  copy_dir(AppDir, TargetDir, SubDir)
-                          end, ["ebin",
-                                "include",
-                                "priv",
-                                "src",
-                                "c_src",
-                                "README",
-                                "LICENSE"])
+            copy_directory(AppDir, TargetDir)
     end.
+
+remove_symlink_or_directory(TargetDir) ->
+    case ec_file:is_symlink(TargetDir) of
+        true ->
+            ec_file:remove(TargetDir);
+        false ->
+            case filelib:is_dir(TargetDir) of
+                true ->
+                    ok = ec_file:remove(TargetDir, [recursive]);
+                false ->
+                    ok
+            end
+    end.
+
+link_directory(AppDir, TargetDir) ->
+    case file:make_symlink(AppDir, TargetDir) of
+        {error, Reason} ->
+            ?RCL_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
+        ok ->
+            ok
+    end.
+
+copy_directory(AppDir, TargetDir) ->
+    ec_plists:map(fun(SubDir) ->
+                          copy_dir(AppDir, TargetDir, SubDir)
+                  end, ["ebin",
+                        "include",
+                        "priv",
+                        "src",
+                        "c_src",
+                        "README",
+                        "LICENSE"]).
 
 copy_dir(AppDir, TargetDir, SubDir) ->
     SubSource = filename:join(AppDir, SubDir),
     SubTarget = filename:join(TargetDir, SubDir),
     case filelib:is_dir(SubSource) of
         true ->
-            case filelib:is_dir(SubTarget) of
-                true ->
-                    ok = ec_file:remove(SubTarget, [recursive]);
-                false ->
-                    ok
-            end,
+            ok = rcl_util:mkdir_p(SubTarget),
             case ec_file:copy(SubSource, SubTarget, [recursive]) of
                 {error, E} ->
-                    ?RCL_ERROR({ec_file_error, AppDir, TargetDir, E});
+                    ?RCL_ERROR({ec_file_error, AppDir, SubTarget, E});
                 ok ->
                     ok
             end;
@@ -167,7 +191,7 @@ create_release_info(State, Release, OutputDir) ->
                                     rcl_release:vsn(Release)]),
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     ok = ec_file:mkdir_p(ReleaseDir),
-        case rcl_release:metadata(Release) of
+    case rcl_release:metadata(Release) of
         {ok, Meta} ->
                 ok = ec_file:write_term(ReleaseFile, Meta),
                 write_bin_file(State, Release, OutputDir, ReleaseDir);

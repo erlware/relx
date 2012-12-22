@@ -145,7 +145,7 @@ convert_goals([RawSpec | Rest], Acc) ->
                                {ok, rcl_state:cmd_args()} | relcool:error().
 create_output_dir(Opts, Acc) ->
     OutputDir = proplists:get_value(output_dir, Opts, "./_rel"),
-    create_lib_dirs(Opts, [{output_dir, OutputDir} | Acc]).
+    create_lib_dirs(Opts, [{output_dir, filename:absname(OutputDir)} | Acc]).
 
 -spec create_lib_dirs([getopt:option()], rcl_state:cmd_args()) ->
                                {ok, rcl_state:cmd_args()} | relcool:error().
