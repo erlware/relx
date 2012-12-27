@@ -112,10 +112,54 @@ get_overlay_vars_from_file(State, OverlayVars) ->
 read_overlay_vars(State, OverlayVars, FileName) ->
     case file:consult(FileName) of
         {ok, Terms} ->
-            do_overlay(State, OverlayVars ++ Terms);
+            case render_overlay_vars(OverlayVars, Terms, []) of
+                {ok, NewTerms} ->
+                    do_overlay(State, NewTerms ++ OverlayVars);
+                Error ->
+                    Error
+            end;
         {error, Reason} ->
             ?RCL_ERROR({unable_to_read_varsfile, FileName, Reason})
     end.
+
+-spec render_overlay_vars(proplists:proplist(), proplists:proplist(),
+                         proplists:proplist()) ->
+                                 {ok, proplists:proplist()} | relcool:error().
+render_overlay_vars(OverlayVars, [{Key, Value} | Rest], Acc)
+  when erlang:is_list(Value) ->
+    case io_lib:printable_list(Value) of
+        true ->
+            case render_template(Acc ++ OverlayVars, erlang:iolist_to_binary(Value)) of
+                {ok, Data} ->
+                    %% Adding to the end sucks, but ordering needs to be retained
+                    render_overlay_vars(OverlayVars, Rest, Acc ++ [{Key, Data}]);
+                Error ->
+                    Error
+            end;
+        false ->
+            case render_overlay_vars(Acc ++ OverlayVars, Value, []) of
+                {ok, NewValue} ->
+                    render_overlay_vars(OverlayVars, Rest, Acc ++ [{Key, NewValue}]);
+                Error ->
+                    Error
+            end
+    end;
+render_overlay_vars(OverlayVars, [{Key, Value} | Rest], Acc)
+  when erlang:is_binary(Value) ->
+    case render_template(Acc ++ OverlayVars, erlang:iolist_to_binary(Value)) of
+        {ok, Data} ->
+            render_overlay_vars(OverlayVars, Rest, Acc ++ [{Key, erlang:iolist_to_binary(Data)}]);
+        Error ->
+            Error
+    end;
+render_overlay_vars(OverlayVars, [KeyValue | Rest], Acc) ->
+    render_overlay_vars(OverlayVars, Rest, Acc ++ KeyValue);
+render_overlay_vars(_OverlayVars, [], Acc) ->
+    {ok, Acc}.
+
+
+
+
 
 -spec generate_release_vars(rcl_release:t()) -> proplists:proplist().
 generate_release_vars(Release) ->
@@ -258,7 +302,7 @@ do_individual_overlay(State, OverlayVars, {template, From, To}) ->
 render_template(OverlayVars, Data) ->
     TemplateName = make_template_name("rcl_template_renderer", Data),
     case erlydtl:compile(Data, TemplateName) of
-        Good when Good =:= ok; ok =:= {ok, TemplateName} ->
+        Good when Good =:= ok; Good =:= {ok, TemplateName} ->
             case render(TemplateName, OverlayVars) of
                 {ok, IoData} ->
                     {ok, IoData};

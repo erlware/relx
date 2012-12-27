@@ -269,6 +269,7 @@ overlay_release(Config) ->
     VarsFile = filename:join([LibDir1, "vars.config"]),
     write_config(VarsFile, [{yahoo, "yahoo"},
                             {yahoo2, [{foo, "bar"}]},
+                            {yahoo3, [{bar, "{{yahoo}}/{{yahoo2.foo}}"}]},
                             {foo_dir, "foodir"}]),
 
     TemplateFile = filename:join([LibDir1, "test_template"]),
@@ -358,7 +359,9 @@ overlay_release(Config) ->
     ?assertEqual("bar",
                  proplists:get_value(yahoo2_foo, TemplateData)),
     ?assertEqual("foodir",
-                 proplists:get_value(foo_dir, TemplateData)).
+                 proplists:get_value(foo_dir, TemplateData)),
+    ?assertEqual("yahoo/bar",
+                 proplists:get_value(yahoo3, TemplateData)).
 
 %%%===================================================================
 %%% Helper Functions
@@ -436,4 +439,5 @@ test_template_contents() ->
         "{default_release, \"{{default_release}}\"}.\n"
         "{yahoo, \"{{yahoo}}\"}.\n"
         "{yahoo2_foo, \"{{yahoo2.foo}}\"}.\n"
-        "{foo_dir, \"{{foo_dir}}\"}.\n".
+        "{foo_dir, \"{{foo_dir}}\"}.\n"
+        "{yahoo3, \"{{yahoo3.bar}}\"}.\n".
