@@ -23,6 +23,8 @@
 
 -export([mkdir_p/1,
          to_binary/1,
+         is_error/1,
+         error_reason/1,
          indent/1]).
 
 -define(ONE_LEVEL_INDENT, "    ").
@@ -54,6 +56,18 @@ to_binary(String) when erlang:is_list(String) ->
     erlang:iolist_to_binary(String);
 to_binary(Bin) when erlang:is_binary(Bin) ->
     Bin.
+
+%% @doc get the reason for a particular relcool error
+-spec error_reason(relcool:error()) -> any().
+error_reason({error, {_, Reason}}) ->
+    Reason.
+%% @doc check to see if the value is a relcool error
+-spec is_error(relcool:error() | any()) -> boolean().
+is_error({error, _}) ->
+    true;
+is_error(_) ->
+    false.
+
 
 
 %%%===================================================================
