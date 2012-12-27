@@ -280,9 +280,10 @@ create_logic_providers(State0) ->
     {ConfigProvider, {ok, State1}} = rcl_provider:new(rcl_prv_config, State0),
     {DiscoveryProvider, {ok, State2}} = rcl_provider:new(rcl_prv_discover, State1),
     {ReleaseProvider, {ok, State3}} = rcl_provider:new(rcl_prv_release, State2),
-    {AssemblerProvider, {ok, State4}} = rcl_provider:new(rcl_prv_assembler, State3),
-    State4#state_t{providers=[ConfigProvider, DiscoveryProvider,
-                              ReleaseProvider, AssemblerProvider]}.
+    {OverlayProvider, {ok, State4}} = rcl_provider:new(rcl_prv_overlay, State3),
+    {AssemblerProvider, {ok, State5}} = rcl_provider:new(rcl_prv_assembler, State4),
+    State5#state_t{providers=[ConfigProvider, DiscoveryProvider,
+                              ReleaseProvider, OverlayProvider, AssemblerProvider]}.
 
 
 %% @doc config files can come in as either a single file name or as a list of
