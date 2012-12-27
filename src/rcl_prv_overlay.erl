@@ -247,37 +247,46 @@ do_individual_overlay(State, OverlayVars, {template, From, To}) ->
                    fun(FromFile) ->
                            file_render_do(State, OverlayVars, To, ToTemplateName,
                                           fun(ToFile) ->
-                                                  render_template(OverlayVars,
-                                                                  erlang:binary_to_list(FromFile),
-                                                                  ToFile)
+                                                  write_template(OverlayVars,
+                                                                 erlang:binary_to_list(FromFile),
+                                                                 ToFile)
                                           end)
                    end).
 
--spec render_template(proplists:proplist(), iolist(), file:name()) ->
+-spec render_template(proplists:proplist(), iolist()) ->
                              ok | relcool:error().
-render_template(OverlayVars, FromFile, ToFile) ->
-    TemplateName = make_template_name("rcl_template_renderer", FromFile),
-    case erlydtl:compile(FromFile, TemplateName) of
+render_template(OverlayVars, Data) ->
+    TemplateName = make_template_name("rcl_template_renderer", Data),
+    case erlydtl:compile(Data, TemplateName) of
         Good when Good =:= ok; ok =:= {ok, TemplateName} ->
             case render(TemplateName, OverlayVars) of
                 {ok, IoData} ->
-                    case filelib:ensure_dir(ToFile) of
-                        ok ->
-                            case file:write_file(ToFile, IoData) of
-                                ok ->
-                                    ok;
-                                {error, Reason} ->
-                                    ?RCL_ERROR({unable_to_write, ToFile, Reason})
-                            end;
-                        {error, Reason} ->
-                            ?RCL_ERROR({unable_to_enclosing_dir, ToFile, Reason})
-                    end;
+                    {ok, IoData};
                 {error, Reason} ->
-                    ?RCL_ERROR({unable_to_render_template, FromFile, Reason})
+                    ?RCL_ERROR({unable_to_render_template, Data, Reason})
             end;
         {error, Reason} ->
-            ?RCL_ERROR({unable_to_compile_template, FromFile, Reason})
+            ?RCL_ERROR({unable_to_compile_template, Data, Reason})
     end.
+
+write_template(OverlayVars, FromFile, ToFile) ->
+    case render_template(OverlayVars, FromFile) of
+        {ok, IoData} ->
+            case filelib:ensure_dir(ToFile) of
+                ok ->
+                    case file:write_file(ToFile, IoData) of
+                        ok ->
+                            ok;
+                        {error, Reason} ->
+                            ?RCL_ERROR({unable_to_write, ToFile, Reason})
+                    end;
+                {error, Reason} ->
+                    ?RCL_ERROR({unable_to_enclosing_dir, ToFile, Reason})
+            end;
+        Error ->
+            Error
+    end.
+
 
 -spec file_render_do(rcl_state:t(), proplists:proplist(), iolist(), module(),
                      fun((term()) -> {ok, rcl_state:t()} | relcool:error())) ->
