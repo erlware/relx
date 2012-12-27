@@ -260,6 +260,8 @@ overlay_release(Config) ->
                   {overlay, [{mkdir, "{{target_dir}}/fooo"},
                              {copy, OverlayVars,
                               "{{target_dir}}/{{foo_dir}}/vars.config"},
+                             {copy, OverlayVars,
+                              "{{target_dir}}/{{yahoo}}/"},
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"}]},
                   {release, {foo, "0.0.1"},
@@ -293,6 +295,7 @@ overlay_release(Config) ->
 
     ?assert(ec_file:exists(filename:join(OutputDir, "fooo"))),
     ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars.config"]))),
 
     TemplateData = case file:consult(filename:join([OutputDir, test_template_resolved])) of
                        {ok, Details} ->

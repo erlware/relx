@@ -28,6 +28,8 @@
          do/1,
          format_error/1]).
 
+-define(DIRECTORY_RE, ".*(\/|\\\\)$").
+
 -include_lib("relcool/include/relcool.hrl").
 
 %%============================================================================
@@ -153,13 +155,9 @@ render_overlay_vars(OverlayVars, [{Key, Value} | Rest], Acc)
             Error
     end;
 render_overlay_vars(OverlayVars, [KeyValue | Rest], Acc) ->
-    render_overlay_vars(OverlayVars, Rest, Acc ++ KeyValue);
+    render_overlay_vars(OverlayVars, Rest, Acc ++ [KeyValue]);
 render_overlay_vars(_OverlayVars, [], Acc) ->
     {ok, Acc}.
-
-
-
-
 
 -spec generate_release_vars(rcl_release:t()) -> proplists:proplist().
 generate_release_vars(Release) ->
@@ -226,9 +224,8 @@ do_overlay(State, OverlayVars) ->
         Overlays ->
             handle_errors(State,
                           ec_plists:map(fun(Overlay) ->
-                                                Res = do_individual_overlay(State, OverlayVars,
-                                                                            Overlay),
-                                                Res
+                                                do_individual_overlay(State, OverlayVars,
+                                                                      Overlay)
                                         end, Overlays))
     end.
 
@@ -252,8 +249,7 @@ do_individual_overlay(State, OverlayVars, {mkdir, Dir}) ->
         {ok, ModuleName} ->
             case render(ModuleName, OverlayVars) of
                 {ok, IoList} ->
-                    Absolute = filename:absname(filename:join(rcl_state:root_dir(State),
-                                                              erlang:iolist_to_binary(IoList))),
+                    Absolute = absolutize(State, IoList),
                     case rcl_util:mkdir_p(Absolute) of
                         {error, Error} ->
                             ?RCL_ERROR({unable_to_make_dir, Absolute, Error});
@@ -269,33 +265,47 @@ do_individual_overlay(State, OverlayVars, {mkdir, Dir}) ->
 do_individual_overlay(State, OverlayVars, {copy, From, To}) ->
     FromTemplateName = make_template_name("rcl_copy_from_template", From),
     ToTemplateName = make_template_name("rcl_copy_to_template", To),
-    file_render_do(State, OverlayVars, From, FromTemplateName,
+    file_render_do(OverlayVars, From, FromTemplateName,
                    fun(FromFile) ->
-                           file_render_do(State, OverlayVars, To, ToTemplateName,
+                           file_render_do(OverlayVars, To, ToTemplateName,
                                           fun(ToFile) ->
-                                                  filelib:ensure_dir(ToFile),
-                                                  case ec_file:copy(FromFile, ToFile) of
-                                                      ok ->
-                                                          ok;
-                                                      {error, Err} ->
-                                                          ?RCL_ERROR({copy_failed,
-                                                                      FromFile,
-                                                                      ToFile, Err})
-                                                  end
+                                                  copy_to(State, FromFile, ToFile)
                                           end)
                    end);
 do_individual_overlay(State, OverlayVars, {template, From, To}) ->
     FromTemplateName = make_template_name("rcl_template_from_template", From),
     ToTemplateName = make_template_name("rcl_template_to_template", To),
-    file_render_do(State, OverlayVars, From, FromTemplateName,
+    file_render_do(OverlayVars, From, FromTemplateName,
                    fun(FromFile) ->
-                           file_render_do(State, OverlayVars, To, ToTemplateName,
+                           file_render_do(OverlayVars, To, ToTemplateName,
                                           fun(ToFile) ->
                                                   write_template(OverlayVars,
-                                                                 erlang:binary_to_list(FromFile),
-                                                                 ToFile)
+                                                                 erlang:binary_to_list(absolutize(State, FromFile)),
+                                                                 absolutize(State, ToFile))
                                           end)
                    end).
+
+-spec copy_to(rcl_state:t(), file:name(), file:name()) -> ok | relcool:error().
+copy_to(State, FromFile0, ToFile0) ->
+    ToFile1 = absolutize(State, ToFile0),
+    FromFile1 = absolutize(State, FromFile0),
+    ToFile2 = case re:run(ToFile0, ?DIRECTORY_RE) of
+                  nomatch ->
+                      filelib:ensure_dir(ToFile1),
+                      ToFile1;
+                  _ ->
+                      rcl_util:mkdir_p(ToFile1),
+                      erlang:iolist_to_binary(filename:join(ToFile1,
+                                                            filename:basename(FromFile1)))
+              end,
+    case ec_file:copy(FromFile1, ToFile2) of
+        ok ->
+            ok;
+        {error, Err} ->
+            ?RCL_ERROR({copy_failed,
+                        FromFile1,
+                        ToFile1, Err})
+    end.
 
 -spec render_template(proplists:proplist(), iolist()) ->
                              ok | relcool:error().
@@ -331,18 +341,15 @@ write_template(OverlayVars, FromFile, ToFile) ->
             Error
     end.
 
-
--spec file_render_do(rcl_state:t(), proplists:proplist(), iolist(), module(),
+-spec file_render_do(proplists:proplist(), iolist(), module(),
                      fun((term()) -> {ok, rcl_state:t()} | relcool:error())) ->
                             {ok, rcl_state:t()} | relcool:error().
-file_render_do(State, OverlayVars, Data, TemplateName, NextAction) ->
+file_render_do(OverlayVars, Data, TemplateName, NextAction) ->
     case erlydtl:compile(erlang:iolist_to_binary(Data), TemplateName) of
         {ok, TemplateName} ->
             case render(TemplateName, OverlayVars) of
                 {ok, IoList} ->
-                    Absolute = filename:absname(filename:join(rcl_state:root_dir(State),
-                                                              erlang:iolist_to_binary(IoList))),
-                    NextAction(Absolute);
+                    NextAction(IoList);
                 {error, Error} ->
                     ?RCL_ERROR({render_failed, Data, Error})
             end;
@@ -368,3 +375,7 @@ render(ModuleName, OverlayVars) ->
         _:Reason ->
             {error, Reason}
     end.
+
+absolutize(State, FileName) ->
+    filename:absname(filename:join(rcl_state:root_dir(State),
+                                   erlang:iolist_to_binary(FileName))).
