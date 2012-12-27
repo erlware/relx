@@ -133,7 +133,7 @@ output_dir(#state_t{output_dir=OutDir}) ->
 lib_dirs(#state_t{lib_dirs=LibDir}) ->
     LibDir.
 
--spec goals(t()) -> [rcl_depsolver:constraints()].
+-spec goals(t()) -> [rcl_depsolver:constraint()].
 goals(#state_t{goals=TS}) ->
     TS.
 
