@@ -182,10 +182,8 @@ do_overlay(State, OverlayVars) ->
         Overlays ->
             handle_errors(State,
                           ec_plists:map(fun(Overlay) ->
-                                                io:format("--->Doing ~p~n", [Overlay]),
                                                 Res = do_individual_overlay(State, OverlayVars,
                                                                             Overlay),
-                                                io:format("-->Done ~p~n", [Overlay]),
                                                 Res
                                         end, Overlays))
     end.
@@ -206,16 +204,12 @@ handle_errors(State, Result) ->
                                    {ok, rcl_state:t()} | relcool:error().
 do_individual_overlay(State, OverlayVars, {mkdir, Dir}) ->
     ModuleName = make_template_name("rcl_mkdir_template", Dir),
-    io:format("compiling to ~p ~n", [ModuleName]),
     case erlydtl:compile(erlang:iolist_to_binary(Dir), ModuleName) of
         {ok, ModuleName} ->
-            io:format("compiled ~n"),
             case render(ModuleName, OverlayVars) of
                 {ok, IoList} ->
-                    io:format("rendered ~n"),
                     Absolute = filename:absname(filename:join(rcl_state:root_dir(State),
                                                               erlang:iolist_to_binary(IoList))),
-                    io:format("got ~p ~n", [Absolute]),
                     case rcl_util:mkdir_p(Absolute) of
                         {error, Error} ->
                             ?RCL_ERROR({unable_to_make_dir, Absolute, Error});
@@ -267,7 +261,6 @@ render_template(OverlayVars, FromFile, ToFile) ->
         Good when Good =:= ok; ok =:= {ok, TemplateName} ->
             case render(TemplateName, OverlayVars) of
                 {ok, IoData} ->
-                    io:format("Rendering ~p~n", [IoData]),
                     case filelib:ensure_dir(ToFile) of
                         ok ->
                             case file:write_file(ToFile, IoData) of
