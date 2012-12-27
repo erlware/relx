@@ -63,8 +63,8 @@
                      vsn :: ec_semver:semver(),
                      dir :: file:name(),
                      link=false :: boolean(),
-                     active_deps :: [atom()],
-                     library_deps :: [atom()]}).
+                     active_deps=[]:: [atom()],
+                     library_deps=[] :: [atom()]}).
 
 %%============================================================================
 %% types
