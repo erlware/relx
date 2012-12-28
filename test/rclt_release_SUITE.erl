@@ -34,6 +34,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kernel/include/file.hrl").
+-include_lib("kernel/include/file.hrl").
 
 suite() ->
     [{timetrap,{seconds,30}}].
@@ -317,6 +318,8 @@ overlay_release(Config) ->
 
     TemplateFile = filename:join([LibDir1, "test_template"]),
     ok = file:write_file(TemplateFile, test_template_contents()),
+    {ok, FileInfo} = file:read_file_info(TemplateFile),
+    ok = file:write_file_info(TemplateFile, FileInfo#file_info{mode=8#00777}),
 
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
@@ -338,12 +341,14 @@ overlay_release(Config) ->
     ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars.config"]))),
     ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars.config"]))),
 
-    TemplateData = case file:consult(filename:join([OutputDir, test_template_resolved])) of
+    TemplateData = case file:consult(filename:join([OutputDir, "test_template_resolved"])) of
                        {ok, Details} ->
                            Details;
                        Error ->
                            erlang:throw({failed_to_consult, Error})
                    end,
+    {ok, ReadFileInfo} = file:read_file_info(filename:join([OutputDir, "test_template_resolved"])),
+    ?assertEqual(8#100777, ReadFileInfo#file_info.mode),
 
     ?assertEqual(erlang:system_info(version),
                  proplists:get_value(erts_vsn, TemplateData)),

@@ -300,6 +300,8 @@ copy_to(State, FromFile0, ToFile0) ->
               end,
     case ec_file:copy(FromFile1, ToFile2) of
         ok ->
+            {ok, FileInfo} = file:read_file_info(FromFile1),
+            ok = file:write_file_info(ToFile2, FileInfo),
             ok;
         {error, Err} ->
             ?RCL_ERROR({copy_failed,
@@ -340,6 +342,8 @@ write_template(OverlayVars, FromFile, ToFile) ->
                 ok ->
                     case file:write_file(ToFile, IoData) of
                         ok ->
+                            {ok, FileInfo} = file:read_file_info(FromFile),
+                            ok = file:write_file_info(ToFile, FileInfo),
                             ok;
                         {error, Reason} ->
                             ?RCL_ERROR({unable_to_write, ToFile, Reason})
