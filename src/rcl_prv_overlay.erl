@@ -289,11 +289,11 @@ do_individual_overlay(State, OverlayVars, {template, From, To}) ->
 copy_to(State, FromFile0, ToFile0) ->
     ToFile1 = absolutize(State, ToFile0),
     FromFile1 = absolutize(State, FromFile0),
-    ToFile2 = case re:run(ToFile0, ?DIRECTORY_RE) of
-                  nomatch ->
+    ToFile2 = case is_directory(ToFile0, ToFile1) of
+                  false ->
                       filelib:ensure_dir(ToFile1),
                       ToFile1;
-                  _ ->
+                  true ->
                       rcl_util:mkdir_p(ToFile1),
                       erlang:iolist_to_binary(filename:join(ToFile1,
                                                             filename:basename(FromFile1)))
@@ -306,6 +306,16 @@ copy_to(State, FromFile0, ToFile0) ->
                         FromFile1,
                         ToFile1, Err})
     end.
+
+-spec is_directory(file:name(), file:name()) -> boolean().
+is_directory(ToFile0, ToFile1) ->
+    case re:run(ToFile0, ?DIRECTORY_RE) of
+        nomatch ->
+            filelib:is_dir(ToFile1);
+        _ ->
+            true
+    end.
+
 
 -spec render_template(proplists:proplist(), iolist()) ->
                              ok | relcool:error().
