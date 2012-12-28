@@ -223,10 +223,10 @@ do_overlay(State, OverlayVars) ->
             {ok, State};
         Overlays ->
             handle_errors(State,
-                          ec_plists:map(fun(Overlay) ->
-                                                do_individual_overlay(State, OverlayVars,
-                                                                      Overlay)
-                                        end, Overlays))
+                          lists:map(fun(Overlay) ->
+                                            do_individual_overlay(State, OverlayVars,
+                                                                  Overlay)
+                                    end, Overlays))
     end.
 
 -spec handle_errors(rcl_state:t(), [ok | relcool:error()]) ->
