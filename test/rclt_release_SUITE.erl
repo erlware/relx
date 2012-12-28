@@ -25,6 +25,7 @@
          init_per_testcase/2,
          all/0,
          make_release/1,
+         make_scriptless_release/1,
          make_overridden_release/1,
          make_rerun_overridden_release/1,
          make_implicit_config_release/1,
@@ -52,8 +53,9 @@ init_per_testcase(_, Config) ->
      {state, State} | Config].
 
 all() ->
-    [make_release, make_overridden_release, make_implicit_config_release,
-     make_rerun_overridden_release, overlay_release].
+    [make_release, make_scriptless_release, make_overridden_release,
+     make_implicit_config_release, make_rerun_overridden_release,
+     overlay_release].
 
 make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -80,6 +82,46 @@ make_release(Config) ->
                                create_random_name("relcool-output")]),
     {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [ConfigFile]),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
+    AppSpecs = rcl_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+make_scriptless_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    write_config(ConfigFile,
+                 [{generate_start_script, false},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+                              OutputDir, [ConfigFile]),
+
+    ?assert(not ec_file:exists(filename:join([OutputDir, "bin", "foo"]))),
+    ?assert(not ec_file:exists(filename:join([OutputDir, "bin", "foo-0.0.1"]))),
+
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     AppSpecs = rcl_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -171,7 +213,6 @@ make_implicit_config_release(Config) ->
                               OutputDir, []),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     ?assert(ec_file:exists(OutputDir)),
-
     AppSpecs = rcl_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
