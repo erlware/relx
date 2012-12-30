@@ -43,7 +43,7 @@
 main(Args) ->
     OptSpecList = opt_spec_list(),
     case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
-        {ok, {State, _Target}} ->
+        {ok, State} ->
             run_relcool_process(rcl_state:caller(State, command_line));
         Error={error, _} ->
             report_error(rcl_state:caller(rcl_state:new([], []),
