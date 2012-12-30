@@ -249,7 +249,9 @@ do_individual_overlay(State, OverlayVars, {mkdir, Dir}) ->
         {ok, ModuleName} ->
             case render(ModuleName, OverlayVars) of
                 {ok, IoList} ->
-                    Absolute = absolutize(State, IoList),
+                    Absolute = absolutize(State,
+                                          filename:join(rcl_state:output_dir(State),
+                                                        erlang:iolist_to_binary(IoList))),
                     case rcl_util:mkdir_p(Absolute) of
                         {error, Error} ->
                             ?RCL_ERROR({unable_to_make_dir, Absolute, Error});
@@ -279,15 +281,20 @@ do_individual_overlay(State, OverlayVars, {template, From, To}) ->
                    fun(FromFile) ->
                            file_render_do(OverlayVars, To, ToTemplateName,
                                           fun(ToFile) ->
+                                                  FromFile0 = absolutize(State,
+                                                                         filename:join(rcl_state:output_dir(State),
+                                                                                       erlang:iolist_to_binary(FromFile))),
+                                                  FromFile1 = erlang:binary_to_list(FromFile0),
                                                   write_template(OverlayVars,
-                                                                 erlang:binary_to_list(absolutize(State, FromFile)),
+                                                                 FromFile1,
                                                                  absolutize(State, ToFile))
                                           end)
                    end).
 
 -spec copy_to(rcl_state:t(), file:name(), file:name()) -> ok | relcool:error().
 copy_to(State, FromFile0, ToFile0) ->
-    ToFile1 = absolutize(State, ToFile0),
+    ToFile1 = absolutize(State, filename:join(rcl_state:output_dir(State),
+                                              erlang:iolist_to_binary(ToFile0))),
     FromFile1 = absolutize(State, FromFile0),
     ToFile2 = case is_directory(ToFile0, ToFile1) of
                   false ->
