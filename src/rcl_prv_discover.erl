@@ -123,13 +123,13 @@ add_rebar_deps_dir(State, LibDirs) ->
         false ->
             %% Check to see if there is a rebar.config. If so then look for a deps
             %% dir. If both are there then we add that to the lib dirs.
-            {ok, Cwd} = file:get_cwd(),
+            Root = rcl_state:root_dir(State),
 
-            RebarConfig = filename:join([Cwd, "rebar.config"]),
-            DepsDir = filename:join([Cwd, "deps"]),
+            RebarConfig = filename:join([Root, "rebar.config"]),
+            DepsDir = filename:join([Root, "deps"]),
             case filelib:is_regular(RebarConfig) andalso filelib:is_dir(DepsDir) of
                 true ->
-                    add_system_lib_dir(State, [filename:absname(Cwd) | LibDirs]);
+                    add_system_lib_dir(State, [filename:absname(Root) | LibDirs]);
                 false ->
                     add_system_lib_dir(State, LibDirs)
             end
