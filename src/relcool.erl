@@ -23,6 +23,7 @@
 -export([main/1,
          do/7,
          do/8,
+         do/9,
          format_error/1,
          opt_spec_list/0]).
 
@@ -60,10 +61,25 @@ main(Args) ->
 %% @param OutputDir - The directory where the release should be built to
 %% @param Configs - The list of config files for the system
 do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
-    do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
+    {ok, Cwd} = file:get_cwd(),
+    do(Cwd, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
 
 %% @doc provides an API to run the Relcool process from erlang applications
 %%
+%% @param RootDir - The root directory for the project
+%% @param RelName - The release name to build (maybe `undefined`)
+%% @param RelVsn - The release version to build (maybe `undefined`)
+%% @param Goals - The release goals for the system in depsolver or Relcool goal
+%% format
+%% @param LibDirs - The library dirs that should be used for the system
+%% @param OutputDir - The directory where the release should be built to
+%% @param Configs - The list of config files for the system
+do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
+    do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
+
+%% @doc provides an API to run the Relcool process from erlang applications
+%%
+%% @param RootDir - The root directory for the system
 %% @param RelName - The release name to build (maybe `undefined`)
 %% @param RelVsn - The release version to build (maybe `undefined`)
 %% @param Goals - The release goals for the system in depsolver or Relcool goal
@@ -72,13 +88,14 @@ do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
 %% @param OutputDir - The directory where the release should be built to
 %% @param Overrides - A list of overrides for the system
 %% @param Configs - The list of config files for the system
-do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
+do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
     State = rcl_state:new([{relname, RelName},
                            {relvsn, RelVsn},
                            {goals, Goals},
                            {overrides, Overrides},
                            {output_dir, OutputDir},
                            {lib_dirs, LibDirs},
+                           {root_dir, RootDir},
                            {log, rcl_log:new(LogLevel)}],
                           Config),
     run_relcool_process(rcl_state:caller(State, api)).
@@ -93,8 +110,8 @@ opt_spec_list() ->
       "usually the OTP"},
      {output_dir, $o, "output-dir", string, "The output directory for the release. This is `./` by default."},
      {lib_dir, $l, "lib-dir", string, "Additional dirs that should be searched for OTP Apps"},
-     {log_level, $V, "verbose", {integer, 0}, "Verbosity level, maybe between 0 and 2"}
-    ].
+     {log_level, $V, "verbose", {integer, 0}, "Verbosity level, maybe between 0 and 2"},
+     {root_dir, $r, "root", string, "The project root directory"}].
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({invalid_return_value, Provider, Value}) ->

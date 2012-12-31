@@ -160,8 +160,21 @@ create_lib_dirs(Opts, Acc) ->
         Error = {error, _} ->
             Error;
         ok ->
-            {ok, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc]}
+            create_root_dir(Opts, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc])
     end.
+
+-spec create_root_dir([getopt:option()], rcl_state:cmd_args()) ->
+                               {ok, rcl_state:cmd_args()} | relcool:error().
+create_root_dir(Opts, Acc) ->
+    Dir = proplists:get_value(root_dir, Opts, undefined),
+    case Dir of
+        undefined ->
+            {ok, Cwd} = file:get_cwd(),
+            {ok, [{root_dir, Cwd} | Acc]};
+        _ ->
+            {ok, [{root_dir, Dir} | Acc]}
+    end.
+
 
 -spec check_lib_dirs([string()]) -> ok | relcool:error().
 check_lib_dirs([]) ->

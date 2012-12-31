@@ -166,7 +166,8 @@ make_overridden_release(Config) ->
                     goal_app_2]}]),
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
-    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+    {ok, Cwd} = file:get_cwd(),
+    {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [{OverrideAppName, OverrideAppDir}],
                              [ConfigFile]),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
@@ -255,12 +256,13 @@ make_rerun_overridden_release(Config) ->
                     goal_app_2]}]),
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
-    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+    {ok, Cwd} = file:get_cwd(),
+    {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [{OverrideAppName, OverrideAppDir}],
                              [ConfigFile]),
 
     %% Now we run it again to see if it failse.
-    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+    {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [{OverrideAppName, OverrideAppDir}],
                              [ConfigFile]),
 
