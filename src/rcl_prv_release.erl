@@ -47,6 +47,8 @@ do(State) ->
     find_default_release(State, DepGraph).
 
 -spec format_error(ErrorDetail::term()) -> iolist().
+format_error(no_goals_specified) ->
+    "No goals specified for this release ~n";
 format_error({no_release_name, Vsn}) ->
     io_lib:format("A target release version was specified (~s) but no name", [Vsn]);
 format_error({invalid_release_info, Info}) ->
@@ -151,11 +153,16 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
     try
         Release = rcl_state:get_release(State0, RelName, RelVsn),
         Goals = rcl_release:goals(Release),
-        case rcl_depsolver:solve(DepGraph, Goals) of
-            {ok, Pkgs} ->
-                set_resolved(State0, Release, Pkgs);
-            {error, Error} ->
-                ?RCL_ERROR({failed_solve, Error})
+        case Goals of
+            [] ->
+                ?RCL_ERROR(no_goals_specified);
+            _ ->
+                case rcl_depsolver:solve(DepGraph, Goals) of
+                    {ok, Pkgs} ->
+                        set_resolved(State0, Release, Pkgs);
+                    {error, Error} ->
+                        ?RCL_ERROR({failed_solve, Error})
+                end
         end
     catch
         throw:not_found ->
