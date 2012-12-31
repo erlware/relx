@@ -281,22 +281,27 @@ do_individual_overlay(State, OverlayVars, {template, From, To}) ->
                    fun(FromFile) ->
                            file_render_do(OverlayVars, To, ToTemplateName,
                                           fun(ToFile) ->
+                                                  RelativeRoot = get_relative_root(State),
                                                   FromFile0 = absolutize(State,
-                                                                         filename:join(rcl_state:output_dir(State),
+                                                                         filename:join(RelativeRoot,
                                                                                        erlang:iolist_to_binary(FromFile))),
                                                   FromFile1 = erlang:binary_to_list(FromFile0),
                                                   write_template(OverlayVars,
                                                                  FromFile1,
-                                                                 absolutize(State, ToFile))
+                                                                 absolutize(State,
+                                                                            filename:join(rcl_state:output_dir(State),
+                                                                                          erlang:iolist_to_binary(ToFile))))
                                           end)
                    end).
 
 -spec copy_to(rcl_state:t(), file:name(), file:name()) -> ok | relcool:error().
 copy_to(State, FromFile0, ToFile0) ->
+    RelativeRoot = get_relative_root(State),
     ToFile1 = absolutize(State, filename:join(rcl_state:output_dir(State),
                                               erlang:iolist_to_binary(ToFile0))),
 
-    FromFile1 = absolutize(State, FromFile0),
+    FromFile1 = absolutize(State, filename:join(RelativeRoot,
+                                                erlang:iolist_to_binary(FromFile0))),
     ToFile2 = case is_directory(ToFile0, ToFile1) of
                   false ->
                       filelib:ensure_dir(ToFile1),
@@ -315,6 +320,14 @@ copy_to(State, FromFile0, ToFile0) ->
             ?RCL_ERROR({copy_failed,
                         FromFile1,
                         ToFile1, Err})
+    end.
+
+get_relative_root(State) ->
+    case rcl_state:config_file(State) of
+        [] ->
+            rcl_state:root_dir(State);
+        Config ->
+            filename:dirname(Config)
     end.
 
 -spec is_directory(file:name(), file:name()) -> boolean().
