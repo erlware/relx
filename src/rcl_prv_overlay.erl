@@ -196,7 +196,7 @@ generate_state_vars(State) ->
      {goals, [rcl_depsolver:format_constraint(Constraint) ||
                  Constraint <- rcl_state:goals(State)]},
      {lib_dirs, rcl_state:lib_dirs(State)},
-     {config_files, rcl_state:config_files(State)},
+     {config_file, rcl_state:config_file(State)},
      {providers, rcl_state:providers(State)},
      {sys_config, rcl_state:sys_config(State)},
      {root_dir, rcl_state:root_dir(State)},
@@ -295,6 +295,7 @@ do_individual_overlay(State, OverlayVars, {template, From, To}) ->
 copy_to(State, FromFile0, ToFile0) ->
     ToFile1 = absolutize(State, filename:join(rcl_state:output_dir(State),
                                               erlang:iolist_to_binary(ToFile0))),
+
     FromFile1 = absolutize(State, FromFile0),
     ToFile2 = case is_directory(ToFile0, ToFile1) of
                   false ->

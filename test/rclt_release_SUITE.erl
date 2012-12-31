@@ -391,7 +391,7 @@ overlay_release(Config) ->
     ?assertEqual([""],
                  proplists:get_value(goals, TemplateData)),
     ?assert(proplists:is_defined(lib_dirs, TemplateData)),
-    ?assert(proplists:is_defined(config_files, TemplateData)),
+    ?assert(proplists:is_defined(config_file, TemplateData)),
     ?assertEqual([""],
                  proplists:get_value(goals, TemplateData)),
     ?assertEqual("undefined",
@@ -457,7 +457,7 @@ write_config(Filename, Values) ->
 
 test_template_contents() ->
     "{erts_vsn, \"{{erts_vsn}}\"}.\n"
-        "{release_erts_version, \"{{release_erts_version}}\"}.\n"
+     "{release_erts_version, \"{{release_erts_version}}\"}.\n"
         "{release_name, {{release_name}}}.\n"
         "{rel_vsn, \"{{release_version}}\"}.\n"
         "{release_version, \"{{release_version}}\"}.\n"
@@ -479,7 +479,7 @@ test_template_contents() ->
         "{overridden, [{{ overridden|join:\", \" }}]}.\n"
         "{goals, [\"{{ goals|join:\", \" }}\"]}.\n"
         "{lib_dirs, [\"{{ lib_dirs|join:\", \" }}\"]}.\n"
-        "{config_files, [\"{{ config_files|join:\", \" }}\"]}.\n"
+        "{config_file, \"{{ config_file }}\"}.\n"
         "{providers, [{{ providers|join:\", \" }}]}.\n"
         "{sys_config, \"{{sys_config}}\"}.\n"
         "{root_dir, \"{{root_dir}}\"}.\n"

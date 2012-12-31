@@ -72,7 +72,7 @@ do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
 %% @param OutputDir - The directory where the release should be built to
 %% @param Overrides - A list of overrides for the system
 %% @param Configs - The list of config files for the system
-do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Configs) ->
+do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
     State = rcl_state:new([{relname, RelName},
                            {relvsn, RelVsn},
                            {goals, Goals},
@@ -80,7 +80,7 @@ do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Configs) ->
                            {output_dir, OutputDir},
                            {lib_dirs, LibDirs},
                            {log, rcl_log:new(LogLevel)}],
-                          Configs),
+                          Config),
     run_relcool_process(rcl_state:caller(State, api)).
 
 
