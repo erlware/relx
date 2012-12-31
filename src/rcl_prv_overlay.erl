@@ -112,7 +112,9 @@ get_overlay_vars_from_file(State, OverlayVars) ->
 -spec read_overlay_vars(rcl_state:t(), proplists:proplist(), file:name()) ->
                                    {ok, rcl_state:t()} | relcool:error().
 read_overlay_vars(State, OverlayVars, FileName) ->
-    case file:consult(FileName) of
+    RelativeRoot = get_relative_root(State),
+    RelativePath = filename:join(RelativeRoot, erlang:iolist_to_binary(FileName)),
+    case file:consult(RelativePath) of
         {ok, Terms} ->
             case render_overlay_vars(OverlayVars, Terms, []) of
                 {ok, NewTerms} ->
