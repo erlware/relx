@@ -30,7 +30,9 @@
          make_rerun_overridden_release/1,
          make_implicit_config_release/1,
          overlay_release/1,
-         make_goalless_release/1]).
+         make_goalless_release/1,
+         make_depfree_release/1,
+         make_invalid_config_release/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -57,7 +59,8 @@ init_per_testcase(_, Config) ->
 all() ->
     [make_release, make_scriptless_release, make_overridden_release,
      make_implicit_config_release, make_rerun_overridden_release,
-     overlay_release, make_goalless_release].
+     overlay_release, make_goalless_release, make_depfree_release,
+     make_invalid_config_release].
 
 make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -93,6 +96,33 @@ make_release(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+make_invalid_config_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    ok = ec_file:write(ConfigFile,
+                       "{release, {foo, \"0.0.1\"},
+                         [goal_app_1,
+                          goal_app_2,]}"),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    {error, {rcl_prv_config,
+             {consult, _, _}}} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+                                            OutputDir, [ConfigFile]).
 
 make_scriptless_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -440,6 +470,35 @@ make_goalless_release(Config) ->
     ?assertMatch({error,{rcl_prv_release,no_goals_specified}},
                  relcool:do(undefined, undefined, [], [LibDir1], 2,
                             OutputDir, [ConfigFile])).
+
+make_depfree_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [kernel,stdlib], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [kernel,stdlib], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [kernel,stdlib], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [kernel,stdlib], []),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [kernel,stdlib], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app_1]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+                              OutputDir, [ConfigFile]),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
+    AppSpecs = rcl_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)).
 
 %%%===================================================================
 %%% Helper Functions
