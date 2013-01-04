@@ -113,8 +113,7 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Con
 
 -spec opt_spec_list() -> [getopt:option_spec()].
 opt_spec_list() ->
-    [
-     {relname,  $n, "relname",  string,
+    [{relname,  $n, "relname",  string,
       "Specify the name for the release that will be generated"},
      {relvsn, $v, "relvsn", string, "Specify the version for the release"},
      {goals, $g, "goal", string,
@@ -123,6 +122,9 @@ opt_spec_list() ->
       "The output directory for the release. This is `./` by default."},
      {lib_dir, $l, "lib-dir", string,
       "Additional dirs that should be searched for OTP Apps"},
+     {disable_default_libs, undefined, "disable-default-libs",
+      {boolean, false},
+      "Disable the default system added lib dirs (means you must add them all manually"},
      {log_level, $V, "verbose", {integer, 0},
       "Verbosity level, maybe between 0 and 2"},
      {root_dir, $r, "root", string, "The project root directory"}].

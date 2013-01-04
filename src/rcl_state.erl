@@ -108,7 +108,9 @@ new(PropList, Target) when erlang:is_list(PropList) ->
                  root_dir = proplists:get_value(root_dir, PropList, Root),
                  default_release={proplists:get_value(relname, PropList, undefined),
                                   proplists:get_value(relvsn, PropList, undefined)}},
-    create_logic_providers(State0).
+    rcl_state:put(create_logic_providers(State0),
+                  disable_default_libs,
+                  proplists:get_value(disable_default_libs, PropList, false)).
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].

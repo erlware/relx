@@ -62,8 +62,8 @@ normal_case(Config) ->
               end)(App)
              ||
                 App <-
-                [{create_random_name("lib_app1_"), create_random_vsn()}
-                 || _ <- lists:seq(1, 100)]],
+                    [{create_random_name("lib_app1_"), create_random_vsn()}
+                     || _ <- lists:seq(1, 100)]],
 
     LibDir2 = proplists:get_value(lib2, Config),
     Apps2 = [(fun({Name, Vsn}) ->
@@ -71,10 +71,9 @@ normal_case(Config) ->
               end)(App)
              || App <-
                     [{create_random_name("lib_app2_"), create_random_vsn()}
-                 || _ <- lists:seq(1, 100)]],
-    State0 = rcl_state:put(rcl_state:put(proplists:get_value(state, Config),
-                                         discover_exclude_rebar, true),
-                           discover_exclude_system, true),
+                     || _ <- lists:seq(1, 100)]],
+    State0 = rcl_state:put(proplists:get_value(state, Config),
+                            disable_default_libs, true),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
     {ok, State2} = rcl_provider:do(DiscoverProvider, State1),
     lists:foreach(fun(App) ->

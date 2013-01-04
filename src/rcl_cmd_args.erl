@@ -170,11 +170,16 @@ create_root_dir(Opts, Acc) ->
     case Dir of
         undefined ->
             {ok, Cwd} = file:get_cwd(),
-            {ok, [{root_dir, Cwd} | Acc]};
+            create_disable_default_libs(Opts, [{root_dir, Cwd} | Acc]);
         _ ->
-            {ok, [{root_dir, Dir} | Acc]}
+            create_disable_default_libs(Opts, [{root_dir, Dir} | Acc])
     end.
 
+-spec create_disable_default_libs([getopt:option()], rcl_state:cmd_args()) ->
+                                         {ok, rcl_state:cmd_args()} | relcool:error().
+create_disable_default_libs(Opts, Acc) ->
+    Def = proplists:get_value(disable_default_libs, Opts, false),
+    {ok, [{disable_default_libs, Def} | Acc]}.
 
 -spec check_lib_dirs([string()]) -> ok | relcool:error().
 check_lib_dirs([]) ->
