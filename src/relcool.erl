@@ -36,6 +36,7 @@
 %%============================================================================
 
 -type error() :: {error, {Module::module(), Reason::term()}}.
+-type goal() :: string() | binary() | rcl_depsolver:constraint().
 
 %%============================================================================
 %% API
@@ -60,9 +61,12 @@ main(Args) ->
 %% @param LibDirs - The library dirs that should be used for the system
 %% @param OutputDir - The directory where the release should be built to
 %% @param Configs - The list of config files for the system
-do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
+-spec do(atom(), string(), [goal()], [file:name()], rcl_log:log_level(),
+         [file:name()], file:name()) ->
+                  ok | error() | {ok, rcl_state:t()}.
+do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Config) ->
     {ok, Cwd} = file:get_cwd(),
-    do(Cwd, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
+    do(Cwd, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Config).
 
 %% @doc provides an API to run the Relcool process from erlang applications
 %%
@@ -74,6 +78,9 @@ do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
 %% @param LibDirs - The library dirs that should be used for the system
 %% @param OutputDir - The directory where the release should be built to
 %% @param Configs - The list of config files for the system
+-spec do(file:name(), atom(), string(), [goal()], [file:name()],
+           rcl_log:log_level(), [file:name()], file:name()) ->
+                  ok | error() | {ok, rcl_state:t()}.
 do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
     do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
 
@@ -88,6 +95,9 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
 %% @param OutputDir - The directory where the release should be built to
 %% @param Overrides - A list of overrides for the system
 %% @param Configs - The list of config files for the system
+-spec do(file:name(), atom(), string(), [goal()], [file:name()],
+           rcl_log:log_level(), [file:name()], [{atom(), file:name()}], file:name()) ->
+                  ok | error() | {ok, rcl_state:t()}.
 do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
     State = rcl_state:new([{relname, RelName},
                            {relvsn, RelVsn},
@@ -104,13 +114,17 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Con
 -spec opt_spec_list() -> [getopt:option_spec()].
 opt_spec_list() ->
     [
-     {relname,  $n, "relname",  string,  "Specify the name for the release that will be generated"},
+     {relname,  $n, "relname",  string,
+      "Specify the name for the release that will be generated"},
      {relvsn, $v, "relvsn", string, "Specify the version for the release"},
-     {goals, $g, "goal", string, "Specify a target constraint on the system. These are "
-      "usually the OTP"},
-     {output_dir, $o, "output-dir", string, "The output directory for the release. This is `./` by default."},
-     {lib_dir, $l, "lib-dir", string, "Additional dirs that should be searched for OTP Apps"},
-     {log_level, $V, "verbose", {integer, 0}, "Verbosity level, maybe between 0 and 2"},
+     {goals, $g, "goal", string,
+      "Specify a target constraint on the system. These are usually the OTP"},
+     {output_dir, $o, "output-dir", string,
+      "The output directory for the release. This is `./` by default."},
+     {lib_dir, $l, "lib-dir", string,
+      "Additional dirs that should be searched for OTP Apps"},
+     {log_level, $V, "verbose", {integer, 0},
+      "Verbosity level, maybe between 0 and 2"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
 -spec format_error(Reason::term()) -> iolist().
@@ -119,7 +133,6 @@ format_error({invalid_return_value, Provider, Value}) ->
      io_lib:format("~p", [Value])];
 format_error({error, {Module, Reason}}) ->
     io_lib:format("~s~n", [Module:format_error(Reason)]).
-
 
 %%============================================================================
 %% internal api
@@ -186,7 +199,6 @@ run_provider(Provider, {ok, State0}) ->
 -spec usage() -> ok.
 usage() ->
     getopt:usage(opt_spec_list(), "relcool", "[*release-specification-file*]").
-
 
 -spec report_error(rcl_state:t(), error()) -> none() | error().
 report_error(State, Error) ->
