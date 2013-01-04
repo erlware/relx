@@ -125,7 +125,7 @@ opt_spec_list() ->
      {disable_default_libs, undefined, "disable-default-libs",
       {boolean, false},
       "Disable the default system added lib dirs (means you must add them all manually"},
-     {log_level, $V, "verbose", {integer, 0},
+     {log_level, $V, "verbose", {integer, 1},
       "Verbosity level, maybe between 0 and 2"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
