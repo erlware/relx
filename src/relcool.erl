@@ -23,6 +23,7 @@
 -export([main/1,
          do/7,
          do/8,
+         do/9,
          format_error/1,
          opt_spec_list/0]).
 
@@ -35,6 +36,7 @@
 %%============================================================================
 
 -type error() :: {error, {Module::module(), Reason::term()}}.
+-type goal() :: string() | binary() | rcl_depsolver:constraint().
 
 %%============================================================================
 %% API
@@ -43,7 +45,7 @@
 main(Args) ->
     OptSpecList = opt_spec_list(),
     case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
-        {ok, {State, _Target}} ->
+        {ok, State} ->
             run_relcool_process(rcl_state:caller(State, command_line));
         Error={error, _} ->
             report_error(rcl_state:caller(rcl_state:new([], []),
@@ -59,11 +61,32 @@ main(Args) ->
 %% @param LibDirs - The library dirs that should be used for the system
 %% @param OutputDir - The directory where the release should be built to
 %% @param Configs - The list of config files for the system
-do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
-    do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
+-spec do(atom(), string(), [goal()], [file:name()], rcl_log:log_level(),
+         [file:name()], file:name()) ->
+                  ok | error() | {ok, rcl_state:t()}.
+do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Config) ->
+    {ok, Cwd} = file:get_cwd(),
+    do(Cwd, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Config).
 
 %% @doc provides an API to run the Relcool process from erlang applications
 %%
+%% @param RootDir - The root directory for the project
+%% @param RelName - The release name to build (maybe `undefined`)
+%% @param RelVsn - The release version to build (maybe `undefined`)
+%% @param Goals - The release goals for the system in depsolver or Relcool goal
+%% format
+%% @param LibDirs - The library dirs that should be used for the system
+%% @param OutputDir - The directory where the release should be built to
+%% @param Configs - The list of config files for the system
+-spec do(file:name(), atom(), string(), [goal()], [file:name()],
+           rcl_log:log_level(), [file:name()], file:name()) ->
+                  ok | error() | {ok, rcl_state:t()}.
+do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
+    do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
+
+%% @doc provides an API to run the Relcool process from erlang applications
+%%
+%% @param RootDir - The root directory for the system
 %% @param RelName - The release name to build (maybe `undefined`)
 %% @param RelVsn - The release version to build (maybe `undefined`)
 %% @param Goals - The release goals for the system in depsolver or Relcool goal
@@ -72,29 +95,39 @@ do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
 %% @param OutputDir - The directory where the release should be built to
 %% @param Overrides - A list of overrides for the system
 %% @param Configs - The list of config files for the system
-do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Configs) ->
+-spec do(file:name(), atom(), string(), [goal()], [file:name()],
+           rcl_log:log_level(), [file:name()], [{atom(), file:name()}], file:name()) ->
+                  ok | error() | {ok, rcl_state:t()}.
+do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
     State = rcl_state:new([{relname, RelName},
                            {relvsn, RelVsn},
                            {goals, Goals},
                            {overrides, Overrides},
                            {output_dir, OutputDir},
                            {lib_dirs, LibDirs},
+                           {root_dir, RootDir},
                            {log, rcl_log:new(LogLevel)}],
-                          Configs),
+                          Config),
     run_relcool_process(rcl_state:caller(State, api)).
 
 
 -spec opt_spec_list() -> [getopt:option_spec()].
 opt_spec_list() ->
-    [
-     {relname,  $n, "relname",  string,  "Specify the name for the release that will be generated"},
+    [{relname,  $n, "relname",  string,
+      "Specify the name for the release that will be generated"},
      {relvsn, $v, "relvsn", string, "Specify the version for the release"},
-     {goals, $g, "goal", string, "Specify a target constraint on the system. These are "
-      "usually the OTP"},
-     {output_dir, $o, "output-dir", string, "The output directory for the release. This is `./` by default."},
-     {lib_dir, $l, "lib-dir", string, "Additional dirs that should be searched for OTP Apps"},
-     {log_level, $V, "verbose", {integer, 0}, "Verbosity level, maybe between 0 and 2"}
-    ].
+     {goals, $g, "goal", string,
+      "Specify a target constraint on the system. These are usually the OTP"},
+     {output_dir, $o, "output-dir", string,
+      "The output directory for the release. This is `./` by default."},
+     {lib_dir, $l, "lib-dir", string,
+      "Additional dirs that should be searched for OTP Apps"},
+     {disable_default_libs, undefined, "disable-default-libs",
+      {boolean, false},
+      "Disable the default system added lib dirs (means you must add them all manually"},
+     {log_level, $V, "verbose", {integer, 1},
+      "Verbosity level, maybe between 0 and 2"},
+     {root_dir, $r, "root", string, "The project root directory"}].
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({invalid_return_value, Provider, Value}) ->
@@ -102,7 +135,6 @@ format_error({invalid_return_value, Provider, Value}) ->
      io_lib:format("~p", [Value])];
 format_error({error, {Module, Reason}}) ->
     io_lib:format("~s~n", [Module:format_error(Reason)]).
-
 
 %%============================================================================
 %% internal api
@@ -169,7 +201,6 @@ run_provider(Provider, {ok, State0}) ->
 -spec usage() -> ok.
 usage() ->
     getopt:usage(opt_spec_list(), "relcool", "[*release-specification-file*]").
-
 
 -spec report_error(rcl_state:t(), error()) -> none() | error().
 report_error(State, Error) ->

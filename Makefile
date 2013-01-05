@@ -61,7 +61,11 @@ eunit: compile clean-common-test-data
 	$(REBAR) skip_deps=true eunit
 
 ct: compile clean-common-test-data
-	$(REBAR) skip_deps=true ct
+	ct_run -pa $(CURDIR)/ebin \
+	-pa $(CURDIR)/deps/*/ebin \
+	-logdir $(CURDIR)/logs \
+	-dir $(CURDIR)/test/ \
+	-suite rclt_command_SUITE rclt_discover_SUITE -suite rclt_release_SUITE
 
 test: compile eunit ct
 

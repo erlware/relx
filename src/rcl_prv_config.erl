@@ -29,11 +29,11 @@ init(State) ->
 %% populating the state as a result.
 -spec do(rcl_state:t()) ->{ok,  rcl_state:t()} | relcool:error().
 do(State) ->
-    case  rcl_state:config_files(State) of
+    case rcl_state:config_file(State) of
         [] ->
             search_for_dominating_config(State);
-        ConfigFiles ->
-            lists:foldl(fun load_config/2, {ok, State}, ConfigFiles)
+        ConfigFile ->
+            load_config(ConfigFile, State)
     end.
 
 -spec format_error(Reason::term()) -> iolist().
@@ -63,7 +63,7 @@ search_for_dominating_config(State0) ->
             %% we need to set the root dir on state as well
             {ok, RootDir} = parent_dir(Config),
             State1 = rcl_state:root_dir(State0, RootDir),
-            load_config(Config, {ok, rcl_state:config_files(State1, [Config])});
+            load_config(Config, rcl_state:config_file(State1, Config));
         no_config ->
             {ok, State0}
     end.
@@ -88,11 +88,9 @@ parent_dir([H | T], Acc) ->
     parent_dir(T, [H | Acc]).
 
 
--spec load_config(file:filename(), {ok, rcl_state:t()} | relcool:error()) ->
+-spec load_config(file:filename(), rcl_state:t()) ->
                          {ok, rcl_state:t()} | relcool:error().
-load_config(_, Err = {error, _}) ->
-    Err;
-load_config(ConfigFile, {ok, State}) ->
+load_config(ConfigFile, State) ->
     {ok, CurrentCwd} = file:get_cwd(),
     ok = file:set_cwd(filename:dirname(ConfigFile)),
     Result = case file:consult(ConfigFile) of

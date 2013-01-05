@@ -112,28 +112,19 @@ setup_overrides(State, AppMetas0) ->
 
 get_lib_dirs(State) ->
     LibDirs0 = rcl_state:lib_dirs(State),
-    add_rebar_deps_dir(State, LibDirs0).
-
--spec add_rebar_deps_dir(rcl_state:t(), [file:name()]) -> [file:name()].
-add_rebar_deps_dir(State, LibDirs) ->
-    ExcludeRebar = rcl_state:get(State, discover_exclude_rebar, false),
-    case ExcludeRebar of
+    case rcl_state:get(State, disable_default_libs, false) of
         true ->
-            add_system_lib_dir(State, LibDirs);
+            LibDirs0;
         false ->
-            %% Check to see if there is a rebar.config. If so then look for a deps
-            %% dir. If both are there then we add that to the lib dirs.
-            {ok, Cwd} = file:get_cwd(),
-
-            RebarConfig = filename:join([Cwd, "rebar.config"]),
-            DepsDir = filename:join([Cwd, "deps"]),
-            case filelib:is_regular(RebarConfig) andalso filelib:is_dir(DepsDir) of
-                true ->
-                    add_system_lib_dir(State, [filename:absname(Cwd) | LibDirs]);
-                false ->
-                    add_system_lib_dir(State, LibDirs)
-            end
+            add_current_dir(State, LibDirs0)
     end.
+
+-spec add_current_dir(rcl_state:t(), [file:name()]) -> [file:name()].
+add_current_dir(State, LibDirs) ->
+    %% Check to see if there is a rebar.config. If so then look for a deps
+    %% dir. If both are there then we add that to the lib dirs.
+    Root = rcl_state:root_dir(State),
+    add_system_lib_dir(State, [filename:absname(Root) | LibDirs]).
 
 -spec add_system_lib_dir(rcl_state:t(), [file:name()]) -> [file:name()].
 add_system_lib_dir(State, LibDirs) ->

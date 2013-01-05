@@ -25,13 +25,18 @@
          init_per_testcase/2,
          all/0,
          make_release/1,
+         make_scriptless_release/1,
          make_overridden_release/1,
          make_rerun_overridden_release/1,
          make_implicit_config_release/1,
-         overlay_release/1]).
+         overlay_release/1,
+         make_goalless_release/1,
+         make_depfree_release/1,
+         make_invalid_config_release/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("kernel/include/file.hrl").
 -include_lib("kernel/include/file.hrl").
 
 suite() ->
@@ -52,8 +57,10 @@ init_per_testcase(_, Config) ->
      {state, State} | Config].
 
 all() ->
-    [make_release, make_overridden_release, make_implicit_config_release,
-     make_rerun_overridden_release, overlay_release].
+    [make_release, make_scriptless_release, make_overridden_release,
+     make_implicit_config_release, make_rerun_overridden_release,
+     overlay_release, make_goalless_release, make_depfree_release,
+     make_invalid_config_release].
 
 make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -80,6 +87,73 @@ make_release(Config) ->
                                create_random_name("relcool-output")]),
     {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [ConfigFile]),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
+    AppSpecs = rcl_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+make_invalid_config_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    ok = ec_file:write(ConfigFile,
+                       "{release, {foo, \"0.0.1\"},
+                         [goal_app_1,
+                          goal_app_2,]}"),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    {error, {rcl_prv_config,
+             {consult, _, _}}} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+                                            OutputDir, [ConfigFile]).
+
+make_scriptless_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    write_config(ConfigFile,
+                 [{generate_start_script, false},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+                              OutputDir, [ConfigFile]),
+
+    ?assert(not ec_file:exists(filename:join([OutputDir, "bin", "foo"]))),
+    ?assert(not ec_file:exists(filename:join([OutputDir, "bin", "foo-0.0.1"]))),
+
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     AppSpecs = rcl_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -123,7 +197,8 @@ make_overridden_release(Config) ->
                     goal_app_2]}]),
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
-    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+    {ok, Cwd} = file:get_cwd(),
+    {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [{OverrideAppName, OverrideAppDir}],
                              [ConfigFile]),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
@@ -171,7 +246,6 @@ make_implicit_config_release(Config) ->
                               OutputDir, []),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     ?assert(ec_file:exists(OutputDir)),
-
     AppSpecs = rcl_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -213,12 +287,13 @@ make_rerun_overridden_release(Config) ->
                     goal_app_2]}]),
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
-    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+    {ok, Cwd} = file:get_cwd(),
+    {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [{OverrideAppName, OverrideAppDir}],
                              [ConfigFile]),
 
     %% Now we run it again to see if it failse.
-    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+    {ok, State} = relcool:do(Cwd,undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [{OverrideAppName, OverrideAppDir}],
                              [ConfigFile]),
 
@@ -260,6 +335,8 @@ overlay_release(Config) ->
                   {overlay, [{mkdir, "{{target_dir}}/fooo"},
                              {copy, OverlayVars,
                               "{{target_dir}}/{{foo_dir}}/vars.config"},
+                             {copy, OverlayVars,
+                              "{{target_dir}}/{{yahoo}}/"},
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"}]},
                   {release, {foo, "0.0.1"},
@@ -269,10 +346,13 @@ overlay_release(Config) ->
     VarsFile = filename:join([LibDir1, "vars.config"]),
     write_config(VarsFile, [{yahoo, "yahoo"},
                             {yahoo2, [{foo, "bar"}]},
+                            {yahoo3, [{bar, "{{yahoo}}/{{yahoo2.foo}}"}]},
                             {foo_dir, "foodir"}]),
 
     TemplateFile = filename:join([LibDir1, "test_template"]),
     ok = file:write_file(TemplateFile, test_template_contents()),
+    {ok, FileInfo} = file:read_file_info(TemplateFile),
+    ok = file:write_file_info(TemplateFile, FileInfo#file_info{mode=8#00777}),
 
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
@@ -292,13 +372,16 @@ overlay_release(Config) ->
 
     ?assert(ec_file:exists(filename:join(OutputDir, "fooo"))),
     ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars.config"]))),
 
-    TemplateData = case file:consult(filename:join([OutputDir, test_template_resolved])) of
+    TemplateData = case file:consult(filename:join([OutputDir, "test_template_resolved"])) of
                        {ok, Details} ->
                            Details;
                        Error ->
                            erlang:throw({failed_to_consult, Error})
                    end,
+    {ok, ReadFileInfo} = file:read_file_info(filename:join([OutputDir, "test_template_resolved"])),
+    ?assertEqual(8#100777, ReadFileInfo#file_info.mode),
 
     ?assertEqual(erlang:system_info(version),
                  proplists:get_value(erts_vsn, TemplateData)),
@@ -341,7 +424,7 @@ overlay_release(Config) ->
     ?assertEqual([""],
                  proplists:get_value(goals, TemplateData)),
     ?assert(proplists:is_defined(lib_dirs, TemplateData)),
-    ?assert(proplists:is_defined(config_files, TemplateData)),
+    ?assert(proplists:is_defined(config_file, TemplateData)),
     ?assertEqual([""],
                  proplists:get_value(goals, TemplateData)),
     ?assertEqual("undefined",
@@ -358,7 +441,64 @@ overlay_release(Config) ->
     ?assertEqual("bar",
                  proplists:get_value(yahoo2_foo, TemplateData)),
     ?assertEqual("foodir",
-                 proplists:get_value(foo_dir, TemplateData)).
+                 proplists:get_value(foo_dir, TemplateData)),
+    ?assertEqual("yahoo/bar",
+                 proplists:get_value(yahoo3, TemplateData)).
+
+make_goalless_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   []}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    ?assertMatch({error,{rcl_prv_release,no_goals_specified}},
+                 relcool:do(undefined, undefined, [], [LibDir1], 2,
+                            OutputDir, [ConfigFile])).
+
+make_depfree_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [kernel,stdlib], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [kernel,stdlib], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [kernel,stdlib], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [kernel,stdlib], []),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [kernel,stdlib], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app_1]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
+                              OutputDir, [ConfigFile]),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
+    AppSpecs = rcl_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)).
 
 %%%===================================================================
 %%% Helper Functions
@@ -405,7 +545,7 @@ write_config(Filename, Values) ->
 
 test_template_contents() ->
     "{erts_vsn, \"{{erts_vsn}}\"}.\n"
-        "{release_erts_version, \"{{release_erts_version}}\"}.\n"
+     "{release_erts_version, \"{{release_erts_version}}\"}.\n"
         "{release_name, {{release_name}}}.\n"
         "{rel_vsn, \"{{release_version}}\"}.\n"
         "{release_version, \"{{release_version}}\"}.\n"
@@ -427,7 +567,7 @@ test_template_contents() ->
         "{overridden, [{{ overridden|join:\", \" }}]}.\n"
         "{goals, [\"{{ goals|join:\", \" }}\"]}.\n"
         "{lib_dirs, [\"{{ lib_dirs|join:\", \" }}\"]}.\n"
-        "{config_files, [\"{{ config_files|join:\", \" }}\"]}.\n"
+        "{config_file, \"{{ config_file }}\"}.\n"
         "{providers, [{{ providers|join:\", \" }}]}.\n"
         "{sys_config, \"{{sys_config}}\"}.\n"
         "{root_dir, \"{{root_dir}}\"}.\n"
@@ -436,4 +576,5 @@ test_template_contents() ->
         "{default_release, \"{{default_release}}\"}.\n"
         "{yahoo, \"{{yahoo}}\"}.\n"
         "{yahoo2_foo, \"{{yahoo2.foo}}\"}.\n"
-        "{foo_dir, \"{{foo_dir}}\"}.\n".
+        "{foo_dir, \"{{foo_dir}}\"}.\n"
+        "{yahoo3, \"{{yahoo3.bar}}\"}.\n".

@@ -34,7 +34,8 @@
                         relcool:error().
 args2state({error, Detail}) ->
     ?RCL_ERROR({opt_parse, Detail});
-args2state({ok, {Opts, Targets}}) ->
+args2state({ok, {Opts, Target}})
+  when erlang:length(Target) == 0; erlang:length(Target) == 1 ->
     RelName = proplists:get_value(relname, Opts, undefined),
     RelVsn = proplists:get_value(relvsn, Opts, undefined),
     case create_log(Opts,
@@ -43,15 +44,19 @@ args2state({ok, {Opts, Targets}}) ->
         Error = {error, _} ->
             Error;
         {ok, CommandLineConfig} ->
-            case validate_configs(Targets) of
+            case validate_configs(Target) of
                 Error = {error, _} ->
                     Error;
                 {ok, Configs} ->
-                    {ok, {rcl_state:new(CommandLineConfig, Configs), Configs}}
+                    {ok, rcl_state:new(CommandLineConfig, Configs)}
             end
-    end.
+    end;
+args2state({ok, {_Opts, Targets}}) ->
+    ?RCL_ERROR({invalid_targets, Targets}).
 
 -spec format_error(Reason::term()) -> iolist().
+format_error({invalid_targets, Targets}) ->
+    io_lib:format("One config must be specified! not ~p~n", [Targets]);
 format_error({opt_parse, {invalid_option, Opt}}) ->
     io_lib:format("invalid option ~s~n", [Opt]);
 format_error({opt_parse, Arg}) ->
@@ -155,8 +160,26 @@ create_lib_dirs(Opts, Acc) ->
         Error = {error, _} ->
             Error;
         ok ->
-            {ok, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc]}
+            create_root_dir(Opts, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc])
     end.
+
+-spec create_root_dir([getopt:option()], rcl_state:cmd_args()) ->
+                               {ok, rcl_state:cmd_args()} | relcool:error().
+create_root_dir(Opts, Acc) ->
+    Dir = proplists:get_value(root_dir, Opts, undefined),
+    case Dir of
+        undefined ->
+            {ok, Cwd} = file:get_cwd(),
+            create_disable_default_libs(Opts, [{root_dir, Cwd} | Acc]);
+        _ ->
+            create_disable_default_libs(Opts, [{root_dir, Dir} | Acc])
+    end.
+
+-spec create_disable_default_libs([getopt:option()], rcl_state:cmd_args()) ->
+                                         {ok, rcl_state:cmd_args()} | relcool:error().
+create_disable_default_libs(Opts, Acc) ->
+    Def = proplists:get_value(disable_default_libs, Opts, false),
+    {ok, [{disable_default_libs, Def} | Acc]}.
 
 -spec check_lib_dirs([string()]) -> ok | relcool:error().
 check_lib_dirs([]) ->

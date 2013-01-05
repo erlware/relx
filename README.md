@@ -21,6 +21,9 @@ additional specification information for releases.
 
 # OPTIONS
 
+-r *STRING*, \--root *STRING*
+:   Specify the root directory for the project (if different from cwd)
+
 -n *STRING*, \--relname *STRING*
 :   Specify the name for the release that will be generated
 

@@ -210,11 +210,18 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     ErlOpts = rcl_state:get(State, erl_opts, ""),
     StartFile = bin_file_contents(RelName, RelVsn,
                                   rcl_release:erts(Release),
- ErlOpts),
-    ok = file:write_file(VsnRel, StartFile),
-    ok = file:change_mode(VsnRel, 8#777),
-    ok = file:write_file(BareRel, StartFile),
-    ok = file:change_mode(BareRel, 8#777),
+                                  ErlOpts),
+    %% We generate the start script by default, unless the user
+    %% tells us not too
+    case rcl_state:get(State, generate_start_script, true) of
+        false ->
+            ok;
+        _ ->
+            ok = file:write_file(VsnRel, StartFile),
+            ok = file:change_mode(VsnRel, 8#777),
+            ok = file:write_file(BareRel, StartFile),
+            ok = file:change_mode(BareRel, 8#777)
+    end,
     copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir).
 
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
