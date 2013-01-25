@@ -88,6 +88,6 @@ spec_parse_fail_case(_Config) ->
 
 config_fail_case(_Config) ->
     ConfigFile = "does-not-exist",
-    CmdLine = [ConfigFile],
+    CmdLine = ["-c", ConfigFile],
     ?assertMatch({error, {_, {invalid_config_file, ConfigFile}}},
                  rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).

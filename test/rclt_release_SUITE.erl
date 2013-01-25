@@ -52,7 +52,7 @@ init_per_testcase(_, Config) ->
     DataDir = proplists:get_value(data_dir, Config),
     LibDir1 = filename:join([DataDir, create_random_name("lib_dir1_")]),
     ok = rcl_util:mkdir_p(LibDir1),
-    State = rcl_state:new([{lib_dirs, [LibDir1]}], []),
+    State = rcl_state:new([{lib_dirs, [LibDir1]}], release),
     [{lib1, LibDir1},
      {state, State} | Config].
 
@@ -86,7 +86,7 @@ make_release(Config) ->
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
     {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
-                              OutputDir, [ConfigFile]),
+                              OutputDir, ConfigFile),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     AppSpecs = rcl_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -122,7 +122,7 @@ make_invalid_config_release(Config) ->
                                create_random_name("relcool-output")]),
     {error, {rcl_prv_config,
              {consult, _, _}}} = relcool:do(undefined, undefined, [], [LibDir1], 2,
-                                            OutputDir, [ConfigFile]).
+                                            OutputDir, ConfigFile).
 
 make_scriptless_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -149,7 +149,7 @@ make_scriptless_release(Config) ->
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
     {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
-                              OutputDir, [ConfigFile]),
+                              OutputDir, ConfigFile),
 
     ?assert(not ec_file:exists(filename:join([OutputDir, "bin", "foo"]))),
     ?assert(not ec_file:exists(filename:join([OutputDir, "bin", "foo-0.0.1"]))),
@@ -200,7 +200,7 @@ make_overridden_release(Config) ->
     {ok, Cwd} = file:get_cwd(),
     {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
                               OutputDir, [{OverrideAppName, OverrideAppDir}],
-                             [ConfigFile]),
+                             ConfigFile),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     AppSpecs = rcl_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -289,13 +289,13 @@ make_rerun_overridden_release(Config) ->
                                create_random_name("relcool-output")]),
     {ok, Cwd} = file:get_cwd(),
     {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
-                              OutputDir, [{OverrideAppName, OverrideAppDir}],
-                             [ConfigFile]),
+                             OutputDir, [{OverrideAppName, OverrideAppDir}],
+                             ConfigFile),
 
     %% Now we run it again to see if it failse.
     {ok, State} = relcool:do(Cwd,undefined, undefined, [], [LibDir1], 2,
-                              OutputDir, [{OverrideAppName, OverrideAppDir}],
-                             [ConfigFile]),
+                             OutputDir, [{OverrideAppName, OverrideAppDir}],
+                             ConfigFile),
 
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     AppSpecs = rcl_release:applications(Release),
@@ -358,7 +358,7 @@ overlay_release(Config) ->
                                create_random_name("relcool-output")]),
 
     {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
-                              OutputDir, [ConfigFile]),
+                              OutputDir, ConfigFile),
 
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     AppSpecs = rcl_release:applications(Release),
@@ -469,7 +469,7 @@ make_goalless_release(Config) ->
                                create_random_name("relcool-output")]),
     ?assertMatch({error,{rcl_prv_release,no_goals_specified}},
                  relcool:do(undefined, undefined, [], [LibDir1], 2,
-                            OutputDir, [ConfigFile])).
+                            OutputDir, ConfigFile)).
 
 make_depfree_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -494,7 +494,7 @@ make_depfree_release(Config) ->
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
     {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
-                              OutputDir, [ConfigFile]),
+                             OutputDir, ConfigFile),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     AppSpecs = rcl_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),

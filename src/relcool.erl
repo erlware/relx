@@ -48,7 +48,7 @@ main(Args) ->
         {ok, State} ->
             run_relcool_process(rcl_state:caller(State, command_line));
         Error={error, _} ->
-            report_error(rcl_state:caller(rcl_state:new([], []),
+            report_error(rcl_state:caller(rcl_state:new([], undefined),
                                           command_line), Error)
     end.
 
@@ -106,8 +106,9 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Con
                            {output_dir, OutputDir},
                            {lib_dirs, LibDirs},
                            {root_dir, RootDir},
-                           {log, rcl_log:new(LogLevel)}],
-                          Config),
+                           {log, rcl_log:new(LogLevel)},
+                           {config, Config}],
+                          release),
     run_relcool_process(rcl_state:caller(State, api)).
 
 
@@ -127,6 +128,7 @@ opt_spec_list() ->
       "Disable the default system added lib dirs (means you must add them all manually"},
      {log_level, $V, "verbose", {integer, 1},
       "Verbosity level, maybe between 0 and 2"},
+     {config, $c, "config", string, "The path to a config file"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
 -spec format_error(Reason::term()) -> iolist().

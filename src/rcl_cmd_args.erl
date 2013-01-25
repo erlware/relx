@@ -38,18 +38,17 @@ args2state({ok, {Opts, Target}})
   when erlang:length(Target) == 0; erlang:length(Target) == 1 ->
     RelName = proplists:get_value(relname, Opts, undefined),
     RelVsn = proplists:get_value(relvsn, Opts, undefined),
-    case create_log(Opts,
-                    [{relname, RelName},
-                     {relvsn, RelVsn}]) of
-        Error = {error, _} ->
-            Error;
-        {ok, CommandLineConfig} ->
-            case validate_configs(Target) of
+    case convert_target(Target) of
+        {ok, AtomizedTarget} ->
+            case create_log(Opts, [{relname, RelName},
+                                   {relvsn, RelVsn}]) of
                 Error = {error, _} ->
                     Error;
-                {ok, Configs} ->
-                    {ok, rcl_state:new(CommandLineConfig, Configs)}
-            end
+                {ok, CommandLineConfig} ->
+                    handle_config(Opts, AtomizedTarget, CommandLineConfig)
+            end;
+        Error ->
+            Error
     end;
 args2state({ok, {_Opts, Targets}}) ->
     ?RCL_ERROR({invalid_targets, Targets}).
@@ -84,32 +83,47 @@ format_error({not_directory, Dir}) ->
     io_lib:format("Library directory does not exist: ~s", [Dir]);
 format_error({invalid_log_level, LogLevel}) ->
     io_lib:format("Invalid log level specified -V ~p, log level must be in the"
-                  " range 0..2", [LogLevel]).
+                 " range 0..2", [LogLevel]);
+format_error({invalid_target, Target}) ->
+    io_lib:format("Invalid action specified: ~s", [Target]).
+
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec validate_configs([file:filename()]) ->
-                              {ok, [file:filename()]} | relcool:error().
-validate_configs(Configs) ->
-    Result =
-        lists:foldl(fun(_Config, Err = {error, _}) ->
-                            Err;
-                       (Config, Acc) ->
-                            case filelib:is_regular(Config) of
-                                true ->
-                                    [filename:absname(Config) | Acc];
-                                false ->
-                                    ?RCL_ERROR({invalid_config_file, Config})
-                            end
-                    end, [], Configs),
-    case Result of
-        {error, _} ->
-            Result;
-        _ ->
-            %% Order may be important so lets make sure they remain in the same
-            %% order they came in as
-            {ok, lists:reverse(Result)}
+-spec handle_config([getopt:option()], atom(), proplists:proplist()) ->
+                           {ok, {rcl_state:t(), [string()]}} |
+                           relcool:error().
+handle_config(Opts, Target, CommandLineConfig) ->
+    case validate_config(proplists:get_value(config, Opts, [])) of
+        Error = {error, _} ->
+            Error;
+        {ok, Config} ->
+            {ok, rcl_state:new([{config, Config} | CommandLineConfig], Target)}
+    end.
+
+-spec convert_target([string()]) -> {ok, release | relup} | relcool:error().
+convert_target([]) ->
+    {ok, release};
+convert_target(["release"]) ->
+    {ok, release};
+convert_target(["relup"]) ->
+    {ok, relup};
+convert_target(Target) ->
+    ?RCL_ERROR({invalid_target, Target}).
+
+-spec validate_config(file:filename() | undefined) ->
+                             {ok, file:filename() | undefined} | relcool:error().
+validate_config(undefined) ->
+    {ok, undefined};
+validate_config("") ->
+    {ok, undefined};
+validate_config(Config) ->
+    case filelib:is_regular(Config) of
+        true ->
+            filename:absname(Config);
+        false ->
+            ?RCL_ERROR({invalid_config_file, Config})
     end.
 
 -spec create_log([getopt:option()], rcl_state:cmd_args()) ->
