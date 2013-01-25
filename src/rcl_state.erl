@@ -1,4 +1,4 @@
-%%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -62,6 +62,7 @@
 -record(state_t, {log :: rcl_log:t(),
                   root_dir :: file:name(),
                   caller :: caller(),
+                  action :: atom(),
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename(),
@@ -92,14 +93,17 @@
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(proplists:proplist(), [file:filename()] | file:filename()) -> t().
-new(PropList, Target) when erlang:is_list(PropList) ->
+-spec new(proplists:proplist(), atom()) -> t().
+new(PropList, Target)
+  when erlang:is_list(PropList),
+     erlang:is_atom(Target) ->
     {ok, Root} = file:get_cwd(),
     State0 =
         #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
                  output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=proplists:get_value(lib_dirs, PropList, ""),
-                 config_file=Target,
+                 config_file=proplists:get_value(config, PropList, ""),
+                 action = Target,
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
                  releases=ec_dictionary:new(ec_dict),
@@ -286,7 +290,7 @@ create_logic_providers(State0) ->
 
 new_test() ->
     LogState = rcl_log:new(error),
-    RCLState = new([{log, LogState}], []),
+    RCLState = new([{log, LogState}], release),
     ?assertMatch(LogState, log(RCLState)).
 
 -endif.

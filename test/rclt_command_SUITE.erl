@@ -1,4 +1,4 @@
-%%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 92 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -88,6 +88,6 @@ spec_parse_fail_case(_Config) ->
 
 config_fail_case(_Config) ->
     ConfigFile = "does-not-exist",
-    CmdLine = [ConfigFile],
+    CmdLine = ["-c", ConfigFile],
     ?assertMatch({error, {_, {invalid_config_file, ConfigFile}}},
                  rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).

@@ -1,4 +1,4 @@
-%%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 92 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -46,7 +46,7 @@ init_per_testcase(_, Config) ->
     LibDir2 = filename:join([DataDir, create_random_name("lib_dir2_")]),
     ok = rcl_util:mkdir_p(LibDir1),
     ok = rcl_util:mkdir_p(LibDir2),
-    State = rcl_state:new([{lib_dirs, [LibDir1, LibDir2]}], []),
+    State = rcl_state:new([{lib_dirs, [LibDir1, LibDir2]}], release),
     [{lib1, LibDir1},
      {lib2, LibDir2},
      {state, State} | Config].
