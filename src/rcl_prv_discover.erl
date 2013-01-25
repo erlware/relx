@@ -42,14 +42,13 @@ init(State) ->
 %% looking for OTP Applications
 -spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
 do(State) ->
-    OutputDir = rcl_state:output_dir(State),
     LibDirs = get_lib_dirs(State),
     rcl_log:info(rcl_state:log(State),
                   fun() ->
                           ["Resolving OTP Applications from directories:\n",
                            [[rcl_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
                   end),
-    resolve_app_metadata(State, LibDirs, OutputDir).
+    resolve_app_metadata(State, LibDirs).
 
 -spec format_error([ErrorDetail::term()]) -> iolist().
 format_error(ErrorDetails)
@@ -59,10 +58,9 @@ format_error(ErrorDetails)
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-resolve_app_metadata(State, LibDirs, OutputDir) ->
+resolve_app_metadata(State, LibDirs) ->
     AppMeta0 = lists:flatten(ec_plists:map(fun(LibDir) ->
-                                               discover_dir([OutputDir],
-                                                            LibDir)
+                                               discover_dir([], LibDir)
                                            end, LibDirs)),
     AppMeta1 = setup_overrides(State, AppMeta0),
 
