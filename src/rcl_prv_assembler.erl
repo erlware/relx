@@ -127,6 +127,16 @@ copy_app(LibDir, App) ->
     AppVsn = rcl_app_info:vsn_as_string(App),
     AppDir = rcl_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
+    if
+        AppDir == TargetDir ->
+            %% No need to do anything here, discover found something already in
+            %% a release dir
+            ok;
+        true ->
+            copy_app(App, AppDir, TargetDir)
+    end.
+
+copy_app(App, AppDir, TargetDir) ->
     remove_symlink_or_directory(TargetDir),
     case rcl_app_info:link(App) of
         true ->
