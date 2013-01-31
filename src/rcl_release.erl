@@ -32,6 +32,7 @@
          realize/3,
          applications/1,
          application_details/1,
+         application_details/2,
          realized/1,
          metadata/1,
          format/1,
@@ -134,11 +135,17 @@ applications(#release_t{applications=Apps}) ->
     Apps.
 
 %% @doc this gives the rcl_app_info objects representing the applications in
-%% this release. These can only be populated by the 'realize' call in this
-%% module.
+%% this release. These should only be populated by the 'realize' call in this
+%% module or by reading an existing rel file.
 -spec application_details(t()) -> [rcl_app_info:t()].
 application_details(#release_t{app_detail=App}) ->
     App.
+
+%% @doc this is only expected to be called by a process building a new release
+%% from an existing rel file.
+-spec application_details(t(), [rcl_app_info:t()]) -> t().
+application_details(Release, AppDetail) ->
+    Release#release_t{app_detail=AppDetail}.
 
 -spec realized(t()) -> boolean().
 realized(#release_t{realized=Realized}) ->

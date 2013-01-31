@@ -41,11 +41,20 @@ init(State) ->
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
 -spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
-do(State) ->
-    LibDirs = get_lib_dirs(State),
-    case rcl_app_discovery:do(State, LibDirs) of
+do(State0) ->
+    LibDirs = get_lib_dirs(State0),
+    case rcl_app_discovery:do(State0, LibDirs) of
         {ok, AppMeta} ->
-            {ok, rcl_state:available_apps(State, AppMeta)};
+            case rcl_rel_discovery:do(State0, LibDirs, AppMeta) of
+                {ok, Releases} ->
+                    State1 = rcl_state:available_apps(State0, AppMeta),
+                    State3 = lists:foldl(fun(Rel, State2) ->
+                                                 rcl_state:add_release(State2, Rel)
+                                         end, State1, Releases),
+                    {ok, State3};
+                Error ->
+                    Error
+            end;
         Error ->
             Error
     end.
