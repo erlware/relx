@@ -32,7 +32,8 @@
          overlay_release/1,
          make_goalless_release/1,
          make_depfree_release/1,
-         make_invalid_config_release/1]).
+         make_invalid_config_release/1,
+         make_relup_release/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -60,7 +61,7 @@ all() ->
     [make_release, make_scriptless_release, make_overridden_release,
      make_implicit_config_release, make_rerun_overridden_release,
      overlay_release, make_goalless_release, make_depfree_release,
-     make_invalid_config_release].
+     make_invalid_config_release, make_relup_release].
 
 make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -178,7 +179,7 @@ make_overridden_release(Config) ->
              || _ <- lists:seq(1, 100)]],
     OverrideApp = create_random_name("override_app"),
     OverrideVsn = create_random_vsn(),
-    OverrideAppDir = filename:join(OverrideDir1, OverrideApp),
+    OverrideAppDir = filename:join(OverrideDir1, OverrideApp ++ "-" ++ OverrideVsn),
     OverrideAppName = erlang:list_to_atom(OverrideApp),
 
     create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
@@ -268,7 +269,8 @@ make_rerun_overridden_release(Config) ->
              || _ <- lists:seq(1, 100)]],
     OverrideApp = create_random_name("override_app"),
     OverrideVsn = create_random_vsn(),
-    OverrideAppDir = filename:join(OverrideDir1, OverrideApp),
+    OverrideAppDir = filename:join(OverrideDir1, OverrideApp ++ "-"
+                                  ++ OverrideVsn),
     OverrideAppName = erlang:list_to_atom(OverrideApp),
 
     create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
@@ -500,11 +502,73 @@ make_depfree_release(Config) ->
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)).
 
+make_relup_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "goal_app_1", "0.0.2", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "goal_app_1", "0.0.3", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "goal_app_2", "0.0.2", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "goal_app_2", "0.0.3", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [{goal_app_1, "0.0.1"},
+                    {goal_app_2, "0.0.1"}]},
+                 {release, {foo, "0.0.2"},
+                   [{goal_app_1, "0.0.2"},
+                    {goal_app_2, "0.0.2"}]},
+                 {release, {foo, "0.0.3"},
+                   [{goal_app_1, "0.0.3"},
+                    {goal_app_2, "0.0.3"}]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    {ok, _} = relcool:do(foo, "0.0.1", [], [LibDir1], 2,
+                             OutputDir, ConfigFile),
+    {ok, _} = relcool:do(foo, "0.0.2", [], [LibDir1], 2,
+                         OutputDir, ConfigFile),
+    {ok, State} = relcool:do(foo, "0.0.3", [], [LibDir1], 2,
+                             OutputDir, ConfigFile),
+
+    %% we should have one 'resolved' release and three discovered releases.
+    ?assertMatch([{foo, "0.0.1"},
+                  {foo, "0.0.2"},
+                  {foo, "0.0.3"}],
+                 lists:sort(ec_dictionary:keys(rcl_state:releases(State)))),
+    Release = ec_dictionary:get({foo, "0.0.3"}, rcl_state:releases(State)),
+    ?assert(rcl_release:realized(Release)),
+    ?assert(not rcl_release:realized(ec_dictionary:get({foo, "0.0.2"},
+                                                       rcl_state:releases(State)))),
+    ?assert(not rcl_release:realized(ec_dictionary:get({foo, "0.0.1"},
+                                                      rcl_state:releases(State)))),
+    ?assertMatch(foo, rcl_release:name(Release)),
+    ?assertMatch("0.0.3", rcl_release:vsn(Release)),
+    AppSpecs = rcl_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.3"}, AppSpecs)),
+    ?assert(lists:member({goal_app_2, "0.0.3"}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
 %%%===================================================================
 %%% Helper Functions
 %%%===================================================================
 create_app(Dir, Name, Vsn, Deps, LibDeps) ->
-    AppDir = filename:join([Dir, Name]),
+    AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
     write_app_file(AppDir, Name, Vsn, Deps, LibDeps),
     write_beam_file(AppDir, Name),
     rcl_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,

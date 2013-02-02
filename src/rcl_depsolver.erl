@@ -471,12 +471,13 @@ add_constraint(SrcPkg, SrcVsn, PkgsConstraints, PkgConstraint) ->
             {value, {PkgName, Constraints0}} ->
                 Constraints0
         end,
-    [{PkgName, [{PkgConstraint, {SrcPkg, SrcVsn}} | Constraints1]} |
-     lists:keydelete(PkgName, 1, PkgsConstraints)].
+    [{PkgName, [{PkgConstraint, {SrcPkg, SrcVsn}} | Constraints1]}
+    | lists:keydelete(PkgName, 1, PkgsConstraints)].
 
 %% @doc
 %% Extend the currently active constraints correctly for the given constraints.
--spec extend_constraints(pkg_name(), vsn(), constraints(),constraints()) -> [{pkg_name(), constraints()}].
+-spec extend_constraints(pkg_name(), vsn(), constraints(),constraints()) ->
+                                [{pkg_name(), constraints()}].
 extend_constraints(SrcPkg, SrcVsn, ExistingConstraints0, NewConstraints) ->
     lists:foldl(fun (Constraint, ExistingConstraints1) ->
                         add_constraint(SrcPkg, SrcVsn, ExistingConstraints1, Constraint)

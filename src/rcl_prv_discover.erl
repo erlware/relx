@@ -41,73 +41,33 @@ init(State) ->
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
 -spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
-do(State) ->
-    LibDirs = get_lib_dirs(State),
-    rcl_log:info(rcl_state:log(State),
-                  fun() ->
-                          ["Resolving OTP Applications from directories:\n",
-                           [[rcl_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
-                  end),
-    resolve_app_metadata(State, LibDirs).
+do(State0) ->
+    LibDirs = get_lib_dirs(State0),
+    case rcl_app_discovery:do(State0, LibDirs) of
+        {ok, AppMeta} ->
+            case rcl_rel_discovery:do(State0, LibDirs, AppMeta) of
+                {ok, Releases} ->
+                    State1 = rcl_state:available_apps(State0, AppMeta),
+                    State3 = lists:foldl(fun(Rel, State2) ->
+                                                 rcl_state:add_release(State2, Rel)
+                                         end, State1, Releases),
+                    {ok, State3};
+                Error ->
+                    Error
+            end;
+        Error ->
+            Error
+    end.
 
--spec format_error([ErrorDetail::term()]) -> iolist().
-format_error(ErrorDetails)
-  when erlang:is_list(ErrorDetails) ->
-    [[format_detail(ErrorDetail), "\n"] || ErrorDetail <- ErrorDetails].
+%% @doc this is here to comply with the signature. However, we do not actually
+%% produce any errors and so simply return an empty string.
+-spec format_error(any()) -> iolist().
+format_error(_) ->
+    "".
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-resolve_app_metadata(State, LibDirs) ->
-    AppMeta0 = lists:flatten(ec_plists:map(fun(LibDir) ->
-                                               discover_dir([], LibDir)
-                                           end, LibDirs)),
-    AppMeta1 = setup_overrides(State, AppMeta0),
-
-    Errors = [case El of
-                  {error, Ret} -> Ret;
-                  _ -> El
-              end
-              || El <- AppMeta1,
-                 case El of
-                     {error, _} ->
-                         true;
-                     _ ->
-                         false
-                 end],
-
-    case Errors of
-        [] ->
-            AppMeta2 = lists:flatten(AppMeta1),
-            rcl_log:debug(rcl_state:log(State),
-                          fun() ->
-                                  ["Resolved the following OTP Applications from the system: \n",
-                                   [[rcl_app_info:format(1, App), "\n"] || App <- AppMeta2]]
-                          end),
-            {ok, rcl_state:available_apps(State, AppMeta2)};
-        _ ->
-            ?RCL_ERROR(Errors)
-    end.
-
-app_name({error, _}) ->
-    undefined;
-app_name(AppMeta) ->
-    rcl_app_info:name(AppMeta).
-
-setup_overrides(State, AppMetas0) ->
-    Overrides = rcl_state:overrides(State),
-    AppMetas1 = [AppMeta || AppMeta <- AppMetas0,
-                            not lists:keymember(app_name(AppMeta), 1, Overrides)],
-    [case is_valid_otp_app(filename:join([FileName, "ebin",
-                                         erlang:atom_to_list(AppName) ++ ".app"])) of
-         [] ->
-             {error, {invalid_override, AppName, FileName}};
-         Error = {error, _} ->
-             Error;
-         App ->
-             rcl_app_info:link(App, true)
-     end || {AppName, FileName} <- Overrides] ++ AppMetas1.
-
 get_lib_dirs(State) ->
     LibDirs0 = rcl_state:lib_dirs(State),
     case rcl_state:get(State, disable_default_libs, false) of
@@ -140,121 +100,3 @@ add_system_lib_dir(State, LibDirs) ->
                     LibDirs
             end
     end.
-
--spec format_detail(ErrorDetail::term()) -> iolist().
-format_detail({error, {invalid_override, AppName, FileName}}) ->
-    io_lib:format("Override {~p, ~p} is not a valid OTP App. Perhaps you forgot to build it?",
-                  [AppName, FileName]);
-format_detail({accessing, File, eaccess}) ->
-    io_lib:format("permission denied accessing file ~s", [File]);
-format_detail({accessing, File, Type}) ->
-    io_lib:format("error (~p) accessing file ~s", [Type, File]);
-format_detail({no_beam_files, EbinDir}) ->
-    io_lib:format("no beam files found in directory ~s", [EbinDir]);
-format_detail({not_a_directory, EbinDir}) ->
-    io_lib:format("~s is not a directory when it should be a directory", [EbinDir]);
-format_detail({unable_to_load_app, AppDir, _}) ->
-    io_lib:format("Unable to load the application metadata from ~s", [AppDir]);
-format_detail({invalid_app_file, File}) ->
-    io_lib:format("Application metadata file exists but is malformed: ~s",
-                  [File]);
-format_detail({unversioned_app, AppDir, _AppName}) ->
-    io_lib:format("Application metadata exists but version is not available: ~s",
-                  [AppDir]);
-format_detail({app_info_error, {Module, Detail}}) ->
-    Module:format_error(Detail).
-
--spec discover_dir([file:name()],
-                   file:name()) ->
-                          [rcl_app_info:t() | {error, Reason::term()}] |
-                          rcl_app_info:t() | {error, Reason::term()}.
-discover_dir(IgnoreDirs, File) ->
-    case (not lists:member(File, IgnoreDirs))
-        andalso filelib:is_dir(File) of
-        true ->
-            case file:list_dir(File) of
-                {error, Reason} ->
-                    {error, {accessing, File, Reason}};
-                {ok, List} ->
-                    ec_plists:map(fun(LibDir) ->
-                                     discover_dir(IgnoreDirs, LibDir)
-                                  end, [filename:join([File, Dir]) || Dir <- List])
-            end;
-        false ->
-            is_valid_otp_app(File)
-    end.
-
--spec is_valid_otp_app(file:name()) -> rcl_app_info:t() | {error, Reason::term()} | [].
-is_valid_otp_app(File) ->
-    %% Is this an ebin dir?
-    EbinDir = filename:dirname(File),
-    case filename:basename(EbinDir) of
-        "ebin" ->
-            case lists:suffix(".app", File) of
-                true ->
-                    has_at_least_one_beam(EbinDir, File);
-                false ->
-                    []
-            end;
-        _ ->
-            []
-    end.
-
--spec has_at_least_one_beam(file:name(), file:filename()) ->
-                                   rcl_app_info:t() | {error, Reason::term()}.
-has_at_least_one_beam(EbinDir, File) ->
-    case file:list_dir(EbinDir) of
-        {ok, List} ->
-            case lists:any(fun(NFile) -> lists:suffix(".beam", NFile) end, List) of
-                true ->
-                    gather_application_info(EbinDir, File);
-                false ->
-                    {error, {no_beam_files, EbinDir}}
-            end;
-        _ ->
-            {error, {not_a_directory, EbinDir}}
-    end.
-
--spec gather_application_info(file:name(), file:filename()) ->
-                                     rcl_app_info:t() | {error, Reason::term()}.
-gather_application_info(EbinDir, File) ->
-    AppDir = filename:dirname(EbinDir),
-    case file:consult(File) of
-        {ok, [{application, AppName, AppDetail}]} ->
-            get_vsn(AppDir, AppName, AppDetail);
-        {error, Reason} ->
-            {error, {unable_to_load_app, AppDir, Reason}};
-        _ ->
-            {error, {invalid_app_file, File}}
-    end.
-
--spec get_vsn(file:name(), atom(), proplists:proplist()) ->
-                     rcl_app_info:t() | {error, Reason::term()}.
-get_vsn(AppDir, AppName, AppDetail) ->
-    case proplists:get_value(vsn, AppDetail) of
-        undefined ->
-            {error, {unversioned_app, AppDir, AppName}};
-        AppVsn ->
-            case get_deps(AppDir, AppName, AppVsn, AppDetail) of
-                {ok, App} ->
-                    App;
-                {error, Detail} ->
-                    {error, {app_info_error, Detail}}
-            end
-    end.
-
--spec get_deps(file:name(), atom(), string(), proplists:proplist()) ->
-                      {ok, rcl_app_info:t()} | {error, Reason::term()}.
-get_deps(AppDir, AppName, AppVsn, AppDetail) ->
-    ActiveApps = proplists:get_value(applications, AppDetail, []),
-    LibraryApps = proplists:get_value(included_applications, AppDetail, []),
-    rcl_app_info:new(AppName, AppVsn, AppDir, ActiveApps, LibraryApps).
-
-%%%===================================================================
-%%% Test Functions
-%%%===================================================================
-
--ifndef(NOTEST).
--include_lib("eunit/include/eunit.hrl").
-
--endif.
