@@ -38,14 +38,18 @@ endif
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf \
 	get-deps escript clean-common-test-data rebuild
 
-all: compile escript dialyzer test
+all: deps compile escript dialyzer test
 
 # =============================================================================
 # Rules to build the system
 # =============================================================================
 
-get-deps:
+deps:
 	$(REBAR) get-deps
+	$(REBAR) compile
+
+update-deps:
+	$(REBAR) update-deps
 	$(REBAR) compile
 
 compile:

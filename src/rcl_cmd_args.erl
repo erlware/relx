@@ -121,7 +121,7 @@ validate_config("") ->
 validate_config(Config) ->
     case filelib:is_regular(Config) of
         true ->
-            filename:absname(Config);
+            {ok, filename:absname(Config)};
         false ->
             ?RCL_ERROR({invalid_config_file, Config})
     end.
