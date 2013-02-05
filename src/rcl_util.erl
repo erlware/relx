@@ -25,7 +25,8 @@
          to_binary/1,
          is_error/1,
          error_reason/1,
-         indent/1]).
+         indent/1,
+         optional_to_string/1]).
 
 -define(ONE_LEVEL_INDENT, "    ").
 %%============================================================================
@@ -68,7 +69,11 @@ is_error({error, _}) ->
 is_error(_) ->
     false.
 
-
+%% @doc convert optional argument to empty string if undefined
+optional_to_string(undefined) ->
+    "";
+optional_to_string(Value) when is_list(Value) ->
+    Value.
 
 %%%===================================================================
 %%% Test Functions
