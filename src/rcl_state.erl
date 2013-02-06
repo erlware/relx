@@ -65,7 +65,7 @@
                   action :: atom(),
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
-                  config_file=[] :: file:filename(),
+                  config_file=[] :: file:filename() | undefined,
                   goals=[] :: [rcl_depsolver:constraint()],
                   providers = [] :: [rcl_provider:t()],
                   available_apps = [] :: [rcl_app_info:t()],
@@ -102,7 +102,7 @@ new(PropList, Target)
         #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
                  output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=proplists:get_value(lib_dirs, PropList, ""),
-                 config_file=proplists:get_value(config, PropList, ""),
+                 config_file=proplists:get_value(config, PropList, undefined),
                  action = Target,
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
@@ -143,11 +143,11 @@ lib_dirs(#state_t{lib_dirs=LibDir}) ->
 goals(#state_t{goals=TS}) ->
     TS.
 
--spec config_file(t()) -> file:filename().
+-spec config_file(t()) -> file:filename() | undefined.
 config_file(#state_t{config_file=ConfigFiles}) ->
     ConfigFiles.
 
--spec config_file(t(), file:filename()) -> t().
+-spec config_file(t(), file:filename() | undefined) -> t().
 config_file(State, ConfigFiles) ->
     State#state_t{config_file=ConfigFiles}.
 
