@@ -89,7 +89,7 @@
 %%============================================================================
 -spec new(atom(), string()) -> t().
 new(ReleaseName, ReleaseVsn) ->
-    #release_t{name=ReleaseName, vsn=ReleaseVsn,
+    #release_t{name=to_atom(ReleaseName), vsn=ReleaseVsn,
                annotations=ec_dictionary:new(ec_dict)}.
 
 -spec name(t()) -> atom().
@@ -170,7 +170,7 @@ format(Release) ->
 format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
                          goals = Goals, applications=Apps}) ->
     BaseIndent = rcl_util:indent(Indent),
-    [BaseIndent, "release: ", erlang:atom_to_list(Name), "-", Vsn, "\n",
+    [BaseIndent, "release: ", rcl_util:to_string(Name), "-", Vsn, "\n",
      rcl_util:indent(Indent + 1), " erts-", ErtsVsn,
      ", realized = ",  erlang:atom_to_list(Realized), "\n",
      BaseIndent, "goals: \n",
@@ -380,3 +380,10 @@ parse_version({AppName, Version, Constraint0, Constraint1})
     {AppName, rcl_depsolver:parse_version(Version), Constraint1, Constraint0};
 parse_version(Constraint) ->
     Constraint.
+
+to_atom(RelName)
+  when erlang:is_list(RelName) ->
+    erlang:list_to_atom(RelName);
+to_atom(Else)
+  when erlang:is_atom(Else) ->
+    Else.
