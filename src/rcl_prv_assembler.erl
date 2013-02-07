@@ -1,4 +1,4 @@
-%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -44,11 +44,16 @@ do(State) ->
     {RelName, RelVsn} = rcl_state:default_release(State),
     Release = rcl_state:get_release(State, RelName, RelVsn),
     OutputDir = rcl_state:output_dir(State),
-    case rcl_release:realized(Release) of
-        true ->
-            copy_app_directories_to_output(State, Release, OutputDir);
-        false ->
-            ?RCL_ERROR({unresolved_release, RelName, RelVsn})
+    case create_output_dir(OutputDir) of
+        ok ->
+            case rcl_release:realized(Release) of
+                true ->
+                    copy_app_directories_to_output(State, Release, OutputDir);
+                false ->
+                    ?RCL_ERROR({unresolved_release, RelName, RelVsn})
+            end;
+        Error ->
+            Error
     end.
 
 -spec format_error(ErrorDetail::term()) -> iolist().
@@ -69,13 +74,35 @@ format_error({release_script_generation_error, RelFile}) ->
 format_error({release_script_generation_warning, Module, Warnings}) ->
     ["Warnings generating release \s",
      rcl_util:indent(1), Module:format_warning(Warnings)];
+format_error({unable_to_create_output_dir, OutputDir}) ->
+    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
+                  [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
     ["Errors generating release \n",
-     rcl_util:indent(1), Module:format_error(Errors)].
+     rcl_util:indent(1), Module:format_error(Errors)];
+format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
+    io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
+                  [AppDir, TargetDir, rcl_util:indent(1),
+                   file:format_error(Reason)]).
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+-spec create_output_dir(file:name()) ->
+                               ok | {error, Reason::term()}.
+create_output_dir(OutputDir) ->
+    case filelib:is_dir(OutputDir) of
+        false ->
+            case rcl_util:mkdir_p(OutputDir) of
+                ok ->
+                    ok;
+                {error, _} ->
+                    ?RCL_ERROR({unable_to_create_output_dir, OutputDir})
+            end;
+        true ->
+            ok
+    end.
+
 copy_app_directories_to_output(State, Release, OutputDir) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = ec_file:mkdir_p(LibDir),
@@ -85,9 +112,9 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
                               (_) ->
                                    false
                            end,
-                           ec_plists:map(fun(App) ->
-                                                 copy_app(LibDir, App)
-                                         end, Apps)),
+                          lists:flatten(ec_plists:map(fun(App) ->
+                                                              copy_app(LibDir, App)
+                                                      end, Apps))),
     case Result of
         [E | _] ->
             E;
@@ -100,35 +127,65 @@ copy_app(LibDir, App) ->
     AppVsn = rcl_app_info:vsn_as_string(App),
     AppDir = rcl_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
+    if
+        AppDir == TargetDir ->
+            %% No need to do anything here, discover found something already in
+            %% a release dir
+            ok;
+        true ->
+            copy_app(App, AppDir, TargetDir)
+    end.
+
+copy_app(App, AppDir, TargetDir) ->
+    remove_symlink_or_directory(TargetDir),
     case rcl_app_info:link(App) of
         true ->
-            file:make_symlink(AppDir, TargetDir);
+            link_directory(AppDir, TargetDir);
         false ->
-            ec_plists:map(fun(SubDir) ->
-                                  copy_dir(AppDir, TargetDir, SubDir)
-                          end, ["ebin",
-                                "include",
-                                "priv",
-                                "src",
-                                "c_src",
-                                "README",
-                                "LICENSE"])
+            copy_directory(AppDir, TargetDir)
     end.
+
+remove_symlink_or_directory(TargetDir) ->
+    case ec_file:is_symlink(TargetDir) of
+        true ->
+            ec_file:remove(TargetDir);
+        false ->
+            case filelib:is_dir(TargetDir) of
+                true ->
+                    ok = ec_file:remove(TargetDir, [recursive]);
+                false ->
+                    ok
+            end
+    end.
+
+link_directory(AppDir, TargetDir) ->
+    case file:make_symlink(AppDir, TargetDir) of
+        {error, Reason} ->
+            ?RCL_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
+        ok ->
+            ok
+    end.
+
+copy_directory(AppDir, TargetDir) ->
+    ec_plists:map(fun(SubDir) ->
+                          copy_dir(AppDir, TargetDir, SubDir)
+                  end, ["ebin",
+                        "include",
+                        "priv",
+                        "src",
+                        "c_src",
+                        "README",
+                        "LICENSE"]).
 
 copy_dir(AppDir, TargetDir, SubDir) ->
     SubSource = filename:join(AppDir, SubDir),
     SubTarget = filename:join(TargetDir, SubDir),
     case filelib:is_dir(SubSource) of
         true ->
-            case filelib:is_dir(SubTarget) of
-                true ->
-                    ok = ec_file:remove(SubTarget, [recursive]);
-                false ->
-                    ok
-            end,
+            ok = rcl_util:mkdir_p(SubTarget),
             case ec_file:copy(SubSource, SubTarget, [recursive]) of
                 {error, E} ->
-                    ?RCL_ERROR({ec_file_error, AppDir, TargetDir, E});
+                    ?RCL_ERROR({ec_file_error, AppDir, SubTarget, E});
                 ok ->
                     ok
             end;
@@ -144,7 +201,7 @@ create_release_info(State, Release, OutputDir) ->
                                     rcl_release:vsn(Release)]),
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     ok = ec_file:mkdir_p(ReleaseDir),
-        case rcl_release:metadata(Release) of
+    case rcl_release:metadata(Release) of
         {ok, Meta} ->
                 ok = ec_file:write_term(ReleaseFile, Meta),
                 write_bin_file(State, Release, OutputDir, ReleaseDir);
@@ -163,11 +220,18 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     ErlOpts = rcl_state:get(State, erl_opts, ""),
     StartFile = bin_file_contents(RelName, RelVsn,
                                   rcl_release:erts(Release),
- ErlOpts),
-    ok = file:write_file(VsnRel, StartFile),
-    ok = file:change_mode(VsnRel, 8#777),
-    ok = file:write_file(BareRel, StartFile),
-    ok = file:change_mode(BareRel, 8#777),
+                                  ErlOpts),
+    %% We generate the start script by default, unless the user
+    %% tells us not too
+    case rcl_state:get(State, generate_start_script, true) of
+        false ->
+            ok;
+        _ ->
+            ok = file:write_file(VsnRel, StartFile),
+            ok = file:change_mode(VsnRel, 8#777),
+            ok = file:write_file(BareRel, StartFile),
+            ok = file:change_mode(BareRel, 8#777)
+    end,
     copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir).
 
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config

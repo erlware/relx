@@ -1,4 +1,4 @@
-%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -47,6 +47,8 @@ do(State) ->
     find_default_release(State, DepGraph).
 
 -spec format_error(ErrorDetail::term()) -> iolist().
+format_error(no_goals_specified) ->
+    "No goals specified for this release ~n";
 format_error({no_release_name, Vsn}) ->
     io_lib:format("A target release version was specified (~s) but no name", [Vsn]);
 format_error({invalid_release_info, Info}) ->
@@ -99,21 +101,15 @@ find_default_release(State, DepGraph) ->
     end.
 
 resolve_default_release(State0, DepGraph) ->
-    %% Here we will just get the lastest version and run that.
+    %% Here we will just get the highest versioned release and run that.
     case lists:sort(fun release_sort/2,
                     ec_dictionary:to_list(rcl_state:releases(State0))) of
-        All = [{{RelName, RelVsn}, _} | _] ->
+        [{{RelName, RelVsn}, _} | _] ->
             State1 = rcl_state:default_release(State0, RelName, RelVsn),
-            lists:foldl(fun({{RN, RV}, _}, {ok, State2}) ->
-                                solve_release(State2,
-                                              DepGraph, RN, RV);
-                           (_, E) ->
-                                E
-                        end, {ok, State1}, All);
+            solve_release(State1, DepGraph, RelName, RelVsn);
         [] ->
             ?RCL_ERROR(no_releases_in_system)
     end.
-
 
 resolve_default_version(State0, DepGraph, RelName) ->
     %% Here we will just get the lastest version and run that.
@@ -121,14 +117,9 @@ resolve_default_version(State0, DepGraph, RelName) ->
     SpecificReleases = [Rel || Rel={{PossibleRelName, _}, _} <- AllReleases,
                                PossibleRelName =:= RelName],
     case lists:sort(fun release_sort/2, SpecificReleases) of
-        All = [{{RelName, RelVsn}, _} | _] ->
+        [{{RelName, RelVsn}, _} | _] ->
             State1 = rcl_state:default_release(State0, RelName, RelVsn),
-            lists:foldl(fun({RN, RV}, {ok, State2}) ->
-                                solve_release(State2,
-                                              DepGraph, RN, RV);
-                           (_, E) ->
-                                E
-                        end, {ok, State1}, All);
+            solve_release(State1, DepGraph, RelName, RelVsn);
         [] ->
             ?RCL_ERROR({no_releases_for, RelName})
     end.
@@ -148,14 +139,22 @@ release_sort({{RelNameA, RelVsnA}, _}, {{RelNameB, RelVsnB}, _}) ->
         ec_semver:lte(RelVsnA, RelVsnB).
 
 solve_release(State0, DepGraph, RelName, RelVsn) ->
+    rcl_log:debug(rcl_state:log(State0),
+                  "Solving Release ~p-~s~n",
+                  [RelName, RelVsn]),
     try
         Release = rcl_state:get_release(State0, RelName, RelVsn),
         Goals = rcl_release:goals(Release),
-        case rcl_depsolver:solve(DepGraph, Goals) of
-            {ok, Pkgs} ->
-                set_resolved(State0, Release, Pkgs);
-            {error, Error} ->
-                ?RCL_ERROR({failed_solve, Error})
+        case Goals of
+            [] ->
+                ?RCL_ERROR(no_goals_specified);
+            _ ->
+                case rcl_depsolver:solve(DepGraph, Goals) of
+                    {ok, Pkgs} ->
+                        set_resolved(State0, Release, Pkgs);
+                    {error, Error} ->
+                        ?RCL_ERROR({failed_solve, Error})
+                end
         end
     catch
         throw:not_found ->
@@ -169,7 +168,7 @@ set_resolved(State, Release0, Pkgs) ->
                         "Resolved ~p-~s~n",
                         [rcl_release:name(Release1),
                          rcl_release:vsn(Release1)]),
-           rcl_log:info(rcl_state:log(State),
+           rcl_log:debug(rcl_state:log(State),
                          fun() ->
                                  rcl_release:format(1, Release1)
                          end),

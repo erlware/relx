@@ -1,4 +1,4 @@
-%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -36,6 +36,7 @@
          format/1]).
 
 -export_type([int_log_level/0,
+              atom_log_level/0,
               log_level/0,
               log_fun/0,
               t/0]).
@@ -46,10 +47,14 @@
 %% types
 %%============================================================================
 
+-type log_level() :: int_log_level() | atom_log_level().
+
 -type int_log_level() :: 0..2.
+
 %% Why no warn? because for our purposes there is no difference between error
 %% and warn
--type log_level() :: error | info | debug.
+-type atom_log_level() :: error | info | debug.
+
 -opaque t() :: {?MODULE, int_log_level()}.
 
 -type log_fun() :: fun(() -> iolist()).
@@ -58,7 +63,7 @@
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(int_log_level() | log_level()) -> t().
+-spec new(log_level()) -> t().
 new(LogLevel) when LogLevel >= 0, LogLevel =< 2 ->
     {?MODULE, LogLevel};
 new(AtomLogLevel)
@@ -152,7 +157,7 @@ log_level({?MODULE, DetailLogLevel}) ->
     DetailLogLevel.
 
 %% @doc get the current log level as an atom
--spec atom_log_level(t()) -> log_level().
+-spec atom_log_level(t()) -> atom_log_level().
 atom_log_level({?MODULE, ?RCL_ERROR}) ->
     error;
 atom_log_level({?MODULE, ?RCL_INFO}) ->

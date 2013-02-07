@@ -38,14 +38,18 @@ endif
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf \
 	get-deps escript clean-common-test-data rebuild
 
-all: compile escript dialyzer test
+all: deps compile escript dialyzer test
 
 # =============================================================================
 # Rules to build the system
 # =============================================================================
 
-get-deps:
+deps:
 	$(REBAR) get-deps
+	$(REBAR) compile
+
+update-deps:
+	$(REBAR) update-deps
 	$(REBAR) compile
 
 compile:
@@ -61,7 +65,12 @@ eunit: compile clean-common-test-data
 	$(REBAR) skip_deps=true eunit
 
 ct: compile clean-common-test-data
-	$(REBAR) skip_deps=true ct
+	mkdir -p $(CURDIR) logs
+	ct_run -pa $(CURDIR)/ebin \
+	-pa $(CURDIR)/deps/*/ebin \
+	-logdir $(CURDIR)/logs \
+	-dir $(CURDIR)/test/ \
+	-suite rclt_command_SUITE rclt_discover_SUITE -suite rclt_release_SUITE
 
 test: compile eunit ct
 

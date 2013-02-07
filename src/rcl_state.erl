@@ -1,4 +1,4 @@
-%%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -30,11 +30,14 @@
          overrides/1,
          overrides/2,
          goals/1,
-         config_files/1,
+         config_file/1,
+         config_file/2,
          providers/1,
          providers/2,
          sys_config/1,
          sys_config/2,
+         root_dir/1,
+         root_dir/2,
          add_release/2,
          get_release/3,
          update_release/2,
@@ -57,10 +60,12 @@
               cmd_args/0]).
 
 -record(state_t, {log :: rcl_log:t(),
+                  root_dir :: file:name(),
                   caller :: caller(),
+                  action :: atom(),
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
-                  config_files=[] :: [file:filename()],
+                  config_file=[] :: file:filename() | undefined,
                   goals=[] :: [rcl_depsolver:constraint()],
                   providers = [] :: [rcl_provider:t()],
                   available_apps = [] :: [rcl_app_info:t()],
@@ -88,21 +93,28 @@
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(proplists:proplist(), [file:filename()] | file:filename()) -> t().
-new(PropList, Targets) when erlang:is_list(PropList) ->
+-spec new(proplists:proplist(), atom()) -> t().
+new(PropList, Target)
+  when erlang:is_list(PropList),
+     erlang:is_atom(Target) ->
+    {ok, Root} = file:get_cwd(),
     State0 =
         #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
-                 output_dir=filename:absname(proplists:get_value(output_dir, PropList, "")),
-                 lib_dirs=get_lib_dirs(proplists:get_value(lib_dirs, PropList, [])),
-                 config_files=process_config_files(Targets),
+                 output_dir=proplists:get_value(output_dir, PropList, ""),
+                 lib_dirs=proplists:get_value(lib_dirs, PropList, ""),
+                 config_file=proplists:get_value(config, PropList, undefined),
+                 action = Target,
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
                  releases=ec_dictionary:new(ec_dict),
                  config_values=ec_dictionary:new(ec_dict),
                  overrides = proplists:get_value(overrides, PropList, []),
+                 root_dir = proplists:get_value(root_dir, PropList, Root),
                  default_release={proplists:get_value(relname, PropList, undefined),
                                   proplists:get_value(relvsn, PropList, undefined)}},
-    create_logic_providers(State0).
+    rcl_state:put(create_logic_providers(State0),
+                  disable_default_libs,
+                  proplists:get_value(disable_default_libs, PropList, false)).
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
@@ -127,13 +139,17 @@ output_dir(#state_t{output_dir=OutDir}) ->
 lib_dirs(#state_t{lib_dirs=LibDir}) ->
     LibDir.
 
--spec goals(t()) -> [rcl_depsolver:constraints()].
+-spec goals(t()) -> [rcl_depsolver:constraint()].
 goals(#state_t{goals=TS}) ->
     TS.
 
--spec config_files(t()) -> [file:filename()].
-config_files(#state_t{config_files=ConfigFiles}) ->
+-spec config_file(t()) -> file:filename() | undefined.
+config_file(#state_t{config_file=ConfigFiles}) ->
     ConfigFiles.
+
+-spec config_file(t(), file:filename() | undefined) -> t().
+config_file(State, ConfigFiles) ->
+    State#state_t{config_file=ConfigFiles}.
 
 -spec providers(t()) -> [rcl_provider:t()].
 providers(#state_t{providers=Providers}) ->
@@ -146,6 +162,14 @@ sys_config(#state_t{sys_config=SysConfig}) ->
 -spec sys_config(t(), file:filename()) -> t().
 sys_config(State, SysConfig) ->
     State#state_t{sys_config=SysConfig}.
+
+-spec root_dir(t()) -> file:filename() | undefined.
+root_dir(#state_t{root_dir=RootDir}) ->
+    RootDir.
+
+-spec root_dir(t(), file:filename()) -> t().
+root_dir(State, RootDir) ->
+    State#state_t{root_dir=RootDir}.
 
 -spec providers(t(), [rcl_provider:t()]) -> t().
 providers(M, NewProviders) ->
@@ -225,15 +249,14 @@ format(Mod) ->
 -spec format(t(), non_neg_integer()) -> iolist().
 format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
                 caller=Caller, config_values=Values0,
-                goals=Goals, config_files=ConfigFiles,
+                goals=Goals, config_file=ConfigFile,
                 providers=Providers},
        Indent) ->
     Values1 = ec_dictionary:to_list(Values0),
     [rcl_util:indent(Indent),
      <<"state(">>, erlang:atom_to_list(Caller), <<"):\n">>,
      rcl_util:indent(Indent + 1), <<"log: ">>, rcl_log:format(LogState), <<",\n">>,
-     rcl_util:indent(Indent + 1), "config files: \n",
-     [[rcl_util:indent(Indent + 2), ConfigFile, ",\n"] || ConfigFile <- ConfigFiles],
+     rcl_util:indent(Indent + 1), "config file: ", rcl_util:optional_to_string(ConfigFile), "\n",
      rcl_util:indent(Indent + 1), "goals: \n",
      [[rcl_util:indent(Indent + 2), rcl_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
      rcl_util:indent(Indent + 1), "output_dir: ", OutDir, "\n",
@@ -247,36 +270,16 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec get_lib_dirs([file:name()]) -> [file:name()].
-get_lib_dirs(CmdDirs) ->
-    case os:getenv("ERL_LIBS") of
-        false ->
-            CmdDirs;
-        EnvString ->
-            [Lib || Lib <- re:split(EnvString, ":|;"),
-                     filelib:is_dir(Lib)] ++ CmdDirs
-    end.
 
 -spec create_logic_providers(t()) -> t().
 create_logic_providers(State0) ->
     {ConfigProvider, {ok, State1}} = rcl_provider:new(rcl_prv_config, State0),
     {DiscoveryProvider, {ok, State2}} = rcl_provider:new(rcl_prv_discover, State1),
     {ReleaseProvider, {ok, State3}} = rcl_provider:new(rcl_prv_release, State2),
-    {AssemblerProvider, {ok, State4}} = rcl_provider:new(rcl_prv_assembler, State3),
-    State4#state_t{providers=[ConfigProvider, DiscoveryProvider,
-                              ReleaseProvider, AssemblerProvider]}.
-
-
-%% @doc config files can come in as either a single file name or as a list of
-%% files. We what to support both where possible.
-process_config_files(File = [Char | _])
-  when erlang:is_integer(Char) ->
-    [File];
-process_config_files(Files = [File | _])
-  when erlang:is_list(File) ->
-    Files;
-process_config_files([]) ->
-    [].
+    {OverlayProvider, {ok, State4}} = rcl_provider:new(rcl_prv_overlay, State3),
+    {AssemblerProvider, {ok, State5}} = rcl_provider:new(rcl_prv_assembler, State4),
+    State5#state_t{providers=[ConfigProvider, DiscoveryProvider,
+                              ReleaseProvider, OverlayProvider, AssemblerProvider]}.
 
 %%%===================================================================
 %%% Test Functions
@@ -287,7 +290,7 @@ process_config_files([]) ->
 
 new_test() ->
     LogState = rcl_log:new(error),
-    RCLState = new([{log, LogState}], []),
+    RCLState = new([{log, LogState}], release),
     ?assertMatch(LogState, log(RCLState)).
 
 -endif.

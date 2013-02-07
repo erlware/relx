@@ -1,4 +1,4 @@
-%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -34,24 +34,28 @@
                         relcool:error().
 args2state({error, Detail}) ->
     ?RCL_ERROR({opt_parse, Detail});
-args2state({ok, {Opts, Targets}}) ->
+args2state({ok, {Opts, Target}})
+  when erlang:length(Target) == 0; erlang:length(Target) == 1 ->
     RelName = proplists:get_value(relname, Opts, undefined),
     RelVsn = proplists:get_value(relvsn, Opts, undefined),
-    case create_log(Opts,
-                    [{relname, RelName},
-                     {relvsn, RelVsn}]) of
-        Error = {error, _} ->
-            Error;
-        {ok, CommandLineConfig} ->
-            case validate_configs(Targets) of
+    case convert_target(Target) of
+        {ok, AtomizedTarget} ->
+            case create_log(Opts, [{relname, RelName},
+                                   {relvsn, RelVsn}]) of
                 Error = {error, _} ->
                     Error;
-                {ok, Configs} ->
-                    {ok, {rcl_state:new(CommandLineConfig, Configs), Configs}}
-            end
-    end.
+                {ok, CommandLineConfig} ->
+                    handle_config(Opts, AtomizedTarget, CommandLineConfig)
+            end;
+        Error ->
+            Error
+    end;
+args2state({ok, {_Opts, Targets}}) ->
+    ?RCL_ERROR({invalid_targets, Targets}).
 
 -spec format_error(Reason::term()) -> iolist().
+format_error({invalid_targets, Targets}) ->
+    io_lib:format("One config must be specified! not ~p~n", [Targets]);
 format_error({opt_parse, {invalid_option, Opt}}) ->
     io_lib:format("invalid option ~s~n", [Opt]);
 format_error({opt_parse, Arg}) ->
@@ -75,39 +79,51 @@ format_error({invalid_config_file, Config}) ->
     io_lib:format("Invalid configuration file specified: ~s", [Config]);
 format_error({failed_to_parse, Spec}) ->
     io_lib:format("Unable to parse spec ~s", [Spec]);
-format_error({unable_to_create_output_dir, OutputDir}) ->
-    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
-                  [OutputDir]);
 format_error({not_directory, Dir}) ->
     io_lib:format("Library directory does not exist: ~s", [Dir]);
 format_error({invalid_log_level, LogLevel}) ->
     io_lib:format("Invalid log level specified -V ~p, log level must be in the"
-                  " range 0..2", [LogLevel]).
+                 " range 0..2", [LogLevel]);
+format_error({invalid_target, Target}) ->
+    io_lib:format("Invalid action specified: ~s", [Target]).
+
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec validate_configs([file:filename()]) ->
-                              {ok, [file:filename()]} | relcool:error().
-validate_configs(Configs) ->
-    Result =
-        lists:foldl(fun(_Config, Err = {error, _}) ->
-                            Err;
-                       (Config, Acc) ->
-                            case filelib:is_regular(Config) of
-                                true ->
-                                    [filename:absname(Config) | Acc];
-                                false ->
-                                    ?RCL_ERROR({invalid_config_file, Config})
-                            end
-                    end, [], Configs),
-    case Result of
-        {error, _} ->
-            Result;
-        _ ->
-            %% Order may be important so lets make sure they remain in the same
-            %% order they came in as
-            {ok, lists:reverse(Result)}
+-spec handle_config([getopt:option()], atom(), proplists:proplist()) ->
+                           {ok, {rcl_state:t(), [string()]}} |
+                           relcool:error().
+handle_config(Opts, Target, CommandLineConfig) ->
+    case validate_config(proplists:get_value(config, Opts, [])) of
+        Error = {error, _} ->
+            Error;
+        {ok, Config} ->
+            {ok, rcl_state:new([{config, Config} | CommandLineConfig], Target)}
+    end.
+
+-spec convert_target([string()]) -> {ok, release | relup} | relcool:error().
+convert_target([]) ->
+    {ok, release};
+convert_target(["release"]) ->
+    {ok, release};
+convert_target(["relup"]) ->
+    {ok, relup};
+convert_target(Target) ->
+    ?RCL_ERROR({invalid_target, Target}).
+
+-spec validate_config(file:filename() | undefined) ->
+                             {ok, file:filename() | undefined} | relcool:error().
+validate_config(undefined) ->
+    {ok, undefined};
+validate_config("") ->
+    {ok, undefined};
+validate_config(Config) ->
+    case filelib:is_regular(Config) of
+        true ->
+            {ok, filename:absname(Config)};
+        false ->
+            ?RCL_ERROR({invalid_config_file, Config})
     end.
 
 -spec create_log([getopt:option()], rcl_state:cmd_args()) ->
@@ -148,17 +164,7 @@ convert_goals([RawSpec | Rest], Acc) ->
                                {ok, rcl_state:cmd_args()} | relcool:error().
 create_output_dir(Opts, Acc) ->
     OutputDir = proplists:get_value(output_dir, Opts, "./_rel"),
-    case filelib:is_dir(OutputDir) of
-        false ->
-            case rcl_util:mkdir_p(OutputDir) of
-                ok ->
-                    create_lib_dirs(Opts, [{output_dir, OutputDir} | Acc]);
-                {error, _} ->
-                    ?RCL_ERROR({unable_to_create_output_dir, OutputDir})
-            end;
-        true ->
-            create_lib_dirs(Opts, [{output_dir, OutputDir} | Acc])
-    end.
+    create_lib_dirs(Opts, [{output_dir, filename:absname(OutputDir)} | Acc]).
 
 -spec create_lib_dirs([getopt:option()], rcl_state:cmd_args()) ->
                                {ok, rcl_state:cmd_args()} | relcool:error().
@@ -168,8 +174,26 @@ create_lib_dirs(Opts, Acc) ->
         Error = {error, _} ->
             Error;
         ok ->
-            {ok, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc]}
+            create_root_dir(Opts, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc])
     end.
+
+-spec create_root_dir([getopt:option()], rcl_state:cmd_args()) ->
+                               {ok, rcl_state:cmd_args()} | relcool:error().
+create_root_dir(Opts, Acc) ->
+    Dir = proplists:get_value(root_dir, Opts, undefined),
+    case Dir of
+        undefined ->
+            {ok, Cwd} = file:get_cwd(),
+            create_disable_default_libs(Opts, [{root_dir, Cwd} | Acc]);
+        _ ->
+            create_disable_default_libs(Opts, [{root_dir, Dir} | Acc])
+    end.
+
+-spec create_disable_default_libs([getopt:option()], rcl_state:cmd_args()) ->
+                                         {ok, rcl_state:cmd_args()} | relcool:error().
+create_disable_default_libs(Opts, Acc) ->
+    Def = proplists:get_value(disable_default_libs, Opts, false),
+    {ok, [{disable_default_libs, Def} | Acc]}.
 
 -spec check_lib_dirs([string()]) -> ok | relcool:error().
 check_lib_dirs([]) ->

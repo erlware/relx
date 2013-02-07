@@ -14,12 +14,15 @@ applications it will generate a release output. That output depends
 heavily on what plugins available and what options are defined, but
 usually it is simple a well configured release directory.
 
-   relcool -d ~/my-dirs  --relname foo --relvsn 0.0.1 --target-spec myapp --target-spec getopt>=0.5.1 -o output-dir --targz
+   relcool -c relcool.config -l ~/my-dirs  --relname foo --relvsn 0.0.1 --target-spec myapp --target-spec getopt>=0.5.1 -o output-dir
 
 The *release-specification-file* is optional but otherwise contains
 additional specification information for releases.
 
 # OPTIONS
+
+-r *STRING*, \--root *STRING*
+:   Specify the root directory for the project (if different from cwd)
 
 -n *STRING*, \--relname *STRING*
 :   Specify the name for the release that will be generated
@@ -40,6 +43,9 @@ additional specification information for releases.
 -V *INTEGER*, \--verbose *INTEGER*
 : The verbosity level of the system. Valid values are 1 - 3
 
+-c *INTEGER*, \--config *INTEGER*
+: The custom config file for the relcool system
+
 # CONFIGURATION FILES
 
 Configuration files
@@ -47,3 +53,5 @@ Configuration files
 # SEE ALSO
 
 `reltool` (1).
+
+[relcool wiki](https://github.com/erlware/relcool/wiki)

@@ -1,4 +1,4 @@
-%%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 92 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -46,7 +46,7 @@ init_per_testcase(_, Config) ->
     LibDir2 = filename:join([DataDir, create_random_name("lib_dir2_")]),
     ok = rcl_util:mkdir_p(LibDir1),
     ok = rcl_util:mkdir_p(LibDir2),
-    State = rcl_state:new([{lib_dirs, [LibDir1, LibDir2]}], []),
+    State = rcl_state:new([{lib_dirs, [LibDir1, LibDir2]}], release),
     [{lib1, LibDir1},
      {lib2, LibDir2},
      {state, State} | Config].
@@ -62,8 +62,8 @@ normal_case(Config) ->
               end)(App)
              ||
                 App <-
-                [{create_random_name("lib_app1_"), create_random_vsn()}
-                 || _ <- lists:seq(1, 100)]],
+                    [{create_random_name("lib_app1_"), create_random_vsn()}
+                     || _ <- lists:seq(1, 100)]],
 
     LibDir2 = proplists:get_value(lib2, Config),
     Apps2 = [(fun({Name, Vsn}) ->
@@ -71,10 +71,9 @@ normal_case(Config) ->
               end)(App)
              || App <-
                     [{create_random_name("lib_app2_"), create_random_vsn()}
-                 || _ <- lists:seq(1, 100)]],
-    State0 = rcl_state:put(rcl_state:put(proplists:get_value(state, Config),
-                                         discover_exclude_rebar, true),
-                           discover_exclude_system, true),
+                     || _ <- lists:seq(1, 100)]],
+    State0 = rcl_state:put(proplists:get_value(state, Config),
+                            disable_default_libs, true),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
     {ok, State2} = rcl_provider:do(DiscoverProvider, State1),
     lists:foreach(fun(App) ->

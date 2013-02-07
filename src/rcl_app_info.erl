@@ -1,4 +1,4 @@
-%% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
+%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
 %%% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%%
 %%% This file is provided to you under the Apache License,
@@ -63,8 +63,8 @@
                      vsn :: ec_semver:semver(),
                      dir :: file:name(),
                      link=false :: boolean(),
-                     active_deps :: [atom()],
-                     library_deps :: [atom()]}).
+                     active_deps=[]:: [atom()],
+                     library_deps=[] :: [atom()]}).
 
 %%============================================================================
 %% types
