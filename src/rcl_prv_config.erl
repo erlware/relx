@@ -46,9 +46,9 @@ init(State) ->
 -spec do(rcl_state:t()) ->{ok,  rcl_state:t()} | relcool:error().
 do(State) ->
     case rcl_state:config_file(State) of
-        [] ->
+        undefined ->
             search_for_dominating_config(State);
-        ConfigFile ->
+        ConfigFile when erlang:is_list(ConfigFile) ->
             load_config(ConfigFile, State)
     end.
 

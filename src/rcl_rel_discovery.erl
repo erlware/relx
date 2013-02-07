@@ -144,7 +144,7 @@ resolve_apps([], _AppMeta, Release, Acc) ->
     rcl_release:application_details(Release, Acc);
 resolve_apps([AppInfo | Apps], AppMeta, Release, Acc) ->
     AppName = erlang:element(1, AppInfo),
-    AppVsn = erlang:element(2, AppInfo),
+    AppVsn = ec_semver:parse(erlang:element(2, AppInfo)),
     case find_app(AppName, AppVsn, AppMeta) of
         Error = {error, _} ->
             Error;
@@ -154,8 +154,8 @@ resolve_apps([AppInfo | Apps], AppMeta, Release, Acc) ->
 
 find_app(AppName, AppVsn, AppMeta) ->
     case ec_lists:find(fun(App) ->
-                               NAppName = rcl_app:name(App),
-                               NAppVsn = rcl_app:version(App),
+                               NAppName = rcl_app_info:name(App),
+                               NAppVsn = rcl_app_info:vsn(App),
                                AppName == NAppName andalso
                                    AppVsn == NAppVsn
                        end, AppMeta) of

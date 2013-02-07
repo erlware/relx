@@ -23,6 +23,7 @@
 
 -export([mkdir_p/1,
          to_binary/1,
+         to_string/1,
          is_error/1,
          error_reason/1,
          indent/1,
@@ -57,6 +58,10 @@ to_binary(String) when erlang:is_list(String) ->
     erlang:iolist_to_binary(String);
 to_binary(Bin) when erlang:is_binary(Bin) ->
     Bin.
+to_string(Atom) when erlang:is_atom(Atom) ->
+    erlang:atom_to_list(Atom);
+to_string(Else) when erlang:is_list(Else) ->
+    Else.
 
 %% @doc get the reason for a particular relcool error
 -spec error_reason(relcool:error()) -> any().

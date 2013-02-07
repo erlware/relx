@@ -143,7 +143,6 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
                   "Solving Release ~p-~s~n",
                   [RelName, RelVsn]),
     try
-        io:format("Solving ~p ~p", [RelName, RelVsn]),
         Release = rcl_state:get_release(State0, RelName, RelVsn),
         Goals = rcl_release:goals(Release),
         case Goals of

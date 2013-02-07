@@ -44,12 +44,20 @@
 -spec main([string()]) -> ok | error() | {ok, rcl_state:t()}.
 main(Args) ->
     OptSpecList = opt_spec_list(),
-    case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
-        {ok, State} ->
-            run_relcool_process(rcl_state:caller(State, command_line));
-        Error={error, _} ->
+    Result =
+        case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
+            {ok, State} ->
+                run_relcool_process(rcl_state:caller(State, command_line));
+            Error={error, _} ->
+                Error
+        end,
+    case Result of
+        {error, _} ->
             report_error(rcl_state:caller(rcl_state:new([], undefined),
-                                          command_line), Error)
+                                          command_line),
+                         Result);
+        _ ->
+            Result
     end.
 
 %% @doc provides an API to run the Relcool process from erlang applications
@@ -128,7 +136,7 @@ opt_spec_list() ->
       "Disable the default system added lib dirs (means you must add them all manually"},
      {log_level, $V, "verbose", {integer, 1},
       "Verbosity level, maybe between 0 and 2"},
-     {config, $c, "config", string, "The path to a config file"},
+     {config, $c, "config", {string, ""}, "The path to a config file"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
 -spec format_error(Reason::term()) -> iolist().
@@ -194,9 +202,12 @@ run_provider(Provider, {ok, State0}) ->
                   [rcl_provider:impl(Provider)]),
     case rcl_provider:do(Provider, State0) of
         {ok, State1} ->
+            rcl_log:debug(rcl_state:log(State0), "Provider successfully run: ~p~n",
+                          [rcl_provider:impl(Provider)]),
             {ok, State1};
         E={error, _} ->
-
+            rcl_log:debug(rcl_state:log(State0), "Provider (~p) failed with: ~p~n",
+                          [rcl_provider:impl(Provider), E]),
             E
     end.
 
