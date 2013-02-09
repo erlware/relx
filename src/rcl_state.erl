@@ -42,6 +42,8 @@
          get_release/3,
          update_release/2,
          releases/1,
+         discovered_releases/1,
+         discovered_releases/2,
          default_release/1,
          default_release/3,
          available_apps/1,
@@ -72,9 +74,8 @@
                   default_release :: {rcl_release:name(), rcl_release:vsn()},
                   sys_config :: file:filename() | undefined,
                   overrides :: [{AppName::atom(), Directory::file:filename()}],
-                  releases :: ec_dictionary:dictionary({ReleaseName::atom(),
-                                                        ReleaseVsn::string()},
-                                                       rcl_release:t()),
+                  releases :: releases(),
+                  discovered_releases :: releases(),
                   config_values :: ec_dictionary:dictionary(Key::atom(),
                                                             Value::term())}).
 
@@ -87,6 +88,7 @@
                                              rcl_release:t()).
 -type cmd_args() :: proplists:proplist().
 -type caller() :: command_line | api.
+
 -opaque t() :: record(state_t).
 
 %%============================================================================
@@ -107,6 +109,7 @@ new(PropList, Target)
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
                  releases=ec_dictionary:new(ec_dict),
+                 discovered_releases=ec_dictionary:new(ec_dict),
                  config_values=ec_dictionary:new(ec_dict),
                  overrides = proplists:get_value(overrides, PropList, []),
                  root_dir = proplists:get_value(root_dir, PropList, Root),
@@ -196,6 +199,14 @@ get_release(#state_t{releases=Releases}, Name, Vsn) ->
 -spec releases(t()) -> releases().
 releases(#state_t{releases=Releases}) ->
     Releases.
+
+-spec discovered_releases(t()) -> releases().
+discovered_releases(#state_t{discovered_releases=Releases}) ->
+    Releases.
+
+-spec discovered_releases(t(), releases()) -> t().
+discovered_releases(State, Releases) ->
+    State#state_t{discovered_releases=Releases}.
 
 -spec default_release(t()) ->
                              {rcl_release:name() | undefined, rcl_release:vsn() | undefined}.
