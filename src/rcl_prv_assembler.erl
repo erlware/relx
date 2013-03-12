@@ -286,6 +286,13 @@ include_erts(State, Release, OutputDir, RelDir) ->
                     ok = ec_file:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive]),
                     ok = file:write_file(filename:join([LocalErts, "bin", "erl"]), erl_script(ErtsVersion)),
+                    case rcl_state:get(State, extended_start_script, false) of
+                        true ->
+                            ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
+                                              filename:join([OutputDir, "bin", "start_clean.boot"]));
+                        false ->
+                            ok
+                    end,
                     make_boot_script(State, Release, OutputDir, RelDir)
             end;
         _ ->
