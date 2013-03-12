@@ -285,6 +285,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                 true ->
                     ok = ec_file:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive]),
+                    ok = file:write_file(filename:join([LocalErts, "bin", "erl"]), erl_script(ErtsVersion)),
                     make_boot_script(State, Release, OutputDir, RelDir)
             end;
         _ ->
@@ -345,6 +346,22 @@ get_code_paths(Release, OutDir) ->
                         rcl_app_info:vsn_as_string(App), "ebin"]) ||
         App <- rcl_release:application_details(Release)].
 
+erl_script(ErtsVsn) ->
+    [<<"#!/bin/sh
+set -e
+
+SCRIPT_DIR=`dirname $0`
+ROOTDIR=`cd $SCRIPT_DIR/../../ && pwd`
+BINDIR=$ROOTDIR/erts-">>, ErtsVsn, <<"/bin
+EMU=beam
+PROGNAME=`echo $0 | sed 's/.*\\///'`
+export EMU
+export ROOTDIR
+export BINDIR
+export PROGNAME
+exec \"$BINDIR/erlexec\" ${1+\"$@\"}
+">>].
+
 bin_file_contents(RelName, RelVsn, ErtsVsn, ErlOpts) ->
     [<<"#!/bin/sh
 
@@ -357,14 +374,6 @@ REL_VSN=">>, RelVsn, <<"
 ERTS_VSN=">>, ErtsVsn, <<"
 REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_NAME-$REL_VSN
 ERL_OPTS=">>, ErlOpts, <<"
-
-ERTS_DIR=
-SYS_CONFIG=
-ROOTDIR=
-
-ERTS_DIR=
-SYS_CONFIG=
-ROOTDIR=
 
 find_erts_dir() {
     local erts_dir=$RELEASE_ROOT_DIR/erts-$ERTS_VSN
