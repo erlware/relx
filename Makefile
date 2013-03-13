@@ -55,7 +55,7 @@ update-deps:
 compile:
 	$(REBAR) skip_deps=true compile
 
-escript: compile
+escript: deps
 	$(REBAR) skip_deps=true escriptize
 
 doc:

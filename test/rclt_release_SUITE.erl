@@ -244,7 +244,8 @@ make_implicit_config_release(Config) ->
     ok = file:set_cwd(FooRoot),
     {ok, FooRoot} = file:get_cwd(),
     {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
-                              OutputDir, []),
+                             OutputDir, undefined),
+
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     ?assert(ec_file:exists(OutputDir)),
     AppSpecs = rcl_release:applications(Release),
@@ -294,7 +295,7 @@ make_rerun_overridden_release(Config) ->
                              OutputDir, [{OverrideAppName, OverrideAppDir}],
                              ConfigFile),
 
-    %% Now we run it again to see if it failse.
+    %% Now we run it again to see if it fails.
     {ok, State} = relcool:do(Cwd,undefined, undefined, [], [LibDir1], 2,
                              OutputDir, [{OverrideAppName, OverrideAppDir}],
                              ConfigFile),
