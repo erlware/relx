@@ -54,8 +54,8 @@ do(State) ->
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({consult, ConfigFile, Reason}) ->
-        io_lib:format("Unable to read file ~s: ~s", [ConfigFile,
-                                                     file:format_error(Reason)]);
+    io_lib:format("Unable to read file ~s: ~s", [ConfigFile,
+                                                 file:format_error(Reason)]);
 format_error({invalid_term, Term}) ->
     io_lib:format("Invalid term in config file: ~p", [Term]).
 

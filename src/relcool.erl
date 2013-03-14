@@ -70,7 +70,7 @@ main(Args) ->
 %% @param OutputDir - The directory where the release should be built to
 %% @param Configs - The list of config files for the system
 -spec do(atom(), string(), [goal()], [file:name()], rcl_log:log_level(),
-         [file:name()], file:name()) ->
+         [file:name()], file:name() | undefined) ->
                   ok | error() | {ok, rcl_state:t()}.
 do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Config) ->
     {ok, Cwd} = file:get_cwd(),
@@ -87,7 +87,7 @@ do(RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Config) ->
 %% @param OutputDir - The directory where the release should be built to
 %% @param Configs - The list of config files for the system
 -spec do(file:name(), atom(), string(), [goal()], [file:name()],
-           rcl_log:log_level(), [file:name()], file:name()) ->
+           rcl_log:log_level(), [file:name()], file:name() | undefined) ->
                   ok | error() | {ok, rcl_state:t()}.
 do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
     do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, [], Configs).
@@ -104,7 +104,7 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
 %% @param Overrides - A list of overrides for the system
 %% @param Configs - The list of config files for the system
 -spec do(file:name(), atom(), string(), [goal()], [file:name()],
-           rcl_log:log_level(), [file:name()], [{atom(), file:name()}], file:name()) ->
+           rcl_log:log_level(), [file:name()], [{atom(), file:name()}], file:name() | undefined) ->
                   ok | error() | {ok, rcl_state:t()}.
 do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
     State = rcl_state:new([{relname, RelName},
