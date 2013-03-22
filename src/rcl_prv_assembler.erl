@@ -411,4 +411,6 @@ export EMU=beam
 export PROGNAME=erl
 export LD_LIBRARY_PATH=$ERTS_DIR/lib
 
+cd $ROOTDIR
+
 $BINDIR/erlexec $ERL_OPTS $SYS_CONFIG -boot $REL_DIR/$REL_NAME $@">>].
