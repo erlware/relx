@@ -299,7 +299,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                             NodeToolFile = nodetool_contents(),
                             NodeTool = filename:join([LocalErts, "bin", "nodetool"]),
                             ok = file:write_file(NodeTool, NodeToolFile),
-                            ok = file:change_mode(NodeTool, 8#777);
+                            ok = file:change_mode(NodeTool, 8#755);
                         false ->
                             ok
                     end,
