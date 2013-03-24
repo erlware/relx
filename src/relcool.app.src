@@ -20,7 +20,7 @@
 
 {application, relcool,
  [{description, "Release assembler for Erlang/OTP Releases"},
-  {vsn, "semver"},
+  {vsn, "0.0.5"},
   {modules, []},
   {registered, []},
   {applications, [kernel, stdlib, getopt, erlware_commons]}]}.
