@@ -429,7 +429,7 @@ overlay_release(Config) ->
     ?assert(proplists:is_defined(config_file, TemplateData)),
     ?assertEqual([""],
                  proplists:get_value(goals, TemplateData)),
-    ?assertEqual("undefined",
+    ?assertEqual([],
                  proplists:get_value(sys_config, TemplateData)),
     ?assert(proplists:is_defined(root_dir, TemplateData)),
     ?assertEqual(foo,
