@@ -53,39 +53,33 @@ format_error(ErrorDetails)
 %%% Internal Functions
 %%%===================================================================
 resolve_app_metadata(State, LibDirs) ->
-    AppMeta0 = lists:flatten(ec_plists:map(fun(LibDir) ->
-                                               discover_dir([], LibDir)
-                                           end, LibDirs)),
-    AppMeta1 = setup_overrides(State, AppMeta0),
-
-    Errors = [case El of
-                  {error, Ret} -> Ret;
-                  _ -> El
-              end
-              || El <- AppMeta1,
-                 case El of
-                     {error, _} ->
+    AppMeta0 = lists:flatten(rcl_dscv_util:do(fun discover_dir/2, LibDirs)),
+    case [case Err of
+              {error, Ret} ->
+                  Ret
+          end
+          || Err <- AppMeta0,
+             case Err of
+                 {error, _} ->
                          true;
                      _ ->
                          false
-                 end],
-
-    case Errors of
+                 end] of
         [] ->
-            AppMeta2 = lists:flatten(AppMeta1),
+            AppMeta1 = [App || {ok, App} <- setup_overrides(State, AppMeta0)],
             rcl_log:debug(rcl_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Applications from the system: \n",
-                                   [[rcl_app_info:format(1, App), "\n"] || App <- AppMeta2]]
+                                   [[rcl_app_info:format(1, App), "\n"] || App <- AppMeta1]]
                           end),
-            {ok, AppMeta2};
-        _ ->
+            {ok, AppMeta1};
+        Errors ->
             ?RCL_ERROR(Errors)
     end.
 
 app_name({error, _}) ->
     undefined;
-app_name(AppMeta) ->
+app_name({ok, AppMeta}) ->
     rcl_app_info:name(AppMeta).
 
 setup_overrides(State, AppMetas0) ->
@@ -94,14 +88,13 @@ setup_overrides(State, AppMetas0) ->
                             not lists:keymember(app_name(AppMeta), 1, Overrides)],
     [case is_valid_otp_app(filename:join([FileName, "ebin",
                                          erlang:atom_to_list(AppName) ++ ".app"])) of
-         [] ->
+         {noresult, false} ->
              {error, {invalid_override, AppName, FileName}};
          Error = {error, _} ->
              Error;
-         App ->
-             rcl_app_info:link(App, true)
+         {ok, App} ->
+             {ok, rcl_app_info:link(App, true)}
      end || {AppName, FileName} <- Overrides] ++ AppMetas1.
-
 
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
@@ -127,27 +120,16 @@ format_detail({unversioned_app, AppDir, _AppName}) ->
 format_detail({app_info_error, {Module, Detail}}) ->
     Module:format_error(Detail).
 
--spec discover_dir([file:name()],
-                   file:name()) ->
-                          [rcl_app_info:t() | {error, Reason::term()}] |
-                          rcl_app_info:t() | {error, Reason::term()}.
-discover_dir(IgnoreDirs, File) ->
-    case (not lists:member(File, IgnoreDirs))
-        andalso filelib:is_dir(File) of
-        true ->
-            case file:list_dir(File) of
-                {error, Reason} ->
-                    {error, {accessing, File, Reason}};
-                {ok, List} ->
-                    ec_plists:map(fun(LibDir) ->
-                                     discover_dir(IgnoreDirs, LibDir)
-                                  end, [filename:join([File, Dir]) || Dir <- List])
-            end;
-        false ->
-            is_valid_otp_app(File)
-    end.
+-spec discover_dir([file:name()], directory | file) ->
+                          {ok, rcl_app_info:t()} | {error, Reason::term()}.
+discover_dir(_File, directory) ->
+    {noresult, true};
+discover_dir(File, file) ->
+    is_valid_otp_app(File).
 
--spec is_valid_otp_app(file:name()) -> rcl_app_info:t() | {error, Reason::term()} | [].
+-spec is_valid_otp_app(file:name()) -> {ok, rcl_app_info:t()} | {error, Reason::term()} |
+                                       {noresult, false}.
+
 is_valid_otp_app(File) ->
     %% Is this an ebin dir?
     EbinDir = filename:dirname(File),
@@ -157,14 +139,14 @@ is_valid_otp_app(File) ->
                 true ->
                     has_at_least_one_beam(EbinDir, File);
                 false ->
-                    []
+                    {noresult, false}
             end;
         _ ->
-            []
+            {noresult, false}
     end.
 
 -spec has_at_least_one_beam(file:name(), file:filename()) ->
-                                   rcl_app_info:t() | {error, Reason::term()}.
+                                   {ok, rcl_app_info:t()} | {error, Reason::term()}.
 has_at_least_one_beam(EbinDir, File) ->
     case file:list_dir(EbinDir) of
         {ok, List} ->
@@ -179,7 +161,7 @@ has_at_least_one_beam(EbinDir, File) ->
     end.
 
 -spec gather_application_info(file:name(), file:filename()) ->
-                                     rcl_app_info:t() | {error, Reason::term()}.
+                                     {ok, rcl_app_info:t()} | {error, Reason::term()}.
 gather_application_info(EbinDir, File) ->
     AppDir = filename:dirname(EbinDir),
     case file:consult(File) of
@@ -192,7 +174,7 @@ gather_application_info(EbinDir, File) ->
     end.
 
 -spec get_vsn(file:name(), atom(), proplists:proplist()) ->
-                     rcl_app_info:t() | {error, Reason::term()}.
+                     {ok, rcl_app_info:t()} | {error, Reason::term()}.
 get_vsn(AppDir, AppName, AppDetail) ->
     case proplists:get_value(vsn, AppDetail) of
         undefined ->
@@ -200,7 +182,7 @@ get_vsn(AppDir, AppName, AppDetail) ->
         AppVsn ->
             case get_deps(AppDir, AppName, AppVsn, AppDetail) of
                 {ok, App} ->
-                    App;
+                    {ok, App};
                 {error, Detail} ->
                     {error, {app_info_error, Detail}}
             end
