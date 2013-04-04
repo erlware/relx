@@ -54,31 +54,32 @@ format_error(ErrorDetails)
 %%% Internal Functions
 %%%===================================================================
 resolve_rel_metadata(State, LibDirs, AppMeta) ->
-    ReleaseMeta0 =
-        lists:flatten(ec_plists:map(fun(LibDir) ->
-                                            discover_dir([], LibDir, AppMeta)
-                                    end, LibDirs)),
-    Errors = [case El of
-                  {error, Ret} -> Ret;
-                  _ -> El
-              end
-              || El <- ReleaseMeta0,
-                 case El of
-                     {error, _} ->
-                         true;
-                     _ ->
-                         false
-                 end],
+    ReleaseMeta0 = lists:flatten(rcl_dscv_util:do(fun(LibDir, FileType) ->
+                                                          discover_dir(LibDir,
+                                                                       AppMeta,
+                                                                       FileType)
+                                                  end, LibDirs)),
+
+        Errors = [case El of
+                      {error, Ret} -> Ret;
+                      _ -> El
+                  end
+                  || El <- ReleaseMeta0,
+                     case El of
+                         {error, _} ->
+                             true;
+                         _ ->
+                             false
+                     end],
 
     case Errors of
         [] ->
-            ReleaseMeta1 = lists:flatten(ReleaseMeta0),
             rcl_log:debug(rcl_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Releases from the system: \n",
-                                   [[rcl_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta1]]
+                                   [[rcl_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta0]]
                           end),
-            {ok, ReleaseMeta1};
+            {ok, ReleaseMeta0};
         _ ->
             ?RCL_ERROR(Errors)
     end.
@@ -89,38 +90,26 @@ format_detail({accessing, File, eaccess}) ->
 format_detail({accessing, File, Type}) ->
     io_lib:format("error (~p) accessing file ~s", [Type, File]).
 
--spec discover_dir([file:name()], file:name(), [rcl_app_info:t()]) ->
-        [rcl_release:t() | {error, Reason::term()}]
-      | rcl_release:t()
-      | {error, Reason::term()}.
-discover_dir(IgnoreDirs, File, AppMeta) ->
-    case (not lists:member(File, IgnoreDirs))
-        andalso filelib:is_dir(File) of
-        true ->
-            case file:list_dir(File) of
-                {error, Reason} ->
-                    {error, {accessing, File, Reason}};
-                {ok, List} ->
-                    ec_plists:map(fun(LibDir) ->
-                                          discover_dir(IgnoreDirs, LibDir, AppMeta)
-                                  end,
-                                 [filename:join([File, Dir]) || Dir <- List])
-            end;
-        false ->
-            is_valid_release(File, AppMeta)
-    end.
+-spec discover_dir(file:name(), [rcl_app_info:t()], directory | file) ->
+                          {ok, rcl_release:t()}
+                              | {error, Reason::term()}
+                              | {noresult, false}.
+discover_dir(_File, _AppMeta, directory) ->
+    {noresult, true};
+discover_dir(File, AppMeta, file) ->
+    is_valid_release(File, AppMeta).
 
 -spec is_valid_release(file:name(),
                        [rcl_app_info:t()]) ->
-        rcl_release:t()
-      | {error, Reason::term()}
-      | [].
+                              {ok, rcl_release:t()}
+                                  | {error, Reason::term()}
+                                  | {noresult, false}.
 is_valid_release(File, AppMeta) ->
     case lists:suffix(".rel", File) of
         true ->
             resolve_release(File, AppMeta);
         false ->
-            []
+           {noresult, false}
     end.
 
 resolve_release(RelFile, AppMeta) ->
@@ -141,7 +130,7 @@ build_release(RelName, RelVsn, ErtsVsn, Apps, AppMeta) ->
     resolve_apps(Apps, AppMeta, Release, []).
 
 resolve_apps([], _AppMeta, Release, Acc) ->
-    rcl_release:application_details(Release, Acc);
+    {ok, rcl_release:application_details(Release, Acc)};
 resolve_apps([AppInfo | Apps], AppMeta, Release, Acc) ->
     AppName = erlang:element(1, AppInfo),
     AppVsn = ec_semver:parse(erlang:element(2, AppInfo)),

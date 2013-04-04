@@ -36,7 +36,7 @@ $(error "Rebar not available on this system")
 endif
 
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf \
-	get-deps escript clean-common-test-data rebuild
+	update-deps escript clean-common-test-data rebuild
 
 all: deps compile escript dialyzer test
 
@@ -114,4 +114,4 @@ distclean: clean
 	- rm -rf $(DEPS_PLT)
 	- rm -rvf $(CURDIR)/deps/*
 
-rebuild: distclean get-deps compile escript dialyzer test
+rebuild: distclean deps compile escript dialyzer test
