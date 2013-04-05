@@ -48,9 +48,9 @@ do(State0) ->
             case rcl_rel_discovery:do(State0, LibDirs, AppMeta) of
                 {ok, Releases} ->
                     State1 = rcl_state:available_apps(State0, AppMeta),
-                    State3 = lists:foldl(fun add_if_not_found/2,
-                                         State1, Releases),
-                    {ok, State3};
+                    {ok, rcl_state:discovered_releases(State1, lists:foldl(fun add/2,
+                                                                           ec_dictionary:new(ec_dict),
+                                                                           Releases))};
                 Error ->
                     Error
             end;
@@ -68,16 +68,10 @@ format_error(_) ->
 %%% Internal Functions
 %%%===================================================================
 %% @doc only add the release if its not documented in the system
-add_if_not_found(Rel, State) ->
+add(Rel, Dict) ->
     RelName = rcl_release:name(Rel),
     RelVsn = rcl_release:vsn(Rel),
-    try
-        rcl_state:get_release(State, RelName, RelVsn),
-        State
-    catch
-        throw:not_found ->
-            rcl_state:add_release(State, Rel)
-    end.
+    ec_dictionary:add({RelName, RelVsn}, Rel, Dict).
 
 get_lib_dirs(State) ->
     LibDirs0 = rcl_state:lib_dirs(State),

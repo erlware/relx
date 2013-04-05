@@ -245,7 +245,6 @@ make_implicit_config_release(Config) ->
     {ok, FooRoot} = file:get_cwd(),
     {ok, State} = relcool:do(undefined, undefined, [], [LibDir1], 2,
                              OutputDir, undefined),
-
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     ?assert(ec_file:exists(OutputDir)),
     AppSpecs = rcl_release:applications(Release),
@@ -430,7 +429,7 @@ overlay_release(Config) ->
     ?assert(proplists:is_defined(config_file, TemplateData)),
     ?assertEqual([""],
                  proplists:get_value(goals, TemplateData)),
-    ?assertEqual("undefined",
+    ?assertEqual([],
                  proplists:get_value(sys_config, TemplateData)),
     ?assert(proplists:is_defined(root_dir, TemplateData)),
     ?assertEqual(foo,
