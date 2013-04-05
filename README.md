@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/tsloughter/relcool.png)](https://travis-ci.org/tsloughter/relcool)
+[![Build Status](https://travis-ci.org/erlware/relcool.png)](https://travis-ci.org/erlware/relcool)
 
 # NAME
 
