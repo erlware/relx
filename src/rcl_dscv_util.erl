@@ -92,8 +92,6 @@ discover_dir(ProcessDir, File, directory) ->
             [Err]
     end;
 discover_dir(ProcessDir, File, file) ->
-    Res = ProcessDir(File, file),
-    io:format("Result -> ~p~n", [Res]),
     case ProcessDir(File, file) of
         {ok, Result} ->
             [{ok, Result}];
