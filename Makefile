@@ -81,8 +81,7 @@ $(DEPS_PLT):
 	   --apps erts kernel stdlib -r deps
 
 dialyzer: $(DEPS_PLT)
-	dialyzer --plt $(DEPS_PLT) --fullpath -Wrace_conditions \
-	-I include -pa $(CURDIR)/ebin --src src
+	dialyzer --fullpath --plt $(DEPS_PLT) -I include -Wrace_conditions -r ./ebin
 
 typer:
 	typer --plt $(DEPS_PLT) -r ./src
