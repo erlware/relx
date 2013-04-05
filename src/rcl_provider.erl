@@ -41,9 +41,27 @@
 
 -opaque t() :: {?MODULE, module()}.
 
+
+-ifdef(have_callback_support).
+
 -callback init(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
 -callback do(rcl_state:t()) ->  {ok, rcl_state:t()} | relcool:error().
 -callback format_error(Reason::term()) -> iolist().
+
+-else.
+
+%% In the case where R14 or lower is being used to compile the system
+%% we need to export a behaviour info
+-export([behaviour_info/1]).
+-spec behaviour_info(atom()) -> [{atom(), arity()}] | undefined.
+behaviour_info(callbacks) ->
+    [{init, 1},
+     {do, 1},
+     {format_error, 1}];
+behaviour_info(_) ->
+    undefined.
+
+-endif.
 
 %%%===================================================================
 %%% API
