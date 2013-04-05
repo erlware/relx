@@ -77,11 +77,11 @@ test: compile eunit ct
 $(DEPS_PLT):
 	@echo Building local plt at $(DEPS_PLT)
 	@echo
-	dialyzer --output_plt $(DEPS_PLT) --build_plt \
+	dialyzer --statistics --output_plt $(DEPS_PLT) --build_plt \
 	   --apps erts kernel stdlib -r deps
 
 dialyzer: $(DEPS_PLT)
-	dialyzer --fullpath --plt $(DEPS_PLT) -I include -Wrace_conditions -r ./ebin
+	dialyzer --statistics --fullpath --plt $(DEPS_PLT) -I include -Wrace_conditions -r ./ebin
 
 typer:
 	typer --plt $(DEPS_PLT) -r ./src
