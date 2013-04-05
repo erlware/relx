@@ -112,6 +112,6 @@ clean: clean-common-test-data
 
 distclean: clean
 	- rm -rf $(DEPS_PLT)
-	- rm -rvf $(CURDIR)/deps/*
+	- rm -rvf $(CURDIR)/deps
 
 rebuild: distclean deps compile escript dialyzer test

@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/tsloughter/relcool.png)](https://travis-ci.org/tsloughter/relcool)
+
 # NAME
 
 relcool - A release assembler for erlang
