@@ -102,13 +102,18 @@ Source editing
 --------------
 
 The following rules MUST be followed:
- *  Indentation uses horizontal tabs (1 tab = 4 columns)
+ *  Indentation uses 4 horizontal spaces
+ *  Tabs should not be used
  *  Do NOT align code; only indentation is allowed
- *  Lines MUST NOT span more than 80 columns
+
 
 The following rules SHOULD be followed:
  *  Write small functions whenever possible
  *  Avoid having too many clauses containing clauses containing clauses
+ *  Lines SHOULD NOT span more than 80 columns
+
+When in doubt indentation as performed in the Erlang Emacs Mode is
+correct.
 
 Committing
 ----------
