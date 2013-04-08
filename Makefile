@@ -35,6 +35,24 @@ ifeq ($(REBAR),)
 $(error "Rebar not available on this system")
 endif
 
+# =============================================================================
+# Handle version discovery
+# =============================================================================
+
+# We have a problem that we only have 10 minutes to build on travis
+# and those travis boxes are quite small. This is ok for the fast
+# dialyzer on R15 and above. However on R14 and below we have the
+# problem that travis times out. The code below lets us not run
+# dialyzer on R14
+OTP_VSN=$(shell erl -noshell -eval 'io:format("~p", [erlang:system_info(otp_release)]), erlang:halt(0).' | perl -lne 'print for /R(\d+).*/g')
+TRAVIS_SLOW=$(shell expr $(OTP_VSN) \<= 14 )
+
+ifeq ($(TRAVIS_SLOW), 0)
+DIALYZER=$(shell which dialyzer)
+else
+DIALYZER=: not running dialyzer on R14
+endif
+
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf \
 	update-deps escript clean-common-test-data rebuild
 
@@ -75,13 +93,14 @@ ct: compile clean-common-test-data
 test: compile eunit ct
 
 $(DEPS_PLT):
-	@echo Building local plt at $(DEPS_PLT)
+	@echo Building local erts plt at $(DEPS_PLT)
 	@echo
-	dialyzer --output_plt $(DEPS_PLT) --build_plt \
+	$(DIALYZER) --output_plt $(DEPS_PLT) --build_plt \
 	   --apps erts kernel stdlib -r deps
 
 dialyzer: $(DEPS_PLT)
-	dialyzer --fullpath --plt $(DEPS_PLT) -I include -Wrace_conditions -r ./ebin
+	$(DIALYZER) --fullpath --plt $(DEPS_PLT) \
+		 -I include -Wrace_conditions -r ./ebin
 
 typer:
 	typer --plt $(DEPS_PLT) -r ./src
