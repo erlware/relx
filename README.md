@@ -25,7 +25,7 @@ additional specification information for releases.
 
 To build relcool and generate a standalone escript executable:
 
-    $ make escript
+    $ make
 
 This creates the executable `relcool`.
 
