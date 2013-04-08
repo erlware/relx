@@ -56,7 +56,7 @@ endif
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf \
 	update-deps escript clean-common-test-data rebuild
 
-all: deps compile escript dialyzer test
+all: deps compile escript
 
 # =============================================================================
 # Rules to build the system
