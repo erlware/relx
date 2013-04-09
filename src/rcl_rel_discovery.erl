@@ -74,12 +74,13 @@ resolve_rel_metadata(State, LibDirs, AppMeta) ->
 
     case Errors of
         [] ->
+            ReleaseMeta1 = [RelMeta || {ok, RelMeta} <- ReleaseMeta0],
             rcl_log:debug(rcl_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Releases from the system: \n",
-                                   [[rcl_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta0]]
+                                   [[rcl_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta1]]
                           end),
-            {ok, ReleaseMeta0};
+            {ok, ReleaseMeta1};
         _ ->
             ?RCL_ERROR(Errors)
     end.
@@ -105,10 +106,10 @@ discover_dir(File, AppMeta, file) ->
                                   | {error, Reason::term()}
                                   | {noresult, false}.
 is_valid_release(File, AppMeta) ->
-    case lists:suffix(".rel", File) of
-        true ->
+    case filename:extension(File) of
+        <<".rel">>->
             resolve_release(File, AppMeta);
-        false ->
+        _ ->
            {noresult, false}
     end.
 

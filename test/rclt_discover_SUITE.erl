@@ -111,7 +111,7 @@ no_beam_case(Config) ->
     write_app_file(AppDir, BadName, BadVsn),
     State0 = proplists:get_value(state, Config),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
-    EbinDir = filename:join([LibDir2, BadName, "ebin"]),
+    EbinDir = filename:join([LibDir2, BadName, <<"ebin">>]),
     ?assertMatch({error, {_, [{no_beam_files, EbinDir}]}},
                  rcl_provider:do(DiscoverProvider, State1)).
 
@@ -135,14 +135,12 @@ bad_ebin_case(Config) ->
     BadName = create_random_name("error_bad"),
     BadVsn = create_random_vsn(),
     AppDir = filename:join([LibDir2, BadName]),
-    Filename = filename:join([AppDir,  "ebin", BadName ++ ".app"]),
-    io:format("BAD -> ~p~n", [Filename]),
+    Filename = filename:join([AppDir,  <<"ebin">>, BadName ++ ".app"]),
     ok = filelib:ensure_dir(Filename),
     ok = ec_file:write_term(Filename, get_bad_app_metadata(BadName, BadVsn)),
     write_beam_file(AppDir, BadName),
     State0 = proplists:get_value(state, Config),
     {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
-
     ?assertMatch({error, {_, [{invalid_app_file, Filename}]}},
                  rcl_provider:do(DiscoverProvider, State1)).
 
@@ -154,7 +152,8 @@ create_app(Dir, Name, Vsn) ->
     AppDir = filename:join([Dir, Name]),
     write_app_file(AppDir, Name, Vsn),
     write_beam_file(AppDir, Name),
-    {ok, App} = rcl_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
+    {ok, App} = rcl_app_info:new(erlang:list_to_atom(Name), Vsn,
+                                 erlang:iolist_to_binary(AppDir),
                                  [kernel, stdlib], []),
     App.
 

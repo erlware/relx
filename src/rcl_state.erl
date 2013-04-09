@@ -103,7 +103,7 @@ new(PropList, Target)
     State0 =
         #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
                  output_dir=proplists:get_value(output_dir, PropList, ""),
-                 lib_dirs=proplists:get_value(lib_dirs, PropList, ""),
+                 lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
                  config_file=proplists:get_value(config, PropList, undefined),
                  action = Target,
                  goals=proplists:get_value(goals, PropList, []),
@@ -291,6 +291,13 @@ create_logic_providers(State0) ->
     {AssemblerProvider, {ok, State5}} = rcl_provider:new(rcl_prv_assembler, State4),
     State5#state_t{providers=[ConfigProvider, DiscoveryProvider,
                               ReleaseProvider, OverlayProvider, AssemblerProvider]}.
+
+to_binary(Dir)
+  when erlang:is_list(Dir) ->
+    erlang:list_to_binary(Dir);
+to_binary(Dir)
+  when erlang:is_binary(Dir) ->
+    Dir.
 
 %%%===================================================================
 %%% Test Functions

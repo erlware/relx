@@ -79,29 +79,54 @@ get_lib_dirs(State) ->
         true ->
             LibDirs0;
         false ->
-            add_current_dir(State, LibDirs0)
+            lists:flatten([LibDirs0,
+                           add_common_project_dirs(State),
+                           add_system_lib_dir(State),
+                           add_release_output_dir(State)])
     end.
 
--spec add_current_dir(rcl_state:t(), [file:name()]) -> [file:name()].
-add_current_dir(State, LibDirs) ->
+-spec add_common_project_dirs(rcl_state:t()) -> [file:name()].
+add_common_project_dirs(State) ->
     %% Check to see if there is a rebar.config. If so then look for a deps
     %% dir. If both are there then we add that to the lib dirs.
-    Root = rcl_state:root_dir(State),
-    add_system_lib_dir(State, [filename:absname(Root) | LibDirs]).
+    case rcl_state:get(State, disable_project_subdirs, false) of
+        true ->
+            [];
+        false ->
+            Root = rcl_state:root_dir(State),
+            Apps = filename:join(Root, "apps"),
+            Lib = filename:join(Root, "lib"),
+            Deps = filename:join(Root, "deps"),
+            lists:foldl(fun(Dir, LibDirs) ->
+                                case ec_file:exists(Dir) of
+                            true ->
+                                [erlang:iolist_to_binary(Dir) | LibDirs];
+                            false ->
+                                LibDirs
+                        end
+                end, [], [Deps, Lib, Apps])
+    end.
 
--spec add_system_lib_dir(rcl_state:t(), [file:name()]) -> [file:name()].
-add_system_lib_dir(State, LibDirs) ->
+-spec add_system_lib_dir(rcl_state:t()) -> [file:name()].
+add_system_lib_dir(State) ->
     ExcludeSystem = rcl_state:get(State, discover_exclude_system, false),
-
     case ExcludeSystem of
         true ->
-            LibDirs;
+            [];
         false ->
-            SystemLibDir0 = code:lib_dir(),
-            case filelib:is_dir(SystemLibDir0) of
+            erlang:iolist_to_binary(code:lib_dir())
+    end.
+
+add_release_output_dir(State) ->
+    case rcl_state:get(State, disable_discover_release_output, false) of
+        true ->
+            [];
+        false ->
+            Output = erlang:iolist_to_binary(rcl_state:output_dir(State)),
+            case ec_file:exists(erlang:binary_to_list(Output)) of
                 true ->
-                    [SystemLibDir0 | LibDirs];
+                    Output;
                 false ->
-                    LibDirs
+                    []
             end
     end.

@@ -91,7 +91,6 @@ new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps) ->
                  {ok, t()} | relcool:error().
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)
   when erlang:is_atom(AppName),
-       erlang:is_list(Dir),
        erlang:is_list(ActiveDeps),
        erlang:is_list(LibraryDeps) ->
     case parse_version(Vsn) of

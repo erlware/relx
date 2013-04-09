@@ -86,7 +86,7 @@ setup_overrides(State, AppMetas0) ->
     Overrides = rcl_state:overrides(State),
     AppMetas1 = [AppMeta || AppMeta <- AppMetas0,
                             not lists:keymember(app_name(AppMeta), 1, Overrides)],
-    [case is_valid_otp_app(filename:join([FileName, "ebin",
+    [case is_valid_otp_app(filename:join([FileName, <<"ebin">>,
                                          erlang:atom_to_list(AppName) ++ ".app"])) of
          {noresult, false} ->
              {error, {invalid_override, AppName, FileName}};
@@ -134,11 +134,11 @@ is_valid_otp_app(File) ->
     %% Is this an ebin dir?
     EbinDir = filename:dirname(File),
     case filename:basename(EbinDir) of
-        "ebin" ->
-            case lists:suffix(".app", File) of
-                true ->
+        <<"ebin">> ->
+            case filename:extension(File) of
+                <<".app">> ->
                     has_at_least_one_beam(EbinDir, File);
-                false ->
+                _ ->
                     {noresult, false}
             end;
         _ ->
