@@ -290,7 +290,7 @@ make_rerun_overridden_release(Config) ->
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relcool-output")]),
     {ok, Cwd} = file:get_cwd(),
-    {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
+    {ok, _} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
                              OutputDir, [{OverrideAppName, OverrideAppDir}],
                              ConfigFile),
 

@@ -45,8 +45,8 @@ all() ->
 
 normal_passing_case(Config) ->
     DataDir = proplists:get_value(data_dir, Config),
-    Lib1 = filename:join([DataDir, "lib1"]),
-    Lib2 = filename:join([DataDir, "lib2"]),
+    Lib1 = filename:join([DataDir, <<"lib1">>]),
+    Lib2 = filename:join([DataDir, <<"lib2">>]),
     Outdir = filename:join([DataDir, "outdir"]),
     ok = rcl_util:mkdir_p(Lib1),
     ok = rcl_util:mkdir_p(Lib2),
