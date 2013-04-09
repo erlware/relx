@@ -17,12 +17,6 @@ your computer. The remote repository `origin` refers to your fork of the
 project's repository that you can find in your GitHub account. The remote
 repository `upstream` refers to the official repository for this project.
 
-Following this document will ensure prompt merging of your work in the
-`next` branch of the project. The `master` branch has `next` merged to
-it when we are satisfied with stability of the branch and any new
-features. Please submit all pull requests to the `next` branch and
-base your work off the `upstream` `next` branch.
-
 Reporting bugs
 --------------
 
@@ -63,7 +57,7 @@ To update the current branch to `upstream`, you can use the following commands.
 
 ``` bash
 $ git fetch upstream
-$ git rebase upstream/next
+$ git rebase upstream/master
 ```
 
 It may ask you to stash your changes, in which case you stash with:
@@ -82,12 +76,11 @@ You SHOULD use these commands both before working on your patch and before
 submitting the pull request. If conflicts arise it is your responsability
 to deal with them.
 
-You MUST create a new branch for your work. First, ensure you are on `next`.
-You MUST update `next` to `upstream` before doing anything. Then create a
-new branch `$BRANCH` and switch to it.
+You MUST create a new branch for your work. First make sure you have
+'fetched' `master`
 
 ``` bash
-$ git checkout -b $BRANCH
+$ git checkout -b $BRANCH upstream/master
 ```
 
 You MUST use a an insightful branch name.
@@ -142,5 +135,5 @@ $ git push origin $BRANCH
 ```
 
 You MUST then submit the pull request by using the GitHub interface to
-the `next` branch. You SHOULD provide an explanatory message and refer
+the `master` branch. You SHOULD provide an explanatory message and refer
 to any previous ticket related to this patch.
