@@ -97,6 +97,7 @@ add_common_project_dirs(State) ->
             Apps = filename:join(Root, "apps"),
             Lib = filename:join(Root, "lib"),
             Deps = filename:join(Root, "deps"),
+            Ebin = filename:join(Root, "ebin"),
             lists:foldl(fun(Dir, LibDirs) ->
                                 case ec_file:exists(Dir) of
                             true ->
@@ -104,7 +105,7 @@ add_common_project_dirs(State) ->
                             false ->
                                 LibDirs
                         end
-                end, [], [Deps, Lib, Apps])
+                end, [], [Deps, Lib, Apps, Ebin])
     end.
 
 -spec add_system_lib_dir(rcl_state:t()) -> [file:name()].
