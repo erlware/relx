@@ -291,6 +291,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                 true ->
                     ok = ec_file:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive]),
+                    ok = ec_file:remove(filename:join([LocalErts, "bin", "erl"])),
                     ok = file:write_file(filename:join([LocalErts, "bin", "erl"]), erl_script(ErtsVersion)),
                     case rcl_state:get(State, extended_start_script, false) of
                         true ->
