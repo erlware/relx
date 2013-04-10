@@ -33,7 +33,8 @@
          make_goalless_release/1,
          make_depfree_release/1,
          make_invalid_config_release/1,
-         make_relup_release/1]).
+         make_relup_release/1,
+         make_one_app_top_level_release/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -61,7 +62,8 @@ all() ->
     [make_release, make_scriptless_release, make_overridden_release,
      make_implicit_config_release, make_rerun_overridden_release,
      overlay_release, make_goalless_release, make_depfree_release,
-     make_invalid_config_release, make_relup_release].
+     make_invalid_config_release, make_relup_release,
+     make_one_app_top_level_release].
 
 make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -563,6 +565,31 @@ make_relup_release(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.3"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.3"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+
+make_one_app_top_level_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    {ok, AppInfo} = create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel], []),
+    AppDir = rcl_app_info:dir(AppInfo),
+    ConfigFile = filename:join([AppDir, "relcool.config"]),
+    write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [{goal_app_1, "0.0.1"}]}]),
+
+    OutputDir = filename:join([AppDir,
+                               create_random_name("relcool-output")]),
+
+    {ok, Cwd} = file:get_cwd(),
+    ok = file:set_cwd(AppDir),
+    {ok, State} = relcool:do(undefined, undefined, [], [], 2,
+                              OutputDir, ConfigFile),
+    ok = file:set_cwd(Cwd),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
+    AppSpecs = rcl_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)).
+
 
 %%%===================================================================
 %%% Helper Functions
