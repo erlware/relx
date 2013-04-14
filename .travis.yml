@@ -15,4 +15,8 @@ branches:
 notifications:
   email:
     - core@erlware.org
-  irc: "irc.freenode.org#erlware"
+  irc:
+    channels:
+      - "irc.freenode.org#erlware"
+    use_notice: true
+    skip_join: true
