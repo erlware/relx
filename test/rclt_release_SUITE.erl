@@ -27,6 +27,7 @@
          make_release/1,
          make_scriptless_release/1,
          make_overridden_release/1,
+         make_skip_app_release/1,
          make_rerun_overridden_release/1,
          make_implicit_config_release/1,
          overlay_release/1,
@@ -60,6 +61,7 @@ init_per_testcase(_, Config) ->
 
 all() ->
     [make_release, make_scriptless_release, make_overridden_release,
+     make_skip_app_release,
      make_implicit_config_release, make_rerun_overridden_release,
      overlay_release, make_goalless_release, make_depfree_release,
      make_invalid_config_release, make_relup_release,
@@ -202,7 +204,7 @@ make_overridden_release(Config) ->
                                create_random_name("relcool-output")]),
     {ok, Cwd} = file:get_cwd(),
     {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
-                              OutputDir, [{OverrideAppName, OverrideAppDir}],
+                             OutputDir, [{OverrideAppName, OverrideAppDir}],
                              ConfigFile),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
     AppSpecs = rcl_release:applications(Release),
@@ -217,6 +219,52 @@ make_overridden_release(Config) ->
     {ok, Real} = file:read_link(filename:join([OutputDir, "lib",
                                                OverrideApp ++ "-" ++ OverrideVsn])),
     ?assertMatch(OverrideAppDir, Real).
+
+make_skip_app_release(Config) ->
+    DataDir = proplists:get_value(data_dir, Config),
+    SkipAppDir1 = filename:join([DataDir, create_random_name("skip_app_dir_")]),
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+    SkipAppApp = create_random_name("skip_app_app"),
+    SkipAppVsn = create_random_vsn(),
+    SkipAppAppName = erlang:list_to_atom(SkipAppApp),
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    create_empty_app(SkipAppDir1, SkipAppApp, SkipAppVsn, [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relcool.config"]),
+    write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]},
+                  {skip_apps, [erlang:list_to_atom(SkipAppApp)]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relcool-output")]),
+    {ok, Cwd} = file:get_cwd(),
+    {ok, State} = relcool:do(Cwd, undefined, undefined, [], [LibDir1], 2,
+                              OutputDir, [],
+                             ConfigFile),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rcl_state:releases(State)),
+    AppSpecs = rcl_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
+    ?assertNot(lists:member({SkipAppAppName, SkipAppVsn}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 make_implicit_config_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -598,6 +646,12 @@ create_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
     write_app_file(AppDir, Name, Vsn, Deps, LibDeps),
     write_beam_file(AppDir, Name),
+    rcl_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
+                     Deps, []).
+
+create_empty_app(Dir, Name, Vsn, Deps, LibDeps) ->
+    AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
+    write_app_file(AppDir, Name, Vsn, Deps, LibDeps),
     rcl_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
                      Deps, []).
 
