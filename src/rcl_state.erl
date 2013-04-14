@@ -29,6 +29,8 @@
          lib_dirs/1,
          overrides/1,
          overrides/2,
+         skip_apps/1,
+         skip_apps/2,
          goals/1,
          config_file/1,
          config_file/2,
@@ -74,6 +76,7 @@
                   default_release :: {rcl_release:name(), rcl_release:vsn()},
                   sys_config :: file:filename() | undefined,
                   overrides :: [{AppName::atom(), Directory::file:filename()}],
+                  skip_apps = [] :: [AppName::atom()],
                   releases :: releases(),
                   discovered_releases :: releases(),
                   config_values :: ec_dictionary:dictionary(Key::atom(),
@@ -128,6 +131,16 @@ overrides(#state_t{overrides=Overrides}) ->
 -spec overrides(t(), [{AppName::atom(), Directory::file:filename()}]) -> t().
 overrides(State, Overrides) ->
     State#state_t{overrides=Overrides}.
+
+
+-spec skip_apps(t()) -> [AppName::atom()].
+skip_apps(#state_t{skip_apps=Apps}) ->
+    Apps.
+
+%% @doc the application overrides for the system
+-spec skip_apps(t(), [AppName::atom()]) -> t().
+skip_apps(State, SkipApps) ->
+    State#state_t{skip_apps=SkipApps}.
 
 %% @doc get the current log state for the system
 -spec log(t()) -> rcl_log:t().

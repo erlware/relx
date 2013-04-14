@@ -66,7 +66,9 @@ resolve_app_metadata(State, LibDirs) ->
                          false
                  end] of
         [] ->
-            AppMeta1 = [App || {ok, App} <- setup_overrides(State, AppMeta0)],
+            SkipApps = rcl_state:skip_apps(State),
+            AppMeta1 = [App || {ok, App} <- setup_overrides(State, AppMeta0),
+                               not lists:keymember(rcl_app_info:name(App), 1, SkipApps)],
             rcl_log:debug(rcl_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Applications from the system: \n",
