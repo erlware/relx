@@ -90,7 +90,7 @@ ct: compile clean-common-test-data
 	-dir $(CURDIR)/test/ \
 	-suite rclt_command_SUITE rclt_discover_SUITE -suite rclt_release_SUITE
 
-test: compile eunit ct
+test: compile dialyzer eunit ct
 
 $(DEPS_PLT):
 	@echo Building local erts plt at $(DEPS_PLT)
