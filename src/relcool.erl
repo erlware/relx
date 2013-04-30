@@ -44,13 +44,12 @@
 -spec main([string()]) -> ok | error() | {ok, rcl_state:t()}.
 main(Args) ->
     OptSpecList = opt_spec_list(),
-    Result =
-        case rcl_cmd_args:args2state(getopt:parse(OptSpecList, Args)) of
-            {ok, State} ->
-                run_relcool_process(rcl_state:caller(State, command_line));
-            Error={error, _} ->
-                Error
-        end,
+    Result = case getopt:parse(OptSpecList, Args) of
+                 {ok, {Options, NonOptions}} ->
+                     do([{caller, command_line} | Options], NonOptions);
+                 {error, Detail} ->
+                     ?RCL_ERROR({opt_parse, Detail})
+             end,
     case Result of
         {error, _} ->
             report_error(rcl_state:caller(rcl_state:new([], undefined),
@@ -107,25 +106,68 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
            rcl_log:log_level(), [file:name()], [{atom(), file:name()}], file:name() | undefined) ->
                   ok | error() | {ok, rcl_state:t()}.
 do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
-    State = rcl_state:new([{relname, RelName},
-                           {relvsn, RelVsn},
-                           {goals, Goals},
-                           {overrides, Overrides},
-                           {output_dir, OutputDir},
-                           {lib_dirs, LibDirs},
-                           {root_dir, RootDir},
-                           {log, rcl_log:new(LogLevel)},
-                           {config, Config}],
-                          release),
-    run_relcool_process(rcl_state:caller(State, api)).
+    do([{relname, RelName},
+        {relvsn, RelVsn},
+        {goals, Goals},
+        {overrides, Overrides},
+        {output_dir, OutputDir},
+        {lib_dirs, LibDirs},
+        {root_dir, RootDir},
+        {log_level, LogLevel},
+        {config, Config}],
+       ["release"]).
 
+%% @doc provides an API to run the Relcool process from erlang applications
+%%
+%% @param Opts - A proplist of options. There are good defaults for each of
+%% these entries, so any or all may be omitted. Individual options may be:
+%%
+%%  <dl>
+%%   <dt><pre>{relname, RelName}</pre></dt>
+%%   <dd>The release name to build </dd>
+%%   <dt><pre>{relvsn, RelVsn}</pre></dt>
+%%   <dd>The release version to build</dd>
+%%   <dt><pre>{goals, Goals}</pre></dt>
+%%   <dd>The release goals for the system in depsolver or Relcool goal
+%%       format (@see goals())</dd>
+%%   <dt><pre>{lib_dirs, LibDirs}</pre></dt>
+%%   <dd>A list of library dirs that should be used for the system</dd>
+%%   <dt><pre>{lib_dir, LibDir}</pre></dt>
+%%   <dd>A single lib dir that should be used for the system, may appear any
+%%   number of times and may be used in conjunction with lib_dirs</dd>
+%%   <dt><pre>{output_dir, OutputDir}</pre></dt>
+%%   <dd>The directory where the release should be built to</dd>
+%%   <dt><pre>{root_dir, RootDir}</pre></dt>
+%%   <dd>The base directory for this run of relcool. </dd>
+%%   <dt><pre>{config, Config}</pre></dt>
+%%   <dd>The path to a relcool config file</dd>
+%%   <dt><pre>{log_level, LogLevel}</pre></dt>
+%%   <dd>Defines the verbosity of output. Maybe a number between 0 and 2, with
+%%   with higher values being more verbose</dd>
+%%   <dt><pre>{overrides, Overrides}</pre></dt>
+%%   <dd>A list of app overrides for the system in the form of [{AppName:atom(),
+%%   Dir:string() | binary()} | string() | binary()] where the string or binary
+%%   is in the form "AppName:AppDir"</dd>
+%%   <dt><pre>{override, Override}</pre></dt>
+%%   <dd>A single of app override for the system in the same form as entries for
+%%   Overrides</dd>
+%% </dl>
+-spec do(proplists:proplist(), [string()]) ->
+                  ok | error() | {ok, rcl_state:t()}.
+do(Opts, NonOpts) ->
+        case rcl_cmd_args:args2state(Opts, NonOpts) of
+            {ok, State} ->
+                run_relcool_process(State);
+            Error={error, _} ->
+                Error
+        end.
 
 -spec opt_spec_list() -> [getopt:option_spec()].
 opt_spec_list() ->
     [{relname,  $n, "relname",  string,
       "Specify the name for the release that will be generated"},
      {relvsn, $v, "relvsn", string, "Specify the version for the release"},
-     {goals, $g, "goal", string,
+     {goal, $g, "goal", string,
       "Specify a target constraint on the system. These are usually the OTP"},
      {output_dir, $o, "output-dir", string,
       "The output directory for the release. This is `./` by default."},
@@ -136,6 +178,8 @@ opt_spec_list() ->
       "Disable the default system added lib dirs (means you must add them all manually"},
      {log_level, $V, "verbose", {integer, 1},
       "Verbosity level, maybe between 0 and 2"},
+     {override_app, $a, "override_app", string,
+      "Provide an app name and a directory to override in the form <appname>:<app directory>"},
      {config, $c, "config", {string, ""}, "The path to a config file"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
@@ -143,6 +187,10 @@ opt_spec_list() ->
 format_error({invalid_return_value, Provider, Value}) ->
     [rcl_provider:format(Provider), " returned an invalid value ",
      io_lib:format("~p", [Value])];
+format_error({opt_parse, {invalid_option, Opt}}) ->
+    io_lib:format("invalid option ~s~n", [Opt]);
+format_error({opt_parse, Arg}) ->
+    io_lib:format("~p~n", [Arg]);
 format_error({error, {Module, Reason}}) ->
     io_lib:format("~s~n", [Module:format_error(Reason)]).
 
