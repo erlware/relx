@@ -128,6 +128,7 @@ resolve_release(RelFile, AppMeta) ->
 build_release(RelName, RelVsn, ErtsVsn, Apps, AppMeta) ->
     Release = rcl_release:erts(rcl_release:new(RelName, RelVsn),
                                ErtsVsn),
+    io:format("REL -> ~p~n", [Release]),
     resolve_apps(Apps, AppMeta, Release, []).
 
 resolve_apps([], _AppMeta, Release, Acc) ->
