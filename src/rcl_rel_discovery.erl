@@ -118,15 +118,15 @@ resolve_release(RelFile, AppMeta) ->
         {ok, [{release, {RelName, RelVsn},
                {erts, ErtsVsn},
                Apps}]} ->
-            build_release(RelName, RelVsn, ErtsVsn, Apps, AppMeta);
+            build_release(RelFile, RelName, RelVsn, ErtsVsn, Apps, AppMeta);
         {ok, InvalidRelease} ->
             ?RCL_ERROR({invalid_release_information, InvalidRelease});
         {error, Reason} ->
             ?RCL_ERROR({unable_to_read, RelFile, Reason})
     end.
 
-build_release(RelName, RelVsn, ErtsVsn, Apps, AppMeta) ->
-    Release = rcl_release:erts(rcl_release:new(RelName, RelVsn),
+build_release(RelFile, RelName, RelVsn, ErtsVsn, Apps, AppMeta) ->
+    Release = rcl_release:erts(rcl_release:new(RelName, RelVsn, RelFile),
                                ErtsVsn),
     resolve_apps(Apps, AppMeta, Release, []).
 

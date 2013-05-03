@@ -58,6 +58,9 @@ to_binary(String) when erlang:is_list(String) ->
     erlang:iolist_to_binary(String);
 to_binary(Bin) when erlang:is_binary(Bin) ->
     Bin.
+
+to_string(Binary) when erlang:is_binary(Binary) ->
+    erlang:binary_to_list(Binary);
 to_string(Atom) when erlang:is_atom(Atom) ->
     erlang:atom_to_list(Atom);
 to_string(Else) when erlang:is_list(Else) ->

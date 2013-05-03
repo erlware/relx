@@ -25,6 +25,7 @@
 
 -export([new/2,
          log/1,
+         action/1,
          output_dir/1,
          lib_dirs/1,
          overrides/1,
@@ -57,6 +58,7 @@
          put/3,
          caller/1,
          caller/2,
+         upfrom/1,
          format/1,
          format/2]).
 
@@ -126,6 +128,11 @@ new(PropList, Target)
     rcl_state:put(create_logic_providers(State0),
                   disable_default_libs,
                   proplists:get_value(disable_default_libs, PropList, false)).
+
+%% @doc the action targeted for this system
+-spec action(t()) -> atom().
+action(#state_t{action=Action}) ->
+    Action.
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
@@ -281,6 +288,10 @@ caller(#state_t{caller=Caller}) ->
 -spec caller(t(), caller()) -> t().
 caller(S, Caller) ->
     S#state_t{caller=Caller}.
+
+-spec upfrom(t()) -> string() | binary() | undefined.
+upfrom(#state_t{upfrom=UpFrom}) ->
+    UpFrom.
 
 -spec format(t()) -> iolist().
 format(Mod) ->
