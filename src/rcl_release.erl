@@ -23,6 +23,9 @@
 -module(rcl_release).
 
 -export([new/2,
+         new/3,
+         relfile/1,
+         relfile/2,
          erts/2,
          erts/1,
          goals/2,
@@ -35,6 +38,7 @@
          application_details/2,
          realized/1,
          metadata/1,
+         canonical_name/1,
          format/1,
          format/2,
          format_error/1]).
@@ -57,6 +61,7 @@
                     realized = false :: boolean(),
                     annotations = undefined :: annotations(),
                     applications = [] ::  [application_spec()],
+                    relfile :: undefined | string(),
                     app_detail = [] :: [rcl_app_info:t()]}).
 
 %%============================================================================
@@ -87,10 +92,24 @@
 %%============================================================================
 %% API
 %%============================================================================
+-spec new(atom(), string(), undefined | file:name()) -> t().
+new(ReleaseName, ReleaseVsn, Relfile) ->
+    #release_t{name=to_atom(ReleaseName), vsn=ReleaseVsn,
+               relfile = Relfile,
+               annotations=ec_dictionary:new(ec_dict)}.
+
 -spec new(atom(), string()) -> t().
 new(ReleaseName, ReleaseVsn) ->
-    #release_t{name=to_atom(ReleaseName), vsn=ReleaseVsn,
-               annotations=ec_dictionary:new(ec_dict)}.
+    new(ReleaseName, ReleaseVsn, undefined).
+
+
+-spec relfile(t()) -> file:name() | undefined.
+relfile(#release_t{relfile=Relfile}) ->
+    Relfile.
+
+-spec relfile(t(), file:name()) -> t().
+relfile(Release, Relfile) ->
+    Release#release_t{relfile=Relfile}.
 
 -spec name(t()) -> atom().
 name(#release_t{name=Name}) ->
@@ -162,6 +181,12 @@ metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=Apps,
             ?RCL_ERROR({not_realized, Name, Vsn})
     end.
 
+%% @doc produce the canonical name (<name>-<vsn>) for this release
+-spec canonical_name(t()) -> string().
+canonical_name(#release_t{name=Name, vsn=Vsn}) ->
+    erlang:binary_to_list(erlang:iolist_to_binary([erlang:atom_to_list(Name), "-",
+                                                   Vsn])).
+
 -spec format(t()) -> iolist().
 format(Release) ->
     format(0, Release).
@@ -183,6 +208,7 @@ format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
          false ->
              []
      end].
+
 -spec format_goal(application_goal()) -> iolist().
 format_goal({Constraint, AppType}) ->
     io_lib:format("~p", [{rcl_depsolver:format_constraint(Constraint), AppType}]);

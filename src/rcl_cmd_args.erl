@@ -238,7 +238,17 @@ create_root_dir(Opts, Acc) ->
                                          {ok, rcl_state:cmd_args()} | relcool:error().
 create_disable_default_libs(Opts, Acc) ->
     Def = proplists:get_value(disable_default_libs, Opts, false),
-    create_caller(Opts, [{disable_default_libs, Def} | Acc]).
+    create_upfrom(Opts,  [{disable_default_libs, Def} | Acc]).
+
+-spec create_upfrom([getopt:option()], rcl:cmd_args()) ->
+    {ok, rcl_state:cmd_args()} | relcool:error().
+create_upfrom(Opts, Acc) ->
+    case proplists:get_value(upfrom, Opts, undefined) of
+        undefined ->
+            create_caller(Opts, Acc);
+        UpFrom ->
+            create_caller(Opts,  [{upfrom, UpFrom} | Acc])
+    end.
 
 -spec create_caller([getopt:option()], rcl_state:cmd_args()) ->
                            {ok, rcl_state:cmd_args()} | relcool:error().

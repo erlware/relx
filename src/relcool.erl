@@ -21,6 +21,7 @@
 -module(relcool).
 
 -export([main/1,
+         do/2,
          do/7,
          do/8,
          do/9,
@@ -169,6 +170,8 @@ opt_spec_list() ->
      {relvsn, $v, "relvsn", string, "Specify the version for the release"},
      {goal, $g, "goal", string,
       "Specify a target constraint on the system. These are usually the OTP"},
+     {upfrom, $u, "upfrom", string,
+      "Only valid with relup target, specify the release to upgrade from"},
      {output_dir, $o, "output-dir", string,
       "The output directory for the release. This is `./` by default."},
      {lib_dir, $l, "lib-dir", string,
