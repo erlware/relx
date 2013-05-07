@@ -25,6 +25,7 @@
 
 -export([new/2,
          log/1,
+         action/1,
          output_dir/1,
          lib_dirs/1,
          overrides/1,
@@ -40,14 +41,16 @@
          sys_config/2,
          root_dir/1,
          root_dir/2,
-         add_release/2,
-         get_release/3,
-         update_release/2,
-         releases/1,
-         discovered_releases/1,
-         discovered_releases/2,
-         default_release/1,
-         default_release/3,
+         add_configured_release/2,
+         get_configured_release/3,
+         configured_releases/1,
+         realized_releases/1,
+         realized_releases/2,
+         add_realized_release/2,
+         get_realized_release/3,
+         update_realized_release/2,
+         default_configured_release/1,
+         default_configured_release/3,
          available_apps/1,
          available_apps/2,
          get/2,
@@ -55,6 +58,7 @@
          put/3,
          caller/1,
          caller/2,
+         upfrom/1,
          format/1,
          format/2]).
 
@@ -73,12 +77,13 @@
                   goals=[] :: [rcl_depsolver:constraint()],
                   providers = [] :: [rcl_provider:t()],
                   available_apps = [] :: [rcl_app_info:t()],
-                  default_release :: {rcl_release:name(), rcl_release:vsn()},
+                  default_configured_release :: {rcl_release:name(), rcl_release:vsn()},
                   sys_config :: file:filename() | undefined,
                   overrides :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps = [] :: [AppName::atom()],
-                  releases :: releases(),
-                  discovered_releases :: releases(),
+                  configured_releases :: releases(),
+                  realized_releases :: releases(),
+                  upfrom :: string() | binary() | undefined,
                   config_values :: ec_dictionary:dictionary(Key::atom(),
                                                             Value::term())}).
 
@@ -109,18 +114,25 @@ new(PropList, Target)
                  lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
                  config_file=proplists:get_value(config, PropList, undefined),
                  action = Target,
+                 caller = proplists:get_value(caller, PropList, api),
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
-                 releases=ec_dictionary:new(ec_dict),
-                 discovered_releases=ec_dictionary:new(ec_dict),
+                 configured_releases=ec_dictionary:new(ec_dict),
+                 realized_releases=ec_dictionary:new(ec_dict),
                  config_values=ec_dictionary:new(ec_dict),
                  overrides = proplists:get_value(overrides, PropList, []),
                  root_dir = proplists:get_value(root_dir, PropList, Root),
-                 default_release={proplists:get_value(relname, PropList, undefined),
+                 upfrom = proplists:get_value(upfrom, PropList, undefined),
+                 default_configured_release={proplists:get_value(relname, PropList, undefined),
                                   proplists:get_value(relvsn, PropList, undefined)}},
     rcl_state:put(create_logic_providers(State0),
                   disable_default_libs,
                   proplists:get_value(disable_default_libs, PropList, false)).
+
+%% @doc the action targeted for this system
+-spec action(t()) -> atom().
+action(#state_t{action=Action}) ->
+    Action.
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
@@ -191,44 +203,55 @@ root_dir(State, RootDir) ->
 providers(M, NewProviders) ->
     M#state_t{providers=NewProviders}.
 
--spec add_release(t(), rcl_release:t()) -> t().
-add_release(M=#state_t{releases=Releases}, Release) ->
-    M#state_t{releases=ec_dictionary:add({rcl_release:name(Release),
+-spec add_configured_release(t(), rcl_release:t()) -> t().
+add_configured_release(M=#state_t{configured_releases=Releases}, Release) ->
+    M#state_t{configured_releases=ec_dictionary:add({rcl_release:name(Release),
                                           rcl_release:vsn(Release)},
                                          Release,
                                          Releases)}.
 
--spec update_release(t(), rcl_release:t()) -> t().
-update_release(M=#state_t{releases=Releases}, Release) ->
-    M#state_t{releases=ec_dictionary:add({rcl_release:name(Release),
-                                          rcl_release:vsn(Release)},
-                                         Release,
-                                         Releases)}.
-
--spec get_release(t(), rcl_release:name(), rcl_release:vsn()) -> rcl_release:t().
-get_release(#state_t{releases=Releases}, Name, Vsn) ->
+-spec get_configured_release(t(), rcl_release:name(), rcl_release:vsn()) -> rcl_release:t().
+get_configured_release(#state_t{configured_releases=Releases}, Name, Vsn) ->
     ec_dictionary:get({Name, Vsn}, Releases).
 
--spec releases(t()) -> releases().
-releases(#state_t{releases=Releases}) ->
+-spec configured_releases(t()) -> releases().
+configured_releases(#state_t{configured_releases=Releases}) ->
     Releases.
 
--spec discovered_releases(t()) -> releases().
-discovered_releases(#state_t{discovered_releases=Releases}) ->
+-spec realized_releases(t()) -> releases().
+realized_releases(#state_t{realized_releases=Releases}) ->
     Releases.
 
--spec discovered_releases(t(), releases()) -> t().
-discovered_releases(State, Releases) ->
-    State#state_t{discovered_releases=Releases}.
+-spec realized_releases(t(), releases()) -> t().
+realized_releases(State, Releases) ->
+    State#state_t{realized_releases=Releases}.
 
--spec default_release(t()) ->
+-spec add_realized_release(t(), rcl_release:t()) -> t().
+add_realized_release(State = #state_t{realized_releases=Releases}, Release) ->
+    NewReleases = ec_dictionary:add({rcl_release:name(Release), rcl_release:vsn(Release)},
+                                    Release, Releases),
+    State#state_t{realized_releases=NewReleases}.
+
+-spec get_realized_release(t(), rcl_release:name(), rcl_release:vsn()) -> rcl_release:t().
+get_realized_release(#state_t{realized_releases=Releases}, Name, Vsn) ->
+    ec_dictionary:get({Name, Vsn}, Releases).
+
+-spec update_realized_release(t(), rcl_release:t()) ->
+     t().
+update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
+    M#state_t{realized_releases=ec_dictionary:add({rcl_release:name(Release),
+                                                   rcl_release:vsn(Release)},
+                                                  Release,
+                                                  Releases)}.
+
+-spec default_configured_release(t()) ->
                              {rcl_release:name() | undefined, rcl_release:vsn() | undefined}.
-default_release(#state_t{default_release=Def}) ->
+default_configured_release(#state_t{default_configured_release=Def}) ->
     Def.
 
--spec default_release(t(), rcl_release:name(), rcl_release:vsn()) -> t().
-default_release(M, Name, Vsn) ->
-    M#state_t{default_release={Name, Vsn}}.
+-spec default_configured_release(t(), rcl_release:name(), rcl_release:vsn()) -> t().
+default_configured_release(M, Name, Vsn) ->
+    M#state_t{default_configured_release={Name, Vsn}}.
 
 -spec available_apps(t()) -> [rcl_app_info:t()].
 available_apps(#state_t{available_apps=Apps}) ->
@@ -265,6 +288,10 @@ caller(#state_t{caller=Caller}) ->
 -spec caller(t(), caller()) -> t().
 caller(S, Caller) ->
     S#state_t{caller=Caller}.
+
+-spec upfrom(t()) -> string() | binary() | undefined.
+upfrom(#state_t{upfrom=UpFrom}) ->
+    UpFrom.
 
 -spec format(t()) -> iolist().
 format(Mod) ->

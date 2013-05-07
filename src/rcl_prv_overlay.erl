@@ -43,8 +43,8 @@ init(State) ->
 %% looking for OTP Applications
 -spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
 do(State) ->
-    {RelName, RelVsn} = rcl_state:default_release(State),
-    Release = rcl_state:get_release(State, RelName, RelVsn),
+    {RelName, RelVsn} = rcl_state:default_configured_release(State),
+    Release = rcl_state:get_realized_release(State, RelName, RelVsn),
     case rcl_release:realized(Release) of
         true ->
             generate_overlay_vars(State, Release);
@@ -202,15 +202,15 @@ generate_state_vars(State) ->
      {providers, rcl_state:providers(State)},
      {sys_config, rcl_state:sys_config(State)},
      {root_dir, rcl_state:root_dir(State)},
-     {default_release_name, case rcl_state:default_release(State) of
+     {default_release_name, case rcl_state:default_configured_release(State) of
                                 {Name0, _} ->
                                     Name0
                             end},
-     {default_release_version, case rcl_state:default_release(State) of
+     {default_release_version, case rcl_state:default_configured_release(State) of
                                    {_, Vsn0} ->
                                        Vsn0
                                end},
-     {default_release, case rcl_state:default_release(State) of
+     {default_release, case rcl_state:default_configured_release(State) of
                            {Name1, undefined} ->
                                erlang:atom_to_list(Name1);
                            {Name1, Vsn1} ->

@@ -123,7 +123,7 @@ load_config(ConfigFile, State) ->
 -spec load_terms(term(), {ok, rcl_state:t()} | relcool:error()) ->
                         {ok, rcl_state:t()} | relcool:error().
 load_terms({default_release, RelName, RelVsn}, {ok, State}) ->
-    {ok, rcl_state:default_release(State, RelName, RelVsn)};
+    {ok, rcl_state:default_configured_release(State, RelName, RelVsn)};
 load_terms({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
     {ok, State};
@@ -154,7 +154,7 @@ load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
         E={error, _} ->
             E;
         {ok, Release1} ->
-            {ok, rcl_state:add_release(State0, Release1)}
+            {ok, rcl_state:add_configured_release(State0, Release1)}
         end;
 load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
             Applications}, {ok, State}) ->
@@ -163,7 +163,7 @@ load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
         E={error, _} ->
             E;
         {ok, Release1} ->
-            {ok, rcl_state:add_release(State, Release1)}
+            {ok, rcl_state:add_configured_release(State, Release1)}
     end;
 load_terms({sys_config, SysConfig}, {ok, State}) ->
     {ok, rcl_state:sys_config(State, filename:absname(SysConfig))};

@@ -58,7 +58,8 @@ normal_passing_case(Config) ->
     RelVsn = "33.222",
     CmdLine = ["-V", LogLevel, "-g",Goal1,"-g",Goal2, "-l", Lib1, "-l", Lib2,
                "-n", RelName, "-v", RelVsn, "-o", Outdir],
-    {ok, State} = rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine)),
+    {ok, {Opts, Targets}} = getopt:parse(relcool:opt_spec_list(), CmdLine),
+    {ok, State} = rcl_cmd_args:args2state(Opts, Targets),
     ?assertMatch([Lib1, Lib2],
                  rcl_state:lib_dirs(State)),
     ?assertMatch(Outdir, rcl_state:output_dir(State)),
@@ -77,17 +78,20 @@ lib_fail_case(Config) ->
     ok = rcl_util:mkdir_p(Lib1),
 
     CmdLine = ["-l", Lib1, "-l", Lib2],
+    {ok, {Opts, Targets}} = getopt:parse(relcool:opt_spec_list(), CmdLine),
     ?assertMatch({error, {_, {not_directory, Lib2}}},
-                 rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
+                 rcl_cmd_args:args2state(Opts, Targets)).
 
 spec_parse_fail_case(_Config) ->
     Spec = "aaeu:3333:33.22a44",
     CmdLine = ["-g", Spec],
+    {ok, {Opts, Targets}} = getopt:parse(relcool:opt_spec_list(), CmdLine),
     ?assertMatch({error, {_, {failed_to_parse, _Spec}}},
-                 rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
+                 rcl_cmd_args:args2state(Opts, Targets)).
 
 config_fail_case(_Config) ->
     ConfigFile = "does-not-exist",
     CmdLine = ["-c", ConfigFile],
+    {ok, {Opts, Targets}} = getopt:parse(relcool:opt_spec_list(), CmdLine),
     ?assertMatch({error, {_, {invalid_config_file, ConfigFile}}},
-                 rcl_cmd_args:args2state(getopt:parse(relcool:opt_spec_list(), CmdLine))).
+                 rcl_cmd_args:args2state(Opts, Targets)).
