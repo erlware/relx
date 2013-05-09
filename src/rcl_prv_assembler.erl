@@ -41,8 +41,8 @@ init(State) ->
 %% looking for OTP Applications
 -spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
 do(State) ->
-    {RelName, RelVsn} = rcl_state:default_release(State),
-    Release = rcl_state:get_release(State, RelName, RelVsn),
+    {RelName, RelVsn} = rcl_state:default_configured_release(State),
+    Release = rcl_state:get_realized_release(State, RelName, RelVsn),
     OutputDir = rcl_state:output_dir(State),
     case create_output_dir(OutputDir) of
         ok ->
@@ -202,6 +202,7 @@ create_release_info(State, Release, OutputDir) ->
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     ok = ec_file:mkdir_p(ReleaseDir),
     case rcl_release:metadata(Release) of
+    State1 = rcl_state:update_realized_release(State0, Release1),
         {ok, Meta} ->
                 ok = ec_file:write_term(ReleaseFile, Meta),
                 write_bin_file(State, Release, OutputDir, ReleaseDir);

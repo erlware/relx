@@ -48,9 +48,9 @@ do(State0) ->
             case rcl_rel_discovery:do(State0, LibDirs, AppMeta) of
                 {ok, Releases} ->
                     State1 = rcl_state:available_apps(State0, AppMeta),
-                    {ok, rcl_state:discovered_releases(State1, lists:foldl(fun add/2,
-                                                                           ec_dictionary:new(ec_dict),
-                                                                           Releases))};
+                    {ok, rcl_state:realized_releases(State1, lists:foldl(fun add/2,
+                                                                         ec_dictionary:new(ec_dict),
+                                                                         Releases))};
                 Error ->
                     Error
             end;

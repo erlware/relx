@@ -89,7 +89,7 @@ create_dep_graph(State) ->
 -spec find_default_release(rcl_state:t(), rcl_depsolver:t()) ->
                                   {ok, rcl_state:t()} | relcool:error().
 find_default_release(State, DepGraph) ->
-    case rcl_state:default_release(State) of
+    case rcl_state:default_configured_release(State) of
         {undefined, undefined} ->
             resolve_default_release(State, DepGraph);
         {RelName, undefined} ->
@@ -103,9 +103,9 @@ find_default_release(State, DepGraph) ->
 resolve_default_release(State0, DepGraph) ->
     %% Here we will just get the highest versioned release and run that.
     case lists:sort(fun release_sort/2,
-                    ec_dictionary:to_list(rcl_state:releases(State0))) of
+                    ec_dictionary:to_list(rcl_state:configured_releases(State0))) of
         [{{RelName, RelVsn}, _} | _] ->
-            State1 = rcl_state:default_release(State0, RelName, RelVsn),
+            State1 = rcl_state:default_configured_release(State0, RelName, RelVsn),
             solve_release(State1, DepGraph, RelName, RelVsn);
         [] ->
             ?RCL_ERROR(no_releases_in_system)
@@ -113,12 +113,12 @@ resolve_default_release(State0, DepGraph) ->
 
 resolve_default_version(State0, DepGraph, RelName) ->
     %% Here we will just get the lastest version and run that.
-    AllReleases = ec_dictionary:to_list(rcl_state:releases(State0)),
+    AllReleases = ec_dictionary:to_list(rcl_state:configured_releases(State0)),
     SpecificReleases = [Rel || Rel={{PossibleRelName, _}, _} <- AllReleases,
                                PossibleRelName =:= RelName],
     case lists:sort(fun release_sort/2, SpecificReleases) of
         [{{RelName, RelVsn}, _} | _] ->
-            State1 = rcl_state:default_release(State0, RelName, RelVsn),
+            State1 = rcl_state:default_configured_release(State0, RelName, RelVsn),
             solve_release(State1, DepGraph, RelName, RelVsn);
         [] ->
             ?RCL_ERROR({no_releases_for, RelName})
@@ -143,7 +143,7 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
                   "Solving Release ~p-~s~n",
                   [RelName, RelVsn]),
     try
-        Release = rcl_state:get_release(State0, RelName, RelVsn),
+        Release = rcl_state:get_configured_release(State0, RelName, RelVsn),
         Goals = rcl_release:goals(Release),
         case Goals of
             [] ->
@@ -172,7 +172,7 @@ set_resolved(State, Release0, Pkgs) ->
                          fun() ->
                                  rcl_release:format(1, Release1)
                          end),
-           {ok, rcl_state:update_release(State, Release1)};
+           {ok, rcl_state:add_realized_release(State, Release1)};
        {error, E} ->
            ?RCL_ERROR({release_error, E})
    end.
