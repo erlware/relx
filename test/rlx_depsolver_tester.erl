@@ -23,7 +23,7 @@
 %% Additional testing for depsolver
 %% @end
 %%-------------------------------------------------------------------
--module(rcl_depsolver_tester).
+-module(rlx_depsolver_tester).
 
 -export([run_data/1, run_log/1]).
 -include_lib("eunit/include/eunit.hrl").
@@ -352,7 +352,7 @@ log_ea2d264b_test() ->
 versionify(X) when erlang:is_list(X) ->
     lists:map(fun versionify/1, X);
 versionify({K, V}) ->
-    {erlang:list_to_binary(K), rcl_depsolver:parse_version(V)}.
+    {erlang:list_to_binary(K), rlx_depsolver:parse_version(V)}.
 
 fix_rebar_brokenness(Filename) ->
     Alt1 = filename:join(["./test", "data", Filename]),
@@ -372,7 +372,7 @@ fix_rebar_brokenness(Filename) ->
 
 run_data_file(Device) ->
     Constraints = get_constraints(io:get_line(Device, "")),
-    rcl_depsolver:solve(process_packages(read_packages(Device)), Constraints).
+    rlx_depsolver:solve(process_packages(read_packages(Device)), Constraints).
 
 goble_lines(_Device, eof, Acc) ->
     lists:reverse(Acc);
@@ -385,14 +385,14 @@ goble_lines(Device) ->
     goble_lines(Device, io:get_line(Device, ""), []).
 
 run_log_file(Device) ->
-    State0 = rcl_depsolver:new_graph(),
+    State0 = rlx_depsolver:new_graph(),
     {Goals, State2} =
         lists:foldl(fun(Line, Data) ->
                             process_add_goal(Line,
                                              process_add_constraint(Line,
                                                                     process_add_package(Line, Data)))
                     end, {[], State0}, goble_lines(Device)),
-    rcl_depsolver:solve(State2, Goals).
+    rlx_depsolver:solve(State2, Goals).
 
 read_packages(Device) ->
     process_line(Device, io:get_line(Device, ""), []).
@@ -424,8 +424,8 @@ process_line(Device, Pkg, Acc) ->
 
 process_packages(Pkgs) ->
     lists:foldl(fun({Pkg, Vsn, Constraints}, Dom0) ->
-                        rcl_depsolver:add_package_version(Dom0, Pkg, Vsn, Constraints)
-                end, rcl_depsolver:new_graph(), Pkgs).
+                        rlx_depsolver:add_package_version(Dom0, Pkg, Vsn, Constraints)
+                end, rlx_depsolver:new_graph(), Pkgs).
 
 get_constraints(ConLine) ->
     AppVsns = string:tokens(ConLine, " \n"),
@@ -446,7 +446,7 @@ process_add_package(Line, {Goals, State0}) ->
         {match, [_All, _InstNumber, PkgName, _PkgCount, VersionCount]} ->
             {Goals,
              lists:foldl(fun(PkgVsn, State1) ->
-                                 rcl_depsolver:add_package_version(State1,
+                                 rlx_depsolver:add_package_version(State1,
                                                                PkgName,
                                                                erlang:integer_to_list(PkgVsn),
                                                                [])
@@ -460,7 +460,7 @@ process_add_constraint(Line, {Goals, State0}) ->
     case re:run(Line, ?ADD_VC, [{capture, all, list}]) of
         {match, [_All, _InstNumber, Pkg, Vsn, Dep, _Ignore, DepVsn]} ->
             {Goals,
-             rcl_depsolver:add_package_version(State0, Pkg, Vsn, [{Dep, DepVsn}])};
+             rlx_depsolver:add_package_version(State0, Pkg, Vsn, [{Dep, DepVsn}])};
         _ ->
             {Goals, State0}
     end.

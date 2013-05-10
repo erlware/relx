@@ -18,9 +18,9 @@
 %%% @author Eric Merritt <ericbmerritt@gmail.com>
 %%% @copyright (C) 2012 Erlware, LLC.
 %%%
-%%% @doc This provides simple output functions for relcool. You should use this
+%%% @doc This provides simple output functions for relx. You should use this
 %%% to talk to the users if you are wrting code for the system
--module(rcl_log).
+-module(rlx_log).
 
 -export([new/1,
          log/4,
@@ -41,7 +41,7 @@
               log_fun/0,
               t/0]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%============================================================================
 %% types
@@ -83,7 +83,7 @@ new(AtomLogLevel)
 -spec debug(t(), string() | log_fun()) -> ok.
 debug(LogState, Fun)
   when erlang:is_function(Fun) ->
-    log(LogState, ?RCL_DEBUG, Fun);
+    log(LogState, ?RLX_DEBUG, Fun);
 debug(LogState, String) ->
     debug(LogState, "~s~n", [String]).
 
@@ -91,14 +91,14 @@ debug(LogState, String) ->
 %% and argements @see io:format/2
 -spec debug(t(), string(), [any()]) -> ok.
 debug(LogState, FormatString, Args) ->
-    log(LogState, ?RCL_DEBUG, FormatString, Args).
+    log(LogState, ?RLX_DEBUG, FormatString, Args).
 
 %% @doc log at the info level given the current log state with a string or
 %% function that returns a string
 -spec info(t(), string() | log_fun()) -> ok.
 info(LogState, Fun)
     when erlang:is_function(Fun) ->
-    log(LogState, ?RCL_INFO, Fun);
+    log(LogState, ?RLX_INFO, Fun);
 info(LogState, String) ->
     info(LogState, "~s~n", [String]).
 
@@ -106,14 +106,14 @@ info(LogState, String) ->
 %% and argements @see io:format/2
 -spec info(t(), string(), [any()]) -> ok.
 info(LogState, FormatString, Args) ->
-    log(LogState, ?RCL_INFO, FormatString, Args).
+    log(LogState, ?RLX_INFO, FormatString, Args).
 
 %% @doc log at the error level given the current log state with a string or
 %% format string that returns a function
 -spec error(t(), string() | log_fun()) -> ok.
 error(LogState, Fun)
     when erlang:is_function(Fun) ->
-    log(LogState, ?RCL_ERROR, Fun);
+    log(LogState, ?RLX_ERROR, Fun);
 error(LogState, String) ->
     error(LogState, "~s~n", [String]).
 
@@ -121,7 +121,7 @@ error(LogState, String) ->
 %% and argements @see io:format/2
 -spec error(t(), string(), [any()]) -> ok.
 error(LogState, FormatString, Args) ->
-    log(LogState, ?RCL_ERROR, FormatString, Args).
+    log(LogState, ?RLX_ERROR, FormatString, Args).
 
 %% @doc Execute the fun passed in if log level is as expected.
 -spec log(t(), int_log_level(), log_fun()) -> ok.
@@ -158,11 +158,11 @@ log_level({?MODULE, DetailLogLevel}) ->
 
 %% @doc get the current log level as an atom
 -spec atom_log_level(t()) -> atom_log_level().
-atom_log_level({?MODULE, ?RCL_ERROR}) ->
+atom_log_level({?MODULE, ?RLX_ERROR}) ->
     error;
-atom_log_level({?MODULE, ?RCL_INFO}) ->
+atom_log_level({?MODULE, ?RLX_INFO}) ->
     info;
-atom_log_level({?MODULE, ?RCL_DEBUG}) ->
+atom_log_level({?MODULE, ?RLX_DEBUG}) ->
     debug.
 
 -spec format(t()) -> iolist().
@@ -181,24 +181,24 @@ format(Log) ->
 
 should_test() ->
     ErrorLogState = new(error),
-    ?assertMatch(true, should(ErrorLogState, ?RCL_ERROR)),
-    ?assertMatch(true, not should(ErrorLogState, ?RCL_INFO)),
-    ?assertMatch(true, not should(ErrorLogState, ?RCL_DEBUG)),
-    ?assertEqual(?RCL_ERROR, log_level(ErrorLogState)),
+    ?assertMatch(true, should(ErrorLogState, ?RLX_ERROR)),
+    ?assertMatch(true, not should(ErrorLogState, ?RLX_INFO)),
+    ?assertMatch(true, not should(ErrorLogState, ?RLX_DEBUG)),
+    ?assertEqual(?RLX_ERROR, log_level(ErrorLogState)),
     ?assertEqual(error, atom_log_level(ErrorLogState)),
 
     InfoLogState = new(info),
-    ?assertMatch(true, should(InfoLogState, ?RCL_ERROR)),
-    ?assertMatch(true, should(InfoLogState, ?RCL_INFO)),
-    ?assertMatch(true, not should(InfoLogState, ?RCL_DEBUG)),
-    ?assertEqual(?RCL_INFO, log_level(InfoLogState)),
+    ?assertMatch(true, should(InfoLogState, ?RLX_ERROR)),
+    ?assertMatch(true, should(InfoLogState, ?RLX_INFO)),
+    ?assertMatch(true, not should(InfoLogState, ?RLX_DEBUG)),
+    ?assertEqual(?RLX_INFO, log_level(InfoLogState)),
     ?assertEqual(info, atom_log_level(InfoLogState)),
 
     DebugLogState = new(debug),
-    ?assertMatch(true, should(DebugLogState, ?RCL_ERROR)),
-    ?assertMatch(true, should(DebugLogState, ?RCL_INFO)),
-    ?assertMatch(true, should(DebugLogState, ?RCL_DEBUG)),
-    ?assertEqual(?RCL_DEBUG, log_level(DebugLogState)),
+    ?assertMatch(true, should(DebugLogState, ?RLX_ERROR)),
+    ?assertMatch(true, should(DebugLogState, ?RLX_INFO)),
+    ?assertMatch(true, should(DebugLogState, ?RLX_DEBUG)),
+    ?assertEqual(?RLX_DEBUG, log_level(DebugLogState)),
     ?assertEqual(debug, atom_log_level(DebugLogState)).
 
 -endif.

@@ -20,7 +20,7 @@
 %%% @doc
 %%%  This is a pretty simple topological sort for erlang. It was
 %%%  originally written for ermake by Joe Armstrong back in '98. It
-%%%  has been pretty heavily modified by Eric Merritt since '06 and modified again for Relcool.
+%%%  has been pretty heavily modified by Eric Merritt since '06 and modified again for Relx.
 %%%
 %%%  A partial order on the set S is a set of pairs {Xi,Xj} such that
 %%%  some relation between Xi and Xj is obeyed.
@@ -30,12 +30,12 @@
 %%%  order i &lt; j
 %%% @end
 %%%-------------------------------------------------------------------
--module(rcl_topo).
+-module(rlx_topo).
 
 -export([sort_apps/1,
          format_error/1]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%====================================================================
 %% Types
@@ -53,9 +53,9 @@
 %% applications. This implies that you have already done the
 %% constraint solve before you pass the list of apps here to be
 %% sorted.
--spec sort_apps([rcl_app_info:t()]) ->
-                       {ok, [rcl_app_info:t()]} |
-                       relcool:error().
+-spec sort_apps([rlx_app_info:t()]) ->
+                       {ok, [rlx_app_info:t()]} |
+                       relx:error().
 sort_apps(Apps) ->
     Pairs = apps_to_pairs(Apps),
     case sort(Pairs) of
@@ -71,9 +71,9 @@ format_error({cycle, Pairs}) ->
      "before we can continue:\n",
     case Pairs of
         [{P1, P2}] ->
-            [rcl_util:indent(1), erlang:atom_to_list(P2), "->", erlang:atom_to_list(P1)];
+            [rlx_util:indent(1), erlang:atom_to_list(P2), "->", erlang:atom_to_list(P1)];
         [{P1, P2} | Rest] ->
-            [rcl_util:indent(1), erlang:atom_to_list(P2), "->", erlang:atom_to_list(P1),
+            [rlx_util:indent(1), erlang:atom_to_list(P2), "->", erlang:atom_to_list(P1),
              [["-> ", erlang:atom_to_list(PP2), " -> ", erlang:atom_to_list(PP1)] || {PP1, PP2} <- Rest]];
         [] ->
             []
@@ -83,43 +83,43 @@ format_error({cycle, Pairs}) ->
 %% Internal Functions
 %%====================================================================
 %% @doc Do a topological sort on the list of pairs.
--spec sort([pair()]) -> {ok, [atom()]} | relcool:error().
+-spec sort([pair()]) -> {ok, [atom()]} | relx:error().
 sort(Pairs) ->
     iterate(Pairs, [], all(Pairs)).
 
--spec names_to_apps([atom()], [rcl_app_info:t()]) -> [rcl_app_info:t()].
+-spec names_to_apps([atom()], [rlx_app_info:t()]) -> [rlx_app_info:t()].
 names_to_apps(Names, Apps) ->
  [find_app_by_name(Name, Apps) || Name <- Names].
 
--spec find_app_by_name(atom(), [rcl_app_info:t()]) -> rcl_app_info:t().
+-spec find_app_by_name(atom(), [rlx_app_info:t()]) -> rlx_app_info:t().
 find_app_by_name(Name, Apps) ->
     {ok, App1} =
         ec_lists:find(fun(App) ->
-                              rcl_app_info:name(App) =:= Name
+                              rlx_app_info:name(App) =:= Name
                       end, Apps),
     App1.
 
--spec apps_to_pairs([rcl_app_info:t()]) -> [pair()].
+-spec apps_to_pairs([rlx_app_info:t()]) -> [pair()].
 apps_to_pairs(Apps) ->
     lists:flatten([app_to_pairs(App) || App <- Apps]).
 
--spec app_to_pairs(rcl_app_info:t()) -> [pair()].
+-spec app_to_pairs(rlx_app_info:t()) -> [pair()].
 app_to_pairs(App) ->
-    [{DepApp, rcl_app_info:name(App)} ||
+    [{DepApp, rlx_app_info:name(App)} ||
         DepApp <-
-            rcl_app_info:active_deps(App) ++
-            rcl_app_info:library_deps(App)].
+            rlx_app_info:active_deps(App) ++
+            rlx_app_info:library_deps(App)].
 
 
 %% @doc Iterate over the system.  @private
 -spec iterate([pair()], [name()], [name()]) ->
-    {ok, [name()]} | relcool:error().
+    {ok, [name()]} | relx:error().
 iterate([], L, All) ->
     {ok, remove_duplicates(L ++ subtract(All, L))};
 iterate(Pairs, L, All) ->
     case subtract(lhs(Pairs), rhs(Pairs)) of
         []  ->
-            ?RCL_ERROR({cycle, Pairs});
+            ?RLX_ERROR({cycle, Pairs});
         Lhs ->
             iterate(remove_pairs(Lhs, Pairs), L ++ Lhs, All)
     end.
@@ -193,8 +193,8 @@ topo_pairs_cycle_test() ->
                  sort(Pairs)).
 
 topo_apps_cycle_test() ->
-    {ok, App1} = rcl_app_info:new(app1, "0.1", "/no-dir", [app2], [stdlib]),
-    {ok, App2} = rcl_app_info:new(app2, "0.1", "/no-dir", [app1], []),
+    {ok, App1} = rlx_app_info:new(app1, "0.1", "/no-dir", [app2], [stdlib]),
+    {ok, App2} = rlx_app_info:new(app2, "0.1", "/no-dir", [app1], []),
     Apps = [App1, App2],
     ?assertMatch({error, {_, {cycle, [{app2,app1},{app1,app2}]}}},
                  sort_apps(Apps)).
@@ -202,16 +202,16 @@ topo_apps_cycle_test() ->
 topo_apps_good_test() ->
     Apps = [App ||
                {ok, App} <-
-                   [rcl_app_info:new(app1, "0.1", "/no-dir", [app2, zapp1], [stdlib, kernel]),
-                    rcl_app_info:new(app2, "0.1", "/no-dir", [app3], []),
-                    rcl_app_info:new(app3, "0.1", "/no-dir", [kernel], []),
-                    rcl_app_info:new(zapp1, "0.1", "/no-dir", [app2,app3,zapp2], []),
-                    rcl_app_info:new(stdlib, "0.1", "/no-dir", [], []),
-                    rcl_app_info:new(kernel, "0.1", "/no-dir", [], []),
-                    rcl_app_info:new(zapp2, "0.1", "/no-dir", [], [])]],
+                   [rlx_app_info:new(app1, "0.1", "/no-dir", [app2, zapp1], [stdlib, kernel]),
+                    rlx_app_info:new(app2, "0.1", "/no-dir", [app3], []),
+                    rlx_app_info:new(app3, "0.1", "/no-dir", [kernel], []),
+                    rlx_app_info:new(zapp1, "0.1", "/no-dir", [app2,app3,zapp2], []),
+                    rlx_app_info:new(stdlib, "0.1", "/no-dir", [], []),
+                    rlx_app_info:new(kernel, "0.1", "/no-dir", [], []),
+                    rlx_app_info:new(zapp2, "0.1", "/no-dir", [], [])]],
     {ok, Sorted} = sort_apps(Apps),
     ?assertMatch([stdlib, kernel, zapp2,
                   app3, app2, zapp1, app1],
-                 [rcl_app_info:name(App) || App <- Sorted]).
+                 [rlx_app_info:name(App) || App <- Sorted]).
 
 -endif.

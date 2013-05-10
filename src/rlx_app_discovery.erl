@@ -21,13 +21,13 @@
 %%% @doc This provider uses the lib_dir setting of the state. It searches the
 %%% Lib Dirs looking for all OTP Applications that are available. When it finds
 %%% those OTP Applications it loads the information about them and adds them to
-%%% the state of available apps. This implements the rcl_provider behaviour.
--module(rcl_app_discovery).
+%%% the state of available apps. This implements the rlx_provider behaviour.
+-module(rlx_app_discovery).
 
 -export([do/2,
          format_error/1]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%============================================================================
 %% API
@@ -35,12 +35,12 @@
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rcl_state:t(), [filename:name()]) -> {ok, [rcl_app_info:t()]} | relcool:error().
+-spec do(rlx_state:t(), [filename:name()]) -> {ok, [rlx_app_info:t()]} | relx:error().
 do(State, LibDirs) ->
-    rcl_log:info(rcl_state:log(State),
+    rlx_log:info(rlx_state:log(State),
                  fun() ->
                           ["Resolving OTP Applications from directories:\n",
-                           [[rcl_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
+                           [[rlx_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
                  end),
     resolve_app_metadata(State, LibDirs).
 
@@ -53,7 +53,7 @@ format_error(ErrorDetails)
 %%% Internal Functions
 %%%===================================================================
 resolve_app_metadata(State, LibDirs) ->
-    AppMeta0 = lists:flatten(rcl_dscv_util:do(fun discover_dir/2, LibDirs)),
+    AppMeta0 = lists:flatten(rlx_dscv_util:do(fun discover_dir/2, LibDirs)),
     case [case Err of
               {error, Ret} ->
                   Ret
@@ -66,26 +66,26 @@ resolve_app_metadata(State, LibDirs) ->
                          false
                  end] of
         [] ->
-            SkipApps = rcl_state:skip_apps(State),
+            SkipApps = rlx_state:skip_apps(State),
             AppMeta1 = [App || {ok, App} <- setup_overrides(State, AppMeta0),
-                               not lists:keymember(rcl_app_info:name(App), 1, SkipApps)],
-            rcl_log:debug(rcl_state:log(State),
+                               not lists:keymember(rlx_app_info:name(App), 1, SkipApps)],
+            rlx_log:debug(rlx_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Applications from the system: \n",
-                                   [[rcl_app_info:format(1, App), "\n"] || App <- AppMeta1]]
+                                   [[rlx_app_info:format(1, App), "\n"] || App <- AppMeta1]]
                           end),
             {ok, AppMeta1};
         Errors ->
-            ?RCL_ERROR(Errors)
+            ?RLX_ERROR(Errors)
     end.
 
 app_name({error, _}) ->
     undefined;
 app_name({ok, AppMeta}) ->
-    rcl_app_info:name(AppMeta).
+    rlx_app_info:name(AppMeta).
 
 setup_overrides(State, AppMetas0) ->
-    Overrides = rcl_state:overrides(State),
+    Overrides = rlx_state:overrides(State),
     AppMetas1 = [AppMeta || AppMeta <- AppMetas0,
                             not lists:keymember(app_name(AppMeta), 1, Overrides)],
     [case is_valid_otp_app(filename:join([FileName, <<"ebin">>,
@@ -95,7 +95,7 @@ setup_overrides(State, AppMetas0) ->
          Error = {error, _} ->
              Error;
          {ok, App} ->
-             {ok, rcl_app_info:link(App, true)}
+             {ok, rlx_app_info:link(App, true)}
      end || {AppName, FileName} <- Overrides] ++ AppMetas1.
 
 
@@ -123,13 +123,13 @@ format_detail({app_info_error, {Module, Detail}}) ->
     Module:format_error(Detail).
 
 -spec discover_dir([file:name()], directory | file) ->
-                          {ok, rcl_app_info:t()} | {error, Reason::term()}.
+                          {ok, rlx_app_info:t()} | {error, Reason::term()}.
 discover_dir(_File, directory) ->
     {noresult, true};
 discover_dir(File, file) ->
     is_valid_otp_app(File).
 
--spec is_valid_otp_app(file:name()) -> {ok, rcl_app_info:t()} | {error, Reason::term()} |
+-spec is_valid_otp_app(file:name()) -> {ok, rlx_app_info:t()} | {error, Reason::term()} |
                                        {noresult, false}.
 
 is_valid_otp_app(File) ->
@@ -148,7 +148,7 @@ is_valid_otp_app(File) ->
     end.
 
 -spec has_at_least_one_beam(file:name(), file:filename()) ->
-                                   {ok, rcl_app_info:t()} | {error, Reason::term()}.
+                                   {ok, rlx_app_info:t()} | {error, Reason::term()}.
 has_at_least_one_beam(EbinDir, File) ->
     case file:list_dir(EbinDir) of
         {ok, List} ->
@@ -163,7 +163,7 @@ has_at_least_one_beam(EbinDir, File) ->
     end.
 
 -spec gather_application_info(file:name(), file:filename()) ->
-                                     {ok, rcl_app_info:t()} | {error, Reason::term()}.
+                                     {ok, rlx_app_info:t()} | {error, Reason::term()}.
 gather_application_info(EbinDir, File) ->
     AppDir = filename:dirname(EbinDir),
     case file:consult(File) of
@@ -176,7 +176,7 @@ gather_application_info(EbinDir, File) ->
     end.
 
 -spec get_vsn(file:name(), atom(), proplists:proplist()) ->
-                     {ok, rcl_app_info:t()} | {error, Reason::term()}.
+                     {ok, rlx_app_info:t()} | {error, Reason::term()}.
 get_vsn(AppDir, AppName, AppDetail) ->
     case proplists:get_value(vsn, AppDetail) of
         undefined ->
@@ -191,11 +191,11 @@ get_vsn(AppDir, AppName, AppDetail) ->
     end.
 
 -spec get_deps(file:name(), atom(), string(), proplists:proplist()) ->
-                      {ok, rcl_app_info:t()} | {error, Reason::term()}.
+                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
 get_deps(AppDir, AppName, AppVsn, AppDetail) ->
     ActiveApps = proplists:get_value(applications, AppDetail, []),
     LibraryApps = proplists:get_value(included_applications, AppDetail, []),
-    rcl_app_info:new(AppName, AppVsn, AppDir, ActiveApps, LibraryApps).
+    rlx_app_info:new(AppName, AppVsn, AppDir, ActiveApps, LibraryApps).
 
 %%%===================================================================
 %%% Test Functions

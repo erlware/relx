@@ -20,7 +20,7 @@
 %%%
 %%% @doc This module represents a release and its metadata and is used to
 %%% manipulate the release metadata.
--module(rcl_release).
+-module(rlx_release).
 
 -export([new/2,
          new/3,
@@ -52,17 +52,17 @@
               application_spec/0,
               application_goal/0]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 -record(release_t, {name :: atom(),
                     vsn :: ec_semver:any_version(),
                     erts :: ec_semver:any_version(),
-                    goals = [] :: [rcl_depsolver:constraint()],
+                    goals = [] :: [rlx_depsolver:constraint()],
                     realized = false :: boolean(),
                     annotations = undefined :: annotations(),
                     applications = [] ::  [application_spec()],
                     relfile :: undefined | string(),
-                    app_detail = [] :: [rcl_app_info:t()]}).
+                    app_detail = [] :: [rlx_app_info:t()]}).
 
 %%============================================================================
 %% types
@@ -78,7 +78,7 @@
                             {app_name(), app_vsn(), app_type() | incl_apps()} |
                             {app_name(), app_vsn(), app_type(), incl_apps()}.
 
--type application_constraint() :: rcl_depsolver:raw_constraint() | string() | binary().
+-type application_constraint() :: rlx_depsolver:raw_constraint() | string() | binary().
 -type application_goal() :: application_constraint()
                           | {application_constraint(), app_type() | incl_apps()}
                           | {application_constraint(), app_type(), incl_apps() | none}.
@@ -127,7 +127,7 @@ erts(Release, Vsn) ->
 erts(#release_t{erts=Vsn}) ->
     Vsn.
 
--spec goals(t(), [application_goal()]) -> {ok, t()} | relcool:error().
+-spec goals(t(), [application_goal()]) -> {ok, t()} | relx:error().
 goals(Release, Goals0) ->
     lists:foldl(fun parse_goal0/2,
                 {ok, Release}, Goals0).
@@ -136,11 +136,11 @@ goals(Release, Goals0) ->
 goals(#release_t{goals=Goals}) ->
     Goals.
 
--spec realize(t(), [{app_name(), app_vsn()}], [rcl_app_info:t()]) ->
-                     {ok, t()} | relcool:error().
+-spec realize(t(), [{app_name(), app_vsn()}], [rlx_app_info:t()]) ->
+                     {ok, t()} | relx:error().
 realize(Rel, Pkgs0, World0) ->
     World1 = subset_world(Pkgs0, World0),
-    case rcl_topo:sort_apps(World1) of
+    case rlx_topo:sort_apps(World1) of
         {ok, Pkgs1} ->
             process_specs(realize_erts(Rel), Pkgs1);
         Error={error, _} ->
@@ -153,16 +153,16 @@ realize(Rel, Pkgs0, World0) ->
 applications(#release_t{applications=Apps}) ->
     Apps.
 
-%% @doc this gives the rcl_app_info objects representing the applications in
+%% @doc this gives the rlx_app_info objects representing the applications in
 %% this release. These should only be populated by the 'realize' call in this
 %% module or by reading an existing rel file.
--spec application_details(t()) -> [rcl_app_info:t()].
+-spec application_details(t()) -> [rlx_app_info:t()].
 application_details(#release_t{app_detail=App}) ->
     App.
 
 %% @doc this is only expected to be called by a process building a new release
 %% from an existing rel file.
--spec application_details(t(), [rcl_app_info:t()]) -> t().
+-spec application_details(t(), [rlx_app_info:t()]) -> t().
 application_details(Release, AppDetail) ->
     Release#release_t{app_detail=AppDetail}.
 
@@ -178,7 +178,7 @@ metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=Apps,
             {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
                   Apps}};
         false ->
-            ?RCL_ERROR({not_realized, Name, Vsn})
+            ?RLX_ERROR({not_realized, Name, Vsn})
     end.
 
 %% @doc produce the canonical name (<name>-<vsn>) for this release
@@ -194,16 +194,16 @@ format(Release) ->
 -spec format(non_neg_integer(), t()) -> iolist().
 format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
                          goals = Goals, applications=Apps}) ->
-    BaseIndent = rcl_util:indent(Indent),
-    [BaseIndent, "release: ", rcl_util:to_string(Name), "-", Vsn, "\n",
-     rcl_util:indent(Indent + 1), " erts-", ErtsVsn,
+    BaseIndent = rlx_util:indent(Indent),
+    [BaseIndent, "release: ", rlx_util:to_string(Name), "-", Vsn, "\n",
+     rlx_util:indent(Indent + 1), " erts-", ErtsVsn,
      ", realized = ",  erlang:atom_to_list(Realized), "\n",
      BaseIndent, "goals: \n",
-     [[rcl_util:indent(Indent + 1),  format_goal(Goal), ",\n"] || Goal <- Goals],
+     [[rlx_util:indent(Indent + 1),  format_goal(Goal), ",\n"] || Goal <- Goals],
      case Realized of
          true ->
              [BaseIndent, "applications: \n",
-              [[rcl_util:indent(Indent + 1),  io_lib:format("~p", [App]), ",\n"] ||
+              [[rlx_util:indent(Indent + 1),  io_lib:format("~p", [App]), ",\n"] ||
                   App <- Apps]];
          false ->
              []
@@ -211,15 +211,15 @@ format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
 
 -spec format_goal(application_goal()) -> iolist().
 format_goal({Constraint, AppType}) ->
-    io_lib:format("~p", [{rcl_depsolver:format_constraint(Constraint), AppType}]);
+    io_lib:format("~p", [{rlx_depsolver:format_constraint(Constraint), AppType}]);
 format_goal({Constraint, AppType, AppInc}) ->
-    io_lib:format("~p", [{rcl_depsolver:format_constraint(Constraint), AppType, AppInc}]);
+    io_lib:format("~p", [{rlx_depsolver:format_constraint(Constraint), AppType, AppInc}]);
 format_goal(Constraint) ->
-    rcl_depsolver:format_constraint(Constraint).
+    rlx_depsolver:format_constraint(Constraint).
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({topo_error, E}) ->
-    rcl_topo:format_error(E);
+    rlx_topo:format_error(E);
 format_error({failed_to_parse, Con}) ->
     io_lib:format("Failed to parse constraint ~p", [Con]);
 format_error({invalid_constraint, _, Con}) ->
@@ -237,30 +237,30 @@ realize_erts(Rel=#release_t{erts=undefined}) ->
 realize_erts(Rel) ->
     Rel.
 
--spec process_specs(t(), [rcl_app_info:t()]) ->
+-spec process_specs(t(), [rlx_app_info:t()]) ->
                            {ok, t()}.
 process_specs(Rel=#release_t{annotations=Annots,
                              goals=Goals}, World) ->
-    ActiveApps = lists:flatten([rcl_app_info:active_deps(El) || El <- World] ++
+    ActiveApps = lists:flatten([rlx_app_info:active_deps(El) || El <- World] ++
                                   [case get_app_name(Goal) of
                                        {error, _} -> [];
                                        G -> G
                                    end || Goal <- Goals]),
-    LibraryApps = lists:flatten([rcl_app_info:library_deps(El) || El <- World]),
+    LibraryApps = lists:flatten([rlx_app_info:library_deps(El) || El <- World]),
     Specs = [create_app_spec(Annots, App, ActiveApps, LibraryApps) || App <- World],
     {ok, Rel#release_t{annotations=Annots,
                        applications=Specs,
                        app_detail=World,
                        realized=true}}.
 
--spec create_app_spec(annotations(), rcl_app_info:t(), [app_name()],
+-spec create_app_spec(annotations(), rlx_app_info:t(), [app_name()],
                       [app_name()]) ->
                              application_spec().
 create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
     %% If the app only exists as a dependency in a library app then it should
     %% get the 'load' annotation unless the release spec has provided something
     %% else
-    AppName = rcl_app_info:name(App),
+    AppName = rlx_app_info:name(App),
     TypeAnnot =
         case (lists:member(AppName, LibraryApps) and
               (not lists:member(AppName, ActiveApps))) of
@@ -281,7 +281,7 @@ create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
             throw:not_found ->
                 {TypeAnnot, none}
         end,
-    Vsn = rcl_app_info:vsn_as_string(App),
+    Vsn = rlx_app_info:vsn_as_string(App),
     case BaseAnnots of
         {none, none} ->
             {AppName, Vsn};
@@ -293,16 +293,16 @@ create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
             {AppName, Vsn, Type, Incld1}
     end.
 
--spec subset_world([{app_name(), app_vsn()}], [rcl_app_info:t()]) -> [rcl_app_info:t()].
+-spec subset_world([{app_name(), app_vsn()}], [rlx_app_info:t()]) -> [rlx_app_info:t()].
 subset_world(Pkgs, World) ->
     [get_app_info(Pkg, World) || Pkg <- Pkgs].
 
--spec get_app_info({app_name(), app_vsn()}, [rcl_app_info:t()]) -> rcl_app_info:t().
+-spec get_app_info({app_name(), app_vsn()}, [rlx_app_info:t()]) -> rlx_app_info:t().
 get_app_info({PkgName, PkgVsn}, World) ->
     {ok, WorldEl} =
         ec_lists:find(fun(El) ->
-                              rcl_app_info:name(El) =:= PkgName andalso
-                                  rcl_app_info:vsn(El) =:= PkgVsn
+                              rlx_app_info:name(El) =:= PkgName andalso
+                                  rlx_app_info:vsn(El) =:= PkgVsn
                       end, World),
     WorldEl.
 
@@ -341,7 +341,7 @@ parse_goal0(Constraint0, {ok, Release}) ->
 parse_goal0(_, E = {error, _}) ->
     E;
 parse_goal0(Constraint, _) ->
-    ?RCL_ERROR({invalid_constraint, 1, Constraint}).
+    ?RLX_ERROR({invalid_constraint, 1, Constraint}).
 
 parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
             Constraint, NewAnnots) ->
@@ -355,12 +355,12 @@ parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
     end.
 
 -spec parse_constraint(application_constraint()) ->
-                              rcl_depsolver:constraint() | relcool:error().
+                              rlx_depsolver:constraint() | relx:error().
 parse_constraint(Constraint0)
   when erlang:is_list(Constraint0); erlang:is_binary(Constraint0) ->
-    case rcl_goal:parse(Constraint0) of
+    case rlx_goal:parse(Constraint0) of
         {fail, _} ->
-            ?RCL_ERROR({failed_to_parse, Constraint0});
+            ?RLX_ERROR({failed_to_parse, Constraint0});
         {ok, Constraint1} ->
             {ok, Constraint1}
     end;
@@ -368,17 +368,17 @@ parse_constraint(Constraint0)
   when erlang:is_tuple(Constraint0);
        erlang:is_atom(Constraint0) ->
     Constraint1 = parse_version(Constraint0),
-    case rcl_depsolver:is_valid_constraint(Constraint1) of
+    case rlx_depsolver:is_valid_constraint(Constraint1) of
         false ->
-            ?RCL_ERROR({invalid_constraint, 2, Constraint0});
+            ?RLX_ERROR({invalid_constraint, 2, Constraint0});
         true ->
             {ok, Constraint1}
     end;
 parse_constraint(Constraint) ->
-    ?RCL_ERROR({invalid_constraint, 3, Constraint}).
+    ?RLX_ERROR({invalid_constraint, 3, Constraint}).
 
--spec get_app_name(rcl_depsolver:raw_constraint()) ->
-                          AppName::atom() | relcool:error().
+-spec get_app_name(rlx_depsolver:raw_constraint()) ->
+                          AppName::atom() | relx:error().
 get_app_name(AppName) when erlang:is_atom(AppName) ->
     AppName;
 get_app_name({AppName, _}) when erlang:is_atom(AppName) ->
@@ -388,22 +388,22 @@ get_app_name({AppName, _, _}) when erlang:is_atom(AppName) ->
 get_app_name({AppName, _, _, _}) when erlang:is_atom(AppName) ->
     AppName;
 get_app_name(V) ->
-    ?RCL_ERROR({invalid_constraint, 4, V}).
+    ?RLX_ERROR({invalid_constraint, 4, V}).
 
--spec parse_version(rcl_depsolver:raw_constraint()) ->
-                           rcl_depsolver:constraint().
+-spec parse_version(rlx_depsolver:raw_constraint()) ->
+                           rlx_depsolver:constraint().
 parse_version({AppName, Version})
   when erlang:is_binary(Version);
        erlang:is_list(Version) ->
-    {AppName, rcl_depsolver:parse_version(Version)};
+    {AppName, rlx_depsolver:parse_version(Version)};
 parse_version({AppName, Version, Constraint})
   when erlang:is_binary(Version);
        erlang:is_list(Version) ->
-    {AppName, rcl_depsolver:parse_version(Version), Constraint};
+    {AppName, rlx_depsolver:parse_version(Version), Constraint};
 parse_version({AppName, Version, Constraint0, Constraint1})
   when erlang:is_binary(Version);
        erlang:is_list(Version) ->
-    {AppName, rcl_depsolver:parse_version(Version), Constraint1, Constraint0};
+    {AppName, rlx_depsolver:parse_version(Version), Constraint1, Constraint0};
 parse_version(Constraint) ->
     Constraint.
 

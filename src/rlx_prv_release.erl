@@ -21,27 +21,27 @@
 %%% @doc This provider uses the lib_dir setting of the state. It searches the
 %%% Lib Dirs looking for all OTP Applications that are available. When it finds
 %%% those OTP Applications it loads the information about them and adds them to
-%%% the state of available apps. This implements the rcl_provider behaviour.
--module(rcl_prv_release).
+%%% the state of available apps. This implements the rlx_provider behaviour.
+-module(rlx_prv_release).
 
--behaviour(rcl_provider).
+-behaviour(rlx_provider).
 
 -export([init/1,
          do/1,
          format_error/1]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%============================================================================
 %% API
 %%============================================================================
--spec init(rcl_state:t()) -> {ok, rcl_state:t()}.
+-spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
     {ok, State}.
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
+-spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State) ->
     DepGraph = create_dep_graph(State),
     find_default_release(State, DepGraph).
@@ -65,37 +65,37 @@ format_error({release_not_found, {RelName, RelVsn}}) ->
     io_lib:format("No releases exist in the system for ~p:~s!", [RelName, RelVsn]);
 format_error({failed_solve, Error}) ->
     io_lib:format("Failed to solve release:\n ~s",
-                  [rcl_depsolver:format_error({error, Error})]).
+                  [rlx_depsolver:format_error({error, Error})]).
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec create_dep_graph(rcl_state:t()) -> rcl_depsolver:t().
+-spec create_dep_graph(rlx_state:t()) -> rlx_depsolver:t().
 create_dep_graph(State) ->
-    Apps = rcl_state:available_apps(State),
-    Graph0 = rcl_depsolver:new_graph(),
+    Apps = rlx_state:available_apps(State),
+    Graph0 = rlx_depsolver:new_graph(),
     lists:foldl(fun(App, Graph1) ->
-                        AppName = rcl_app_info:name(App),
-                        AppVsn = rcl_app_info:vsn(App),
-                        Deps = rcl_app_info:active_deps(App) ++
-                            rcl_app_info:library_deps(App),
-                        rcl_depsolver:add_package_version(Graph1,
+                        AppName = rlx_app_info:name(App),
+                        AppVsn = rlx_app_info:vsn(App),
+                        Deps = rlx_app_info:active_deps(App) ++
+                            rlx_app_info:library_deps(App),
+                        rlx_depsolver:add_package_version(Graph1,
                                                       AppName,
                                                       AppVsn,
                                                       Deps)
                 end, Graph0, Apps).
 
 
--spec find_default_release(rcl_state:t(), rcl_depsolver:t()) ->
-                                  {ok, rcl_state:t()} | relcool:error().
+-spec find_default_release(rlx_state:t(), rlx_depsolver:t()) ->
+                                  {ok, rlx_state:t()} | relx:error().
 find_default_release(State, DepGraph) ->
-    case rcl_state:default_configured_release(State) of
+    case rlx_state:default_configured_release(State) of
         {undefined, undefined} ->
             resolve_default_release(State, DepGraph);
         {RelName, undefined} ->
             resolve_default_version(State, DepGraph, RelName);
         {undefined, Vsn} ->
-            ?RCL_ERROR({no_release_name, Vsn});
+            ?RLX_ERROR({no_release_name, Vsn});
         {RelName, RelVsn} ->
             solve_release(State, DepGraph, RelName, RelVsn)
     end.
@@ -103,29 +103,29 @@ find_default_release(State, DepGraph) ->
 resolve_default_release(State0, DepGraph) ->
     %% Here we will just get the highest versioned release and run that.
     case lists:sort(fun release_sort/2,
-                    ec_dictionary:to_list(rcl_state:configured_releases(State0))) of
+                    ec_dictionary:to_list(rlx_state:configured_releases(State0))) of
         [{{RelName, RelVsn}, _} | _] ->
-            State1 = rcl_state:default_configured_release(State0, RelName, RelVsn),
+            State1 = rlx_state:default_configured_release(State0, RelName, RelVsn),
             solve_release(State1, DepGraph, RelName, RelVsn);
         [] ->
-            ?RCL_ERROR(no_releases_in_system)
+            ?RLX_ERROR(no_releases_in_system)
     end.
 
 resolve_default_version(State0, DepGraph, RelName) ->
     %% Here we will just get the lastest version and run that.
-    AllReleases = ec_dictionary:to_list(rcl_state:configured_releases(State0)),
+    AllReleases = ec_dictionary:to_list(rlx_state:configured_releases(State0)),
     SpecificReleases = [Rel || Rel={{PossibleRelName, _}, _} <- AllReleases,
                                PossibleRelName =:= RelName],
     case lists:sort(fun release_sort/2, SpecificReleases) of
         [{{RelName, RelVsn}, _} | _] ->
-            State1 = rcl_state:default_configured_release(State0, RelName, RelVsn),
+            State1 = rlx_state:default_configured_release(State0, RelName, RelVsn),
             solve_release(State1, DepGraph, RelName, RelVsn);
         [] ->
-            ?RCL_ERROR({no_releases_for, RelName})
+            ?RLX_ERROR({no_releases_for, RelName})
     end.
 
--spec release_sort({{rcl_release:name(),rcl_release:vsn()}, term()},
-                   {{rcl_release:name(),rcl_release:vsn()}, term()}) ->
+-spec release_sort({{rlx_release:name(),rlx_release:vsn()}, term()},
+                   {{rlx_release:name(),rlx_release:vsn()}, term()}) ->
                           boolean().
 release_sort({{RelName, RelVsnA}, _},
              {{RelName, RelVsnB}, _}) ->
@@ -139,42 +139,42 @@ release_sort({{RelNameA, RelVsnA}, _}, {{RelNameB, RelVsnB}, _}) ->
         ec_semver:lte(RelVsnA, RelVsnB).
 
 solve_release(State0, DepGraph, RelName, RelVsn) ->
-    rcl_log:debug(rcl_state:log(State0),
+    rlx_log:debug(rlx_state:log(State0),
                   "Solving Release ~p-~s~n",
                   [RelName, RelVsn]),
     try
-        Release = rcl_state:get_configured_release(State0, RelName, RelVsn),
-        Goals = rcl_release:goals(Release),
+        Release = rlx_state:get_configured_release(State0, RelName, RelVsn),
+        Goals = rlx_release:goals(Release),
         case Goals of
             [] ->
-                ?RCL_ERROR(no_goals_specified);
+                ?RLX_ERROR(no_goals_specified);
             _ ->
-                case rcl_depsolver:solve(DepGraph, Goals) of
+                case rlx_depsolver:solve(DepGraph, Goals) of
                     {ok, Pkgs} ->
                         set_resolved(State0, Release, Pkgs);
                     {error, Error} ->
-                        ?RCL_ERROR({failed_solve, Error})
+                        ?RLX_ERROR({failed_solve, Error})
                 end
         end
     catch
         throw:not_found ->
-            ?RCL_ERROR({release_not_found, RelName, RelVsn})
+            ?RLX_ERROR({release_not_found, RelName, RelVsn})
     end.
 
 set_resolved(State, Release0, Pkgs) ->
-   case rcl_release:realize(Release0, Pkgs, rcl_state:available_apps(State)) of
+   case rlx_release:realize(Release0, Pkgs, rlx_state:available_apps(State)) of
        {ok, Release1} ->
-           rcl_log:info(rcl_state:log(State),
+           rlx_log:info(rlx_state:log(State),
                         "Resolved ~p-~s~n",
-                        [rcl_release:name(Release1),
-                         rcl_release:vsn(Release1)]),
-           rcl_log:debug(rcl_state:log(State),
+                        [rlx_release:name(Release1),
+                         rlx_release:vsn(Release1)]),
+           rlx_log:debug(rlx_state:log(State),
                          fun() ->
-                                 rcl_release:format(1, Release1)
+                                 rlx_release:format(1, Release1)
                          end),
-           {ok, rcl_state:add_realized_release(State, Release1)};
+           {ok, rlx_state:add_realized_release(State, Release1)};
        {error, E} ->
-           ?RCL_ERROR({release_error, E})
+           ?RLX_ERROR({release_error, E})
    end.
 
 %%%===================================================================

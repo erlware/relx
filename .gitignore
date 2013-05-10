@@ -2,8 +2,8 @@ deps/*
 ebin/*
 *.beam
 .eunit
-.relcool_plt
-relcool
+.relx_plt
+relx
 # This is a generated file that should be ignored
 src/rcl_goal.erl
 logs

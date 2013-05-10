@@ -88,7 +88,7 @@ ct: compile clean-common-test-data
 	-pa $(CURDIR)/deps/*/ebin \
 	-logdir $(CURDIR)/logs \
 	-dir $(CURDIR)/test/ \
-	-suite rclt_command_SUITE rclt_discover_SUITE -suite rclt_release_SUITE
+	-suite rlx_command_SUITE rlx_discover_SUITE -suite rlx_release_SUITE
 
 test: compile dialyzer eunit ct
 

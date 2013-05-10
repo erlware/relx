@@ -19,19 +19,19 @@
 %%% @copyright (C) 2012 Erlware, LLC.
 %%%
 %%% @doc Trivial utility file to help handle common tasks
--module(rcl_cmd_args).
+-module(rlx_cmd_args).
 
 -export([args2state/2,
          format_error/1]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%============================================================================
 %% API
 %%============================================================================
 -spec args2state([getopt:option()], [string()]) ->
-                        {ok, {rcl_state:t(), [string()]}} |
-                        relcool:error().
+                        {ok, {rlx_state:t(), [string()]}} |
+                        relx:error().
 args2state(Opts, Target)
   when erlang:length(Target) == 0; erlang:length(Target) == 1 ->
     RelName = proplists:get_value(relname, Opts, undefined),
@@ -49,7 +49,7 @@ args2state(Opts, Target)
             Error
     end;
 args2state(_Opts, Targets) ->
-    ?RCL_ERROR({invalid_targets, Targets}).
+    ?RLX_ERROR({invalid_targets, Targets}).
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({invalid_targets, Targets}) ->
@@ -89,17 +89,17 @@ format_error({invalid_target, Target}) ->
 %%% Internal Functions
 %%%===================================================================
 -spec handle_config([getopt:option()], atom(), proplists:proplist()) ->
-                           {ok, {rcl_state:t(), [string()]}} |
-                           relcool:error().
+                           {ok, {rlx_state:t(), [string()]}} |
+                           relx:error().
 handle_config(Opts, Target, CommandLineConfig) ->
     case validate_config(proplists:get_value(config, Opts, [])) of
         Error = {error, _} ->
             Error;
         {ok, Config} ->
-            {ok, rcl_state:new([{config, Config} | CommandLineConfig], Target)}
+            {ok, rlx_state:new([{config, Config} | CommandLineConfig], Target)}
     end.
 
--spec convert_target([string()]) -> {ok, release | relup} | relcool:error().
+-spec convert_target([string()]) -> {ok, release | relup} | relx:error().
 convert_target([]) ->
     {ok, release};
 convert_target(["release"]) ->
@@ -107,10 +107,10 @@ convert_target(["release"]) ->
 convert_target(["relup"]) ->
     {ok, relup};
 convert_target(Target) ->
-    ?RCL_ERROR({invalid_target, Target}).
+    ?RLX_ERROR({invalid_target, Target}).
 
 -spec validate_config(file:filename() | undefined) ->
-                             {ok, file:filename() | undefined} | relcool:error().
+                             {ok, file:filename() | undefined} | relx:error().
 validate_config(undefined) ->
     {ok, undefined};
 validate_config("") ->
@@ -120,22 +120,22 @@ validate_config(Config) ->
         true ->
             {ok, filename:absname(Config)};
         false ->
-            ?RCL_ERROR({invalid_config_file, Config})
+            ?RLX_ERROR({invalid_config_file, Config})
     end.
 
--spec create_log([getopt:option()], rcl_state:cmd_args()) ->
-                        {ok, rcl_state:cmd_args()} | relcool:error().
+-spec create_log([getopt:option()], rlx_state:cmd_args()) ->
+                        {ok, rlx_state:cmd_args()} | relx:error().
 create_log(Opts, Acc) ->
     LogLevel = proplists:get_value(log_level, Opts, 0),
     if
         LogLevel >= 0, LogLevel =< 2 ->
-            create_goals(Opts, [{log, rcl_log:new(LogLevel)} | Acc]);
+            create_goals(Opts, [{log, rlx_log:new(LogLevel)} | Acc]);
         true ->
-            ?RCL_ERROR({invalid_log_level, LogLevel})
+            ?RLX_ERROR({invalid_log_level, LogLevel})
     end.
 
--spec create_goals([getopt:option()], rcl_state:cmd_args()) ->
-                          {ok, rcl_state:cmd_args()} | relcool:error().
+-spec create_goals([getopt:option()], rlx_state:cmd_args()) ->
+                          {ok, rlx_state:cmd_args()} | relx:error().
 create_goals(Opts, Acc) ->
     Goals = proplists:get_value(goals, Opts, []) ++
         proplists:get_all_values(goal, Opts),
@@ -146,8 +146,8 @@ create_goals(Opts, Acc) ->
             create_overrides(Opts, [{goals, Specs} | Acc])
     end.
 
--spec create_overrides([getopt:option()], rcl_state:cmd_args()) ->
-                              {ok, rcl_state:cmd_args()} | relcool:error().
+-spec create_overrides([getopt:option()], rlx_state:cmd_args()) ->
+                              {ok, rlx_state:cmd_args()} | relx:error().
 create_overrides(Opts, Acc) ->
     Overrides = proplists:get_all_values(override, Opts) ++
         proplists:get_value(overrides, Opts, []),
@@ -160,7 +160,7 @@ create_overrides(Opts, Acc) ->
 
 -spec convert_overrides([{atom(), string() | binary()} |
                          string() | binary()], [{atom(), string() | binary()}]) ->
-                               {ok, [string() | binary()]} | relcool:error().
+                               {ok, [string() | binary()]} | relx:error().
 convert_overrides([], Acc) ->
     {ok, Acc};
 convert_overrides([QA = {OverrideApp, _} | Rest], Acc)
@@ -172,24 +172,24 @@ convert_overrides([Override | Rest], Acc)
         [AppName, AppDir] ->
             convert_overrides(Rest, [{erlang:iolist_to_binary(AppName), AppDir} | Acc]);
         _ ->
-             ?RCL_ERROR({failed_to_parse_override, Override})
+             ?RLX_ERROR({failed_to_parse_override, Override})
     end;
 convert_overrides([QA | _], _) ->
-    ?RCL_ERROR({failed_to_parse_override, QA}).
+    ?RLX_ERROR({failed_to_parse_override, QA}).
 
--spec convert_goals([string()], [rcl_depsolver:constraint()]) ->
-                           {ok,[rcl_depsolver:constraint()]} |
-                           relcool:error().
+-spec convert_goals([string()], [rlx_depsolver:constraint()]) ->
+                           {ok,[rlx_depsolver:constraint()]} |
+                           relx:error().
 convert_goals([], Specs) ->
-    %% Reverse the specs because order matters to rcl_depsolver
+    %% Reverse the specs because order matters to rlx_depsolver
     {ok, lists:reverse(Specs)};
 convert_goals([RawSpec | Rest], Acc) ->
     parse_goal(RawSpec, Rest, Acc).
 
--spec parse_goal(string() | binary() | rcl_depsolver:constraint(),
-                  [string() | binary() | rcl_depsolver:constraint()],
-                  rcl_depsolver:constraints()) ->
-                 {ok, rcl_depsolver:constraints()} | relcool:error().
+-spec parse_goal(string() | binary() | rlx_depsolver:constraint(),
+                  [string() | binary() | rlx_depsolver:constraint()],
+                  rlx_depsolver:constraints()) ->
+                 {ok, rlx_depsolver:constraints()} | relx:error().
 parse_goal(Spec, Rest, Acc)
   when erlang:is_atom(Spec) ->
     convert_goals(Rest, [Spec | Acc]);
@@ -197,21 +197,21 @@ parse_goal(Spec, Rest, Acc)
   when erlang:is_tuple(Spec) ->
     convert_goals(Rest, [Spec | Acc]);
 parse_goal(RawSpec, Rest, Acc) ->
-    case rcl_goal:parse(RawSpec) of
+    case rlx_goal:parse(RawSpec) of
         {ok, Spec} ->
             convert_goals(Rest, [Spec | Acc]);
         {fail, _} ->
-            ?RCL_ERROR({failed_to_parse, RawSpec})
+            ?RLX_ERROR({failed_to_parse, RawSpec})
     end.
 
--spec create_output_dir([getopt:option()], rcl_state:cmd_args()) ->
-                               {ok, rcl_state:cmd_args()} | relcool:error().
+-spec create_output_dir([getopt:option()], rlx_state:cmd_args()) ->
+                               {ok, rlx_state:cmd_args()} | relx:error().
 create_output_dir(Opts, Acc) ->
     OutputDir = proplists:get_value(output_dir, Opts, "./_rel"),
     create_lib_dirs(Opts, [{output_dir, filename:absname(OutputDir)} | Acc]).
 
--spec create_lib_dirs([getopt:option()], rcl_state:cmd_args()) ->
-                               {ok, rcl_state:cmd_args()} | relcool:error().
+-spec create_lib_dirs([getopt:option()], rlx_state:cmd_args()) ->
+                               {ok, rlx_state:cmd_args()} | relx:error().
 create_lib_dirs(Opts, Acc) ->
     Dirs = proplists:get_all_values(lib_dir, Opts) ++
         proplists:get_value(lib_dirs, Opts, []),
@@ -222,8 +222,8 @@ create_lib_dirs(Opts, Acc) ->
             create_root_dir(Opts, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc])
     end.
 
--spec create_root_dir([getopt:option()], rcl_state:cmd_args()) ->
-                               {ok, rcl_state:cmd_args()} | relcool:error().
+-spec create_root_dir([getopt:option()], rlx_state:cmd_args()) ->
+                               {ok, rlx_state:cmd_args()} | relx:error().
 create_root_dir(Opts, Acc) ->
     Dir = proplists:get_value(root_dir, Opts, undefined),
     case Dir of
@@ -234,14 +234,14 @@ create_root_dir(Opts, Acc) ->
             create_disable_default_libs(Opts, [{root_dir, Dir} | Acc])
     end.
 
--spec create_disable_default_libs([getopt:option()], rcl_state:cmd_args()) ->
-                                         {ok, rcl_state:cmd_args()} | relcool:error().
+-spec create_disable_default_libs([getopt:option()], rlx_state:cmd_args()) ->
+                                         {ok, rlx_state:cmd_args()} | relx:error().
 create_disable_default_libs(Opts, Acc) ->
     Def = proplists:get_value(disable_default_libs, Opts, false),
     create_upfrom(Opts,  [{disable_default_libs, Def} | Acc]).
 
 -spec create_upfrom([getopt:option()], rcl:cmd_args()) ->
-    {ok, rcl_state:cmd_args()} | relcool:error().
+    {ok, rlx_state:cmd_args()} | relx:error().
 create_upfrom(Opts, Acc) ->
     case proplists:get_value(upfrom, Opts, undefined) of
         undefined ->
@@ -250,8 +250,8 @@ create_upfrom(Opts, Acc) ->
             create_caller(Opts,  [{upfrom, UpFrom} | Acc])
     end.
 
--spec create_caller([getopt:option()], rcl_state:cmd_args()) ->
-                           {ok, rcl_state:cmd_args()} | relcool:error().
+-spec create_caller([getopt:option()], rlx_state:cmd_args()) ->
+                           {ok, rlx_state:cmd_args()} | relx:error().
 create_caller(Opts, Acc) ->
     case proplists:get_value(caller, Opts, api) of
         "command_line" ->
@@ -267,15 +267,15 @@ create_caller(Opts, Acc) ->
         command_line ->
             {ok, [{caller, command_line} | Acc]};
         Caller ->
-            ?RCL_ERROR({invalid_caller, Caller})
+            ?RLX_ERROR({invalid_caller, Caller})
     end.
--spec check_lib_dirs([string()]) -> ok | relcool:error().
+-spec check_lib_dirs([string()]) -> ok | relx:error().
 check_lib_dirs([]) ->
     ok;
 check_lib_dirs([Dir | Rest]) ->
     case filelib:is_dir(Dir) of
         false ->
-            ?RCL_ERROR({not_directory, Dir});
+            ?RLX_ERROR({not_directory, Dir});
         true ->
             check_lib_dirs(Rest)
     end.

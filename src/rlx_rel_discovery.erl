@@ -21,13 +21,13 @@
 %%% @doc This provider uses the lib_dir setting of the state. It searches the
 %%% Lib Dirs looking for all OTP Applications that are available. When it finds
 %%% those OTP Applications it loads the information about them and adds them to
-%%% the state of available apps. This implements the rcl_provider behaviour.
--module(rcl_rel_discovery).
+%%% the state of available apps. This implements the rlx_provider behaviour.
+-module(rlx_rel_discovery).
 
 -export([do/3,
          format_error/1]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%============================================================================
 %% API
@@ -35,13 +35,13 @@
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rcl_state:t(), [filename:name()], [rcl_app_info:t()]) ->
-                {ok, [rcl_release:t()]} | relcool:error().
+-spec do(rlx_state:t(), [filename:name()], [rlx_app_info:t()]) ->
+                {ok, [rlx_release:t()]} | relx:error().
 do(State, LibDirs, AppMeta) ->
-    rcl_log:info(rcl_state:log(State),
+    rlx_log:info(rlx_state:log(State),
                  fun() ->
                          ["Resolving available releases from directories:\n",
-                          [[rcl_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
+                          [[rlx_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
                  end),
     resolve_rel_metadata(State, LibDirs, AppMeta).
 
@@ -54,7 +54,7 @@ format_error(ErrorDetails)
 %%% Internal Functions
 %%%===================================================================
 resolve_rel_metadata(State, LibDirs, AppMeta) ->
-    ReleaseMeta0 = lists:flatten(rcl_dscv_util:do(fun(LibDir, FileType) ->
+    ReleaseMeta0 = lists:flatten(rlx_dscv_util:do(fun(LibDir, FileType) ->
                                                           discover_dir(LibDir,
                                                                        AppMeta,
                                                                        FileType)
@@ -75,14 +75,14 @@ resolve_rel_metadata(State, LibDirs, AppMeta) ->
     case Errors of
         [] ->
             ReleaseMeta1 = [RelMeta || {ok, RelMeta} <- ReleaseMeta0],
-            rcl_log:debug(rcl_state:log(State),
+            rlx_log:debug(rlx_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Releases from the system: \n",
-                                   [[rcl_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta1]]
+                                   [[rlx_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta1]]
                           end),
             {ok, ReleaseMeta1};
         _ ->
-            ?RCL_ERROR(Errors)
+            ?RLX_ERROR(Errors)
     end.
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
@@ -91,8 +91,8 @@ format_detail({accessing, File, eaccess}) ->
 format_detail({accessing, File, Type}) ->
     io_lib:format("error (~p) accessing file ~s", [Type, File]).
 
--spec discover_dir(file:name(), [rcl_app_info:t()], directory | file) ->
-                          {ok, rcl_release:t()}
+-spec discover_dir(file:name(), [rlx_app_info:t()], directory | file) ->
+                          {ok, rlx_release:t()}
                               | {error, Reason::term()}
                               | {noresult, false}.
 discover_dir(_File, _AppMeta, directory) ->
@@ -101,8 +101,8 @@ discover_dir(File, AppMeta, file) ->
     is_valid_release(File, AppMeta).
 
 -spec is_valid_release(file:name(),
-                       [rcl_app_info:t()]) ->
-                              {ok, rcl_release:t()}
+                       [rlx_app_info:t()]) ->
+                              {ok, rlx_release:t()}
                                   | {error, Reason::term()}
                                   | {noresult, false}.
 is_valid_release(File, AppMeta) ->
@@ -120,18 +120,18 @@ resolve_release(RelFile, AppMeta) ->
                Apps}]} ->
             build_release(RelFile, RelName, RelVsn, ErtsVsn, Apps, AppMeta);
         {ok, InvalidRelease} ->
-            ?RCL_ERROR({invalid_release_information, InvalidRelease});
+            ?RLX_ERROR({invalid_release_information, InvalidRelease});
         {error, Reason} ->
-            ?RCL_ERROR({unable_to_read, RelFile, Reason})
+            ?RLX_ERROR({unable_to_read, RelFile, Reason})
     end.
 
 build_release(RelFile, RelName, RelVsn, ErtsVsn, Apps, AppMeta) ->
-    Release = rcl_release:erts(rcl_release:new(RelName, RelVsn, RelFile),
+    Release = rlx_release:erts(rlx_release:new(RelName, RelVsn, RelFile),
                                ErtsVsn),
     resolve_apps(Apps, AppMeta, Release, []).
 
 resolve_apps([], _AppMeta, Release, Acc) ->
-    {ok, rcl_release:application_details(Release, Acc)};
+    {ok, rlx_release:application_details(Release, Acc)};
 resolve_apps([AppInfo | Apps], AppMeta, Release, Acc) ->
     AppName = erlang:element(1, AppInfo),
     AppVsn = ec_semver:parse(erlang:element(2, AppInfo)),
@@ -144,13 +144,13 @@ resolve_apps([AppInfo | Apps], AppMeta, Release, Acc) ->
 
 find_app(AppName, AppVsn, AppMeta) ->
     case ec_lists:find(fun(App) ->
-                               NAppName = rcl_app_info:name(App),
-                               NAppVsn = rcl_app_info:vsn(App),
+                               NAppName = rlx_app_info:name(App),
+                               NAppVsn = rlx_app_info:vsn(App),
                                AppName == NAppName andalso
                                    AppVsn == NAppVsn
                        end, AppMeta) of
         {ok, Head} ->
             Head;
         error ->
-            ?RCL_ERROR({could_not_find, {AppName, AppVsn}})
+            ?RLX_ERROR({could_not_find, {AppName, AppVsn}})
     end.

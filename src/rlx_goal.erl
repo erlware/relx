@@ -25,14 +25,14 @@ parse(Input) when is_binary(Input) ->
                 [_,AppName,_,Op,_,Vsn,_, _] ->
                     {ok,
                         {AppName,
-                         rcl_goal_utils:to_vsn(Vsn),
-                         rcl_goal_utils:to_op(Op)}};
+                         rlx_goal_utils:to_vsn(Vsn),
+                         rlx_goal_utils:to_op(Op)}};
                 [_,AppName,_,Op,_,Vsn1,_,_,_,Vsn2,_,_] ->
                     {ok,
                         {AppName,
-                         rcl_goal_utils:to_vsn(Vsn1),
-                         rcl_goal_utils:to_vsn(Vsn2),
-                         rcl_goal_utils:to_op(Op)}};
+                         rlx_goal_utils:to_vsn(Vsn1),
+                         rlx_goal_utils:to_vsn(Vsn2),
+                         rlx_goal_utils:to_op(Op)}};
                 _ ->
                  io:format("~p~n", [Node])
            end
