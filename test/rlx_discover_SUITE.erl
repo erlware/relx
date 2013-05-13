@@ -17,7 +17,7 @@
 %%%-------------------------------------------------------------------
 %%% @author Eric Merrit <ericbmerritt@gmail.com>
 %%% @copyright (C) 2012, Eric Merrit
--module(rclt_discover_SUITE).
+-module(rlx_discover_SUITE).
 
 -export([suite/0,
          init_per_suite/1,
@@ -44,9 +44,9 @@ init_per_testcase(_, Config) ->
     DataDir = proplists:get_value(data_dir, Config),
     LibDir1 = filename:join([DataDir, create_random_name("lib_dir1_")]),
     LibDir2 = filename:join([DataDir, create_random_name("lib_dir2_")]),
-    ok = rcl_util:mkdir_p(LibDir1),
-    ok = rcl_util:mkdir_p(LibDir2),
-    State = rcl_state:new([{lib_dirs, [LibDir1, LibDir2]}], release),
+    ok = rlx_util:mkdir_p(LibDir1),
+    ok = rlx_util:mkdir_p(LibDir2),
+    State = rlx_state:new([{lib_dirs, [LibDir1, LibDir2]}], release),
     [{lib1, LibDir1},
      {lib2, LibDir2},
      {state, State} | Config].
@@ -72,20 +72,20 @@ normal_case(Config) ->
              || App <-
                     [{create_random_name("lib_app2_"), create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
-    State0 = rcl_state:put(proplists:get_value(state, Config),
+    State0 = rlx_state:put(proplists:get_value(state, Config),
                             disable_default_libs, true),
-    {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
-    {ok, State2} = rcl_provider:do(DiscoverProvider, State1),
+    {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
+    {ok, State2} = rlx_provider:do(DiscoverProvider, State1),
     lists:foreach(fun(App) ->
-                          ?assertMatch(true, lists:member(App, rcl_state:available_apps(State2)))
+                          ?assertMatch(true, lists:member(App, rlx_state:available_apps(State2)))
                   end, Apps1),
 
     lists:foreach(fun(App) ->
-                          ?assertMatch(true, lists:member(App, rcl_state:available_apps(State2)))
+                          ?assertMatch(true, lists:member(App, rlx_state:available_apps(State2)))
                   end, Apps2),
     Length = erlang:length(Apps2) +
         erlang:length(Apps2),
-    ?assertMatch(Length, erlang:length(rcl_state:available_apps(State2))).
+    ?assertMatch(Length, erlang:length(rlx_state:available_apps(State2))).
 
 no_beam_case(Config) ->
     %% We silently ignore apps with no beams
@@ -110,10 +110,10 @@ no_beam_case(Config) ->
     AppDir = filename:join([LibDir2, BadName]),
     write_app_file(AppDir, BadName, BadVsn),
     State0 = proplists:get_value(state, Config),
-    {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
+    {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
     EbinDir = filename:join([LibDir2, BadName, <<"ebin">>]),
     ?assertMatch({error, {_, [{no_beam_files, EbinDir}]}},
-                 rcl_provider:do(DiscoverProvider, State1)).
+                 rlx_provider:do(DiscoverProvider, State1)).
 
 bad_ebin_case(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -140,9 +140,9 @@ bad_ebin_case(Config) ->
     ok = ec_file:write_term(Filename, get_bad_app_metadata(BadName, BadVsn)),
     write_beam_file(AppDir, BadName),
     State0 = proplists:get_value(state, Config),
-    {DiscoverProvider, {ok, State1}} = rcl_provider:new(rcl_prv_discover, State0),
+    {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
     ?assertMatch({error, {_, [{invalid_app_file, Filename}]}},
-                 rcl_provider:do(DiscoverProvider, State1)).
+                 rlx_provider:do(DiscoverProvider, State1)).
 
 
 %%%===================================================================
@@ -152,7 +152,7 @@ create_app(Dir, Name, Vsn) ->
     AppDir = filename:join([Dir, Name]),
     write_app_file(AppDir, Name, Vsn),
     write_beam_file(AppDir, Name),
-    {ok, App} = rcl_app_info:new(erlang:list_to_atom(Name), Vsn,
+    {ok, App} = rlx_app_info:new(erlang:list_to_atom(Name), Vsn,
                                  erlang:iolist_to_binary(AppDir),
                                  [kernel, stdlib], []),
     App.

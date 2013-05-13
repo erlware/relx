@@ -18,46 +18,46 @@
 %%% @author Eric Merritt <ericbmerritt@gmail.com>
 %%% @copyright (C) 2012 Erlware, LLC.
 %%% @doc test for target spec parsing
--module(rclt_goal).
+-module(rlx_goal_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 
 parse_test() ->
     ?assertMatch({ok, getopt},
-                 rcl_goal:parse("getopt")),
+                 rlx_goal:parse("getopt")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, '='}},
-                 rcl_goal:parse("getopt=0.5.1")),
+                 rlx_goal:parse("getopt=0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, '='}},
-                 rcl_goal:parse("getopt:0.5.1")),
+                 rlx_goal:parse("getopt:0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, '='}},
-                 rcl_goal:parse("getopt-0.5.1")),
+                 rlx_goal:parse("getopt-0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, gte}},
-                 rcl_goal:parse("getopt >= 0.5.1")),
+                 rlx_goal:parse("getopt >= 0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, gte}},
-                 rcl_goal:parse("getopt:gte:0.5.1")),
+                 rlx_goal:parse("getopt:gte:0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, gt}},
-                 rcl_goal:parse("getopt>0.5.1")),
+                 rlx_goal:parse("getopt>0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, gt}},
-                 rcl_goal:parse("getopt:gt:0.5.1")),
+                 rlx_goal:parse("getopt:gt:0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, lte}},
-                 rcl_goal:parse("getopt<= 0.5.1")),
+                 rlx_goal:parse("getopt<= 0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, lte}},
-                 rcl_goal:parse("getopt:lte:0.5.1")),
+                 rlx_goal:parse("getopt:lte:0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, lt}},
-                 rcl_goal:parse("getopt<0.5.1")),
+                 rlx_goal:parse("getopt<0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, pes}},
-                 rcl_goal:parse("getopt ~>0.5.1")),
+                 rlx_goal:parse("getopt ~>0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, pes}},
-                 rcl_goal:parse("getopt: pes:0.5.1")),
+                 rlx_goal:parse("getopt: pes:0.5.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, {{0,6,1},{[],[]}}, between}},
-                 rcl_goal:parse("getopt:btwn:0.5.1,0.6.1")),
+                 rlx_goal:parse("getopt:btwn:0.5.1,0.6.1")),
     ?assertMatch({ok, {getopt, {{0,5,1},{[],[]}}, {{0,6,1},{[],[]}}, between}},
-                 rcl_goal:parse("getopt:between :0.5.1,0.6.1")).
+                 rlx_goal:parse("getopt:between :0.5.1,0.6.1")).
 
 fail_test() ->
     ?assertMatch({fail,_},
-                 rcl_goal:parse("got:")),
+                 rlx_goal:parse("got:")),
     ?assertMatch({fail,_},
-                 rcl_goal:parse("between:btwn:0.5")),
+                 rlx_goal:parse("between:btwn:0.5")),
     ?assertMatch({fail,_},
-                 rcl_goal:parse("between:btwn:0.5,")).
+                 rlx_goal:parse("between:btwn:0.5,")).

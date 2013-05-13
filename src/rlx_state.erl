@@ -18,13 +18,14 @@
 %%% @author Eric Merritt <ericbmerritt@gmail.com>
 %%% @copyright (C) 2012 Erlware, LLC.
 %%%
-%%% @doc Provides state management services for the relcool tool. Generally,
+%%% @doc Provides state management services for the relx tool. Generally,
 %%% those things that are fixed have a direct api. Those things that are mutable
 %%% have a more mutable api.
--module(rcl_state).
+-module(rlx_state).
 
 -export([new/2,
          log/1,
+         action/1,
          output_dir/1,
          lib_dirs/1,
          overrides/1,
@@ -40,14 +41,16 @@
          sys_config/2,
          root_dir/1,
          root_dir/2,
-         add_release/2,
-         get_release/3,
-         update_release/2,
-         releases/1,
-         discovered_releases/1,
-         discovered_releases/2,
-         default_release/1,
-         default_release/3,
+         add_configured_release/2,
+         get_configured_release/3,
+         configured_releases/1,
+         realized_releases/1,
+         realized_releases/2,
+         add_realized_release/2,
+         get_realized_release/3,
+         update_realized_release/2,
+         default_configured_release/1,
+         default_configured_release/3,
          available_apps/1,
          available_apps/2,
          get/2,
@@ -55,6 +58,7 @@
          put/3,
          caller/1,
          caller/2,
+         upfrom/1,
          format/1,
          format/2]).
 
@@ -63,22 +67,23 @@
               releases/0,
               cmd_args/0]).
 
--record(state_t, {log :: rcl_log:t(),
+-record(state_t, {log :: rlx_log:t(),
                   root_dir :: file:name(),
                   caller :: caller(),
                   action :: atom(),
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
-                  goals=[] :: [rcl_depsolver:constraint()],
-                  providers = [] :: [rcl_provider:t()],
-                  available_apps = [] :: [rcl_app_info:t()],
-                  default_release :: {rcl_release:name(), rcl_release:vsn()},
+                  goals=[] :: [rlx_depsolver:constraint()],
+                  providers = [] :: [rlx_provider:t()],
+                  available_apps = [] :: [rlx_app_info:t()],
+                  default_configured_release :: {rlx_release:name(), rlx_release:vsn()},
                   sys_config :: file:filename() | undefined,
                   overrides :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps = [] :: [AppName::atom()],
-                  releases :: releases(),
-                  discovered_releases :: releases(),
+                  configured_releases :: releases(),
+                  realized_releases :: releases(),
+                  upfrom :: string() | binary() | undefined,
                   config_values :: ec_dictionary:dictionary(Key::atom(),
                                                             Value::term())}).
 
@@ -86,9 +91,9 @@
 %% types
 %%============================================================================
 
--type releases() :: ec_dictionary:dictionary({rcl_release:name(),
-                                              rcl_release:vsn()},
-                                             rcl_release:t()).
+-type releases() :: ec_dictionary:dictionary({rlx_release:name(),
+                                              rlx_release:vsn()},
+                                             rlx_release:t()).
 -type cmd_args() :: proplists:proplist().
 -type caller() :: command_line | api.
 
@@ -104,23 +109,30 @@ new(PropList, Target)
      erlang:is_atom(Target) ->
     {ok, Root} = file:get_cwd(),
     State0 =
-        #state_t{log = proplists:get_value(log, PropList, rcl_log:new(error)),
+        #state_t{log = proplists:get_value(log, PropList, rlx_log:new(error)),
                  output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
                  config_file=proplists:get_value(config, PropList, undefined),
                  action = Target,
+                 caller = proplists:get_value(caller, PropList, api),
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
-                 releases=ec_dictionary:new(ec_dict),
-                 discovered_releases=ec_dictionary:new(ec_dict),
+                 configured_releases=ec_dictionary:new(ec_dict),
+                 realized_releases=ec_dictionary:new(ec_dict),
                  config_values=ec_dictionary:new(ec_dict),
                  overrides = proplists:get_value(overrides, PropList, []),
                  root_dir = proplists:get_value(root_dir, PropList, Root),
-                 default_release={proplists:get_value(relname, PropList, undefined),
+                 upfrom = proplists:get_value(upfrom, PropList, undefined),
+                 default_configured_release={proplists:get_value(relname, PropList, undefined),
                                   proplists:get_value(relvsn, PropList, undefined)}},
-    rcl_state:put(create_logic_providers(State0),
+    rlx_state:put(create_logic_providers(State0),
                   disable_default_libs,
                   proplists:get_value(disable_default_libs, PropList, false)).
+
+%% @doc the action targeted for this system
+-spec action(t()) -> atom().
+action(#state_t{action=Action}) ->
+    Action.
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
@@ -143,7 +155,7 @@ skip_apps(State, SkipApps) ->
     State#state_t{skip_apps=SkipApps}.
 
 %% @doc get the current log state for the system
--spec log(t()) -> rcl_log:t().
+-spec log(t()) -> rlx_log:t().
 log(#state_t{log=LogState}) ->
     LogState.
 
@@ -155,7 +167,7 @@ output_dir(#state_t{output_dir=OutDir}) ->
 lib_dirs(#state_t{lib_dirs=LibDir}) ->
     LibDir.
 
--spec goals(t()) -> [rcl_depsolver:constraint()].
+-spec goals(t()) -> [rlx_depsolver:constraint()].
 goals(#state_t{goals=TS}) ->
     TS.
 
@@ -167,7 +179,7 @@ config_file(#state_t{config_file=ConfigFiles}) ->
 config_file(State, ConfigFiles) ->
     State#state_t{config_file=ConfigFiles}.
 
--spec providers(t()) -> [rcl_provider:t()].
+-spec providers(t()) -> [rlx_provider:t()].
 providers(#state_t{providers=Providers}) ->
     Providers.
 
@@ -187,54 +199,65 @@ root_dir(#state_t{root_dir=RootDir}) ->
 root_dir(State, RootDir) ->
     State#state_t{root_dir=RootDir}.
 
--spec providers(t(), [rcl_provider:t()]) -> t().
+-spec providers(t(), [rlx_provider:t()]) -> t().
 providers(M, NewProviders) ->
     M#state_t{providers=NewProviders}.
 
--spec add_release(t(), rcl_release:t()) -> t().
-add_release(M=#state_t{releases=Releases}, Release) ->
-    M#state_t{releases=ec_dictionary:add({rcl_release:name(Release),
-                                          rcl_release:vsn(Release)},
+-spec add_configured_release(t(), rlx_release:t()) -> t().
+add_configured_release(M=#state_t{configured_releases=Releases}, Release) ->
+    M#state_t{configured_releases=ec_dictionary:add({rlx_release:name(Release),
+                                          rlx_release:vsn(Release)},
                                          Release,
                                          Releases)}.
 
--spec update_release(t(), rcl_release:t()) -> t().
-update_release(M=#state_t{releases=Releases}, Release) ->
-    M#state_t{releases=ec_dictionary:add({rcl_release:name(Release),
-                                          rcl_release:vsn(Release)},
-                                         Release,
-                                         Releases)}.
-
--spec get_release(t(), rcl_release:name(), rcl_release:vsn()) -> rcl_release:t().
-get_release(#state_t{releases=Releases}, Name, Vsn) ->
+-spec get_configured_release(t(), rlx_release:name(), rlx_release:vsn()) -> rlx_release:t().
+get_configured_release(#state_t{configured_releases=Releases}, Name, Vsn) ->
     ec_dictionary:get({Name, Vsn}, Releases).
 
--spec releases(t()) -> releases().
-releases(#state_t{releases=Releases}) ->
+-spec configured_releases(t()) -> releases().
+configured_releases(#state_t{configured_releases=Releases}) ->
     Releases.
 
--spec discovered_releases(t()) -> releases().
-discovered_releases(#state_t{discovered_releases=Releases}) ->
+-spec realized_releases(t()) -> releases().
+realized_releases(#state_t{realized_releases=Releases}) ->
     Releases.
 
--spec discovered_releases(t(), releases()) -> t().
-discovered_releases(State, Releases) ->
-    State#state_t{discovered_releases=Releases}.
+-spec realized_releases(t(), releases()) -> t().
+realized_releases(State, Releases) ->
+    State#state_t{realized_releases=Releases}.
 
--spec default_release(t()) ->
-                             {rcl_release:name() | undefined, rcl_release:vsn() | undefined}.
-default_release(#state_t{default_release=Def}) ->
+-spec add_realized_release(t(), rlx_release:t()) -> t().
+add_realized_release(State = #state_t{realized_releases=Releases}, Release) ->
+    NewReleases = ec_dictionary:add({rlx_release:name(Release), rlx_release:vsn(Release)},
+                                    Release, Releases),
+    State#state_t{realized_releases=NewReleases}.
+
+-spec get_realized_release(t(), rlx_release:name(), rlx_release:vsn()) -> rlx_release:t().
+get_realized_release(#state_t{realized_releases=Releases}, Name, Vsn) ->
+    ec_dictionary:get({Name, Vsn}, Releases).
+
+-spec update_realized_release(t(), rlx_release:t()) ->
+     t().
+update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
+    M#state_t{realized_releases=ec_dictionary:add({rlx_release:name(Release),
+                                                   rlx_release:vsn(Release)},
+                                                  Release,
+                                                  Releases)}.
+
+-spec default_configured_release(t()) ->
+                             {rlx_release:name() | undefined, rlx_release:vsn() | undefined}.
+default_configured_release(#state_t{default_configured_release=Def}) ->
     Def.
 
--spec default_release(t(), rcl_release:name(), rcl_release:vsn()) -> t().
-default_release(M, Name, Vsn) ->
-    M#state_t{default_release={Name, Vsn}}.
+-spec default_configured_release(t(), rlx_release:name(), rlx_release:vsn()) -> t().
+default_configured_release(M, Name, Vsn) ->
+    M#state_t{default_configured_release={Name, Vsn}}.
 
--spec available_apps(t()) -> [rcl_app_info:t()].
+-spec available_apps(t()) -> [rlx_app_info:t()].
 available_apps(#state_t{available_apps=Apps}) ->
     Apps.
 
--spec available_apps(t(), [rcl_app_info:t()]) -> t().
+-spec available_apps(t(), [rlx_app_info:t()]) -> t().
 available_apps(M, NewApps) ->
     M#state_t{available_apps=NewApps}.
 
@@ -266,6 +289,10 @@ caller(#state_t{caller=Caller}) ->
 caller(S, Caller) ->
     S#state_t{caller=Caller}.
 
+-spec upfrom(t()) -> string() | binary() | undefined.
+upfrom(#state_t{upfrom=UpFrom}) ->
+    UpFrom.
+
 -spec format(t()) -> iolist().
 format(Mod) ->
     format(Mod, 0).
@@ -277,19 +304,19 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
                 providers=Providers},
        Indent) ->
     Values1 = ec_dictionary:to_list(Values0),
-    [rcl_util:indent(Indent),
+    [rlx_util:indent(Indent),
      <<"state(">>, erlang:atom_to_list(Caller), <<"):\n">>,
-     rcl_util:indent(Indent + 1), <<"log: ">>, rcl_log:format(LogState), <<",\n">>,
-     rcl_util:indent(Indent + 1), "config file: ", rcl_util:optional_to_string(ConfigFile), "\n",
-     rcl_util:indent(Indent + 1), "goals: \n",
-     [[rcl_util:indent(Indent + 2), rcl_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
-     rcl_util:indent(Indent + 1), "output_dir: ", OutDir, "\n",
-     rcl_util:indent(Indent + 1), "lib_dirs: \n",
-     [[rcl_util:indent(Indent + 2), LibDir, ",\n"] || LibDir <- LibDirs],
-     rcl_util:indent(Indent + 1), "providers: \n",
-     [[rcl_util:indent(Indent + 2), rcl_provider:format(Provider), ",\n"] || Provider <- Providers],
-     rcl_util:indent(Indent + 1), "provider config values: \n",
-     [[rcl_util:indent(Indent + 2), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
+     rlx_util:indent(Indent + 1), <<"log: ">>, rlx_log:format(LogState), <<",\n">>,
+     rlx_util:indent(Indent + 1), "config file: ", rlx_util:optional_to_string(ConfigFile), "\n",
+     rlx_util:indent(Indent + 1), "goals: \n",
+     [[rlx_util:indent(Indent + 2), rlx_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
+     rlx_util:indent(Indent + 1), "output_dir: ", OutDir, "\n",
+     rlx_util:indent(Indent + 1), "lib_dirs: \n",
+     [[rlx_util:indent(Indent + 2), LibDir, ",\n"] || LibDir <- LibDirs],
+     rlx_util:indent(Indent + 1), "providers: \n",
+     [[rlx_util:indent(Indent + 2), rlx_provider:format(Provider), ",\n"] || Provider <- Providers],
+     rlx_util:indent(Indent + 1), "provider config values: \n",
+     [[rlx_util:indent(Indent + 2), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
 
 %%%===================================================================
 %%% Internal Functions
@@ -297,11 +324,11 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
 
 -spec create_logic_providers(t()) -> t().
 create_logic_providers(State0) ->
-    {ConfigProvider, {ok, State1}} = rcl_provider:new(rcl_prv_config, State0),
-    {DiscoveryProvider, {ok, State2}} = rcl_provider:new(rcl_prv_discover, State1),
-    {ReleaseProvider, {ok, State3}} = rcl_provider:new(rcl_prv_release, State2),
-    {OverlayProvider, {ok, State4}} = rcl_provider:new(rcl_prv_overlay, State3),
-    {AssemblerProvider, {ok, State5}} = rcl_provider:new(rcl_prv_assembler, State4),
+    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State0),
+    {DiscoveryProvider, {ok, State2}} = rlx_provider:new(rlx_prv_discover, State1),
+    {ReleaseProvider, {ok, State3}} = rlx_provider:new(rlx_prv_release, State2),
+    {OverlayProvider, {ok, State4}} = rlx_provider:new(rlx_prv_overlay, State3),
+    {AssemblerProvider, {ok, State5}} = rlx_provider:new(rlx_prv_assembler, State4),
     State5#state_t{providers=[ConfigProvider, DiscoveryProvider,
                               ReleaseProvider, OverlayProvider, AssemblerProvider]}.
 
@@ -320,7 +347,7 @@ to_binary(Dir)
 -include_lib("eunit/include/eunit.hrl").
 
 new_test() ->
-    LogState = rcl_log:new(error),
+    LogState = rlx_log:new(error),
     RCLState = new([{log, LogState}], release),
     ?assertMatch(LogState, log(RCLState)).
 

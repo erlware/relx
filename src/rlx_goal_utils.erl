@@ -20,7 +20,7 @@
 %%%
 %%% @doc
 %%%  Utilities to help with parsing of target specs
--module(rcl_goal_utils).
+-module(rlx_goal_utils).
 
 -export([to_op/1,
          to_vsn/1]).
@@ -32,7 +32,7 @@
 %%============================================================================
 %% API
 %%============================================================================
--spec to_op(iolist()) -> rcl_depsolver:constraint_op().
+-spec to_op(iolist()) -> rlx_depsolver:constraint_op().
 to_op(List)
   when erlang:is_list(List) ->
     to_op(erlang:iolist_to_binary(List));
@@ -70,7 +70,7 @@ to_op(<<":between:">>) ->
 to_vsn(Version) when erlang:is_list(Version) ->
     to_vsn(erlang:iolist_to_binary(Version));
 to_vsn(Vsn) ->
-    rcl_depsolver:parse_version(Vsn).
+    rlx_depsolver:parse_version(Vsn).
 
 %%%===================================================================
 %%% Test Functions

@@ -41,8 +41,8 @@
 %%%
 %%% we can add this world to the system all at once as follows
 %%%
-%%%      Graph0 = rcl_depsolver:new_graph(),
-%%%      Graph1 = rcl_depsolver:add_packages(
+%%%      Graph0 = rlx_depsolver:new_graph(),
+%%%      Graph1 = rlx_depsolver:add_packages(
 %%%             [{app1, [{"0.1", [{app2, "0.2"},
 %%%                               {app3, "0.2", '>='}]},
 %%%                               {"0.2", []},
@@ -57,23 +57,23 @@
 %%% We can also build it up incrementally using the other add_package and
 %%% add_package_version functions.
 %%%
-%%% Finally, once we have built up the graph we can ask rcl_depsolver to solve the
+%%% Finally, once we have built up the graph we can ask rlx_depsolver to solve the
 %%% dependency constraints. That is to give us a list of valid dependencies by
 %%% using the solve function. Lets say we want the app3 version "0.3" and all of
 %%% its resolved dependencies. We could call solve as follows.
 %%%
-%%%    rcl_depsolver:solve(Graph1, [{app3, "0.3"}]).
+%%%    rlx_depsolver:solve(Graph1, [{app3, "0.3"}]).
 %%%
 %%% That will give us the completely resolved dependencies including app3
 %%% itself. Lets be a little more flexible. Lets ask for a graph that is rooted
 %%% in anything greater then or equal to app3 "0.3". We could do that by
 %%%
-%%%    rcl_depsolver:solve(Graph1, [{app3, "0.3", '>='}]).
+%%%    rlx_depsolver:solve(Graph1, [{app3, "0.3", '>='}]).
 %%%
 %%% Of course, you can specify any number of goals at the top level.
 %%% @end
 %%%-------------------------------------------------------------------
--module(rcl_depsolver).
+-module(rlx_depsolver).
 
 %% Public Api
 -export([format_error/1,
@@ -91,7 +91,7 @@
          is_valid_constraint/1,
          filter_packages/2]).
 
-%% Internally Exported API. This should *not* be used outside of the rcl_depsolver
+%% Internally Exported API. This should *not* be used outside of the rlx_depsolver
 %% application. You have been warned.
 -export([dep_pkg/1,
          filter_package/2,
@@ -156,7 +156,7 @@ new_graph() ->
 %% @doc add a complete set of list of packages to the graph. Where the package
 %% consists of the name and a list of versions and dependencies.
 %%
-%% ``` rcl_depsolver:add_packages(Graph,
+%% ``` rlx_depsolver:add_packages(Graph,
 %%               [{app1, [{"0.1", [{app2, "0.2"},
 %%                                 {app3, "0.2", '>='}]},
 %%                                 {"0.2", []},
@@ -177,7 +177,7 @@ add_packages(Dom0, Info)
 
 %% @doc add a single package to the graph, where it consists of a package name
 %% and its versions and thier dependencies.
-%%  ```rcl_depsolver:add_package(Graph, app1, [{"0.1", [{app2, "0.2"},
+%%  ```rlx_depsolver:add_package(Graph, app1, [{"0.1", [{app2, "0.2"},
 %%                                              {app3, "0.2", '>='}]},
 %%                                              {"0.2", []},
 %%                                              {"0.3", []}]}]).
@@ -193,7 +193,7 @@ add_package(State, Pkg, Versions)
 
 %% @doc add a set of dependencies to a specific package and version.
 %% and its versions and thier dependencies.
-%%  ```rcl_depsolver:add_package(Graph, app1, "0.1", [{app2, "0.2"},
+%%  ```rlx_depsolver:add_package(Graph, app1, "0.1", [{app2, "0.2"},
 %%                                              {app3, "0.2", '>='}]},
 %%                                              {"0.2", []},
 %%                                              {"0.3", []}]).
@@ -225,7 +225,7 @@ add_package_version({?MODULE, Dom0}, RawPkg, RawVsn, RawPkgConstraints) ->
 %% @doc add a package and version to the dependency graph with no dependency
 %% constraints, dependency constraints can always be added after the fact.
 %%
-%% ```rcl_depsolver:add_package_version(Graph, app1, "0.1").'''
+%% ```rlx_depsolver:add_package_version(Graph, app1, "0.1").'''
 -spec add_package_version(t(),pkg_name(),raw_vsn()) -> t().
 add_package_version(State, Pkg, Vsn) ->
     add_package_version(State, Pkg, Vsn, []).
@@ -233,7 +233,7 @@ add_package_version(State, Pkg, Vsn) ->
 %% @doc Given a set of goals (in the form of constrains) find a set of packages
 %% and versions that satisfy all constraints. If no solution can be found then
 %% an exception is thrown.
-%% ``` rcl_depsolver:solve(State, [{app1, "0.1", '>='}]).'''
+%% ``` rlx_depsolver:solve(State, [{app1, "0.1", '>='}]).'''
 -spec solve(t(),[constraint()]) -> {ok, [pkg()]} | {error, term()}.
 solve({?MODULE, DepGraph0}, RawGoals)
   when erlang:length(RawGoals) > 0 ->
@@ -245,7 +245,7 @@ solve({?MODULE, DepGraph0}, RawGoals)
             case primitive_solve(DepGraph1, Goals, no_path) of
                 {fail, _} ->
                     [FirstCons | Rest] = Goals,
-                    {error, rcl_depsolver_culprit:search(DepGraph1, [FirstCons], Rest)};
+                    {error, rlx_depsolver_culprit:search(DepGraph1, [FirstCons], Rest)};
                 Solution ->
                     {ok, Solution}
             end
@@ -317,7 +317,7 @@ filter_packages(PVPairs, RawConstraints) ->
                            {invalid_constraints, [constraint()]} |
                            list()}) -> iolist().
 format_error(Error) ->
-    rcl_depsolver_culprit:format_error(Error).
+    rlx_depsolver_culprit:format_error(Error).
 
 %% @doc Return a formatted list of roots of the dependency trees which
 %% could not be satisified. These may also have versions attached.
@@ -327,7 +327,7 @@ format_error(Error) ->
 %%
 -spec format_roots([constraints()]) -> iolist().
 format_roots(Roots) ->
-    rcl_depsolver_culprit:format_roots(Roots).
+    rlx_depsolver_culprit:format_roots(Roots).
 
 
 %% @doc Return a formatted list of the culprit depenedencies which led to
@@ -336,17 +336,17 @@ format_roots(Roots) ->
 %%     ```(foo = 1.2.0) -> (bar > 2.0.0)```
 -spec format_culprits([{[constraint()], [constraint()]}]) -> iolist().
 format_culprits(Culprits) ->
-    rcl_depsolver_culprit:format_culprits(Culprits).
+    rlx_depsolver_culprit:format_culprits(Culprits).
 
 %% @doc A formatted version tuple
 -spec format_version(vsn()) -> iolist().
 format_version(Version) ->
-    rcl_depsolver_culprit:format_version(Version).
+    rlx_depsolver_culprit:format_version(Version).
 
 %% @doc A formatted constraint tuple
 -spec format_constraint(constraint()) -> iolist().
 format_constraint(Constraint) ->
-    rcl_depsolver_culprit:format_constraint(Constraint).
+    rlx_depsolver_culprit:format_constraint(Constraint).
 
 %%====================================================================
 %% Internal Functions

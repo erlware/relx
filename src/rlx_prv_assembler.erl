@@ -20,37 +20,37 @@
 %%%
 %%% @doc Given a complete built release this provider assembles that release
 %%% into a release directory.
--module(rcl_prv_assembler).
+-module(rlx_prv_assembler).
 
--behaviour(rcl_provider).
+-behaviour(rlx_provider).
 
 -export([init/1,
          do/1,
          format_error/1]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%============================================================================
 %% API
 %%============================================================================
--spec init(rcl_state:t()) -> {ok, rcl_state:t()}.
+-spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
     {ok, State}.
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
+-spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State) ->
-    {RelName, RelVsn} = rcl_state:default_release(State),
-    Release = rcl_state:get_release(State, RelName, RelVsn),
-    OutputDir = rcl_state:output_dir(State),
+    {RelName, RelVsn} = rlx_state:default_configured_release(State),
+    Release = rlx_state:get_realized_release(State, RelName, RelVsn),
+    OutputDir = rlx_state:output_dir(State),
     case create_output_dir(OutputDir) of
         ok ->
-            case rcl_release:realized(Release) of
+            case rlx_release:realized(Release) of
                 true ->
                     copy_app_directories_to_output(State, Release, OutputDir);
                 false ->
-                    ?RCL_ERROR({unresolved_release, RelName, RelVsn})
+                    ?RLX_ERROR({unresolved_release, RelName, RelVsn})
             end;
         Error ->
             Error
@@ -73,16 +73,30 @@ format_error({release_script_generation_error, RelFile}) ->
                   [RelFile]);
 format_error({release_script_generation_warning, Module, Warnings}) ->
     ["Warnings generating release \s",
-     rcl_util:indent(1), Module:format_warning(Warnings)];
+     rlx_util:indent(1), Module:format_warning(Warnings)];
 format_error({unable_to_create_output_dir, OutputDir}) ->
     io_lib:format("Unable to create output directory (possible permissions issue): ~s",
                   [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
     ["Errors generating release \n",
-     rcl_util:indent(1), Module:format_error(Errors)];
+     rlx_util:indent(1), Module:format_error(Errors)];
+format_error({relup_generation_error, CurrentName, UpFromName}) ->
+    io_lib:format("Unknown internal release error generating the relup from ~s to ~s",
+                  [UpFromName, CurrentName]);
+format_error({relup_generation_warning, Module, Warnings}) ->
+    ["Warnings generating relup \s",
+     rlx_util:indent(1), Module:format_warning(Warnings)];
+format_error({relup_script_generation_error,
+              {relupcript_generation_error, systools_relup,
+               {missing_sasl, _}}}) ->
+    "Unfortunately, due to requirements in systools, you need to have the sasl application "
+        "in both the current release and the release to upgrade from.";
+format_error({relup_script_generation_error, Module, Errors}) ->
+    ["Errors generating relup \n",
+     rlx_util:indent(1), Module:format_error(Errors)];
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
-                  [AppDir, TargetDir, rcl_util:indent(1),
+                  [AppDir, TargetDir, rlx_util:indent(1),
                    file:format_error(Reason)]).
 
 %%%===================================================================
@@ -93,11 +107,11 @@ format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
 create_output_dir(OutputDir) ->
     case filelib:is_dir(OutputDir) of
         false ->
-            case rcl_util:mkdir_p(OutputDir) of
+            case rlx_util:mkdir_p(OutputDir) of
                 ok ->
                     ok;
                 {error, _} ->
-                    ?RCL_ERROR({unable_to_create_output_dir, OutputDir})
+                    ?RLX_ERROR({unable_to_create_output_dir, OutputDir})
             end;
         true ->
             ok
@@ -106,7 +120,7 @@ create_output_dir(OutputDir) ->
 copy_app_directories_to_output(State, Release, OutputDir) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = ec_file:mkdir_p(LibDir),
-    Apps = rcl_release:application_details(Release),
+    Apps = rlx_release:application_details(Release),
     Result = lists:filter(fun({error, _}) ->
                                    true;
                               (_) ->
@@ -123,9 +137,9 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
     end.
 
 copy_app(LibDir, App) ->
-    AppName = erlang:atom_to_list(rcl_app_info:name(App)),
-    AppVsn = rcl_app_info:vsn_as_string(App),
-    AppDir = rcl_app_info:dir(App),
+    AppName = erlang:atom_to_list(rlx_app_info:name(App)),
+    AppVsn = rlx_app_info:vsn_as_string(App),
+    AppDir = rlx_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
     if
         AppDir == TargetDir ->
@@ -138,7 +152,7 @@ copy_app(LibDir, App) ->
 
 copy_app(App, AppDir, TargetDir) ->
     remove_symlink_or_directory(TargetDir),
-    case rcl_app_info:link(App) of
+    case rlx_app_info:link(App) of
         true ->
             link_directory(AppDir, TargetDir);
         false ->
@@ -161,7 +175,7 @@ remove_symlink_or_directory(TargetDir) ->
 link_directory(AppDir, TargetDir) ->
     case file:make_symlink(AppDir, TargetDir) of
         {error, Reason} ->
-            ?RCL_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
+            ?RLX_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
         ok ->
             ok
     end.
@@ -182,10 +196,10 @@ copy_dir(AppDir, TargetDir, SubDir) ->
     SubTarget = filename:join(TargetDir, SubDir),
     case filelib:is_dir(SubSource) of
         true ->
-            ok = rcl_util:mkdir_p(SubTarget),
+            ok = rlx_util:mkdir_p(SubTarget),
             case ec_file:copy(SubSource, SubTarget, [recursive]) of
                 {error, E} ->
-                    ?RCL_ERROR({ec_file_error, AppDir, SubTarget, E});
+                    ?RLX_ERROR({ec_file_error, AppDir, SubTarget, E});
                 ok ->
                     ok
             end;
@@ -193,42 +207,41 @@ copy_dir(AppDir, TargetDir, SubDir) ->
             ok
     end.
 
-create_release_info(State, Release, OutputDir) ->
-    RelName = erlang:atom_to_list(rcl_release:name(Release)),
-    ReleaseDir = filename:join([OutputDir,
-                                "releases",
-                                RelName ++ "-" ++
-                                    rcl_release:vsn(Release)]),
+create_release_info(State0, Release0, OutputDir) ->
+    RelName = erlang:atom_to_list(rlx_release:name(Release0)),
+    ReleaseDir = release_output_dir(State0, Release0),
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     ok = ec_file:mkdir_p(ReleaseDir),
-    case rcl_release:metadata(Release) of
+    Release1 = rlx_release:relfile(Release0, ReleaseFile),
+    State1 = rlx_state:update_realized_release(State0, Release1),
+    case rlx_release:metadata(Release1) of
         {ok, Meta} ->
                 ok = ec_file:write_term(ReleaseFile, Meta),
-                write_bin_file(State, Release, OutputDir, ReleaseDir);
+                write_bin_file(State1, Release1, OutputDir, ReleaseDir);
         E ->
             E
     end.
 
 
 write_bin_file(State, Release, OutputDir, RelDir) ->
-    RelName = erlang:atom_to_list(rcl_release:name(Release)),
-    RelVsn = rcl_release:vsn(Release),
+    RelName = erlang:atom_to_list(rlx_release:name(Release)),
+    RelVsn = rlx_release:vsn(Release),
     BinDir = filename:join([OutputDir, "bin"]),
     ok = ec_file:mkdir_p(BinDir),
-    VsnRel = filename:join(BinDir, RelName ++ "-" ++ RelVsn),
+    VsnRel = filename:join(BinDir, rlx_release:canonical_name(Release)),
     BareRel = filename:join(BinDir, RelName),
-    ErlOpts = rcl_state:get(State, erl_opts, ""),
-    StartFile = case rcl_state:get(State, extended_start_script, false) of
+    ErlOpts = rlx_state:get(State, erl_opts, ""),
+    StartFile = case rlx_state:get(State, extended_start_script, false) of
                     false ->
                         bin_file_contents(RelName, RelVsn,
-                                          rcl_release:erts(Release),
+                                          rlx_release:erts(Release),
                                           ErlOpts);
                     true ->
-                        extended_bin_file_contents(RelName, RelVsn, rcl_release:erts(Release), ErlOpts)
+                        extended_bin_file_contents(RelName, RelVsn, rlx_release:erts(Release), ErlOpts)
                 end,
     %% We generate the start script by default, unless the user
     %% tells us not too
-    case rcl_state:get(State, generate_start_script, true) of
+    case rlx_state:get(State, generate_start_script, true) of
         false ->
             ok;
         _ ->
@@ -241,19 +254,19 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir).
 
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
--spec copy_or_generate_sys_config_file(rcl_state:t(), rcl_release:t(),
+-spec copy_or_generate_sys_config_file(rlx_state:t(), rlx_release:t(),
                                        file:name(), file:name()) ->
-                                              {ok, rcl_state:t()} | relcool:error().
+                                              {ok, rlx_state:t()} | relx:error().
 copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir) ->
     RelSysConfPath = filename:join([RelDir, "sys.config"]),
-    case rcl_state:sys_config(State) of
+    case rlx_state:sys_config(State) of
         undefined ->
             ok = generate_sys_config_file(RelSysConfPath),
             include_erts(State, Release, OutputDir, RelDir);
         ConfigPath ->
             case filelib:is_regular(ConfigPath) of
                 false ->
-                    ?RCL_ERROR({config_does_not_exist, ConfigPath});
+                    ?RLX_ERROR({config_does_not_exist, ConfigPath});
                 true ->
                     ok = ec_file:copy(ConfigPath, RelSysConfPath),
                     include_erts(State, Release, OutputDir, RelDir)
@@ -277,23 +290,23 @@ generate_sys_config_file(RelSysConfPath) ->
     file:close(Fd).
 
 %% @doc Optionally add erts directory to release, if defined.
--spec include_erts(rcl_state:t(), rcl_release:t(),  file:name(), file:name()) -> {ok, rcl_state:t()} | relcool:error().
+-spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) -> {ok, rlx_state:t()} | relx:error().
 include_erts(State, Release, OutputDir, RelDir) ->
-    case rcl_state:get(State, include_erts, true) of
+    case rlx_state:get(State, include_erts, true) of
         true ->
             Prefix = code:root_dir(),
-            ErtsVersion = rcl_release:erts(Release),
+            ErtsVersion = rlx_release:erts(Release),
             ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
             LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
             case filelib:is_dir(ErtsDir) of
                 false ->
-                    ?RCL_ERROR({specified_erts_does_not_exist, ErtsVersion});
+                    ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
                 true ->
                     ok = ec_file:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive]),
                     ok = ec_file:remove(filename:join([LocalErts, "bin", "erl"])),
                     ok = file:write_file(filename:join([LocalErts, "bin", "erl"]), erl_script(ErtsVersion)),
-                    case rcl_state:get(State, extended_start_script, false) of
+                    case rlx_state:get(State, extended_start_script, false) of
                         true ->
                             ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
                                               filename:join([OutputDir, "bin", "start_clean.boot"])),
@@ -311,58 +324,158 @@ include_erts(State, Release, OutputDir, RelDir) ->
     end.
 
 
--spec make_boot_script(rcl_state:t(), rcl_release:t(), file:name(), file:name()) ->
-                              {ok, rcl_state:t()} | relcool:error().
+-spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) ->
+                              {ok, rlx_state:t()} | relx:error().
 make_boot_script(State, Release, OutputDir, RelDir) ->
     Options = [{path, [RelDir | get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
                no_module_tests, silent],
-    Name = erlang:atom_to_list(rcl_release:name(Release)),
+    Name = erlang:atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
-    rcl_log:debug(rcl_state:log(State),
-                  "Creating script from release file ~s ~n with options ~p ~n",
-                  [ReleaseFile, Options]),
-    case make_script(Name, Options)  of
+    case make_script(Options,
+                    fun(CorrectedOptions) ->
+                            systools:make_script(Name, CorrectedOptions)
+                    end) of
         ok ->
-            rcl_log:error(rcl_state:log(State),
+            rlx_log:error(rlx_state:log(State),
                           "release successfully created!"),
-            {ok, State};
+            make_relup(State, Release);
         error ->
-            ?RCL_ERROR({release_script_generation_error, ReleaseFile});
+            ?RLX_ERROR({release_script_generation_error, ReleaseFile});
         {ok, _, []} ->
-            rcl_log:error(rcl_state:log(State),
+            rlx_log:error(rlx_state:log(State),
                           "release successfully created!"),
-            {ok, State};
+            make_relup(State, Release);
         {ok,Module,Warnings} ->
-            ?RCL_ERROR({release_script_generation_warn, Module, Warnings});
+            ?RLX_ERROR({release_script_generation_warn, Module, Warnings});
         {error,Module,Error} ->
-            ?RCL_ERROR({release_script_generation_error, Module, Error})
+            ?RLX_ERROR({release_script_generation_error, Module, Error})
     end.
 
--spec make_script(string(), [term()]) ->
-                         ok |
-                         error |
-                         {ok, module(), [term()]} |
-                         {error,module,[term()]}.
-make_script(Name, Options) ->
+-spec make_script([term()],
+                  fun(([term()]) -> Res)) -> Res.
+make_script(Options, RunFun) ->
     %% Erts 5.9 introduced a non backwards compatible option to
     %% erlang this takes that into account
     Erts = erlang:system_info(version),
     case ec_semver:gte(Erts, "5.9") of
         true ->
-            systools:make_script(Name, [no_warn_sasl | Options]);
+            RunFun([no_warn_sasl | Options]);
         _ ->
-            systools:make_script(Name, Options)
+            RunFun(Options)
     end.
 
+make_relup(State, Release) ->
+    case rlx_state:action(State) of
+        relup ->
+            UpFrom =
+                case rlx_state:upfrom(State) of
+                    undefined ->
+                        get_last_release(State, Release);
+                    Vsn ->
+                        get_up_release(State, Release, Vsn)
+                end,
+            case UpFrom of
+                undefined ->
+                    ?RLX_ERROR(no_upfrom_release_found);
+                _ ->
+                    make_upfrom_script(State, Release, UpFrom)
+            end;
+        _ ->
+            {ok, State}
+    end.
+
+make_upfrom_script(State, Release, UpFrom) ->
+    OutputDir = rlx_state:output_dir(State),
+    Options = [{outdir, OutputDir},
+               {path, get_code_paths(Release, OutputDir) ++
+                    get_code_paths(UpFrom, OutputDir)},
+               silent],
+    CurrentRel = strip_rel(rlx_release:relfile(Release)),
+    UpFromRel = strip_rel(rlx_release:relfile(UpFrom)),
+    rlx_log:debug(rlx_state:log(State),
+                  "systools:make_relup(~p, ~p, ~p, ~p)",
+                  [CurrentRel, UpFromRel, UpFromRel, Options]),
+    case make_script(Options,
+                     fun(CorrectOptions) ->
+                             systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], CorrectOptions)
+                     end)  of
+        ok ->
+            rlx_log:error(rlx_state:log(State),
+                          "relup from ~s to ~s successfully created!",
+                          [UpFromRel, CurrentRel]),
+            {ok, State};
+        error ->
+            ?RLX_ERROR({relup_script_generation_error, CurrentRel, UpFromRel});
+        {ok, RelUp, _, []} ->
+            rlx_log:error(rlx_state:log(State),
+                          "relup successfully created!"),
+            write_relup_file(State, Release, RelUp),
+            {ok, State};
+        {ok,_, Module,Warnings} ->
+            ?RLX_ERROR({relup_script_generation_warn, Module, Warnings});
+        {error,Module,Errors} ->
+            ?RLX_ERROR({relupcript_generation_error, Module, Errors})
+    end.
+
+write_relup_file(State, Release, Relup) ->
+    OutDir = release_output_dir(State, Release),
+    RelName = rlx_util:to_string(rlx_release:name(Release)),
+    RelupFile = filename:join(OutDir, RelName ++ ".relup"),
+    ok = ec_file:write_term(RelupFile, Relup).
+
+strip_rel(Name) ->
+    rlx_util:to_string(filename:join(filename:dirname(Name),
+                                     filename:basename(Name, ".rel"))).
+
+
+get_up_release(State, Release, Vsn) ->
+    Name = rlx_release:name(Release),
+    try
+        ec_dictionary:get({Name, Vsn}, rlx_state:realized_releases(State))
+    catch
+        throw:notfound ->
+            undefined
+    end.
+
+get_last_release(State, Release) ->
+    Releases0 = [Rel || {{_, _}, Rel} <- ec_dictionary:to_list(rlx_state:realized_releases(State))],
+    Releases1 = lists:sort(fun(R1, R2) ->
+                                  ec_semver:lte(rlx_release:vsn(R1),
+                                                rlx_release:vsn(R2))
+                          end, Releases0),
+    Res = lists:foldl(fun(_Rel, R = {found, _}) ->
+                              R;
+                         (Rel, Prev) ->
+                              case rlx_release:vsn(Rel) == rlx_release:vsn(Release)  of
+                                  true ->
+                                      {found, Prev};
+                                  false ->
+                                      Rel
+                              end
+                      end, undefined, Releases1),
+    case Res of
+        {found, R} ->
+            R;
+        Else ->
+            Else
+    end.
+
+-spec release_output_dir(rlx_state:t(), rlx_release:t()) -> string().
+release_output_dir(State, Release) ->
+    OutputDir = rlx_state:output_dir(State),
+    filename:join([OutputDir,
+                   "releases",
+                   rlx_release:canonical_name(Release)]).
+
 %% @doc Generates the correct set of code paths for the system.
--spec get_code_paths(rcl_release:t(), file:name()) -> [file:name()].
+-spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].
 get_code_paths(Release, OutDir) ->
     LibDir = filename:join(OutDir, "lib"),
     [filename:join([LibDir,
-                    erlang:atom_to_list(rcl_app_info:name(App)) ++ "-" ++
-                        rcl_app_info:vsn_as_string(App), "ebin"]) ||
-        App <- rcl_release:application_details(Release)].
+                    erlang:atom_to_list(rlx_app_info:name(App)) ++ "-" ++
+                        rlx_app_info:vsn_as_string(App), "ebin"]) ||
+        App <- rlx_release:application_details(Release)].
 
 erl_script(ErtsVsn) ->
     [<<"#!/bin/sh

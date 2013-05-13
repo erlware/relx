@@ -20,7 +20,7 @@
 %%
 %% @author Eric Merritt <ericbmerritt@gmail.com>
 %%-------------------------------------------------------------------
--module(rcl_depsolver_tests).
+-module(rlx_depsolver_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -29,7 +29,7 @@
 %%============================================================================
 
 first_test() ->
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"0.1", [{app2, "0.2+build.33"},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"0.1", [{app2, "0.2+build.33"},
                                                                                    {app3, "0.2", '>='}]},
                                                                           {"0.2", []},
                                                                           {"0.3", []}]},
@@ -41,7 +41,7 @@ first_test() ->
                                                                           {"0.3", []}]}]),
 
 
-    case rcl_depsolver:solve(Dom0, [{app1, "0.1"}]) of
+    case rlx_depsolver:solve(Dom0, [{app1, "0.1"}]) of
         {ok,[{app3,{{0,3},{[],[]}}},
              {app2,{{0,2},{[],[<<"build">>,33]}}},
              {app1,{{0,1},{[],[]}}}]} ->
@@ -52,7 +52,7 @@ first_test() ->
 
 second_test() ->
 
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"0.1", [{app2, "0.1", '>='},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"0.1", [{app2, "0.1", '>='},
                                                                                    {app4, "0.2"},
                                                                                    {app3, "0.2", '>='}]},
                                                                           {"0.2", []},
@@ -68,7 +68,7 @@ second_test() ->
                                                                                    {app3, "0.3"}]},
                                                                           {"0.3", []}]}]),
 
-    X = rcl_depsolver:solve(Dom0, [{app1, "0.1"},
+    X = rlx_depsolver:solve(Dom0, [{app1, "0.1"},
                                    {app2, "0.3"}]),
 
     ?assertMatch({ok, [{app3,{{0,3},{[],[]}}},
@@ -86,7 +86,7 @@ third_test() ->
     Pkg3Deps = [{app5, "2.0.0", '>='}],
     Pkg4Deps = [app5],
 
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"0.1.0", Pkg1Deps},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"0.1.0", Pkg1Deps},
                                                                           {"0.2", Pkg1Deps},
                                                                           {"3.0", Pkg1Deps}]},
                                                                   {app2, [{"0.0.1", Pkg2Deps},
@@ -112,7 +112,7 @@ third_test() ->
                        {app4,{{6,0,0},{[],[]}}},
                        {app2,{{3,0},{[],[]}}},
                        {app1,{{3,0},{[],[]}}}]},
-                 rcl_depsolver:solve(Dom0, [{app1, "3.0"}])),
+                 rlx_depsolver:solve(Dom0, [{app1, "3.0"}])),
 
 
     ?assertMatch({ok, [{app5,{{6,0,0},{[],[]}}},
@@ -120,10 +120,10 @@ third_test() ->
                        {app4,{{6,0,0},{[],[]}}},
                        {app2,{{3,0},{[],[]}}},
                        {app1,{{3,0},{[],[]}}}]},
-                 rcl_depsolver:solve(Dom0, [app1])).
+                 rlx_depsolver:solve(Dom0, [app1])).
 
 fail_test() ->
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(),
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(),
                                       [{app1, [{"0.1", [{app2, "0.2"},
                                                         {app3, "0.2", gte}]},
                                                {"0.2", []},
@@ -135,9 +135,9 @@ fail_test() ->
                                                {"0.2", []},
                                                {"0.3", []}]}]),
 
-    Ret = rcl_depsolver:solve(Dom0, [{app1, "0.1"}]),
+    Ret = rlx_depsolver:solve(Dom0, [{app1, "0.1"}]),
     %% We do this to make sure all errors can be formated.
-    _ = rcl_depsolver:format_error(Ret),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[{app1,{{0,1},{[],[]}}}],
                       [{app1,{{0,1},{[],[]}}},[[{app2,{{0,2},{[],[]}}}]]]}],
@@ -154,7 +154,7 @@ conflicting_passing_test() ->
     Pkg2Deps = [{app4, "3.0.0", gte}],
     Pkg3Deps = [{app5, "2.0.0", '>='}],
 
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"0.1.0", Pkg1Deps},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"0.1.0", Pkg1Deps},
                                                                           {"0.1.0", Pkg1Deps},
                                                                           {"0.2", Pkg1Deps},
                                                                           {"3.0", Pkg1Deps}]},
@@ -181,23 +181,23 @@ conflicting_passing_test() ->
                        {app4,{{5,0,0},{[],[]}}},
                        {app2,{{3,0},{[],[]}}},
                        {app1,{{3,0},{[],[]}}}]},
-                 rcl_depsolver:solve(Dom0, [{app1, "3.0"}])),
+                 rlx_depsolver:solve(Dom0, [{app1, "3.0"}])),
 
     ?assertMatch({ok, [{app5,{{2,0,0},{[],[]}}},
                        {app3,{{0,1,3},{[],[]}}},
                        {app4,{{5,0,0},{[],[]}}},
                        {app2,{{3,0},{[],[]}}},
                        {app1,{{3,0},{[],[]}}}]},
-                 rcl_depsolver:solve(Dom0, [app1, app2, app5])).
+                 rlx_depsolver:solve(Dom0, [app1, app2, app5])).
 
 
 
 circular_dependencies_test() ->
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"0.1.0", [app2]}]},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"0.1.0", [app2]}]},
                                                                   {app2, [{"0.0.1", [app1]}]}]),
 
     ?assertMatch({ok, [{app1,{{0,1,0},{[],[]}}},{app2,{{0,0,1},{[],[]}}}]},
-                 rcl_depsolver:solve(Dom0, [{app1, "0.1.0"}])).
+                 rlx_depsolver:solve(Dom0, [{app1, "0.1.0"}])).
 
 conflicting_failing_test() ->
     Pkg1Deps = [app2,
@@ -208,14 +208,14 @@ conflicting_failing_test() ->
     Pkg3Deps = [{app5, "6.0.0"}],
 
 
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"3.0", Pkg1Deps}]},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"3.0", Pkg1Deps}]},
                                                                   {app2, [{"0.0.1", Pkg2Deps}]},
                                                                   {app3, [{"0.1.0", Pkg3Deps}]},
                                                                   {app4, [{"5.0.0", [{app5, "2.0.0"}]}]},
                                                                   {app5, [{"2.0.0", []},
                                                                           {"6.0.0", []}]}]),
-    Ret = rcl_depsolver:solve(Dom0, [app1, app3]),
-    _ = rcl_depsolver:format_error(Ret),
+    Ret = rlx_depsolver:solve(Dom0, [app1, app3]),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[app1],
                       [{app1,{{3,0},{[],[]}}},
@@ -237,7 +237,7 @@ pessimistic_major_minor_patch_test() ->
     Pkg3Deps = [{app5, "2.0.0", '>='}],
     Pkg4Deps = [app5],
 
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"0.1.0", Pkg1Deps},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"0.1.0", Pkg1Deps},
                                                                           {"0.2", Pkg1Deps},
                                                                           {"3.0", Pkg1Deps}]},
                                                                   {app2, [{"0.0.1", Pkg2Deps},
@@ -264,7 +264,7 @@ pessimistic_major_minor_patch_test() ->
                        {app4,{{6,0,0},{[],[]}}},
                        {app2,{{2,1,5},{[],[]}}},
                        {app1,{{3,0},{[],[]}}}]},
-                 rcl_depsolver:solve(Dom0, [{app1, "3.0"}])).
+                 rlx_depsolver:solve(Dom0, [{app1, "3.0"}])).
 
 pessimistic_major_minor_test() ->
 
@@ -275,7 +275,7 @@ pessimistic_major_minor_test() ->
     Pkg3Deps = [{app5, "2.0.0", '>='}],
     Pkg4Deps = [app5],
 
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"0.1.0", Pkg1Deps},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"0.1.0", Pkg1Deps},
                                                                           {"0.2", Pkg1Deps},
                                                                           {"3.0", Pkg1Deps}]},
                                                                   {app2, [{"0.0.1", Pkg2Deps},
@@ -302,7 +302,7 @@ pessimistic_major_minor_test() ->
                        {app4,{{6,0,0},{[],[]}}},
                        {app2,{{2,2},{[],[]}}},
                        {app1,{{3,0},{[],[]}}}]},
-                 rcl_depsolver:solve(Dom0, [{app1, "3.0"}])).
+                 rlx_depsolver:solve(Dom0, [{app1, "3.0"}])).
 
 filter_versions_test() ->
 
@@ -347,18 +347,18 @@ filter_versions_test() ->
                        {app4,"6.0.0"},
                        {app5,"2.0.0"},
                        {app5,"6.0.0"}]},
-                 rcl_depsolver:filter_packages(Packages, Cons)),
+                 rlx_depsolver:filter_packages(Packages, Cons)),
 
-    Ret = rcl_depsolver:filter_packages(Packages,
+    Ret = rlx_depsolver:filter_packages(Packages,
                                         [{"foo", "1.0.0", '~~~~'} | Cons]),
-    _ = rcl_depsolver:format_error(Ret),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error, {invalid_constraints, [{<<"foo">>,{{1,0,0},{[],[]}},'~~~~'}]}}, Ret).
 
 
 -spec missing_test() -> ok.
 missing_test() ->
 
-    Dom0 = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), [{app1, [{"0.1", [{app2, "0.2"},
+    Dom0 = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), [{app1, [{"0.1", [{app2, "0.2"},
                                                                                    {app3, "0.2", '>='},
                                                                                    {app4, "0.2", '='}]},
                                                                           {"0.2", [{app4, "0.2"}]},
@@ -369,12 +369,12 @@ missing_test() ->
                                                                   {app3, [{"0.1", []},
                                                                           {"0.2", []},
                                                                           {"0.3", []}]}]),
-    Ret1 = rcl_depsolver:solve(Dom0, [{app4, "0.1"}, {app3, "0.1"}]),
-    _ = rcl_depsolver:format_error(Ret1),
+    Ret1 = rlx_depsolver:solve(Dom0, [{app4, "0.1"}, {app3, "0.1"}]),
+    _ = rlx_depsolver:format_error(Ret1),
     ?assertMatch({error,{unreachable_package,app4}}, Ret1),
 
-    Ret2 = rcl_depsolver:solve(Dom0, [{app1, "0.1"}]),
-    _ = rcl_depsolver:format_error(Ret2),
+    Ret2 = rlx_depsolver:solve(Dom0, [{app1, "0.1"}]),
+    _ = rlx_depsolver:format_error(Ret2),
     ?assertMatch({error,{unreachable_package,app4}},
                  Ret2).
 
@@ -383,11 +383,11 @@ binary_test() ->
 
     World = [{<<"foo">>, [{<<"1.2.3">>, [{<<"bar">>, <<"2.0.0">>, gt}]}]},
              {<<"bar">>, [{<<"2.0.0">>, [{<<"foo">>, <<"3.0.0">>, gt}]}]}],
-    Ret = rcl_depsolver:solve(rcl_depsolver:add_packages(rcl_depsolver:new_graph(),
+    Ret = rlx_depsolver:solve(rlx_depsolver:add_packages(rlx_depsolver:new_graph(),
                                                          World),
                               [<<"foo">>]),
 
-    _ = rcl_depsolver:format_error(Ret),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[<<"foo">>],[{<<"foo">>,{{1,2,3},{[],[]}}}]}],
                     [{{<<"foo">>,{{1,2,3},{[],[]}}},
@@ -406,9 +406,9 @@ binary_test() ->
 %%
 doesnt_exist_test() ->
     Constraints = [{<<"foo">>,[{<<"1.2.3">>, [{<<"bar">>, <<"2.0.0">>, gt}]}]}],
-    World = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), Constraints),
-    Ret = rcl_depsolver:solve(World, [<<"foo">>]),
-    _ = rcl_depsolver:format_error(Ret),
+    World = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), Constraints),
+    Ret = rlx_depsolver:solve(World, [<<"foo">>]),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,{unreachable_package,<<"bar">>}}, Ret).
 
 %%
@@ -426,9 +426,9 @@ not_new_enough_test() ->
 
     Constraints = [{<<"foo">>, [{<<"1.2.3">>, [{<<"bar">>, <<"2.0.0">>, gt}]}]},
                    {<<"bar">>, [{<<"2.0.0">>, []}]}],
-    World = rcl_depsolver:add_packages(rcl_depsolver:new_graph(), Constraints),
-    Ret = rcl_depsolver:solve(World, [<<"foo">>]),
-    _ = rcl_depsolver:format_error(Ret),
+    World = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), Constraints),
+    Ret = rlx_depsolver:solve(World, [<<"foo">>]),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[<<"foo">>],[{<<"foo">>,{{1,2,3},{[],[]}}}]}],
                     [{{<<"foo">>,{{1,2,3},{[],[]}}},
@@ -445,11 +445,11 @@ not_new_enough_test() ->
 %% "most_constrained_cookbooks:["bar = 2.0.0 -> [(foo > 3.0.0)]"]
 %%
 impossible_dependency_test() ->
-    World = rcl_depsolver:add_packages(rcl_depsolver:new_graph(),
+    World = rlx_depsolver:add_packages(rlx_depsolver:new_graph(),
                                        [{<<"foo">>, [{<<"1.2.3">>,[{ <<"bar">>, <<"2.0.0">>, gt}]}]},
                                         {<<"bar">>, [{<<"2.0.0">>, [{ <<"foo">>, <<"3.0.0">>, gt}]}]}]),
-    Ret = rcl_depsolver:solve(World, [<<"foo">>]),
-    _ = rcl_depsolver:format_error(Ret),
+    Ret = rlx_depsolver:solve(World, [<<"foo">>]),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[<<"foo">>],[{<<"foo">>,{{1,2,3},{[],[]}}}]}],
                     [{{<<"foo">>,{{1,2,3},{[],[]}}},
@@ -460,30 +460,30 @@ impossible_dependency_test() ->
 %%
 format_test_() ->
     [{"format constraint",
-      [equal_bin_string(<<"foo">>, rcl_depsolver:format_constraint(<<"foo">>)),
-       equal_bin_string(<<"foo">>, rcl_depsolver:format_constraint(foo)),
-       equal_bin_string(<<"(foo = 1.2.0)">>, rcl_depsolver:format_constraint({<<"foo">>, {{1,2,0}, {[], []}}})),
-       equal_bin_string(<<"(foo = 1.2.0)">>, rcl_depsolver:format_constraint({<<"foo">>, {{1,2,0}, {[], []}}, '='})),
+      [equal_bin_string(<<"foo">>, rlx_depsolver:format_constraint(<<"foo">>)),
+       equal_bin_string(<<"foo">>, rlx_depsolver:format_constraint(foo)),
+       equal_bin_string(<<"(foo = 1.2.0)">>, rlx_depsolver:format_constraint({<<"foo">>, {{1,2,0}, {[], []}}})),
+       equal_bin_string(<<"(foo = 1.2.0)">>, rlx_depsolver:format_constraint({<<"foo">>, {{1,2,0}, {[], []}}, '='})),
        equal_bin_string(<<"(foo > 1.2.0)">>,
-                        rcl_depsolver:format_constraint({<<"foo">>, {{1,2,0}, {[], []}}, '>'})),
+                        rlx_depsolver:format_constraint({<<"foo">>, {{1,2,0}, {[], []}}, '>'})),
        equal_bin_string(<<"(foo > 1.2.0)">>,
-                        rcl_depsolver:format_constraint({<<"foo">>, {{1,2,0}, {[], []}}, gt})),
+                        rlx_depsolver:format_constraint({<<"foo">>, {{1,2,0}, {[], []}}, gt})),
        equal_bin_string(<<"(foo between 1.2.0 and 1.3.0)">>,
-                        rcl_depsolver:format_constraint({<<"foo">>,{{1,2,0}, {[], []}},
+                        rlx_depsolver:format_constraint({<<"foo">>,{{1,2,0}, {[], []}},
                                                          {{1,3,0}, {[], []}}, between})),
        equal_bin_string(<<"(foo > 1.2.0-alpha.1+build.36)">>,
-                        rcl_depsolver:format_constraint({<<"foo">>,
+                        rlx_depsolver:format_constraint({<<"foo">>,
                                                          {{1,2,0}, {["alpha", 1], ["build", 36]}}, gt}))
       ]
      },
      {"format roots",
       [equal_bin_string(<<"(bar = 1.2.0)">>,
-                        rcl_depsolver:format_roots([ [{<<"bar">>, {{1,2,0},{[],[]}}}] ])),
+                        rlx_depsolver:format_roots([ [{<<"bar">>, {{1,2,0},{[],[]}}}] ])),
        equal_bin_string(<<"(bar = 1.2.0), foo">>,
-                        rcl_depsolver:format_roots([[<<"foo">>,
+                        rlx_depsolver:format_roots([[<<"foo">>,
                                                      {<<"bar">>, {{1,2,0},{[],[]}}}]])),
        equal_bin_string(<<"(bar = 1.2.0), foo">>,
-                        rcl_depsolver:format_roots([[<<"foo">>], [{<<"bar">>, {{1,2,0},{[],[]}}}]]))
+                        rlx_depsolver:format_roots([[<<"foo">>], [{<<"bar">>, {{1,2,0},{[],[]}}}]]))
       ]
      }
     ].

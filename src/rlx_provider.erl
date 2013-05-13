@@ -21,7 +21,7 @@
 %%%  A module that supports providing state manipulation services to the system.
 %%% @end
 %%%-------------------------------------------------------------------
--module(rcl_provider).
+-module(rlx_provider).
 
 %% API
 -export([new/2,
@@ -33,7 +33,7 @@
 
 -export_type([t/0]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%%===================================================================
 %%% Types
@@ -44,8 +44,8 @@
 
 -ifdef(have_callback_support).
 
--callback init(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
--callback do(rcl_state:t()) ->  {ok, rcl_state:t()} | relcool:error().
+-callback init(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
+-callback do(rlx_state:t()) ->  {ok, rlx_state:t()} | relx:error().
 -callback format_error(Reason::term()) -> iolist().
 
 -else.
@@ -72,13 +72,13 @@ behaviour_info(_) ->
 %%
 %% @param ModuleName The module name.
 %% @param State0 The current state of the system
--spec new(module(), rcl_state:t()) ->
-                 {t(), {ok, rcl_state:t()}} | relcool:error().
+-spec new(module(), rlx_state:t()) ->
+                 {t(), {ok, rlx_state:t()}} | relx:error().
 new(ModuleName, State0) when is_atom(ModuleName) ->
     State1 = ModuleName:init(State0),
     case code:which(ModuleName) of
         non_existing ->
-            ?RCL_ERROR({non_existing, ModuleName});
+            ?RLX_ERROR({non_existing, ModuleName});
         _ ->
             {{?MODULE, ModuleName}, State1}
     end.
@@ -87,8 +87,8 @@ new(ModuleName, State0) when is_atom(ModuleName) ->
 %%
 %% @param Provider the provider object
 %% @param State the current state of the system
--spec do(Provider::t(), rcl_state:t()) ->
-                {ok, rcl_state:t()} | relcool:error().
+-spec do(Provider::t(), rlx_state:t()) ->
+                {ok, rlx_state:t()} | relx:error().
 do({?MODULE, Mod}, State) ->
     Mod:do(State).
 
