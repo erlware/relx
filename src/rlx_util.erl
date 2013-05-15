@@ -19,7 +19,7 @@
 %%% @copyright (C) 2012 Erlware, LLC.
 %%%
 %%% @doc Trivial utility file to help handle common tasks
--module(rcl_util).
+-module(rlx_util).
 
 -export([mkdir_p/1,
          to_binary/1,
@@ -58,17 +58,20 @@ to_binary(String) when erlang:is_list(String) ->
     erlang:iolist_to_binary(String);
 to_binary(Bin) when erlang:is_binary(Bin) ->
     Bin.
+
+to_string(Binary) when erlang:is_binary(Binary) ->
+    erlang:binary_to_list(Binary);
 to_string(Atom) when erlang:is_atom(Atom) ->
     erlang:atom_to_list(Atom);
 to_string(Else) when erlang:is_list(Else) ->
     Else.
 
-%% @doc get the reason for a particular relcool error
--spec error_reason(relcool:error()) -> any().
+%% @doc get the reason for a particular relx error
+-spec error_reason(relx:error()) -> any().
 error_reason({error, {_, Reason}}) ->
     Reason.
-%% @doc check to see if the value is a relcool error
--spec is_error(relcool:error() | any()) -> boolean().
+%% @doc check to see if the value is a relx error
+-spec is_error(relx:error() | any()) -> boolean().
 is_error({error, _}) ->
     true;
 is_error(_) ->

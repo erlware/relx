@@ -21,36 +21,36 @@
 %%% @doc This provider uses the lib_dir setting of the state. It searches the
 %%% Lib Dirs looking for all OTP Applications that are available. When it finds
 %%% those OTP Applications it loads the information about them and adds them to
-%%% the state of available apps. This implements the rcl_provider behaviour.
--module(rcl_prv_discover).
--behaviour(rcl_provider).
+%%% the state of available apps. This implements the rlx_provider behaviour.
+-module(rlx_prv_discover).
+-behaviour(rlx_provider).
 
 -export([init/1,
          do/1,
          format_error/1]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 %%============================================================================
 %% API
 %%============================================================================
--spec init(rcl_state:t()) -> {ok, rcl_state:t()}.
+-spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
     {ok, State}.
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rcl_state:t()) -> {ok, rcl_state:t()} | relcool:error().
+-spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State0) ->
     LibDirs = get_lib_dirs(State0),
-    case rcl_app_discovery:do(State0, LibDirs) of
+    case rlx_app_discovery:do(State0, LibDirs) of
         {ok, AppMeta} ->
-            case rcl_rel_discovery:do(State0, LibDirs, AppMeta) of
+            case rlx_rel_discovery:do(State0, LibDirs, AppMeta) of
                 {ok, Releases} ->
-                    State1 = rcl_state:available_apps(State0, AppMeta),
-                    {ok, rcl_state:discovered_releases(State1, lists:foldl(fun add/2,
-                                                                           ec_dictionary:new(ec_dict),
-                                                                           Releases))};
+                    State1 = rlx_state:available_apps(State0, AppMeta),
+                    {ok, rlx_state:realized_releases(State1, lists:foldl(fun add/2,
+                                                                         ec_dictionary:new(ec_dict),
+                                                                         Releases))};
                 Error ->
                     Error
             end;
@@ -69,13 +69,13 @@ format_error(_) ->
 %%%===================================================================
 %% @doc only add the release if its not documented in the system
 add(Rel, Dict) ->
-    RelName = rcl_release:name(Rel),
-    RelVsn = rcl_release:vsn(Rel),
+    RelName = rlx_release:name(Rel),
+    RelVsn = rlx_release:vsn(Rel),
     ec_dictionary:add({RelName, RelVsn}, Rel, Dict).
 
 get_lib_dirs(State) ->
-    LibDirs0 = rcl_state:lib_dirs(State),
-    case rcl_state:get(State, disable_default_libs, false) of
+    LibDirs0 = rlx_state:lib_dirs(State),
+    case rlx_state:get(State, disable_default_libs, false) of
         true ->
             LibDirs0;
         false ->
@@ -85,15 +85,15 @@ get_lib_dirs(State) ->
                            add_release_output_dir(State)])
     end.
 
--spec add_common_project_dirs(rcl_state:t()) -> [file:name()].
+-spec add_common_project_dirs(rlx_state:t()) -> [file:name()].
 add_common_project_dirs(State) ->
     %% Check to see if there is a rebar.config. If so then look for a deps
     %% dir. If both are there then we add that to the lib dirs.
-    case rcl_state:get(State, disable_project_subdirs, false) of
+    case rlx_state:get(State, disable_project_subdirs, false) of
         true ->
             [];
         false ->
-            Root = rcl_state:root_dir(State),
+            Root = rlx_state:root_dir(State),
             Apps = filename:join(Root, "apps"),
             Lib = filename:join(Root, "lib"),
             Deps = filename:join(Root, "deps"),
@@ -108,9 +108,9 @@ add_common_project_dirs(State) ->
                 end, [], [Deps, Lib, Apps, Ebin])
     end.
 
--spec add_system_lib_dir(rcl_state:t()) -> [file:name()].
+-spec add_system_lib_dir(rlx_state:t()) -> [file:name()].
 add_system_lib_dir(State) ->
-    ExcludeSystem = rcl_state:get(State, discover_exclude_system, false),
+    ExcludeSystem = rlx_state:get(State, discover_exclude_system, false),
     case ExcludeSystem of
         true ->
             [];
@@ -119,11 +119,11 @@ add_system_lib_dir(State) ->
     end.
 
 add_release_output_dir(State) ->
-    case rcl_state:get(State, disable_discover_release_output, false) of
+    case rlx_state:get(State, disable_discover_release_output, false) of
         true ->
             [];
         false ->
-            Output = erlang:iolist_to_binary(rcl_state:output_dir(State)),
+            Output = erlang:iolist_to_binary(rlx_state:output_dir(State)),
             case ec_file:exists(erlang:binary_to_list(Output)) of
                 true ->
                     Output;

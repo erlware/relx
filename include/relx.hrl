@@ -1,3 +1,4 @@
+
 %% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
@@ -15,13 +16,13 @@
 %% under the License.
 %%
 
--define(RCL_ERROR, 0).
--define(RCL_INFO, 1).
--define(RCL_DEBUG, 2).
+-define(RLX_ERROR, 0).
+-define(RLX_INFO, 1).
+-define(RLX_DEBUG, 2).
 
-%% This is the default form of error messages for the Relcool
+%% This is the default form of error messages for the Relx
 %% system. It is expected that everything that returns an error use
 %% this and that they all expose a format_error/1 message that returns
 %% an iolist.
--define(RCL_ERROR(Reason),
+-define(RLX_ERROR(Reason),
         {error, {?MODULE, Reason}}).

@@ -34,7 +34,7 @@
 %%%  application metadata.
 %%%  </ul>
 %%%
--module(rcl_app_info).
+-module(rlx_app_info).
 
 -export([new/0,
          new/5,
@@ -57,7 +57,7 @@
 
 -export_type([t/0]).
 
--include_lib("relcool/include/relcool.hrl").
+-include_lib("relx/include/relx.hrl").
 
 -record(app_info_t, {name :: atom(),
                      vsn :: ec_semver:semver(),
@@ -82,20 +82,20 @@ new() ->
 
 %% @doc build a complete version of the app info with all fields set.
 -spec new(atom(), string(), file:name(), [atom()], [atom()]) ->
-                 {ok, t()} | relcool:error().
+                 {ok, t()} | relx:error().
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps) ->
     new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, false).
 
 %% @doc build a complete version of the app info with all fields set.
 -spec new(atom(), string(), file:name(), [atom()], [atom()], boolean()) ->
-                 {ok, t()} | relcool:error().
+                 {ok, t()} | relx:error().
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)
   when erlang:is_atom(AppName),
        erlang:is_list(ActiveDeps),
        erlang:is_list(LibraryDeps) ->
     case parse_version(Vsn) of
         {fail, _} ->
-            ?RCL_ERROR({vsn_parse, AppName});
+            ?RLX_ERROR({vsn_parse, AppName});
         ParsedVsn ->
             {ok, #app_info_t{name=AppName, vsn=ParsedVsn, dir=Dir,
                              active_deps=ActiveDeps,
@@ -120,12 +120,12 @@ vsn(#app_info_t{vsn=Vsn}) ->
 vsn_as_string(#app_info_t{vsn=Vsn}) ->
     erlang:binary_to_list(erlang:iolist_to_binary(ec_semver:format(Vsn))).
 
--spec vsn(t(), string()) -> {ok, t()} | relcool:error().
+-spec vsn(t(), string()) -> {ok, t()} | relx:error().
 vsn(AppInfo=#app_info_t{name=AppName}, AppVsn)
   when erlang:is_list(AppVsn) ->
     case parse_version(AppVsn) of
         {fail, _} ->
-            ?RCL_ERROR({vsn_parse, AppName});
+            ?RLX_ERROR({vsn_parse, AppName});
         ParsedVsn ->
             {ok, AppInfo#app_info_t{vsn=ParsedVsn}}
     end.
@@ -175,13 +175,13 @@ format(AppInfo) ->
 format(Indent, #app_info_t{name=Name, vsn=Vsn, dir=Dir,
                            active_deps=Deps, library_deps=LibDeps,
                            link=Link}) ->
-    [rcl_util:indent(Indent), erlang:atom_to_list(Name), "-", ec_semver:format(Vsn),
+    [rlx_util:indent(Indent), erlang:atom_to_list(Name), "-", ec_semver:format(Vsn),
      ": ", Dir, "\n",
-     rcl_util:indent(Indent + 1), "Symlink: ", erlang:atom_to_list(Link), "\n",
-     rcl_util:indent(Indent + 1), "Active Dependencies:\n",
-     [[rcl_util:indent(Indent + 2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],
-     rcl_util:indent(Indent + 1), "Library Dependencies:\n",
-     [[rcl_util:indent(Indent + 2), erlang:atom_to_list(LibDep), ",\n"] || LibDep <- LibDeps]].
+     rlx_util:indent(Indent + 1), "Symlink: ", erlang:atom_to_list(Link), "\n",
+     rlx_util:indent(Indent + 1), "Active Dependencies:\n",
+     [[rlx_util:indent(Indent + 2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],
+     rlx_util:indent(Indent + 1), "Library Dependencies:\n",
+     [[rlx_util:indent(Indent + 2), erlang:atom_to_list(LibDep), ",\n"] || LibDep <- LibDeps]].
 
 %%%===================================================================
 %%% Internal Functions
