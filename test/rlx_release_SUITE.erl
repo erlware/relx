@@ -28,6 +28,7 @@
          make_scriptless_release/1,
          make_overridden_release/1,
          make_skip_app_release/1,
+         make_auto_skip_empty_app_release/1,
          make_rerun_overridden_release/1,
          make_implicit_config_release/1,
          overlay_release/1,
@@ -63,6 +64,7 @@ init_per_testcase(_, Config) ->
 all() ->
     [make_release, make_scriptless_release, make_overridden_release,
      make_skip_app_release,
+     make_auto_skip_empty_app_release,
      make_implicit_config_release, make_rerun_overridden_release,
      overlay_release, make_goalless_release, make_depfree_release,
      make_invalid_config_release, make_relup_release, make_relup_release2,
@@ -222,8 +224,6 @@ make_overridden_release(Config) ->
     ?assertMatch(OverrideAppDir, Real).
 
 make_skip_app_release(Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
-    SkipAppDir1 = filename:join([DataDir, create_random_name("skip_app_dir_")]),
     LibDir1 = proplists:get_value(lib1, Config),
     [(fun({Name, Vsn}) ->
               create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
@@ -232,9 +232,6 @@ make_skip_app_release(Config) ->
         App <-
             [{create_random_name("lib_app1_"), create_random_vsn()}
              || _ <- lists:seq(1, 100)]],
-    SkipAppApp = create_random_name("skip_app_app"),
-    SkipAppVsn = create_random_vsn(),
-    SkipAppAppName = erlang:list_to_atom(SkipAppApp),
 
     create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
     create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
@@ -242,14 +239,55 @@ make_skip_app_release(Config) ->
     create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
-    create_empty_app(SkipAppDir1, SkipAppApp, SkipAppVsn, [stdlib,kernel], []),
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app_1]},
+                  {skip_apps, [goal_app_2]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relx-output")]),
+    {ok, Cwd} = file:get_cwd(),
+    {ok, State} = relx:do(Cwd, undefined, undefined, [], [LibDir1], 2,
+                              OutputDir, [],
+                             ConfigFile),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assertNot(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assertNot(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+make_auto_skip_empty_app_release(Config) ->
+    DataDir = proplists:get_value(data_dir, Config),
+    EmptyAppDir1 = filename:join([DataDir, create_random_name("skip_app_dir_")]),
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+    EmptyAppApp = create_random_name("empty_app_app"),
+    EmptyAppVsn = create_random_vsn(),
+    EmptyAppAppName = erlang:list_to_atom(EmptyAppApp),
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    create_empty_app(EmptyAppDir1, EmptyAppApp, EmptyAppVsn, [stdlib,kernel], []),
 
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     write_config(ConfigFile,
                  [{release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]},
-                  {skip_apps, [erlang:list_to_atom(SkipAppApp)]}]),
+                    goal_app_2]}]),
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relx-output")]),
     {ok, Cwd} = file:get_cwd(),
@@ -264,7 +302,7 @@ make_skip_app_release(Config) ->
     ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
-    ?assertNot(lists:member({SkipAppAppName, SkipAppVsn}, AppSpecs)),
+    ?assertNot(lists:member({EmptyAppAppName, EmptyAppVsn}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 make_implicit_config_release(Config) ->
