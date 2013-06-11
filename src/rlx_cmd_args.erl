@@ -34,7 +34,7 @@
                         relx:error().
 args2state(Opts, Target)
   when erlang:length(Target) == 0; erlang:length(Target) == 1 ->
-    RelName = proplists:get_value(relname, Opts, undefined),
+    RelName = rlx_util:to_atom(proplists:get_value(relname, Opts, undefined)),
     RelVsn = proplists:get_value(relvsn, Opts, undefined),
     case convert_target(Target) of
         {ok, AtomizedTarget} ->

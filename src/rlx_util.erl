@@ -24,6 +24,7 @@
 -export([mkdir_p/1,
          to_binary/1,
          to_string/1,
+         to_atom/1,
          is_error/1,
          error_reason/1,
          indent/1,
@@ -59,12 +60,24 @@ to_binary(String) when erlang:is_list(String) ->
 to_binary(Bin) when erlang:is_binary(Bin) ->
     Bin.
 
+-spec to_string(binary() | string() | atom()) -> string().
 to_string(Binary) when erlang:is_binary(Binary) ->
     erlang:binary_to_list(Binary);
 to_string(Atom) when erlang:is_atom(Atom) ->
     erlang:atom_to_list(Atom);
 to_string(Else) when erlang:is_list(Else) ->
     Else.
+
+-spec to_atom(atom() | string() | binary()) -> atom().
+to_atom(Binary)
+  when erlang:is_binary(Binary) ->
+    erlang:list_to_atom(to_string(Binary));
+to_atom(String)
+  when erlang:is_list(String) ->
+    erlang:list_to_atom(String);
+to_atom(Atom)
+  when erlang:is_atom(Atom) ->
+    Atom.
 
 %% @doc get the reason for a particular relx error
 -spec error_reason(relx:error()) -> any().
