@@ -66,7 +66,6 @@ format_error({release_not_found, {RelName, RelVsn}}) ->
 format_error({failed_solve, Error}) ->
     io_lib:format("Failed to solve release:\n ~s",
                   [rlx_depsolver:format_error({error, Error})]).
-
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
@@ -158,7 +157,7 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
         end
     catch
         throw:not_found ->
-            ?RLX_ERROR({release_not_found, RelName, RelVsn})
+            ?RLX_ERROR({release_not_found, {RelName, RelVsn}})
     end.
 
 set_resolved(State, Release0, Pkgs) ->
