@@ -37,6 +37,8 @@
          config_file/2,
          providers/1,
          providers/2,
+         vm_args/1,
+         vm_args/2,
          sys_config/1,
          sys_config/2,
          root_dir/1,
@@ -78,6 +80,7 @@
                   providers = [] :: [rlx_provider:t()],
                   available_apps = [] :: [rlx_app_info:t()],
                   default_configured_release :: {rlx_release:name(), rlx_release:vsn()},
+                  vm_args :: file:filename() | undefined,
                   sys_config :: file:filename() | undefined,
                   overrides :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps = [] :: [AppName::atom()],
@@ -182,6 +185,14 @@ config_file(State, ConfigFiles) ->
 -spec providers(t()) -> [rlx_provider:t()].
 providers(#state_t{providers=Providers}) ->
     Providers.
+
+-spec vm_args(t()) -> file:filename() | undefined.
+vm_args(#state_t{vm_args=VmArgs}) ->
+    VmArgs.
+
+-spec vm_args(t(), file:filename()) -> t().
+vm_args(State, VmArgs) ->
+	State#state_t{vm_args=VmArgs}.
 
 -spec sys_config(t()) -> file:filename() | undefined.
 sys_config(#state_t{sys_config=SysConfig}) ->

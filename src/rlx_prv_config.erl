@@ -165,6 +165,8 @@ load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
         {ok, Release1} ->
             {ok, rlx_state:add_configured_release(State, Release1)}
     end;
+load_terms({vm_args, VmArgs}, {ok, State}) ->
+    {ok, rcl_state:vm_args(State, filename:absname(VmArgs))};
 load_terms({sys_config, SysConfig}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, filename:absname(SysConfig))};
 load_terms({Name, Value}, {ok, State})

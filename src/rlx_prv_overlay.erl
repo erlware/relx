@@ -200,6 +200,7 @@ generate_state_vars(State) ->
      {lib_dirs, rlx_state:lib_dirs(State)},
      {config_file, rlx_state:config_file(State)},
      {providers, rlx_state:providers(State)},
+     {vm_args, rlx_state:vm_args(State)},
      {sys_config, rlx_state:sys_config(State)},
      {root_dir, rlx_state:root_dir(State)},
      {default_release_name, case rlx_state:default_configured_release(State) of
