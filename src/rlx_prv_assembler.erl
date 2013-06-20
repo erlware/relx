@@ -250,8 +250,27 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
             ok = file:write_file(BareRel, StartFile),
             ok = file:change_mode(BareRel, 8#777)
     end,
-    ok = file:write_file(filename:join(RelDir, "vm.args"), vm_args_file(RelName)),
+    copy_or_generate_vmargs_file(State, RelName, RelDir),
     copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir).
+
+%% @doc copy vm.args or generate one to releases/VSN/vm.args
+-spec copy_or_generate_vmargs_file(rlx_state:t(), string(), file:name()) ->
+                                              {ok, rlx_state:t()} | relx:error().
+
+copy_or_generate_vmargs_file(State, RelName, RelDir) ->
+    RelVmargsPath = filename:join([RelDir, "vm.args"]),
+
+    case rlx_state:vm_args(State) of
+        undefined ->
+            ok = file:write_file(RelVmargsPath, vm_args_file(RelName));
+        ArgsPath ->
+            case filelib:is_regular(ArgsPath) of
+                false ->
+                    ?RLX_ERROR({vmargs_does_not_exist, ArgsPath});
+                true ->
+                    ec_file:copy(ArgsPath, RelVmargsPath)
+            end
+    end.
 
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
 -spec copy_or_generate_sys_config_file(rlx_state:t(), rlx_release:t(),
