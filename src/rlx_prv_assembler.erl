@@ -838,7 +838,7 @@ case \"$1\" in
         ROOTDIR=$RELEASE_ROOT_DIR
         BINDIR=$RELEASE_ROOT_DIR/erts-$ERTS_VSN/bin
         EMU=beam
-        PROGNAME=`echo $0 | sed 's/.*///'`
+        PROGNAME=`echo $0 | sed 's/.*\\///'`
         CMD=\"$BINDIR/erlexec $FOREGROUNDOPTIONS -boot $REL_DIR/$BOOTFILE -config $CONFIG_PATH -args_file $VMARGS_PATH\"
         export EMU
         export ROOTDIR
