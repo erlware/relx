@@ -89,7 +89,10 @@ resolve_rel_metadata(State, LibDirs, AppMeta) ->
 format_detail({accessing, File, eaccess}) ->
     io_lib:format("permission denied accessing file ~s", [File]);
 format_detail({accessing, File, Type}) ->
-    io_lib:format("error (~p) accessing file ~s", [Type, File]).
+    io_lib:format("error (~p) accessing file ~s", [Type, File]);
+format_detail({Module,Reason}) ->
+    io_lib:format("~s~n", [Module:format_error(Reason)]).
+
 
 -spec discover_dir(file:name(), [rlx_app_info:t()], directory | file) ->
                           {ok, rlx_release:t()}
