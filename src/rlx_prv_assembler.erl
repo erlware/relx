@@ -87,7 +87,7 @@ format_error({relup_generation_warning, Module, Warnings}) ->
     ["Warnings generating relup \s",
      rlx_util:indent(1), Module:format_warning(Warnings)];
 format_error({relup_script_generation_error,
-              {relupcript_generation_error, systools_relup,
+              {relup_script_generation_error, systools_relup,
                {missing_sasl, _}}}) ->
     "Unfortunately, due to requirements in systools, you need to have the sasl application "
         "in both the current release and the release to upgrade from.";
@@ -434,7 +434,7 @@ make_upfrom_script(State, Release, UpFrom) ->
         {ok,_, Module,Warnings} ->
             ?RLX_ERROR({relup_script_generation_warn, Module, Warnings});
         {error,Module,Errors} ->
-            ?RLX_ERROR({relupcript_generation_error, Module, Errors})
+            ?RLX_ERROR({relup_script_generation_error, Module, Errors})
     end.
 
 write_relup_file(State, Release, Relup) ->
