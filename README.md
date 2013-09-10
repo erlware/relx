@@ -10,7 +10,7 @@ relx [*options*] [*release-specification-file*]
 
 # DESCRIPTION
 
-Reltool assembles releases for an Erlang/OTP release. Given a release
+Relx assembles releases for an Erlang/OTP release. Given a release
 specification and a list of directories in which to search for OTP
 applications it will generate a release output. That output depends
 heavily on what plugins available and what options are defined, but
