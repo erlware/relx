@@ -156,12 +156,12 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Con
 -spec do(proplists:proplist(), [string()]) ->
                   ok | error() | {ok, rlx_state:t()}.
 do(Opts, NonOpts) ->
-        case rlx_cmd_args:args2state(Opts, NonOpts) of
-            {ok, State} ->
-                run_relx_process(State);
-            Error={error, _} ->
-                Error
-        end.
+    case rlx_cmd_args:args2state(Opts, NonOpts) of
+        {ok, State} ->
+            run_relx_process(State);
+        Error={error, _} ->
+            Error
+    end.
 
 -spec opt_spec_list() -> [getopt:option_spec()].
 opt_spec_list() ->

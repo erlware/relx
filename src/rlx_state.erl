@@ -25,7 +25,7 @@
 
 -export([new/2,
          log/1,
-         action/1,
+         actions/1,
          output_dir/1,
          lib_dirs/1,
          overrides/1,
@@ -72,18 +72,18 @@
 -record(state_t, {log :: rlx_log:t(),
                   root_dir :: file:name(),
                   caller :: caller(),
-                  action :: atom(),
+                  actions=[] :: [atom()],
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
                   goals=[] :: [rlx_depsolver:constraint()],
-                  providers = [] :: [rlx_provider:t()],
-                  available_apps = [] :: [rlx_app_info:t()],
+                  providers=[] :: [rlx_provider:t()],
+                  available_apps=[] :: [rlx_app_info:t()],
                   default_configured_release :: {rlx_release:name(), rlx_release:vsn()},
                   vm_args :: file:filename() | undefined,
                   sys_config :: file:filename() | undefined,
                   overrides :: [{AppName::atom(), Directory::file:filename()}],
-                  skip_apps = [] :: [AppName::atom()],
+                  skip_apps=[] :: [AppName::atom()],
                   configured_releases :: releases(),
                   realized_releases :: releases(),
                   upfrom :: string() | binary() | undefined,
@@ -106,17 +106,17 @@
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(proplists:proplist(), atom()) -> t().
-new(PropList, Target)
+-spec new(proplists:proplist(), [atom()]) -> t().
+new(PropList, Targets)
   when erlang:is_list(PropList),
-     erlang:is_atom(Target) ->
+     erlang:is_list(Targets) ->
     {ok, Root} = file:get_cwd(),
     State0 =
         #state_t{log = proplists:get_value(log, PropList, rlx_log:new(error)),
                  output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
                  config_file=proplists:get_value(config, PropList, undefined),
-                 action = Target,
+                 actions = Targets,
                  caller = proplists:get_value(caller, PropList, api),
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
@@ -132,10 +132,10 @@ new(PropList, Target)
                   disable_default_libs,
                   proplists:get_value(disable_default_libs, PropList, false)).
 
-%% @doc the action targeted for this system
--spec action(t()) -> atom().
-action(#state_t{action=Action}) ->
-    Action.
+%% @doc the actions targeted for this system
+-spec actions(t()) -> atom().
+actions(#state_t{actions=Actions}) ->
+    Actions.
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
@@ -359,7 +359,7 @@ to_binary(Dir)
 
 new_test() ->
     LogState = rlx_log:new(error),
-    RCLState = new([{log, LogState}], release),
+    RCLState = new([{log, LogState}], [release]),
     ?assertMatch(LogState, log(RCLState)).
 
 -endif.

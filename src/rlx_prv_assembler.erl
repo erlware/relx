@@ -48,12 +48,40 @@ do(State) ->
         ok ->
             case rlx_release:realized(Release) of
                 true ->
-                    copy_app_directories_to_output(State, Release, OutputDir);
+                    run_actions(State, Release, OutputDir);
                 false ->
                     ?RLX_ERROR({unresolved_release, RelName, RelVsn})
             end;
         Error ->
             Error
+    end.
+
+do(release, State, Release, OutputDir) ->
+    copy_app_directories_to_output(State, Release, OutputDir);
+do(relup, State, Release, _OutputDir) ->
+    RelName = rlx_release:name(Release),
+    RelVsn = rlx_release:vsn(Release),
+    Release0 = rlx_state:get_realized_release(State, RelName, RelVsn),
+    make_relup(State, Release0);
+do(tar, State, Release, OutputDir) ->
+    make_tar(State, Release, OutputDir).
+
+run_actions(State, Release, OutputDir) ->
+    run_actions(State, Release, OutputDir, rlx_state:actions(State), [release, relup, tar]).
+
+run_actions(State, _Release, _OutputDir, _Actions, []) ->
+    {ok, State};
+run_actions(State, Release, OutputDir, Actions, [H | T]) ->
+    case lists:member(H, Actions) of
+        true ->
+            case do(H, State, Release, OutputDir) of
+                {ok, NewState} ->
+                    run_actions(NewState, Release, OutputDir, Actions, T);
+                Error ->
+                    Error
+            end;
+        false ->
+            run_actions(State, Release, OutputDir, Actions, T)
     end.
 
 -spec format_error(ErrorDetail::term()) -> iolist().
@@ -97,7 +125,16 @@ format_error({relup_script_generation_error, Module, Errors}) ->
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(1),
-                   file:format_error(Reason)]).
+                   file:format_error(Reason)]);
+format_error({tar_unknown_generation_error, Module, Vsn}) ->
+    io_lib:format("Tarball generation error of ~s ~s",
+                  [Module, Vsn]);
+format_error({tar_generation_warn, Module, Warnings}) ->
+    io_lib:format("Tarball generation warnings for ~p : ~p",
+                  [Module, Warnings]);
+format_error({tar_generation_error, Module, Errors}) ->
+    io_lib:format("Tarball generation error for ~p reason ~p",
+                  [Module, Errors]).
 
 %%%===================================================================
 %%% Internal Functions
@@ -208,7 +245,7 @@ copy_dir(AppDir, TargetDir, SubDir) ->
     end.
 
 create_release_info(State0, Release0, OutputDir) ->
-    RelName = erlang:atom_to_list(rlx_release:name(Release0)),
+    RelName = atom_to_list(rlx_release:name(Release0)),
     ReleaseDir = release_output_dir(State0, Release0),
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     ok = ec_file:mkdir_p(ReleaseDir),
@@ -330,9 +367,13 @@ include_erts(State, Release, OutputDir, RelDir) ->
                             ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
                                               filename:join([OutputDir, "bin", "start_clean.boot"])),
                             NodeToolFile = nodetool_contents(),
+                            InstallUpgradeFile = install_upgrade_escript_contents(),
                             NodeTool = filename:join([LocalErts, "bin", "nodetool"]),
+                            InstallUpgrade = filename:join([LocalErts, "bin", "install_upgrade.escript"]),
                             ok = file:write_file(NodeTool, NodeToolFile),
-                            ok = file:change_mode(NodeTool, 8#755);
+                            ok = file:write_file(InstallUpgrade, InstallUpgradeFile),
+                            ok = file:change_mode(NodeTool, 8#755),
+                            ok = file:change_mode(InstallUpgrade, 8#755);
                         false ->
                             ok
                     end,
@@ -358,13 +399,13 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
         ok ->
             rlx_log:error(rlx_state:log(State),
                           "release successfully created!"),
-            make_relup(State, Release);
+            {ok, State};
         error ->
             ?RLX_ERROR({release_script_generation_error, ReleaseFile});
         {ok, _, []} ->
             rlx_log:error(rlx_state:log(State),
                           "release successfully created!"),
-            make_relup(State, Release);
+            {ok, State};
         {ok,Module,Warnings} ->
             ?RLX_ERROR({release_script_generation_warn, Module, Warnings});
         {error,Module,Error} ->
@@ -385,30 +426,72 @@ make_script(Options, RunFun) ->
     end.
 
 make_relup(State, Release) ->
-    case rlx_state:action(State) of
-        relup ->
-            UpFrom =
-                case rlx_state:upfrom(State) of
-                    undefined ->
-                        get_last_release(State, Release);
-                    Vsn ->
-                        get_up_release(State, Release, Vsn)
-                end,
-            case UpFrom of
-                undefined ->
-                    ?RLX_ERROR(no_upfrom_release_found);
-                _ ->
-                    make_upfrom_script(State, Release, UpFrom)
-            end;
+    UpFrom =
+        case rlx_state:upfrom(State) of
+            undefined ->
+                get_last_release(State, Release);
+            Vsn ->
+                get_up_release(State, Release, Vsn)
+        end,
+    case UpFrom of
+        undefined ->
+            ?RLX_ERROR(no_upfrom_release_found);
         _ ->
-            {ok, State}
+            make_upfrom_script(State, Release, UpFrom)
     end.
+
+make_tar(State, Release, OutputDir) ->
+    Name = atom_to_list(rlx_release:name(Release)),
+    Vsn = rlx_release:vsn(Release),
+    Prefix = code:root_dir(),
+    ErtsVersion = rlx_release:erts(Release),
+    ErtsDir = filename:join([Prefix]),
+    case systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]),
+                           [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
+                           {erts, ErtsDir},
+                           {outdir, OutputDir}]) of
+        ok ->
+            TempDir = filename:join(OutputDir, integer_to_list(erlang:phash2(make_ref()))),
+            try
+                update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion)
+            catch
+                E:R ->
+                    file:del_dir(TempDir),
+                    ?RLX_ERROR({tar_generation_error, E, R})
+            end;
+        {ok, Module, Warnings} ->
+            ?RLX_ERROR({tar_generation_warn, Module, Warnings});
+        error ->
+            ?RLX_ERROR({tar_unknown_generation_error, Name, Vsn});
+        {error, Module, Errors} ->
+            ?RLX_ERROR({tar_generation_error, Module, Errors})
+    end.
+
+update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
+    TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
+    file:rename(filename:join(OutputDir, Name++".tar.gz"), TarFile),
+    erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
+    ok = erl_tar:create(TarFile,
+                        [{"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)},
+                         {filename:join(["erts-"++ErtsVersion, "bin", "nodetool"]),
+                         hd(nodetool_contents())},
+                         {filename:join(["erts-"++ErtsVersion, "bin", "install_upgrade.escript"]),
+                         hd(install_upgrade_escript_contents())},
+                         {"lib", filename:join(TempDir, "lib")},
+                         {"releases", filename:join(TempDir, "releases")},
+                         {filename:join(["releases", Vsn, "vm.args"]),
+                         filename:join([OutputDir, "releases", Vsn, "vm.args"])},
+                         {"bin", filename:join([OutputDir, "bin"])}], [compressed]),
+    rlx_log:info(rlx_state:log(State),
+                 "tarball ~s successfully created!~n", [TarFile]),
+    rlx_util:delete_dir(TempDir),
+    {ok, State}.
 
 make_upfrom_script(State, Release, UpFrom) ->
     OutputDir = rlx_state:output_dir(State),
     Options = [{outdir, OutputDir},
                {path, get_code_paths(Release, OutputDir) ++
-                    get_code_paths(UpFrom, OutputDir)},
+                   get_code_paths(UpFrom, OutputDir)},
                silent],
     CurrentRel = strip_rel(rlx_release:relfile(Release)),
     UpFromRel = strip_rel(rlx_release:relfile(UpFrom)),
@@ -439,8 +522,7 @@ make_upfrom_script(State, Release, UpFrom) ->
 
 write_relup_file(State, Release, Relup) ->
     OutDir = release_output_dir(State, Release),
-    RelName = rlx_util:to_string(rlx_release:name(Release)),
-    RelupFile = filename:join(OutDir, RelName ++ ".relup"),
+    RelupFile = filename:join(OutDir, "relup"),
     ok = ec_file:write_term(RelupFile, Relup).
 
 strip_rel(Name) ->
@@ -485,7 +567,7 @@ release_output_dir(State, Release) ->
     OutputDir = rlx_state:output_dir(State),
     filename:join([OutputDir,
                    "releases",
-                   rlx_release:canonical_name(Release)]).
+                   rlx_release:vsn(Release)]).
 
 %% @doc Generates the correct set of code paths for the system.
 -spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].
@@ -522,7 +604,7 @@ RELEASE_ROOT_DIR=`cd $SCRIPT_DIR/.. && pwd`
 REL_NAME=">>, RelName, <<"
 REL_VSN=">>, RelVsn, <<"
 ERTS_VSN=">>, ErtsVsn, <<"
-REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_NAME-$REL_VSN
+REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_VSN
 ERL_OPTS=">>, ErlOpts, <<"
 
 find_erts_dir() {
@@ -568,9 +650,9 @@ RELEASE_ROOT_DIR=`cd $SCRIPT_DIR/.. && pwd`
 REL_NAME=">>, RelName, <<"
 REL_VSN=">>, RelVsn, <<"
 ERTS_VSN=">>, ErtsVsn, <<"
-REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_NAME-$REL_VSN
+REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_VSN
 ERL_OPTS=">>, ErlOpts, <<"
-PIPE_DIR=/tmp/$REL_DIR/
+PIPE_DIR=/tmp/erl_pipes/">>, RelName, <<"/
 
 find_erts_dir() {
     local erts_dir=$RELEASE_ROOT_DIR/erts-$ERTS_VSN
@@ -789,7 +871,7 @@ case \"$1\" in
         node_name=`echo $NAME_ARG | awk '{print $2}'`
         erlang_cookie=`echo $COOKIE_ARG | awk '{print $2}'`
 
-        $ERTS_DIR/bin/escript $SCRIPT_DIR/bin/install_upgrade.escript $node_name $erlang_cookie $2
+        $ERTS_DIR/bin/escript $ERTS_DIR/bin/install_upgrade.escript $node_name $erlang_cookie $2
         ;;
 
     console|console_clean|console_boot)
@@ -797,7 +879,7 @@ case \"$1\" in
         # however, for debugging, sometimes start_clean.boot is useful.
         # For e.g. 'setup', one may even want to name another boot script.
         case \"$1\" in
-            console)        BOOTFILE=$REL_NAME ;;
+            console)        [[ -f $REL_DIR/$REL_NAME ]] && BOOTFILE=$REL_NAME || BOOTFILE=start ;;
             console_clean)  BOOTFILE=start_clean ;;
             console_boot)
                 shift
@@ -831,7 +913,7 @@ case \"$1\" in
         # start up the release in the foreground for use by runit
         # or other supervision services
 
-        BOOTFILE=$REL_NAME
+        [[ -f $REL_DIR/$REL_NAME ]] && BOOTFILE=$REL_NAME || BOOTFILE=start
         FOREGROUNDOPTIONS=\"-noinput +Bd\"
 
         # Setup beam-required vars
@@ -859,6 +941,56 @@ case \"$1\" in
 esac
 
 exit 0">>].
+
+install_upgrade_escript_contents() ->
+    [<<"#!/usr/bin/env escript
+%%! -noshell -noinput
+%% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% ex: ft=erlang ts=4 sw=4 et
+
+-define(TIMEOUT, 60000).
+-define(INFO(Fmt,Args), io:format(Fmt,Args)).
+
+main([NodeName, Cookie, ReleasePackage]) ->TargetNode = start_distribution(NodeName, Cookie),
+    {ok, Cwd} = file:get_cwd(),
+    ok = rpc:call(TargetNode, file, set_cwd,
+                  [Cwd], ?TIMEOUT),
+    case rpc:call(TargetNode, release_handler, unpack_release,
+                         [ReleasePackage], ?TIMEOUT) of
+        {ok, Vsn} ->
+            ?INFO(\"Unpacked Release ~p~n\", [Vsn]),
+            {ok, OtherVsn, Desc} = rpc:call(TargetNode, release_handler,
+                                            check_install_release, [Vsn], ?TIMEOUT),
+            {ok, OtherVsn, Desc} = rpc:call(TargetNode, release_handler,
+                                            install_release, [Vsn], ?TIMEOUT),
+            ?INFO(\"Installed Release ~p~n\", [Vsn]),
+            ok = rpc:call(TargetNode, release_handler, make_permanent, [Vsn], ?TIMEOUT),
+            ?INFO(\"Made Release ~p Permanent~n\", [Vsn]);
+        {error, {existing_release, Vsn}} ->
+            ?INFO(\"Release ~s already installed~n\", [Vsn])
+    end;
+main(_) ->
+    init:stop(1).
+
+start_distribution(NodeName, Cookie) ->
+    MyNode = make_script_node(NodeName),
+    {ok, _Pid} = net_kernel:start([MyNode, longnames]),
+    erlang:set_cookie(node(), list_to_atom(Cookie)),
+    TargetNode = list_to_atom(NodeName),
+    case {net_kernel:connect_node(TargetNode),
+          net_adm:ping(TargetNode)} of
+        {true, pong} ->
+            ok;
+        {_, pang} ->
+            io:format(\"Node ~p not responding to pings.\n\", [TargetNode]),
+            init:stop(1)
+    end,
+    TargetNode.
+
+make_script_node(Node) ->
+    [Name, Host] = string:tokens(Node, \"@\"),
+    list_to_atom(lists:concat([Name, \"_upgrader_\", os:getpid(), \"@\", Host])).
+">>].
 
 nodetool_contents() ->
     [<<"%% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
