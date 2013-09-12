@@ -142,7 +142,13 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
                   "Solving Release ~p-~s~n",
                   [RelName, RelVsn]),
     try
-        Release = rlx_state:get_configured_release(State0, RelName, RelVsn),
+        Release =
+            case get_realized_release(State0, RelName, RelVsn) of
+                undefined ->
+                    rlx_state:get_configured_release(State0, RelName, RelVsn);
+                {ok, Release0} ->
+                    rlx_release:relfile(rlx_state:get_configured_release(State0, RelName, RelVsn), rlx_release:relfile(Release0))
+            end,
         Goals = rlx_release:goals(Release),
         case Goals of
             [] ->
@@ -175,6 +181,15 @@ set_resolved(State, Release0, Pkgs) ->
        {error, E} ->
            ?RLX_ERROR({release_error, E})
    end.
+
+get_realized_release(State, RelName, RelVsn) ->
+    try
+        Release = rlx_state:get_realized_release(State, RelName, RelVsn),
+        {ok, Release}
+    catch
+        throw:not_found ->
+            undefined
+    end.
 
 %%%===================================================================
 %%% Test Functions

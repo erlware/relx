@@ -56,7 +56,7 @@ init_per_testcase(_, Config) ->
     DataDir = proplists:get_value(data_dir, Config),
     LibDir1 = filename:join([DataDir, create_random_name("lib_dir1_")]),
     ok = rlx_util:mkdir_p(LibDir1),
-    State = rlx_state:new([{lib_dirs, [LibDir1]}], release),
+    State = rlx_state:new([{lib_dirs, [LibDir1]}], [release]),
     [{lib1, LibDir1},
      {state, State} | Config].
 
@@ -602,7 +602,7 @@ make_relup_release(Config) ->
                               {lib_dirs, [LibDir1]},
                               {log_level, 2},
                               {output_dir, OutputDir},
-                              {config, ConfigFile}], ["relup"]),
+                              {config, ConfigFile}], ["release", "relup"]),
 
     %% we should have one 'resolved' release and three discovered realized_releases.
     ?assertMatch([{foo, "0.0.1"},
@@ -619,9 +619,7 @@ make_relup_release(Config) ->
     ?assertMatch({ok, [{"0.0.3",
                         [{"0.0.2",[],[point_of_no_return]}],
                         [{"0.0.2",[],[point_of_no_return]}]}]},
-                 file:consult(filename:join(filename:dirname(rlx_release:relfile(Release)),
-                                            filename:basename(rlx_release:relfile(Release), ".rel") ++
-                                                ".relup"))),
+                 file:consult(filename:join(filename:dirname(rlx_release:relfile(Release)), "relup"))),
 
     ?assertMatch(foo, rlx_release:name(Release)),
     ?assertMatch("0.0.3", rlx_release:vsn(Release)),
@@ -685,7 +683,7 @@ make_relup_release2(Config) ->
                               {lib_dirs, [LibDir1]},
                               {log_level, 2},
                               {output_dir, OutputDir},
-                              {config, ConfigFile}], ["relup"]),
+                              {config, ConfigFile}], ["release", "relup"]),
 
     %% we should have one 'resolved' release and three discovered realized_releases.
     ?assertMatch([{foo, "0.0.1"},
@@ -702,9 +700,7 @@ make_relup_release2(Config) ->
     ?assertMatch({ok, [{"0.0.3",
                         [{"0.0.1",[],[point_of_no_return]}],
                         [{"0.0.1",[],[point_of_no_return]}]}]},
-                 file:consult(filename:join(filename:dirname(rlx_release:relfile(Release)),
-                                            filename:basename(rlx_release:relfile(Release), ".rel") ++
-                                                ".relup"))),
+                 file:consult(filename:join(filename:dirname(rlx_release:relfile(Release)), "relup"))),
 
     ?assertMatch(foo, rlx_release:name(Release)),
     ?assertMatch("0.0.3", rlx_release:vsn(Release)),

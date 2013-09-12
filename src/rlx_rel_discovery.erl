@@ -86,6 +86,8 @@ resolve_rel_metadata(State, LibDirs, AppMeta) ->
     end.
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
+format_detail({_Module, {could_not_find, {ReleaseName, {Version, _}}}}) ->
+    io_lib:format("could not find app ~p ~p", [ReleaseName, Version]);
 format_detail({accessing, File, eaccess}) ->
     io_lib:format("permission denied accessing file ~s", [File]);
 format_detail({accessing, File, Type}) ->

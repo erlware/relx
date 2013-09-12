@@ -32,24 +32,21 @@
 -spec args2state([getopt:option()], [string()]) ->
                         {ok, {rlx_state:t(), [string()]}} |
                         relx:error().
-args2state(Opts, Target)
-  when erlang:length(Target) == 0; erlang:length(Target) == 1 ->
+args2state(Opts, Targets) ->
     RelName = rlx_util:to_atom(proplists:get_value(relname, Opts, undefined)),
     RelVsn = proplists:get_value(relvsn, Opts, undefined),
-    case convert_target(Target) of
-        {ok, AtomizedTarget} ->
+    case convert_targets(Targets) of
+        {ok, AtomizedTargets} ->
             case create_log(Opts, [{relname, RelName},
                                    {relvsn, RelVsn}]) of
                 Error = {error, _} ->
                     Error;
                 {ok, CommandLineConfig} ->
-                    handle_config(Opts, AtomizedTarget, CommandLineConfig)
+                    handle_config(Opts, AtomizedTargets, CommandLineConfig)
             end;
         Error ->
             Error
-    end;
-args2state(_Opts, Targets) ->
-    ?RLX_ERROR({invalid_targets, Targets}).
+    end.
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({invalid_targets, Targets}) ->
@@ -88,25 +85,33 @@ format_error({invalid_target, Target}) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec handle_config([getopt:option()], atom(), proplists:proplist()) ->
+-spec handle_config([getopt:option()], [atom()], proplists:proplist()) ->
                            {ok, {rlx_state:t(), [string()]}} |
                            relx:error().
-handle_config(Opts, Target, CommandLineConfig) ->
+handle_config(Opts, Targets, CommandLineConfig) ->
     case validate_config(proplists:get_value(config, Opts, [])) of
         Error = {error, _} ->
             Error;
         {ok, Config} ->
-            {ok, rlx_state:new([{config, Config} | CommandLineConfig], Target)}
+            {ok, rlx_state:new([{config, Config} | CommandLineConfig], Targets)}
     end.
 
--spec convert_target([string()]) -> {ok, release | relup} | relx:error().
-convert_target([]) ->
-    {ok, release};
-convert_target(["release"]) ->
-    {ok, release};
-convert_target(["relup"]) ->
-    {ok, relup};
-convert_target(Target) ->
+-spec convert_targets([string()]) -> {ok, release | relup} | relx:error().
+convert_targets(Targets) ->
+    convert_targets(Targets, []).
+
+-spec convert_targets([string()], [string()]) -> {ok, release | relup} | relx:error().
+convert_targets([], []) ->
+    {ok, [release]};
+convert_targets([], Acc) ->
+    {ok, Acc};
+convert_targets(["release" | T], Acc) ->
+    convert_targets(T, [release | Acc]);
+convert_targets(["relup" | T], Acc) ->
+    convert_targets(T, [relup | Acc]);
+convert_targets(["tar" | T], Acc) ->
+    convert_targets(T, [tar | Acc]);
+convert_targets([Target | _T], _Acc) ->
     ?RLX_ERROR({invalid_target, Target}).
 
 -spec validate_config(file:filename() | undefined) ->
