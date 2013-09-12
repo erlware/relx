@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/erlware/relx.png)](https://travis-ci.org/erlware/relx)
+[![Build Status](https://drone.io/github.com/erlware/relx/status.png)](https://drone.io/github.com/erlware/relx/latest)
 
 # NAME
 
