@@ -5,7 +5,7 @@
 
 -compile(export_all).
 -spec file(file:name()) -> any().
-file(Filename) -> {ok, Bin} = file:read_file(Filename), parse(Bin).
+file(Filename) -> case file:read_file(Filename) of {ok,Bin} -> parse(Bin); Err -> Err end.
 
 -spec parse(binary() | list()) -> any().
 parse(List) when is_list(List) -> parse(list_to_binary(List));
@@ -18,7 +18,7 @@ parse(Input) when is_binary(Input) ->
   release_memo(), Result.
 
 'constraint'(Input, Index) ->
-  p(Input, Index, 'constraint', fun(I,D) -> (p_choose([p_seq([p_optional(fun 'ws'/2), fun 'app_name'/2, p_optional(fun 'ws'/2), fun 'between_op'/2, p_optional(fun 'ws'/2), fun 'version'/2, p_optional(fun 'ws'/2), p_string(<<",">>), p_optional(fun 'ws'/2), fun 'version'/2, p_optional(fun 'ws'/2), p_not(p_anything())]), p_seq([p_optional(fun 'ws'/2), fun 'app_name'/2, p_optional(fun 'ws'/2), fun 'constraint_op'/2, p_optional(fun 'ws'/2), fun 'version'/2, p_optional(fun 'ws'/2), p_not(p_anything())]), p_seq([p_optional(fun 'ws'/2), fun 'app_name'/2, p_optional(fun 'ws'/2), p_not(p_anything())])]))(I,D) end, fun(Node, _Idx) -> 
+  p(Input, Index, 'constraint', fun(I,D) -> (p_choose([p_seq([p_optional(fun 'ws'/2), fun 'app_name'/2, p_optional(fun 'ws'/2), fun 'between_op'/2, p_optional(fun 'ws'/2), fun 'version'/2, p_optional(fun 'ws'/2), p_string(<<",">>), p_optional(fun 'ws'/2), fun 'version'/2, p_optional(fun 'ws'/2), p_not(p_anything())]), p_seq([p_optional(fun 'ws'/2), fun 'app_name'/2, p_optional(fun 'ws'/2), fun 'constraint_op'/2, p_optional(fun 'ws'/2), fun 'version'/2, p_optional(fun 'ws'/2), p_not(p_anything())]), p_seq([p_optional(fun 'ws'/2), fun 'app_name'/2, p_optional(fun 'ws'/2), p_not(p_anything())])]))(I,D) end, fun(Node, _Idx) ->
            case Node of
                 [_,AppName,_, _] ->
                     {ok, AppName};
@@ -39,30 +39,30 @@ parse(Input) when is_binary(Input) ->
             end).
 
 'ws'(Input, Index) ->
-  p(Input, Index, 'ws', fun(I,D) -> (p_charclass(<<"[\s\t\n\s\r]">>))(I,D) end, fun(Node, Idx) -> transform('ws', Node, Idx) end).
+  p(Input, Index, 'ws', fun(I,D) -> (p_charclass(<<"[\s\t\n\s\r]">>))(I,D) end, fun(Node, Idx) ->transform('ws', Node, Idx) end).
 
 'app_name'(Input, Index) ->
-  p(Input, Index, 'app_name', fun(I,D) -> (p_one_or_more(p_charclass(<<"[a-zA-Z0-9_]">>)))(I,D) end, fun(Node, _Idx) ->  erlang:list_to_atom(erlang:binary_to_list(erlang:iolist_to_binary(Node)))  end).
+  p(Input, Index, 'app_name', fun(I,D) -> (p_one_or_more(p_charclass(<<"[a-zA-Z0-9_]">>)))(I,D) end, fun(Node, _Idx) -> erlang:list_to_atom(erlang:binary_to_list(erlang:iolist_to_binary(Node)))  end).
 
 'between_op'(Input, Index) ->
-  p(Input, Index, 'between_op', fun(I,D) -> (p_seq([p_string(<<":">>), p_optional(fun 'ws'/2), p_choose([p_string(<<"btwn">>), p_string(<<"between">>)]), p_optional(fun 'ws'/2), p_string(<<":">>)]))(I,D) end, fun(Node, _Idx) ->  case Node of
+  p(Input, Index, 'between_op', fun(I,D) -> (p_seq([p_string(<<":">>), p_optional(fun 'ws'/2), p_choose([p_string(<<"btwn">>), p_string(<<"between">>)]), p_optional(fun 'ws'/2), p_string(<<":">>)]))(I,D) end, fun(Node, _Idx) -> case Node of
                        [C,_,Op,_,C] -> erlang:iolist_to_binary([C,Op,C]);
                        _ -> Node
                       end
                     end).
 
 'constraint_op'(Input, Index) ->
-  p(Input, Index, 'constraint_op', fun(I,D) -> (p_choose([p_string(<<"=">>), p_string(<<"-">>), p_string(<<"<=">>), p_string(<<"<">>), p_string(<<"~>">>), p_string(<<">=">>), p_string(<<">">>), fun 'word_constraint_op'/2, p_string(<<":">>)]))(I,D) end, fun(Node, Idx) -> transform('constraint_op', Node, Idx) end).
+  p(Input, Index, 'constraint_op', fun(I,D) -> (p_choose([p_string(<<"=">>), p_string(<<"-">>), p_string(<<"<=">>), p_string(<<"<">>), p_string(<<"~>">>), p_string(<<">=">>), p_string(<<">">>), fun 'word_constraint_op'/2, p_string(<<":">>)]))(I,D) end, fun(Node, Idx) ->transform('constraint_op', Node, Idx) end).
 
 'word_constraint_op'(Input, Index) ->
-  p(Input, Index, 'word_constraint_op', fun(I,D) -> (p_seq([p_string(<<":">>), p_optional(fun 'ws'/2), p_choose([p_string(<<"gte">>), p_string(<<"lte">>), p_string(<<"gt">>), p_string(<<"lt">>), p_string(<<"pes">>)]), p_optional(fun 'ws'/2), p_string(<<":">>)]))(I,D) end, fun(Node, _Idx) ->  case Node of
+  p(Input, Index, 'word_constraint_op', fun(I,D) -> (p_seq([p_string(<<":">>), p_optional(fun 'ws'/2), p_choose([p_string(<<"gte">>), p_string(<<"lte">>), p_string(<<"gt">>), p_string(<<"lt">>), p_string(<<"pes">>)]), p_optional(fun 'ws'/2), p_string(<<":">>)]))(I,D) end, fun(Node, _Idx) -> case Node of
                            [C,_,Op,_,C] -> erlang:iolist_to_binary([C,Op,C]);
                        _ -> Node
                       end
                     end).
 
 'version'(Input, Index) ->
-  p(Input, Index, 'version', fun(I,D) -> (p_one_or_more(p_charclass(<<"[0-9a-zA-Z-+.]">>)))(I,D) end, fun(Node, Idx) -> transform('version', Node, Idx) end).
+  p(Input, Index, 'version', fun(I,D) -> (p_one_or_more(p_charclass(<<"[0-9a-zA-Z-+.]">>)))(I,D) end, fun(Node, Idx) ->transform('version', Node, Idx) end).
 
 
 transform(_,Node,_Index) -> Node.

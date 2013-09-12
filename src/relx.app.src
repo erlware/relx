@@ -20,7 +20,7 @@
 
 {application, relx,
  [{description, "Release assembler for Erlang/OTP Releases"},
-  {vsn, "0.0.5"},
+  {vsn, "semver"},
   {modules, []},
   {registered, []},
   {applications, [kernel, stdlib, getopt, erlware_commons]}]}.

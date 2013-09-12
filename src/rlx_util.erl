@@ -21,7 +21,8 @@
 %%% @doc Trivial utility file to help handle common tasks
 -module(rlx_util).
 
--export([mkdir_p/1,
+-export([delete_dir/1,
+         mkdir_p/1,
          to_binary/1,
          to_string/1,
          to_atom/1,
@@ -39,6 +40,19 @@
 %%============================================================================
 %% API
 %%============================================================================
+%% @doc Deletes non-empty directory
+delete_dir(Path) ->
+    lists:foldr(fun(File, ok) ->
+                        case filelib:is_dir(File) of
+                            true ->
+                                file:del_dir(File);
+                            false ->
+                                file:delete(File)
+                        end
+                end, ok, filelib:wildcard(filename:join(Path, "**"))),
+    ok = file:del_dir(Path).
+
+
 %% @doc Makes a directory including parent dirs if they are missing.
 -spec mkdir_p(string()) -> ok | {error, Reason::file:posix()}.
 mkdir_p(Path) ->
