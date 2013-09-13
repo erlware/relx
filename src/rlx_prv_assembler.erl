@@ -879,7 +879,7 @@ case \"$1\" in
         # however, for debugging, sometimes start_clean.boot is useful.
         # For e.g. 'setup', one may even want to name another boot script.
         case \"$1\" in
-            console)        [[ -f $REL_DIR/$REL_NAME ]] && BOOTFILE=$REL_NAME || BOOTFILE=start ;;
+            console)        [ -f $REL_DIR/$REL_NAME.boot ] && BOOTFILE=$REL_NAME || BOOTFILE=start ;;
             console_clean)  BOOTFILE=start_clean ;;
             console_boot)
                 shift
@@ -913,7 +913,7 @@ case \"$1\" in
         # start up the release in the foreground for use by runit
         # or other supervision services
 
-        [[ -f $REL_DIR/$REL_NAME ]] && BOOTFILE=$REL_NAME || BOOTFILE=start
+        [ -f $REL_DIR/$REL_NAME.boot ] && BOOTFILE=$REL_NAME || BOOTFILE=start
         FOREGROUNDOPTIONS=\"-noinput +Bd\"
 
         # Setup beam-required vars
