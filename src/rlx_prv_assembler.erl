@@ -451,12 +451,12 @@ make_tar(State, Release, OutputDir) ->
                            {erts, ErtsDir},
                            {outdir, OutputDir}]) of
         ok ->
-            TempDir = filename:join(OutputDir, integer_to_list(erlang:phash2(make_ref()))),
+            TempDir = ec_file:insecure_mkdtemp(),
             try
                 update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion)
             catch
                 E:R ->
-                    file:del_dir(TempDir),
+                    ec_file:remove(TempDir, [recursive]),
                     ?RLX_ERROR({tar_generation_error, E, R})
             end;
         {ok, Module, Warnings} ->
@@ -484,7 +484,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                          {"bin", filename:join([OutputDir, "bin"])}], [compressed]),
     rlx_log:info(rlx_state:log(State),
                  "tarball ~s successfully created!~n", [TarFile]),
-    rlx_util:delete_dir(TempDir),
+    ec_file:remove(TempDir, [recursive]),
     {ok, State}.
 
 make_upfrom_script(State, Release, UpFrom) ->
