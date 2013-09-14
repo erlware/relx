@@ -51,7 +51,7 @@ This creates the executable `relx`.
 :  Additional dirs that should be searched for OTP Apps
 
 -V *INTEGER*, \--verbose *INTEGER*
-: The verbosity level of the system. Valid values are 1 - 3
+: The verbosity level of the system. Valid values are 0 - 2
 
 -c *STRING*, \--config *STRING*
 : The custom config file for the relx system
