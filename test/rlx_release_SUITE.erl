@@ -383,6 +383,11 @@ overlay_release(Config) ->
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     OverlayVars = filename:join([LibDir1, "vars.config"]),
     Template = filename:join([LibDir1, "test_template"]),
+    TestDir = "first_test_dir",
+    TestFile = "test_file",
+    TestDirFull = filename:join([LibDir1, TestDir]),
+    TestFileFull = filename:join(TestDirFull, TestFile),
+    SecondTestDir = "second_test_dir",
     write_config(ConfigFile,
                  [{overlay_vars, OverlayVars},
                   {overlay, [{mkdir, "{{target_dir}}/fooo"},
@@ -390,6 +395,8 @@ overlay_release(Config) ->
                               "{{target_dir}}/{{foo_dir}}/vars.config"},
                              {copy, OverlayVars,
                               "{{target_dir}}/{{yahoo}}/"},
+                             {copy, TestDirFull,
+                              "{{target_dir}}/"++SecondTestDir++"/"},
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"}]},
                   {release, {foo, "0.0.1"},
@@ -401,6 +408,9 @@ overlay_release(Config) ->
                             {yahoo2, [{foo, "bar"}]},
                             {yahoo3, [{bar, "{{yahoo}}/{{yahoo2.foo}}"}]},
                             {foo_dir, "foodir"}]),
+
+    ok = rlx_util:mkdir_p(TestDirFull),
+    ok = file:write_file(TestFileFull, test_template_contents()),
 
     TemplateFile = filename:join([LibDir1, "test_template"]),
     ok = file:write_file(TemplateFile, test_template_contents()),
@@ -426,6 +436,8 @@ overlay_release(Config) ->
     ?assert(ec_file:exists(filename:join(OutputDir, "fooo"))),
     ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars.config"]))),
     ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars.config"]))),
+    io:format("DirFile ~p~n", [filename:join([OutputDir, SecondTestDir, TestDir, TestFile])]),
+    ?assert(ec_file:exists(filename:join([OutputDir, SecondTestDir, TestDir, TestFile]))),
 
     TemplateData = case file:consult(filename:join([OutputDir, "test_template_resolved"])) of
                        {ok, Details} ->
