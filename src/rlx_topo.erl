@@ -71,9 +71,9 @@ format_error({cycle, Pairs}) ->
      "before we can continue:\n",
     case Pairs of
         [{P1, P2}] ->
-            [rlx_util:indent(1), erlang:atom_to_list(P2), "->", erlang:atom_to_list(P1)];
+            [rlx_util:indent(2), erlang:atom_to_list(P2), "->", erlang:atom_to_list(P1)];
         [{P1, P2} | Rest] ->
-            [rlx_util:indent(1), erlang:atom_to_list(P2), "->", erlang:atom_to_list(P1),
+            [rlx_util:indent(2), erlang:atom_to_list(P2), "->", erlang:atom_to_list(P1),
              [["-> ", erlang:atom_to_list(PP2), " -> ", erlang:atom_to_list(PP1)] || {PP1, PP2} <- Rest]];
         [] ->
             []

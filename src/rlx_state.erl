@@ -319,17 +319,17 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
     Values1 = ec_dictionary:to_list(Values0),
     [rlx_util:indent(Indent),
      <<"state(">>, erlang:atom_to_list(Caller), <<"):\n">>,
-     rlx_util:indent(Indent + 1), <<"log: ">>, rlx_log:format(LogState), <<",\n">>,
-     rlx_util:indent(Indent + 1), "config file: ", rlx_util:optional_to_string(ConfigFile), "\n",
-     rlx_util:indent(Indent + 1), "goals: \n",
-     [[rlx_util:indent(Indent + 2), rlx_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
-     rlx_util:indent(Indent + 1), "output_dir: ", OutDir, "\n",
-     rlx_util:indent(Indent + 1), "lib_dirs: \n",
-     [[rlx_util:indent(Indent + 2), LibDir, ",\n"] || LibDir <- LibDirs],
-     rlx_util:indent(Indent + 1), "providers: \n",
-     [[rlx_util:indent(Indent + 2), rlx_provider:format(Provider), ",\n"] || Provider <- Providers],
-     rlx_util:indent(Indent + 1), "provider config values: \n",
-     [[rlx_util:indent(Indent + 2), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
+     rlx_util:indent(Indent + 2), <<"log: ">>, rlx_log:format(LogState), <<",\n">>,
+     rlx_util:indent(Indent + 2), "config file: ", rlx_util:optional_to_string(ConfigFile), "\n",
+     rlx_util:indent(Indent + 2), "goals: \n",
+     [[rlx_util:indent(Indent + 3), rlx_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
+     rlx_util:indent(Indent + 2), "output_dir: ", OutDir, "\n",
+     rlx_util:indent(Indent + 2), "lib_dirs: \n",
+     [[rlx_util:indent(Indent + 3), LibDir, ",\n"] || LibDir <- LibDirs],
+     rlx_util:indent(Indent + 2), "providers: \n",
+     [[rlx_util:indent(Indent + 3), rlx_provider:format(Provider), ",\n"] || Provider <- Providers],
+     rlx_util:indent(Indent + 2), "provider config values: \n",
+     [[rlx_util:indent(Indent + 3), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
 
 %%%===================================================================
 %%% Internal Functions

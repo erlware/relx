@@ -196,14 +196,14 @@ format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
                          goals = Goals, applications=Apps}) ->
     BaseIndent = rlx_util:indent(Indent),
     [BaseIndent, "release: ", rlx_util:to_string(Name), "-", Vsn, "\n",
-     rlx_util:indent(Indent + 1), " erts-", ErtsVsn,
+     rlx_util:indent(Indent + 2), " erts-", ErtsVsn,
      ", realized = ",  erlang:atom_to_list(Realized), "\n",
-     BaseIndent, "goals: \n",
-     [[rlx_util:indent(Indent + 1),  format_goal(Goal), ",\n"] || Goal <- Goals],
+     rlx_util:indent(Indent + 1), "goals: \n",
+     [[rlx_util:indent(Indent + 2),  format_goal(Goal), ",\n"] || Goal <- Goals],
      case Realized of
          true ->
-             [BaseIndent, "applications: \n",
-              [[rlx_util:indent(Indent + 1),  io_lib:format("~p", [App]), ",\n"] ||
+             [rlx_util:indent(Indent + 1), "applications: \n",
+              [[rlx_util:indent(Indent + 2),  io_lib:format("~p", [App]), ",\n"] ||
                   App <- Apps]];
          false ->
              []

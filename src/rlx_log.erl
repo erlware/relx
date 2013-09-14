@@ -59,6 +59,17 @@
 
 -type log_fun() :: fun(() -> iolist()).
 
+-type color() :: 31..36.
+
+-define(RED, 31).
+-define(GREEN, 32).
+-define(YELLOW, 33).
+-define(BLUE, 34).
+-define(MAGENTA, 35).
+-define(CYAN, 36).
+
+-define(PREFIX, "===> ").
+
 %%============================================================================
 %% API
 %%============================================================================
@@ -83,7 +94,7 @@ new(AtomLogLevel)
 -spec debug(t(), string() | log_fun()) -> ok.
 debug(LogState, Fun)
   when erlang:is_function(Fun) ->
-    log(LogState, ?RLX_DEBUG, Fun);
+    log(LogState, ?RLX_DEBUG, fun() -> colorize(?CYAN, false, Fun()) end);
 debug(LogState, String) ->
     debug(LogState, "~s~n", [String]).
 
@@ -91,14 +102,14 @@ debug(LogState, String) ->
 %% and argements @see io:format/2
 -spec debug(t(), string(), [any()]) -> ok.
 debug(LogState, FormatString, Args) ->
-    log(LogState, ?RLX_DEBUG, FormatString, Args).
+    log(LogState, ?RLX_DEBUG, colorize(?CYAN, false, FormatString), Args).
 
 %% @doc log at the info level given the current log state with a string or
 %% function that returns a string
 -spec info(t(), string() | log_fun()) -> ok.
 info(LogState, Fun)
     when erlang:is_function(Fun) ->
-    log(LogState, ?RLX_INFO, Fun);
+    log(LogState, ?RLX_INFO, fun() -> colorize(?GREEN, false, Fun()) end);
 info(LogState, String) ->
     info(LogState, "~s~n", [String]).
 
@@ -106,14 +117,14 @@ info(LogState, String) ->
 %% and argements @see io:format/2
 -spec info(t(), string(), [any()]) -> ok.
 info(LogState, FormatString, Args) ->
-    log(LogState, ?RLX_INFO, FormatString, Args).
+    log(LogState, ?RLX_INFO, colorize(?GREEN, false, FormatString), Args).
 
 %% @doc log at the error level given the current log state with a string or
 %% format string that returns a function
 -spec error(t(), string() | log_fun()) -> ok.
 error(LogState, Fun)
     when erlang:is_function(Fun) ->
-    log(LogState, ?RLX_ERROR, Fun);
+    log(LogState, ?RLX_ERROR, fun() -> colorize(?RED, false, Fun()) end);
 error(LogState, String) ->
     error(LogState, "~s~n", [String]).
 
@@ -121,7 +132,7 @@ error(LogState, String) ->
 %% and argements @see io:format/2
 -spec error(t(), string(), [any()]) -> ok.
 error(LogState, FormatString, Args) ->
-    log(LogState, ?RLX_ERROR, FormatString, Args).
+    log(LogState, ?RLX_ERROR, colorize(?GREEN, false, FormatString), Args).
 
 %% @doc Execute the fun passed in if log level is as expected.
 -spec log(t(), int_log_level(), log_fun()) -> ok.
@@ -130,7 +141,6 @@ log({?MODULE, DetailLogLevel}, LogLevel, Fun)
     io:format("~s~n", [Fun()]);
 log(_, _, _) ->
     ok.
-
 
 %% @doc when the module log level is less then or equal to the log level for the
 %% call then write the log info out. When its not then ignore the call.
@@ -171,6 +181,16 @@ format(Log) ->
      erlang:integer_to_list(log_level(Log)), <<":">>,
      erlang:atom_to_list(atom_log_level(Log)),
      <<")">>].
+
+-spec colorize(color(), boolean(), string()) -> string().
+colorize(Color, false, Msg) when is_integer(Color) ->
+    colorize_(Color, 0, Msg);
+colorize(Color, true, Msg) when is_integer(Color) ->
+    colorize_(Color, 1, Msg).
+
+-spec colorize_(color(), integer(), string()) -> string().
+colorize_(Color, Bold, Msg) when is_integer(Color), is_integer(Bold)->
+    lists:flatten(io_lib:format("\033[~B;~Bm~s~s\033[0m", [Bold, Color, ?PREFIX, Msg])).
 
 %%%===================================================================
 %%% Test Functions
