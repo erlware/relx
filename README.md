@@ -53,7 +53,7 @@ This creates the executable `relx`.
 -V *INTEGER*, \--verbose *INTEGER*
 : The verbosity level of the system. Valid values are 1 - 3
 
--c *INTEGER*, \--config *INTEGER*
+-c *STRING*, \--config *STRING*
 : The custom config file for the relx system
 
 # CONFIGURATION FILES
