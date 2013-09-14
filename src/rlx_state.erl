@@ -106,7 +106,9 @@
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(proplists:proplist(), [atom()]) -> t().
+-spec new(proplists:proplist(), undefined | [atom()]) -> t().
+new(PropList, undefined) ->
+    new(PropList, [release]);
 new(PropList, Targets)
   when erlang:is_list(PropList),
      erlang:is_list(Targets) ->
