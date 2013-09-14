@@ -314,7 +314,7 @@ copy_to(State, FromFile0, ToFile0) ->
                       erlang:iolist_to_binary(filename:join(ToFile1,
                                                             filename:basename(FromFile1)))
               end,
-    case ec_file:copy(FromFile1, ToFile2) of
+    case ec_file:copy(FromFile1, ToFile2, [recursive]) of
         ok ->
             {ok, FileInfo} = file:read_file_info(FromFile1),
             ok = file:write_file_info(ToFile2, FileInfo),
