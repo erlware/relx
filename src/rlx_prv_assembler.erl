@@ -688,7 +688,7 @@ else
     fi
 fi
 
-RUNNER_LOG_DIR=$USE_DIR/log
+RUNNER_LOG_DIR=$RELEASE_ROOT_DIR/log
 # Make sure log directory exists
 mkdir -p $RUNNER_LOG_DIR
 
