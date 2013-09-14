@@ -47,7 +47,12 @@ main(Args) ->
     OptSpecList = opt_spec_list(),
     Result = case getopt:parse(OptSpecList, Args) of
                  {ok, {Options, NonOptions}} ->
-                     do([{caller, command_line} | Options], NonOptions);
+                     case lists:member(help, Options) of
+                         true ->
+                             usage();
+                         false ->
+                             do([{caller, command_line} | Options], NonOptions)
+                     end;
                  {error, Detail} ->
                      ?RLX_ERROR({opt_parse, Detail})
              end,
@@ -174,6 +179,8 @@ opt_spec_list() ->
       "Only valid with relup target, specify the release to upgrade from"},
      {output_dir, $o, "output-dir", string,
       "The output directory for the release. This is `./` by default."},
+     {help, $h, "help", undefined,
+      "Print usage"},
      {lib_dir, $l, "lib-dir", string,
       "Additional dirs that should be searched for OTP Apps"},
      {disable_default_libs, undefined, "disable-default-libs",
@@ -186,14 +193,16 @@ opt_spec_list() ->
      {config, $c, "config", {string, ""}, "The path to a config file"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
--spec format_error(Reason::term()) -> iolist().
+-spec format_error(Reason::term()) -> string().
 format_error({invalid_return_value, Provider, Value}) ->
-    [rlx_provider:format(Provider), " returned an invalid value ",
-     io_lib:format("~p", [Value])];
+    io_lib:format(lists:flatten([rlx_provider:format(Provider), " returned an invalid value ",
+                               io_lib:format("~p", [Value])]), []);
 format_error({opt_parse, {invalid_option, Opt}}) ->
     io_lib:format("invalid option ~s~n", [Opt]);
 format_error({opt_parse, Arg}) ->
     io_lib:format("~p~n", [Arg]);
+format_error({error, {relx, Reason}}) ->
+    format_error(Reason);
 format_error({error, {Module, Reason}}) ->
     io_lib:format("~s~n", [Module:format_error(Reason)]).
 
@@ -268,8 +277,16 @@ usage() ->
 
 -spec report_error(rlx_state:t(), error()) -> none() | error().
 report_error(State, Error) ->
-    io:format(format_error(Error)),
-    usage(),
+    case Error of
+        {error, {relx, {opt_parse, _}}} ->
+            io:format(standard_error, format_error(Error), []),
+            usage();
+       {error, {rlx_cmd_args, _}} ->
+            io:format(standard_error, format_error(Error), []),
+            usage();
+        _ ->
+            io:format(standard_error, format_error(Error), [])
+    end,
     case rlx_state:caller(State) of
         command_line ->
             erlang:halt(127);
