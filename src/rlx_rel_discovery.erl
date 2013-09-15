@@ -35,7 +35,7 @@
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rlx_state:t(), [filename:name()], [rlx_app_info:t()]) ->
+-spec do(rlx_state:t(), [file:name()], [rlx_app_info:t()]) ->
                 {ok, [rlx_release:t()]} | relx:error().
 do(State, LibDirs, AppMeta) ->
     rlx_log:info(rlx_state:log(State),

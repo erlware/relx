@@ -66,13 +66,14 @@
 
 
 -export_type([t/0,
-              releases/0,
-              cmd_args/0]).
+             releases/0,
+             cmd_args/0,
+             action/0]).
 
 -record(state_t, {log :: rlx_log:t(),
                   root_dir :: file:name(),
                   caller :: caller(),
-                  actions=[] :: [atom()],
+                  actions=[] :: [action()],
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
@@ -99,6 +100,7 @@
                                              rlx_release:t()).
 -type cmd_args() :: proplists:proplist().
 -type caller() :: command_line | api.
+-type action() :: release | relup | tar.
 
 -opaque t() :: record(state_t).
 
@@ -113,13 +115,14 @@ new(PropList, Targets)
   when erlang:is_list(PropList),
      erlang:is_list(Targets) ->
     {ok, Root} = file:get_cwd(),
+    Caller = proplists:get_value(caller, PropList, api),
     State0 =
-        #state_t{log = proplists:get_value(log, PropList, rlx_log:new(error)),
+        #state_t{log = proplists:get_value(log, PropList, rlx_log:new(error, Caller)),
                  output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
                  config_file=proplists:get_value(config, PropList, undefined),
                  actions = Targets,
-                 caller = proplists:get_value(caller, PropList, api),
+                 caller = Caller,
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
                  configured_releases=ec_dictionary:new(ec_dict),
@@ -135,7 +138,7 @@ new(PropList, Targets)
                   proplists:get_value(disable_default_libs, PropList, false)).
 
 %% @doc the actions targeted for this system
--spec actions(t()) -> atom().
+-spec actions(t()) -> [action()].
 actions(#state_t{actions=Actions}) ->
     Actions.
 
