@@ -88,16 +88,19 @@ setup_overrides(State, AppMetas0) ->
     Overrides = rlx_state:overrides(State),
     AppMetas1 = [AppMeta || AppMeta <- AppMetas0,
                             not lists:keymember(app_name(AppMeta), 1, Overrides)],
-    [case is_valid_otp_app(filename:join([FileName, <<"ebin">>,
+    [resolve_override(AppName, FileName) || {AppName, FileName} <- Overrides] ++ AppMetas1.
+
+resolve_override(AppName, FileName0) ->
+    FileName1 = filename:absname(FileName0),
+    case is_valid_otp_app(filename:join([FileName1, <<"ebin">>,
                                          erlang:atom_to_list(AppName) ++ ".app"])) of
          {noresult, false} ->
-             {error, {invalid_override, AppName, FileName}};
+             {error, {invalid_override, AppName, FileName1}};
          Error = {error, _} ->
              Error;
          {ok, App} ->
              {ok, rlx_app_info:link(App, true)}
-     end || {AppName, FileName} <- Overrides] ++ AppMetas1.
-
+     end.
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
 format_detail({error, {invalid_override, AppName, FileName}}) ->
