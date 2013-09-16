@@ -175,7 +175,7 @@ set_resolved(State, Release0, Pkgs) ->
                          rlx_release:vsn(Release1)]),
            rlx_log:debug(rlx_state:log(State),
                          fun() ->
-                                 rlx_release:format(1, Release1)
+                                 rlx_release:format(0, Release1)
                          end),
            {ok, rlx_state:add_realized_release(State, Release1)};
        {error, E} ->

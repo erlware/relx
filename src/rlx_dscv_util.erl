@@ -33,7 +33,7 @@
 %% Types
 %%============================================================================
 
--type process_fun(Result) :: fun((filename:name(), file | directory) ->
+-type process_fun(Result) :: fun((file:name(), file | directory) ->
                                         {ok, Result} |
                                         {error, term()} |
                                         {ok, Result, Recurse::boolean()} |
@@ -46,7 +46,7 @@
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(process_fun([term()] | term()), [filename:name()]) ->
+-spec do(process_fun([term()] | term()), [file:name()]) ->
                 [term() | {error, term()}].
 do(ProcessDir, LibDirs) ->
     lists:flatten(ec_plists:map(fun(LibDir) ->

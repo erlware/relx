@@ -100,7 +100,8 @@ handle_config(Opts, Targets, CommandLineConfig) ->
 convert_targets(Targets) ->
     convert_targets(Targets, []).
 
--spec convert_targets([string()], [string()]) -> {ok, release | relup} | relx:error().
+-spec convert_targets([string()], [rlx_state:action()]) ->
+                             {ok, [rlx_state:action()]} | relx:error().
 convert_targets([], []) ->
     {ok, [release]};
 convert_targets([], Acc) ->
@@ -134,7 +135,7 @@ create_log(Opts, Acc) ->
     LogLevel = proplists:get_value(log_level, Opts, 0),
     if
         LogLevel >= 0, LogLevel =< 2 ->
-            create_goals(Opts, [{log, rlx_log:new(LogLevel)} | Acc]);
+            create_goals(Opts, [{log, rlx_log:new(LogLevel, command_line)} | Acc]);
         true ->
             ?RLX_ERROR({invalid_log_level, LogLevel})
     end.
@@ -245,7 +246,7 @@ create_disable_default_libs(Opts, Acc) ->
     Def = proplists:get_value(disable_default_libs, Opts, false),
     create_upfrom(Opts,  [{disable_default_libs, Def} | Acc]).
 
--spec create_upfrom([getopt:option()], rcl:cmd_args()) ->
+-spec create_upfrom([getopt:option()], rlx_state:cmd_args()) ->
     {ok, rlx_state:cmd_args()} | relx:error().
 create_upfrom(Opts, Acc) ->
     case proplists:get_value(upfrom, Opts, undefined) of

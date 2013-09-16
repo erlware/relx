@@ -100,6 +100,7 @@
 -export_type([t/0,
               pkg/0,
               constraint_op/0,
+              raw_constraint/0,
               pkg_name/0,
               vsn/0,
               constraint/0,

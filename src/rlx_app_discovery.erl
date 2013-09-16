@@ -35,12 +35,12 @@
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
--spec do(rlx_state:t(), [filename:name()]) -> {ok, [rlx_app_info:t()]} | relx:error().
+-spec do(rlx_state:t(), [file:name()]) -> {ok, [rlx_app_info:t()]} | relx:error().
 do(State, LibDirs) ->
     rlx_log:info(rlx_state:log(State),
                  fun() ->
                           ["Resolving OTP Applications from directories:\n",
-                           [[rlx_util:indent(1), LibDir, "\n"] || LibDir <- LibDirs]]
+                           [[rlx_util:indent(2), LibDir, "\n"] || LibDir <- LibDirs]]
                  end),
     resolve_app_metadata(State, LibDirs).
 
@@ -72,7 +72,7 @@ resolve_app_metadata(State, LibDirs) ->
             rlx_log:debug(rlx_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Applications from the system: \n",
-                                   [[rlx_app_info:format(1, App), "\n"] || App <- AppMeta1]]
+                                   [[rlx_app_info:format(2, App), "\n"] || App <- AppMeta1]]
                           end),
             {ok, AppMeta1};
         Errors ->

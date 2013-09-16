@@ -1,27 +1,29 @@
 [![Build Status](https://drone.io/github.com/erlware/relx/status.png)](https://drone.io/github.com/erlware/relx/latest)
 
-# NAME
+Relx
+=======
 
-relx - A release assembler for erlang
+A release assembler for Erlang.
 
-# SYNOPSIS
+Synopsis
+--------
 
 relx [*options*] [*release-specification-file*]
 
-# DESCRIPTION
+Description
+-----------
 
 Relx assembles releases for an Erlang/OTP release. Given a release
 specification and a list of directories in which to search for OTP
 applications it will generate a release output. That output depends
 heavily on what plugins available and what options are defined, but
-usually it is simple a well configured release directory.
-
-    relx -c relx.config -l ~/my-dirs  --relname foo --relvsn 0.0.1 --target-spec myapp --target-spec getopt>=0.5.1 -o output-dir
+usually it is simply a well configured release directory.
 
 The *release-specification-file* is optional but otherwise contains
 additional specification information for releases.
 
-# BUILDING
+Building
+--------
 
 To build relx and generate a standalone escript executable:
 
@@ -29,39 +31,36 @@ To build relx and generate a standalone escript executable:
 
 This creates the executable `relx`.
 
-# OPTIONS
+Config File
+-----------
 
--r *STRING*, \--root *STRING*
-:   Specify the root directory for the project (if different from cwd)
+By default `relx` looks for `relx.config` in the current working directory:
 
--n *STRING*, \--relname *STRING*
-:   Specify the name for the release that will be generated
+```erlang
+{release, {relname, "vsn"},
+ [app1,
+  app2]}.
 
--v *STRING*, \--relvsn=*STRING*
-:   Specify the version for the release
+{extended_start_script, true}.
+```
 
--g *STRING*, \--goals *STRING*
-:   Specify a goal to the system. These are usually the OTP
-  Apps that are part of the release
+Options
+-------
 
--o *STRING*, \--output-dir *STRING*
-:  The output directory for the release. This is `./` by default.
+| Short | Long         | Type    | Default | Description                                                                               |
+|:-----:|:------------:|:-------:|:------:|------------------------------------------------------------------------------------------- |
+| -r    | --root       | string  | ./      | Name for the release that will be generated |
+| -v    | --relvsn     | string  |         | Version for the release |
+| -g    | --goal       | string  |         | A goal for the system. These are usually the OTP apps that are part of the release |
+| -u    | --upfrom     | string  |         | The release to upgrade from. Only valid with relup target |
+| -o    | --output-dir | string  | ./      | The output directory for the release |
+| -l    | --lib-dir    | string  |         | Additional dirs to search for OTP apps |
+|       | --disable-default-libs | boolean | false | Disable use of the default system added lib dirs |
+| -V    | --verbose    | integer | 0       | The verbosity level between 0 and 2 |
+| -a    | --override_app | string | | An app name and a directory to override in the form appname:dir |
+| -c    | --config     | string  | ./relx.config | Config file path |
 
--l *STRING*, \--lib-dir *STRING*
-:  Additional dirs that should be searched for OTP Apps
-
--V *INTEGER*, \--verbose *INTEGER*
-: The verbosity level of the system. Valid values are 1 - 3
-
--c *INTEGER*, \--config *INTEGER*
-: The custom config file for the relx system
-
-# CONFIGURATION FILES
-
-Configuration files
-
-# SEE ALSO
-
-`reltool` (1).
+Wiki
+----
 
 [relx wiki](https://github.com/erlware/relx/wiki)

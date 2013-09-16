@@ -68,7 +68,7 @@ format_error({dir_render_failed, Dir, Error}) ->
                   [Dir, Error]);
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
-                  [AppDir, TargetDir, rlx_util:indent(1),
+                  [AppDir, TargetDir, rlx_util:indent(2),
                    file:format_error(Reason)]);
 format_error({copy_failed, FromFile, ToFile, Err}) ->
     io_lib:format("Unable to copy from ~s to ~s because of ~p",

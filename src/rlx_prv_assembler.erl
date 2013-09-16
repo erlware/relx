@@ -101,19 +101,19 @@ format_error({release_script_generation_error, RelFile}) ->
                   [RelFile]);
 format_error({release_script_generation_warning, Module, Warnings}) ->
     ["Warnings generating release \s",
-     rlx_util:indent(1), Module:format_warning(Warnings)];
+     rlx_util:indent(2), Module:format_warning(Warnings)];
 format_error({unable_to_create_output_dir, OutputDir}) ->
     io_lib:format("Unable to create output directory (possible permissions issue): ~s",
                   [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
     ["Errors generating release \n",
-     rlx_util:indent(1), Module:format_error(Errors)];
+     rlx_util:indent(2), Module:format_error(Errors)];
 format_error({relup_generation_error, CurrentName, UpFromName}) ->
     io_lib:format("Unknown internal release error generating the relup from ~s to ~s",
                   [UpFromName, CurrentName]);
 format_error({relup_generation_warning, Module, Warnings}) ->
     ["Warnings generating relup \s",
-     rlx_util:indent(1), Module:format_warning(Warnings)];
+     rlx_util:indent(2), Module:format_warning(Warnings)];
 format_error({relup_script_generation_error,
               {relup_script_generation_error, systools_relup,
                {missing_sasl, _}}}) ->
@@ -121,10 +121,10 @@ format_error({relup_script_generation_error,
         "in both the current release and the release to upgrade from.";
 format_error({relup_script_generation_error, Module, Errors}) ->
     ["Errors generating relup \n",
-     rlx_util:indent(1), Module:format_error(Errors)];
+     rlx_util:indent(2), Module:format_error(Errors)];
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
-                  [AppDir, TargetDir, rlx_util:indent(1),
+                  [AppDir, TargetDir, rlx_util:indent(2),
                    file:format_error(Reason)]);
 format_error({tar_unknown_generation_error, Module, Vsn}) ->
     io_lib:format("Tarball generation error of ~s ~s",
