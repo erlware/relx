@@ -66,13 +66,14 @@
 
 
 -export_type([t/0,
-              releases/0,
-              cmd_args/0]).
+             releases/0,
+             cmd_args/0,
+             action/0]).
 
 -record(state_t, {log :: rlx_log:t(),
                   root_dir :: file:name(),
                   caller :: caller(),
-                  actions=[] :: [atom()],
+                  actions=[] :: [action()],
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
@@ -99,6 +100,7 @@
                                              rlx_release:t()).
 -type cmd_args() :: proplists:proplist().
 -type caller() :: command_line | api.
+-type action() :: release | relup | tar.
 
 -opaque t() :: record(state_t).
 
@@ -106,18 +108,21 @@
 %% API
 %%============================================================================
 %% @doc Create a new 'log level' for the system
--spec new(proplists:proplist(), [atom()]) -> t().
+-spec new(proplists:proplist(), undefined | [atom()]) -> t().
+new(PropList, undefined) ->
+    new(PropList, [release]);
 new(PropList, Targets)
   when erlang:is_list(PropList),
      erlang:is_list(Targets) ->
     {ok, Root} = file:get_cwd(),
+    Caller = proplists:get_value(caller, PropList, api),
     State0 =
-        #state_t{log = proplists:get_value(log, PropList, rlx_log:new(error)),
+        #state_t{log = proplists:get_value(log, PropList, rlx_log:new(error, Caller)),
                  output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
                  config_file=proplists:get_value(config, PropList, undefined),
                  actions = Targets,
-                 caller = proplists:get_value(caller, PropList, api),
+                 caller = Caller,
                  goals=proplists:get_value(goals, PropList, []),
                  providers = [],
                  configured_releases=ec_dictionary:new(ec_dict),
@@ -133,7 +138,7 @@ new(PropList, Targets)
                   proplists:get_value(disable_default_libs, PropList, false)).
 
 %% @doc the actions targeted for this system
--spec actions(t()) -> atom().
+-spec actions(t()) -> [action()].
 actions(#state_t{actions=Actions}) ->
     Actions.
 
@@ -317,17 +322,17 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
     Values1 = ec_dictionary:to_list(Values0),
     [rlx_util:indent(Indent),
      <<"state(">>, erlang:atom_to_list(Caller), <<"):\n">>,
-     rlx_util:indent(Indent + 1), <<"log: ">>, rlx_log:format(LogState), <<",\n">>,
-     rlx_util:indent(Indent + 1), "config file: ", rlx_util:optional_to_string(ConfigFile), "\n",
-     rlx_util:indent(Indent + 1), "goals: \n",
-     [[rlx_util:indent(Indent + 2), rlx_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
-     rlx_util:indent(Indent + 1), "output_dir: ", OutDir, "\n",
-     rlx_util:indent(Indent + 1), "lib_dirs: \n",
-     [[rlx_util:indent(Indent + 2), LibDir, ",\n"] || LibDir <- LibDirs],
-     rlx_util:indent(Indent + 1), "providers: \n",
-     [[rlx_util:indent(Indent + 2), rlx_provider:format(Provider), ",\n"] || Provider <- Providers],
-     rlx_util:indent(Indent + 1), "provider config values: \n",
-     [[rlx_util:indent(Indent + 2), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
+     rlx_util:indent(Indent + 2), <<"log: ">>, rlx_log:format(LogState), <<",\n">>,
+     rlx_util:indent(Indent + 2), "config file: ", rlx_util:optional_to_string(ConfigFile), "\n",
+     rlx_util:indent(Indent + 2), "goals: \n",
+     [[rlx_util:indent(Indent + 3), rlx_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
+     rlx_util:indent(Indent + 2), "output_dir: ", OutDir, "\n",
+     rlx_util:indent(Indent + 2), "lib_dirs: \n",
+     [[rlx_util:indent(Indent + 3), LibDir, ",\n"] || LibDir <- LibDirs],
+     rlx_util:indent(Indent + 2), "providers: \n",
+     [[rlx_util:indent(Indent + 3), rlx_provider:format(Provider), ",\n"] || Provider <- Providers],
+     rlx_util:indent(Indent + 2), "provider config values: \n",
+     [[rlx_util:indent(Indent + 3), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
 
 %%%===================================================================
 %%% Internal Functions
