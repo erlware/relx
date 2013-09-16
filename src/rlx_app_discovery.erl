@@ -142,7 +142,7 @@ is_valid_otp_app(File) ->
         <<"ebin">> ->
             case filename:extension(File) of
                 <<".app">> ->
-                    has_at_least_one_beam(EbinDir, File);
+                    gather_application_info(EbinDir, File);
                 _ ->
                     {noresult, false}
             end;
@@ -150,20 +150,6 @@ is_valid_otp_app(File) ->
             {noresult, false}
     end.
 
--spec has_at_least_one_beam(file:name(), file:filename()) ->
-                                   {ok, rlx_app_info:t()} | {error, Reason::term()}.
-has_at_least_one_beam(EbinDir, File) ->
-    case file:list_dir(EbinDir) of
-        {ok, List} ->
-            case lists:any(fun(NFile) -> lists:suffix(".beam", NFile) end, List) of
-                true ->
-                    gather_application_info(EbinDir, File);
-                false ->
-                    {error, {no_beam_files, EbinDir}}
-            end;
-        _ ->
-            {error, {not_a_directory, EbinDir}}
-    end.
 
 -spec gather_application_info(file:name(), file:filename()) ->
                                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
@@ -171,12 +157,54 @@ gather_application_info(EbinDir, File) ->
     AppDir = filename:dirname(EbinDir),
     case file:consult(File) of
         {ok, [{application, AppName, AppDetail}]} ->
-            get_vsn(AppDir, AppName, AppDetail);
+            validate_application_info(EbinDir, File, AppName, AppDetail);
         {error, Reason} ->
             {error, {unable_to_load_app, AppDir, Reason}};
         _ ->
             {error, {invalid_app_file, File}}
     end.
+
+-spec validate_application_info(file:name(),
+                    file:name(),
+                    atom(),
+                    proplists:proplist()) ->
+                    {ok, list()} | {error, Reason::term()}.
+validate_application_info(EbinDir, AppFile, AppName, AppDetail) ->
+    AppDir = filename:dirname(EbinDir),
+    case get_modules_list(AppFile, AppDetail) of
+        {ok, List} ->
+            case has_all_beams(EbinDir, List) of
+                ok ->
+                    get_vsn(AppDir, AppName, AppDetail);
+                Error1 ->
+                    Error1
+            end;
+        Error -> Error
+    end.
+
+-spec get_modules_list(file:name(), proplists:proplist()) ->
+                     {ok, list()} | {error, Reason::term()}.
+get_modules_list(AppFile, AppDetail) ->
+    case proplists:get_value(modules, AppDetail) of
+        undefined ->
+            {error, {invalid_app_file, AppFile}};
+        ModulesList ->
+            {ok, ModulesList}
+    end.
+
+-spec has_all_beams(file:name(), list()) ->
+                    ok | {error, Reason::term()}.
+has_all_beams(EbinDir, [Module | ModuleList]) ->
+    BeamFile = filename:join([EbinDir,
+        list_to_binary(atom_to_list(Module) ++ ".beam")]),
+    case ec_file:exists(BeamFile) of
+        true ->
+            has_all_beams(EbinDir, ModuleList);
+        false ->
+            {error, {missing_beam_file, Module, BeamFile}}
+    end;
+has_all_beams(_, []) ->
+    ok.
 
 -spec get_vsn(file:name(), atom(), proplists:proplist()) ->
                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
