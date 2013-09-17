@@ -39,8 +39,8 @@
 do(State, LibDirs) ->
     rlx_log:info(rlx_state:log(State),
                  fun() ->
-                          ["Resolving OTP Applications from directories:\n",
-                           [[rlx_util:indent(2), LibDir, "\n"] || LibDir <- LibDirs]]
+                         ["Resolving OTP Applications from directories:\n",
+                          [[rlx_util:indent(2), LibDir, "\n"] || LibDir <- LibDirs]]
                  end),
     resolve_app_metadata(State, LibDirs).
 
@@ -58,13 +58,13 @@ resolve_app_metadata(State, LibDirs) ->
               {error, Ret} ->
                   Ret
           end
-          || Err <- AppMeta0,
-             case Err of
-                 {error, _} ->
-                         true;
-                     _ ->
-                         false
-                 end] of
+         || Err <- AppMeta0,
+            case Err of
+                {error, _} ->
+                    true;
+                _ ->
+                    false
+            end] of
         [] ->
             SkipApps = rlx_state:skip_apps(State),
             AppMeta1 = [App || {ok, App} <- setup_overrides(State, AppMeta0),
@@ -94,15 +94,17 @@ resolve_override(AppName, FileName0) ->
     FileName1 = filename:absname(FileName0),
     case is_valid_otp_app(filename:join([FileName1, <<"ebin">>,
                                          erlang:atom_to_list(AppName) ++ ".app"])) of
-         {noresult, false} ->
-             {error, {invalid_override, AppName, FileName1}};
-         Error = {error, _} ->
-             Error;
-         {ok, App} ->
-             {ok, rlx_app_info:link(App, true)}
-     end.
+        {noresult, false} ->
+            {error, {invalid_override, AppName, FileName1}};
+        Error = {error, _} ->
+            Error;
+        {ok, App} ->
+            {ok, rlx_app_info:link(App, true)}
+    end.
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
+format_detail({error, {missing_beam_file, Module, BeamFile}}) ->
+    io_lib:format("Missing beam file ~p ~p", [Module, BeamFile]);
 format_detail({error, {invalid_override, AppName, FileName}}) ->
     io_lib:format("Override {~p, ~p} is not a valid OTP App. Perhaps you forgot to build it?",
                   [AppName, FileName]);
@@ -142,7 +144,7 @@ is_valid_otp_app(File) ->
         <<"ebin">> ->
             case filename:extension(File) of
                 <<".app">> ->
-                    has_at_least_one_beam(EbinDir, File);
+                    gather_application_info(EbinDir, File);
                 _ ->
                     {noresult, false}
             end;
@@ -150,20 +152,6 @@ is_valid_otp_app(File) ->
             {noresult, false}
     end.
 
--spec has_at_least_one_beam(file:name(), file:filename()) ->
-                                   {ok, rlx_app_info:t()} | {error, Reason::term()}.
-has_at_least_one_beam(EbinDir, File) ->
-    case file:list_dir(EbinDir) of
-        {ok, List} ->
-            case lists:any(fun(NFile) -> lists:suffix(".beam", NFile) end, List) of
-                true ->
-                    gather_application_info(EbinDir, File);
-                false ->
-                    {error, {no_beam_files, EbinDir}}
-            end;
-        _ ->
-            {error, {not_a_directory, EbinDir}}
-    end.
 
 -spec gather_application_info(file:name(), file:filename()) ->
                                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
@@ -171,12 +159,54 @@ gather_application_info(EbinDir, File) ->
     AppDir = filename:dirname(EbinDir),
     case file:consult(File) of
         {ok, [{application, AppName, AppDetail}]} ->
-            get_vsn(AppDir, AppName, AppDetail);
+            validate_application_info(EbinDir, File, AppName, AppDetail);
         {error, Reason} ->
             {error, {unable_to_load_app, AppDir, Reason}};
         _ ->
             {error, {invalid_app_file, File}}
     end.
+
+-spec validate_application_info(file:name(),
+                                file:name(),
+                                atom(),
+                                proplists:proplist()) ->
+                                       {ok, list()} | {error, Reason::term()}.
+validate_application_info(EbinDir, AppFile, AppName, AppDetail) ->
+    AppDir = filename:dirname(EbinDir),
+    case get_modules_list(AppFile, AppDetail) of
+        {ok, List} ->
+            case has_all_beams(EbinDir, List) of
+                ok ->
+                    get_vsn(AppDir, AppName, AppDetail);
+                Error1 ->
+                    Error1
+            end;
+        Error -> Error
+    end.
+
+-spec get_modules_list(file:name(), proplists:proplist()) ->
+                              {ok, list()} | {error, Reason::term()}.
+get_modules_list(AppFile, AppDetail) ->
+    case proplists:get_value(modules, AppDetail) of
+        undefined ->
+            {error, {invalid_app_file, AppFile}};
+        ModulesList ->
+            {ok, ModulesList}
+    end.
+
+-spec has_all_beams(file:name(), list()) ->
+                           ok | {error, Reason::term()}.
+has_all_beams(EbinDir, [Module | ModuleList]) ->
+    BeamFile = filename:join([EbinDir,
+                              list_to_binary(atom_to_list(Module) ++ ".beam")]),
+    case ec_file:exists(BeamFile) of
+        true ->
+            has_all_beams(EbinDir, ModuleList);
+        false ->
+            {error, {missing_beam_file, Module, BeamFile}}
+    end;
+has_all_beams(_, []) ->
+    ok.
 
 -spec get_vsn(file:name(), atom(), proplists:proplist()) ->
                      {ok, rlx_app_info:t()} | {error, Reason::term()}.

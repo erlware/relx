@@ -88,7 +88,7 @@ normal_case(Config) ->
     ?assertMatch(Length, erlang:length(rlx_state:available_apps(State2))).
 
 no_beam_case(Config) ->
-    %% We silently ignore apps with no beams
+    %% do not ignore apps with no beam files if no modules in app file
     LibDir1 = proplists:get_value(lib1, Config),
     _Apps1 = [(fun({Name, Vsn}) ->
                       create_app(LibDir1, Name, Vsn)
@@ -111,8 +111,8 @@ no_beam_case(Config) ->
     write_app_file(AppDir, BadName, BadVsn),
     State0 = proplists:get_value(state, Config),
     {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
-    EbinDir = filename:join([LibDir2, BadName, <<"ebin">>]),
-    ?assertMatch({error, {_, [{no_beam_files, EbinDir}]}},
+
+    ?assertMatch({ok, _},
                  rlx_provider:do(DiscoverProvider, State1)).
 
 bad_ebin_case(Config) ->
