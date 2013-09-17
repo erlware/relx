@@ -81,10 +81,10 @@
 -type application_constraint() :: rlx_depsolver:raw_constraint() | string() | binary().
 -type application_goal() :: application_constraint()
                           | {application_constraint(), app_type() | incl_apps()}
-                          | {application_constraint(), app_type(), incl_apps() | none}.
+                          | {application_constraint(), app_type(), incl_apps() | void}.
 
 -type annotations() ::  ec_dictionary:dictionary(app_name(),
-                                                 {app_type(), incl_apps() | none}).
+                                                 {app_type(), incl_apps() | void}).
 
 
 -opaque t() :: record(release_t).
@@ -267,27 +267,27 @@ create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
             true ->
                 load;
             false ->
-                none
+                void
         end,
     BaseAnnots =
         try
             case ec_dictionary:get(AppName, Annots) of
-                {none, Incld} ->
+                {void, Incld} ->
                     {TypeAnnot, Incld};
                 Else ->
                     Else
             end
         catch
             throw:not_found ->
-                {TypeAnnot, none}
+                {TypeAnnot, void}
         end,
     Vsn = rlx_app_info:vsn_as_string(App),
     case BaseAnnots of
-        {none, none} ->
+        {void, void} ->
             {AppName, Vsn};
-        {Type, none} ->
+        {Type, void} ->
             {AppName, Vsn, Type};
-        {none, Incld0} ->
+        {void, Incld0} ->
             {AppName, Vsn, Incld0};
         {Type, Incld1} ->
             {AppName, Vsn, Type, Incld1}
@@ -314,7 +314,7 @@ parse_goal0({Constraint0, Annots}, {ok, Release})
        Annots =:= none ->
     case parse_constraint(Constraint0) of
         {ok, Constraint1} ->
-            parse_goal1(Release, Constraint1, {Annots, none});
+            parse_goal1(Release, Constraint1, {Annots, void});
         Error  ->
             Error
     end;
@@ -334,7 +334,7 @@ parse_goal0({Constraint0, Annots, Incls}, {ok, Release})
 parse_goal0(Constraint0, {ok, Release}) ->
     case parse_constraint(Constraint0) of
         {ok, Constraint1} ->
-            parse_goal1(Release, Constraint1, {none, none});
+            parse_goal1(Release, Constraint1, {void, void});
         Error  ->
             Error
     end;
