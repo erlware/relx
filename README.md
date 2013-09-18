@@ -1,4 +1,4 @@
-[![Build Status](https://drone.io/github.com/erlware/relx/status.png)](https://drone.io/github.com/erlware/relx/latest)
+[![Build Status](https://travis-ci.org/erlware/relx.png?branch=master)](https://travis-ci.org/erlware/relx)
 
 Relx
 =======
