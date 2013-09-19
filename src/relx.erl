@@ -47,11 +47,18 @@ main(Args) ->
     OptSpecList = opt_spec_list(),
     Result = case getopt:parse(OptSpecList, Args) of
                  {ok, {Options, NonOptions}} ->
-                     case lists:member(help, Options) of
+                     case lists:member(version, Options) of
                          true ->
-                             usage();
+                             application:load(relx),
+                             {ok, Vsn} = application:get_key(relx, vsn),
+                             io:format("~s~n", [Vsn]);
                          false ->
-                             do([{caller, command_line} | Options], NonOptions)
+                             case lists:member(help, Options) of
+                                 true ->
+                                     usage();
+                                 false ->
+                                     do([{caller, command_line} | Options], NonOptions)
+                             end
                      end;
                  {error, Detail} ->
                      ?RLX_ERROR({opt_parse, Detail})
@@ -193,6 +200,7 @@ opt_spec_list() ->
      {override_app, $a, "override_app", string,
       "Provide an app name and a directory to override in the form <appname>:<app directory>"},
      {config, $c, "config", {string, ""}, "The path to a config file"},
+     {version, $v, "version", undefined, "Print relx version"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
 -spec format_error(Reason::term()) -> string().
