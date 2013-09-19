@@ -64,7 +64,9 @@ format_error({invalid_option_arg, Arg}) ->
         {lib_dir, LibDir} ->
             io_lib:format("Invalid Library Directory argument -n ~p~n", [LibDir]);
         {log_level, LogLevel} ->
-            io_lib:format("Invalid Library Directory argument -n ~p~n", [LogLevel])
+            io_lib:format("Invalid Log Level argument -n ~p~n", [LogLevel]);
+        {path, Path} ->
+            io_lib:format("Invalid code path argument -n ~p~n", [Path])
     end;
 format_error({invalid_config_file, Config}) ->
     io_lib:format("Invalid configuration file specified: ~s", [Config]);
@@ -261,20 +263,34 @@ create_upfrom(Opts, Acc) ->
 create_caller(Opts, Acc) ->
     case proplists:get_value(caller, Opts, api) of
         "command_line" ->
-            {ok, [{caller, command_line} | Acc]};
+            create_paths(Opts, [{caller, command_line} | Acc]);
         "commandline" ->
-            {ok, [{caller, command_line} | Acc]};
+            create_paths(Opts, [{caller, command_line} | Acc]);
         "api" ->
-            {ok, [{caller, api} | Acc]};
+            create_paths(Opts, [{caller, api} | Acc]);
         api ->
-            {ok, [{caller, api} | Acc]};
+            create_paths(Opts, [{caller, api} | Acc]);
         commandline ->
-            {ok, [{caller, command_line} | Acc]};
+            create_paths(Opts, [{caller, command_line} | Acc]);
         command_line ->
-            {ok, [{caller, command_line} | Acc]};
+            create_paths(Opts, [{caller, command_line} | Acc]);
         Caller ->
             ?RLX_ERROR({invalid_caller, Caller})
     end.
+
+-spec create_paths([getopt:option()], rlx_state:cmd_args()) ->
+                           {ok, rlx_state:cmd_args()} | relx:error().
+create_paths(Opts, Acc) ->
+    Dirs = proplists:get_all_values(path, Opts) ++
+        proplists:get_value(paths, Opts, []),
+    case check_lib_dirs(Dirs) of
+        Error = {error, _} ->
+            Error;
+        ok ->
+            code:add_pathsa([filename:absname(Path) || Path <- Dirs]),
+            {ok, Acc}
+    end.
+
 -spec check_lib_dirs([string()]) -> ok | relx:error().
 check_lib_dirs([]) ->
     ok;

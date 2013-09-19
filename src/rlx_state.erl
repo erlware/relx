@@ -177,7 +177,7 @@ lib_dirs(#state_t{lib_dirs=LibDir}) ->
 
 -spec add_lib_dirs(t(), [file:name()]) -> t().
 add_lib_dirs(State=#state_t{lib_dirs=LibDir}, Dirs) ->
-    State#state_t{lib_dirs=lists:merge(lists:sort(LibDir), lists:sort(Dirs))}.
+    State#state_t{lib_dirs=lists:umerge(lists:sort(LibDir), lists:sort(Dirs))}.
 
 -spec goals(t()) -> [rlx_depsolver:constraint()].
 goals(#state_t{goals=TS}) ->
