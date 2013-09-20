@@ -459,15 +459,15 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     ok = erl_tar:create(TarFile,
                         [{"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)},
                          {filename:join(["erts-"++ErtsVersion, "bin", "nodetool"]),
-                         hd(nodetool_contents())},
+                          hd(nodetool_contents())},
                          {filename:join(["erts-"++ErtsVersion, "bin", "install_upgrade.escript"]),
-                         hd(install_upgrade_escript_contents())},
+                          hd(install_upgrade_escript_contents())},
                          {"lib", filename:join(TempDir, "lib")},
                          {"releases", filename:join(TempDir, "releases")},
-                         {filename:join(["releases", "RELEASES"])
-                         ,filename:join([OutputDir, "releases", "RELEASES"])},
+                         {filename:join(["releases", "RELEASES"]),
+                          filename:join([OutputDir, "releases", "RELEASES"])},
                          {filename:join(["releases", Vsn, "vm.args"]),
-                         filename:join([OutputDir, "releases", Vsn, "vm.args"])},
+                          filename:join([OutputDir, "releases", Vsn, "vm.args"])},
                          {"bin", filename:join([OutputDir, "bin"])}], [compressed]),
     rlx_log:info(rlx_state:log(State),
                  "tarball ~s successfully created!~n", [TarFile]),
@@ -855,10 +855,10 @@ case \"$1\" in
         exec $REMSH
         ;;
 
-    upgrade)
+    upgrade|downgrade|install)
         if [ -z \"$2\" ]; then
-            echo \"Missing upgrade package argument\"
-            echo \"Usage: $REL_NAME upgrade {package base name}\"
+            echo \"Missing package argument\"
+            echo \"Usage: $REL_NAME $1 {package base name}\"
             echo \"NOTE {package base name} MUST NOT include the .tar.gz suffix\"
             exit 1
         fi
@@ -874,7 +874,7 @@ case \"$1\" in
         node_name=`echo $NAME_ARG | awk '{print $2}'`
         erlang_cookie=`echo $COOKIE_ARG | awk '{print $2}'`
 
-        $ERTS_DIR/bin/escript $ERTS_DIR/bin/install_upgrade.escript $node_name $erlang_cookie $2
+        $ERTS_DIR/bin/escript $ERTS_DIR/bin/install_upgrade.escript $REL_NAME $node_name $erlang_cookie $2
         ;;
 
     console|console_clean|console_boot)
@@ -946,26 +946,81 @@ install_upgrade_escript_contents() ->
 -define(TIMEOUT, 60000).
 -define(INFO(Fmt,Args), io:format(Fmt,Args)).
 
-main([NodeName, Cookie, ReleasePackage]) ->TargetNode = start_distribution(NodeName, Cookie),
-    {ok, Cwd} = file:get_cwd(),
-    ok = rpc:call(TargetNode, file, set_cwd,
-                  [Cwd], ?TIMEOUT),
-    case rpc:call(TargetNode, release_handler, unpack_release,
-                         [ReleasePackage], ?TIMEOUT) of
-        {ok, Vsn} ->
-            ?INFO(\"Unpacked Release ~p~n\", [Vsn]),
-            {ok, OtherVsn, Desc} = rpc:call(TargetNode, release_handler,
-                                            check_install_release, [Vsn], ?TIMEOUT),
-            {ok, OtherVsn, Desc} = rpc:call(TargetNode, release_handler,
-                                            install_release, [Vsn], ?TIMEOUT),
-            ?INFO(\"Installed Release ~p~n\", [Vsn]),
-            ok = rpc:call(TargetNode, release_handler, make_permanent, [Vsn], ?TIMEOUT),
-            ?INFO(\"Made Release ~p Permanent~n\", [Vsn]);
-        {error, {existing_release, Vsn}} ->
-            ?INFO(\"Release ~s already installed~n\", [Vsn])
+%% Upgrades, to a new tar.gz release
+main([RelName, NodeName, Cookie, VersionArg]) ->
+    TargetNode = start_distribution(NodeName, Cookie),
+    WhichReleases = which_releases(TargetNode),
+    Version = parse_version(VersionArg),
+    case proplists:get_value(Version, WhichReleases) of
+        undefined ->
+            %% not installed, so unpack tarball:
+            ?INFO(\"Release ~s not found, attempting to unpack releases/~s/~s.tar.gz~n\",[Version,Version,RelName]),
+            ReleasePackage = Version ++ \"/\" ++ RelName,
+            case rpc:call(TargetNode, release_handler, unpack_release,
+                          [ReleasePackage], ?TIMEOUT) of
+                {ok, Vsn} ->
+                    ?INFO(\"Unpacked successfully: ~p~n\", [Vsn]),
+                    install_and_permafy(TargetNode, Vsn);
+                {error, UnpackReason} ->
+                    print_existing_versions(TargetNode),
+                    ?INFO(\"Unpack failed: ~p~n\",[UnpackReason]),
+                    init:stop(2)
+            end;
+        old ->
+            %% no need to unpack, has been installed previously
+            ?INFO(\"Release ~s is marked old, switching to it.~n\",[Version]),
+            install_and_permafy(TargetNode, Version);
+        unpacked ->
+            ?INFO(\"Release ~s is already unpacked, now installing.~n\",[Version]),
+            install_and_permafy(TargetNode, Version);
+        current -> %% installed and in-use, just needs to be permanent
+            ?INFO(\"Release ~s is already installed and current. Making permanent.~n\",[Version]),
+            permafy(TargetNode, Version);
+        permanent ->
+            ?INFO(\"Release ~s is already installed, and set permanent.~n\",[Version])
     end;
 main(_) ->
     init:stop(1).
+
+parse_version(V) when is_list(V) ->
+    hd(string:tokens(V,\"/\")).
+
+install_and_permafy(TargetNode, Vsn) ->
+    case rpc:call(TargetNode, release_handler, check_install_release, [Vsn], ?TIMEOUT) of
+        {ok, _OtherVsn, _Desc} ->
+            ok;
+        {error, Reason} ->
+            ?INFO(\"ERROR: release_handler:check_install_release failed: ~p~n\",[Reason]),
+            init:stop(3)
+    end,
+    case rpc:call(TargetNode, release_handler, install_release, [Vsn], ?TIMEOUT) of
+        {ok, _, _} ->
+            ?INFO(\"Installed Release: ~s~n\", [Vsn]),
+            permafy(TargetNode, Vsn),
+            ok;
+        {error, {no_such_release, Vsn}} ->
+            VerList =
+                iolist_to_binary(
+                    [io_lib:format(\"* ~s\t~s~n\",[V,S]) ||  {V,S} <- which_releases(TargetNode)]),
+            ?INFO(\"Installed versions:~n~s\", [VerList]),
+            ?INFO(\"ERROR: Unable to revert to '~s' - not installed.~n\", [Vsn]),
+            init:stop(2)
+    end.
+
+permafy(TargetNode, Vsn) ->
+    ok = rpc:call(TargetNode, release_handler, make_permanent, [Vsn], ?TIMEOUT),
+    ?INFO(\"Made release permanent: ~p~n\", [Vsn]),
+    ok.
+
+which_releases(TargetNode) ->
+    R = rpc:call(TargetNode, release_handler, which_releases, [], ?TIMEOUT),
+    [ {V, S} ||  {_,V,_, S} <- R ].
+
+print_existing_versions(TargetNode) ->
+    VerList = iolist_to_binary([
+            io_lib:format(\"* ~s\t~s~n\",[V,S])
+            ||  {V,S} <- which_releases(TargetNode) ]),
+    ?INFO(\"Installed versions:~n~s\", [VerList]).
 
 start_distribution(NodeName, Cookie) ->
     MyNode = make_script_node(NodeName),
@@ -980,6 +1035,8 @@ start_distribution(NodeName, Cookie) ->
             io:format(\"Node ~p not responding to pings.\n\", [TargetNode]),
             init:stop(1)
     end,
+    {ok, Cwd} = file:get_cwd(),
+    ok = rpc:call(TargetNode, file, set_cwd, [Cwd], ?TIMEOUT),
     TargetNode.
 
 make_script_node(Node) ->
