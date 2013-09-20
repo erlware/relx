@@ -382,12 +382,14 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
         ok ->
             rlx_log:error(rlx_state:log(State),
                           "release successfully created!"),
+            create_RELEASES(OutputDir, ReleaseFile),
             {ok, State};
         error ->
             ?RLX_ERROR({release_script_generation_error, ReleaseFile});
         {ok, _, []} ->
             rlx_log:error(rlx_state:log(State),
                           "release successfully created!"),
+            create_RELEASES(OutputDir, ReleaseFile),
             {ok, State};
         {ok,Module,Warnings} ->
             ?RLX_ERROR({release_script_generation_warn, Module, Warnings});
@@ -462,6 +464,8 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                          hd(install_upgrade_escript_contents())},
                          {"lib", filename:join(TempDir, "lib")},
                          {"releases", filename:join(TempDir, "releases")},
+                         {filename:join(["releases", "RELEASES"])
+                         ,filename:join([OutputDir, "releases", "RELEASES"])},
                          {filename:join(["releases", Vsn, "vm.args"]),
                          filename:join([OutputDir, "releases", Vsn, "vm.args"])},
                          {"bin", filename:join([OutputDir, "bin"])}], [compressed]),
@@ -469,6 +473,15 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                  "tarball ~s successfully created!~n", [TarFile]),
     ec_file:remove(TempDir, [recursive]),
     {ok, State}.
+
+create_RELEASES(OutputDir, ReleaseFile) ->
+    {ok, OldCWD} = file:get_cwd(),
+    file:set_cwd(OutputDir),
+    release_handler:create_RELEASES("./",
+                                    "releases",
+                                    ReleaseFile,
+                                    []),
+    file:set_cwd(OldCWD).
 
 make_upfrom_script(State, Release, UpFrom) ->
     OutputDir = rlx_state:output_dir(State),
