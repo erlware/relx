@@ -127,6 +127,11 @@ load_terms({default_release, RelName, RelVsn}, {ok, State}) ->
 load_terms({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
     {ok, State};
+load_terms({lib_dirs, Dirs}, {ok, State}) ->
+    State2 =
+        rlx_state:add_lib_dirs(State,
+                               [list_to_binary(filename:absname(Dir)) || Dir <- Dirs]),
+    {ok, State2};
 load_terms({providers, Providers0}, {ok, State0}) ->
     Providers1 = gen_providers(Providers0, State0),
     case Providers1 of

@@ -45,12 +45,12 @@ endif
 # problem that travis times out. The code below lets us not run
 # dialyzer on R14
 OTP_VSN=$(shell erl -noshell -eval 'io:format("~p", [erlang:system_info(otp_release)]), erlang:halt(0).' | perl -lne 'print for /R(\d+).*/g')
-TRAVIS_SLOW=$(shell expr $(OTP_VSN) \<= 14 )
+TRAVIS_SLOW=$(shell expr $(OTP_VSN) \<= 15 )
 
 ifeq ($(TRAVIS_SLOW), 0)
 DIALYZER=$(shell which dialyzer)
 else
-DIALYZER=: not running dialyzer on R14
+DIALYZER=: not running dialyzer on R14 or R15
 endif
 
 .PHONY: all compile doc clean test dialyzer typer shell distclean pdf \
@@ -105,7 +105,7 @@ dialyzer: $(DEPS_PLT)
 typer:
 	typer --plt $(DEPS_PLT) -r ./src
 
-shell: get-deps compile
+shell: deps compile
 # You often want *rebuilt* rebar tests to be available to the
 # shell you have to call eunit (to get the tests
 # rebuilt). However, eunit runs the tests, which probably
