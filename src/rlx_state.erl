@@ -28,6 +28,7 @@
          actions/1,
          output_dir/1,
          lib_dirs/1,
+         add_lib_dirs/2,
          overrides/1,
          overrides/2,
          skip_apps/1,
@@ -152,7 +153,6 @@ overrides(#state_t{overrides=Overrides}) ->
 overrides(State, Overrides) ->
     State#state_t{overrides=Overrides}.
 
-
 -spec skip_apps(t()) -> [AppName::atom()].
 skip_apps(#state_t{skip_apps=Apps}) ->
     Apps.
@@ -174,6 +174,10 @@ output_dir(#state_t{output_dir=OutDir}) ->
 -spec lib_dirs(t()) -> [file:name()].
 lib_dirs(#state_t{lib_dirs=LibDir}) ->
     LibDir.
+
+-spec add_lib_dirs(t(), [file:name()]) -> t().
+add_lib_dirs(State=#state_t{lib_dirs=LibDir}, Dirs) ->
+    State#state_t{lib_dirs=lists:umerge(lists:sort(LibDir), lists:sort(Dirs))}.
 
 -spec goals(t()) -> [rlx_depsolver:constraint()].
 goals(#state_t{goals=TS}) ->

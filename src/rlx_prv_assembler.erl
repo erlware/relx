@@ -296,10 +296,9 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
 
 copy_or_generate_vmargs_file(State, RelName, RelDir) ->
     RelVmargsPath = filename:join([RelDir, "vm.args"]),
-
     case rlx_state:vm_args(State) of
         undefined ->
-            ok = file:write_file(RelVmargsPath, vm_args_file(RelName));
+            unless_exists_write_default(RelVmargsPath, vm_args_file(RelName));
         ArgsPath ->
             case filelib:is_regular(ArgsPath) of
                 false ->
@@ -317,7 +316,7 @@ copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir) ->
     RelSysConfPath = filename:join([RelDir, "sys.config"]),
     case rlx_state:sys_config(State) of
         undefined ->
-            ok = generate_sys_config_file(RelSysConfPath),
+            unless_exists_write_default(RelSysConfPath, sys_config_file()),
             include_erts(State, Release, OutputDir, RelDir);
         ConfigPath ->
             case filelib:is_regular(ConfigPath) of
@@ -328,22 +327,6 @@ copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir) ->
                     include_erts(State, Release, OutputDir, RelDir)
             end
     end.
-
-%% @doc write a generic sys.config to the path RelSysConfPath
--spec generate_sys_config_file(string()) -> ok.
-generate_sys_config_file(RelSysConfPath) ->
-    {ok, Fd} = file:open(RelSysConfPath, [write]),
-    io:format(Fd,
-              "%% Thanks to Ulf Wiger at Ericcson for these comments:~n"
-              "%%~n"
-              "%% This file is identified via the erl command line option -config File.~n"
-              "%% Note that File should have no extension, e.g.~n"
-              "%% erl -config .../sys (if this file is called sys.config)~n"
-              "%%~n"
-              "%% In this file, you can redefine application environment variables.~n"
-              "%% This way, you don't have to modify the .app files of e.g. OTP applications.~n"
-              "[].~n", []),
-    file:close(Fd).
 
 %% @doc Optionally add erts directory to release, if defined.
 -spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) -> {ok, rlx_state:t()} | relx:error().
@@ -529,7 +512,6 @@ strip_rel(Name) ->
     rlx_util:to_string(filename:join(filename:dirname(Name),
                                      filename:basename(Name, ".rel"))).
 
-
 get_up_release(State, Release, Vsn) ->
     Name = rlx_release:name(Release),
     try
@@ -577,6 +559,14 @@ get_code_paths(Release, OutDir) ->
                     erlang:atom_to_list(rlx_app_info:name(App)) ++ "-" ++
                         rlx_app_info:vsn_as_string(App), "ebin"]) ||
         App <- rlx_release:application_details(Release)].
+
+unless_exists_write_default(Path, File) ->
+    case ec_file:exists(Path) of
+        true ->
+            ok;
+        false ->
+            ok = file:write_file(Path, File)
+    end.
 
 erl_script(ErtsVsn) ->
     [<<"#!/bin/sh
@@ -1123,6 +1113,17 @@ consult(Cont, Str, Acc) ->
         {more, Cont1} ->
             consult(Cont1, eof, Acc)
     end.">>].
+
+sys_config_file() ->
+    [<<"%% Thanks to Ulf Wiger at Ericcson for these comments:
+%%
+%% This file is identified via the erl command line option -config File.
+%% Note that File should have no extension, e.g.
+%% erl -config .../sys (if this file is called sys.config)
+%%
+%% In this file, you can redefine application environment variables.
+%% This way, you don't have to modify the .app files of e.g. OTP applications.
+[].">>].
 
 vm_args_file(RelName) ->
     [<<"## Name of the node
