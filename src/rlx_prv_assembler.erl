@@ -874,7 +874,7 @@ case \"$1\" in
         node_name=`echo $NAME_ARG | awk '{print $2}'`
         erlang_cookie=`echo $COOKIE_ARG | awk '{print $2}'`
 
-        $ERTS_DIR/bin/escript $ERTS_DIR/bin/install_upgrade.escript $REL_NAME $node_name $erlang_cookie $2
+        exec $ERTS_DIR/bin/escript $ERTS_DIR/bin/install_upgrade.escript $REL_NAME $node_name $erlang_cookie $2
         ;;
 
     console|console_clean|console_boot)
@@ -964,7 +964,7 @@ main([RelName, NodeName, Cookie, VersionArg]) ->
                 {error, UnpackReason} ->
                     print_existing_versions(TargetNode),
                     ?INFO(\"Unpack failed: ~p~n\",[UnpackReason]),
-                    init:stop(2)
+                    erlang:halt(2)
             end;
         old ->
             %% no need to unpack, has been installed previously
@@ -980,7 +980,7 @@ main([RelName, NodeName, Cookie, VersionArg]) ->
             ?INFO(\"Release ~s is already installed, and set permanent.~n\",[Version])
     end;
 main(_) ->
-    init:stop(1).
+    erlang:halt(1).
 
 parse_version(V) when is_list(V) ->
     hd(string:tokens(V,\"/\")).
@@ -991,7 +991,7 @@ install_and_permafy(TargetNode, Vsn) ->
             ok;
         {error, Reason} ->
             ?INFO(\"ERROR: release_handler:check_install_release failed: ~p~n\",[Reason]),
-            init:stop(3)
+            erlang:halt(3)
     end,
     case rpc:call(TargetNode, release_handler, install_release, [Vsn], ?TIMEOUT) of
         {ok, _, _} ->
@@ -1004,7 +1004,7 @@ install_and_permafy(TargetNode, Vsn) ->
                     [io_lib:format(\"* ~s\t~s~n\",[V,S]) ||  {V,S} <- which_releases(TargetNode)]),
             ?INFO(\"Installed versions:~n~s\", [VerList]),
             ?INFO(\"ERROR: Unable to revert to '~s' - not installed.~n\", [Vsn]),
-            init:stop(2)
+            erlang:halt(2)
     end.
 
 permafy(TargetNode, Vsn) ->
@@ -1033,7 +1033,7 @@ start_distribution(NodeName, Cookie) ->
             ok;
         {_, pang} ->
             io:format(\"Node ~p not responding to pings.\n\", [TargetNode]),
-            init:stop(1)
+            erlang:halt(1)
     end,
     {ok, Cwd} = file:get_cwd(),
     ok = rpc:call(TargetNode, file, set_cwd, [Cwd], ?TIMEOUT),
