@@ -34,14 +34,14 @@ provide a non-resolvable path for additional providers.
 The path configuration element looks as follows:
 
 {% highlight erl %}
-    {paths, [<list of directory paths>]}.
+{paths, [<list of directory paths>]}.
 {% endhighlight %}
 
 So if we wanted to add `/usr/local/lib` and `/opt/lib` to the code
-paths for the system we could add the following::
+paths for the system we could add the following:
 
 {% highlight erl %}
-    {paths, ["/usr/local/lib", "/opt/lib"]}.
+{paths, ["/usr/local/lib", "/opt/lib"]}.
 {% endhighlight %}
 
 to our configuration.
@@ -59,11 +59,11 @@ list of applications and you may specify version constraints instead
 of hard versions.
 
 {% highlight erl %}
-    {release, {relname, vsn},
-      <app goals>}
-    {release, {rkelname, vsn},
-     {erts, vsn},
-      <app goals>}
+{release, {relname, vsn},
+    <app goals>}
+{release, {relname, vsn},
+    {erts, vsn},
+    <app goals>}
 {% endhighlight %}
 
 See the Overview for goal syntax.
@@ -77,7 +77,7 @@ start script. In those situations you may disable automatic start
 script creation by adding the following to your `relx.config`.
 
 {% highlight erl %}
-    {generate_start_script, false}.
+{generate_start_script, false}.
 {% endhighlight %}
 
 Overlays
@@ -103,20 +103,20 @@ providers for more information.
 
 The `providers` element provides a completely new list of providers,
 replacing any providers that may already exist. The provider element
-is as follows::
+is as follows:
 
 {% highlight erl %}
-     {providers, <list of module names>}.
+{providers, <list of module names>}.
 {% endhighlight %}
 
 Lets say I have three providers; `my_custom_assembler`,
 `my_rpm_assembler` and `my_deb_assembler`. I could make these the
-complete list of providers by doing the following in my config::
+complete list of providers by doing the following in my config:
 
 {% highlight erl %}
-    {providers, [my_custom_assembler,
-                 my_rpm_assembler,
-                 my_deb_assembler]}.
+{providers, [my_custom_assembler,
+             my_rpm_assembler,
+             my_deb_assembler]}.
 {% endhighlight %}
 
 Order is important in the providers as they will be executed in the
@@ -130,7 +130,7 @@ providers rather then replacing the list all together. Add providres
 looks as follows::
 
 {% highlight erl %}
-     {add_providers, <list of module names>}.
+{add_providers, <list of module names>}.
 {% endhighlight %}
 
 Lets take our previous example but only add `my_rpm_assembler` and
