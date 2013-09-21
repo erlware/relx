@@ -245,8 +245,8 @@ create_root_dir(Opts, Acc) ->
 -spec create_disable_default_libs([getopt:option()], rlx_state:cmd_args()) ->
                                          {ok, rlx_state:cmd_args()} | relx:error().
 create_disable_default_libs(Opts, Acc) ->
-    Def = proplists:get_value(disable_default_libs, Opts, false),
-    create_upfrom(Opts,  [{disable_default_libs, Def} | Acc]).
+    Def = proplists:get_value(default_libs, Opts, true),
+    create_upfrom(Opts,  [{default_libs, Def} | Acc]).
 
 -spec create_upfrom([getopt:option()], rlx_state:cmd_args()) ->
     {ok, rlx_state:cmd_args()} | relx:error().

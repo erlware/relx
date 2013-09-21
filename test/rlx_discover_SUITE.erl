@@ -73,7 +73,7 @@ normal_case(Config) ->
                     [{create_random_name("lib_app2_"), create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
     State0 = rlx_state:put(proplists:get_value(state, Config),
-                            disable_default_libs, true),
+                            default_libs, false),
     {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
     {ok, State2} = rlx_provider:do(DiscoverProvider, State1),
     lists:foreach(fun(App) ->
