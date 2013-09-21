@@ -19,9 +19,9 @@ App directories specify where `relx` will search for OTP applications to resolve
 
 The app directory configuration element looks as follows:
 
-```
+{% highlight erl %}
 {lib_dirs, [<path1>, <path2>, ...]}.
-```
+{% endhighlight %}
 
 Paths
 -----
@@ -33,12 +33,16 @@ provide a non-resolvable path for additional providers.
 
 The path configuration element looks as follows:
 
+{% highlight erl %}
     {paths, [<list of directory paths>]}.
+{% endhighlight %}
 
 So if we wanted to add `/usr/local/lib` and `/opt/lib` to the code
 paths for the system we could add the following::
 
+{% highlight erl %}
     {paths, ["/usr/local/lib", "/opt/lib"]}.
+{% endhighlight %}
 
 to our configuration.
 
@@ -48,20 +52,21 @@ Releases
 Release configuration is the bread and butter, the blood and bones of
 the Relx system. It provides the framework for realizing
 dependencies in the system. The release element basically minics the
-standard _Erlang/OTP Release Metadata file format:
+standard Erlang/OTP Release Metadata file format:
 http://www.erlang.org/doc/man/rel.html. There are two main
 differences. The first is that you don't have to specify a complete
 list of applications and you may specify version constraints instead
 of hard versions.
 
-
+{% highlight erl %}
     {release, {relname, vsn},
       <app goals>}
-    {release, {relname, vsn},
+    {release, {rkelname, vsn},
      {erts, vsn},
       <app goals>}
+{% endhighlight %}
 
-See the [[Overview]] for goal syntax.
+See the Overview for goal syntax.
 
 Start Script
 ------------
@@ -71,13 +76,14 @@ release. However, there may be times when you want to provide a custom
 start script. In those situations you may disable automatic start
 script creation by adding the following to your `relx.config`.
 
+{% highlight erl %}
     {generate_start_script, false}.
-
+{% endhighlight %}
 
 Overlays
 --------
 
-These are documented on the [[Overlays]] wiki page. Go there for more
+These are documented on the Overlays wiki page. Go there for more
 information.
 
 Advanced Options
@@ -99,15 +105,19 @@ The `providers` element provides a completely new list of providers,
 replacing any providers that may already exist. The provider element
 is as follows::
 
+{% highlight erl %}
      {providers, <list of module names>}.
+{% endhighlight %}
 
 Lets say I have three providers; `my_custom_assembler`,
 `my_rpm_assembler` and `my_deb_assembler`. I could make these the
 complete list of providers by doing the following in my config::
 
+{% highlight erl %}
     {providers, [my_custom_assembler,
                  my_rpm_assembler,
                  my_deb_assembler]}.
+{% endhighlight %}
 
 Order is important in the providers as they will be executed in the
 order specified.
@@ -119,20 +129,23 @@ the listed providers are added to the end of the current list of
 providers rather then replacing the list all together. Add providres
 looks as follows::
 
-
+{% highlight erl %}
      {add_providers, <list of module names>}.
+{% endhighlight %}
 
 Lets take our previous example but only add `my_rpm_assembler` and
 `my_deb_assembler` to the existing list of providers. We do this by
 adding the following::
 
+{% highlight erl %}
     {add_providers, [my_rpm_assembler,
                      my_deb_assembler]}.
+{% endhighlight %}
 
 Example Configuration
 ---------------------
 
-```Erlang
+{% highlight erl %}
 %% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
 %% Example Relx Config
 %% ======================
@@ -210,4 +223,4 @@ Example Configuration
 %% can do this via a 'provider'. A provider is an implementation of the relx
 %% provider behaviour. This probably shouldn't be needed very often.
 {add_providers, [my_custom_functionality]}.
-```
+{% endhighlight %}
