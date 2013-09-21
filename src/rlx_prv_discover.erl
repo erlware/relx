@@ -75,10 +75,10 @@ add(Rel, Dict) ->
 
 get_lib_dirs(State) ->
     LibDirs0 = rlx_state:lib_dirs(State),
-    case rlx_state:get(State, disable_default_libs, false) of
-        true ->
-            LibDirs0;
+    case rlx_state:get(State, default_libs, true) of
         false ->
+            LibDirs0;
+        true ->
             lists:flatten([LibDirs0,
                            add_common_project_dirs(State),
                            add_system_lib_dir(State),

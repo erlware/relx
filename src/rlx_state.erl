@@ -135,8 +135,8 @@ new(PropList, Targets)
                  default_configured_release={proplists:get_value(relname, PropList, undefined),
                                   proplists:get_value(relvsn, PropList, undefined)}},
     rlx_state:put(create_logic_providers(State0),
-                  disable_default_libs,
-                  proplists:get_value(disable_default_libs, PropList, false)).
+                  default_libs,
+                  proplists:get_value(default_libs, PropList, true)).
 
 %% @doc the actions targeted for this system
 -spec actions(t()) -> [action()].
