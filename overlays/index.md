@@ -11,7 +11,7 @@ can take your Overlay configuration and move it to your
 `relx.config` and it should just work. For example, you could take
 the following:
 
-{% highlight erl %}
+{% highlight erlang %}
     {overlay_vars, "vars.config"}.
     {overlay, [{mkdir, "log/sasl"},
                 {copy, "files/erl", "{{erts_vsn}}/bin/erl"},

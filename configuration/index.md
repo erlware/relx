@@ -19,7 +19,7 @@ App directories specify where `relx` will search for OTP applications to resolve
 
 The app directory configuration element looks as follows:
 
-{% highlight erl %}
+{% highlight erlang %}
 {lib_dirs, [<path1>, <path2>, ...]}.
 {% endhighlight %}
 
@@ -33,14 +33,14 @@ provide a non-resolvable path for additional providers.
 
 The path configuration element looks as follows:
 
-{% highlight erl %}
+{% highlight erlang %}
 {paths, [<list of directory paths>]}.
 {% endhighlight %}
 
 So if we wanted to add `/usr/local/lib` and `/opt/lib` to the code
 paths for the system we could add the following:
 
-{% highlight erl %}
+{% highlight erlang %}
 {paths, ["/usr/local/lib", "/opt/lib"]}.
 {% endhighlight %}
 
@@ -58,7 +58,7 @@ differences. The first is that you don't have to specify a complete
 list of applications and you may specify version constraints instead
 of hard versions.
 
-{% highlight erl %}
+{% highlight erlang %}
 {release, {relname, vsn},
     <app goals>}
 {release, {relname, vsn},
@@ -76,7 +76,7 @@ release. However, there may be times when you want to provide a custom
 start script. In those situations you may disable automatic start
 script creation by adding the following to your `relx.config`.
 
-{% highlight erl %}
+{% highlight erlang %}
 {generate_start_script, false}.
 {% endhighlight %}
 
@@ -105,7 +105,7 @@ The `providers` element provides a completely new list of providers,
 replacing any providers that may already exist. The provider element
 is as follows:
 
-{% highlight erl %}
+{% highlight erlang %}
 {providers, <list of module names>}.
 {% endhighlight %}
 
@@ -113,7 +113,7 @@ Lets say I have three providers; `my_custom_assembler`,
 `my_rpm_assembler` and `my_deb_assembler`. I could make these the
 complete list of providers by doing the following in my config:
 
-{% highlight erl %}
+{% highlight erlang %}
 {providers, [my_custom_assembler,
              my_rpm_assembler,
              my_deb_assembler]}.
@@ -129,7 +129,7 @@ the listed providers are added to the end of the current list of
 providers rather then replacing the list all together. Add providres
 looks as follows::
 
-{% highlight erl %}
+{% highlight erlang %}
 {add_providers, <list of module names>}.
 {% endhighlight %}
 
@@ -137,7 +137,7 @@ Lets take our previous example but only add `my_rpm_assembler` and
 `my_deb_assembler` to the existing list of providers. We do this by
 adding the following::
 
-{% highlight erl %}
+{% highlight erlang %}
     {add_providers, [my_rpm_assembler,
                      my_deb_assembler]}.
 {% endhighlight %}
@@ -145,7 +145,7 @@ adding the following::
 Example Configuration
 ---------------------
 
-{% highlight erl %}
+{% highlight erlang %}
 %% -*- mode: Erlang; fill-column: 80; comment-column: 75; -*-
 %% Example Relx Config
 %% ======================
