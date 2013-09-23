@@ -679,9 +679,9 @@ find_sys_config() {
 }
 
 # Use $CWD/vm.args if exists, otherwise releases/APP_VSN/vm.args, or else etc/vm.args
-if [ -e \"$CALLER_DIR/vm.args\" ]; then
-    VMARGS_PATH=$CALLER_DIR/vm.args
-    USE_DIR=$CALLER_DIR
+if [ -e \"$RELEASE_ROOT_DIR/vm.args\" ]; then
+    VMARGS_PATH=$RELEASE_ROOT_DIR/vm.args
+    USE_DIR=$RELEASE_ROOT_DIR
 else
     USE_DIR=$REL_DIR
     if [ -e \"$REL_DIR/vm.args\" ]; then
