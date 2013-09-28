@@ -41,7 +41,7 @@ do(State, LibDirs, AppMeta) ->
     rlx_log:info(rlx_state:log(State),
                  fun() ->
                          ["Resolving available OTP Releases from directories:\n",
-                          [[rlx_util:indent(2), LibDir, "\n"] || LibDir <- LibDirs]]
+                          string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
                  end),
     resolve_rel_metadata(State, LibDirs, AppMeta).
 
