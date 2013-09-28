@@ -39,8 +39,8 @@
 do(State, LibDirs) ->
     rlx_log:info(rlx_state:log(State),
                  fun() ->
-                         ["Resolving OTP Applications from directories:\n",
-                          [[rlx_util:indent(2), LibDir, "\n"] || LibDir <- LibDirs]]
+                           ["Resolving OTP Applications from directories:\n",
+                            string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
                  end),
     resolve_app_metadata(State, LibDirs).
 
@@ -62,6 +62,9 @@ resolve_app_metadata(State, LibDirs) ->
             case Err of
                 {error, _} ->
                     true;
+                {warning, W} ->
+                    rlx_log:warn(rlx_state:log(State), format_detail(W)),
+                    false;
                 _ ->
                     false
             end] of
@@ -79,6 +82,8 @@ resolve_app_metadata(State, LibDirs) ->
             ?RLX_ERROR(Errors)
     end.
 
+app_name({warning, _}) ->
+    undefined;
 app_name({error, _}) ->
     undefined;
 app_name({ok, AppMeta}) ->
@@ -103,7 +108,7 @@ resolve_override(AppName, FileName0) ->
     end.
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
-format_detail({error, {missing_beam_file, Module, BeamFile}}) ->
+format_detail({missing_beam_file, Module, BeamFile}) ->
     io_lib:format("Missing beam file ~p ~p", [Module, BeamFile]);
 format_detail({error, {invalid_override, AppName, FileName}}) ->
     io_lib:format("Override {~p, ~p} is not a valid OTP App. Perhaps you forgot to build it?",
@@ -161,9 +166,9 @@ gather_application_info(EbinDir, File) ->
         {ok, [{application, AppName, AppDetail}]} ->
             validate_application_info(EbinDir, File, AppName, AppDetail);
         {error, Reason} ->
-            {error, {unable_to_load_app, AppDir, Reason}};
+            {warning, {unable_to_load_app, AppDir, Reason}};
         _ ->
-            {error, {invalid_app_file, File}}
+            {warning, {invalid_app_file, File}}
     end.
 
 -spec validate_application_info(file:name(),
@@ -189,7 +194,7 @@ validate_application_info(EbinDir, AppFile, AppName, AppDetail) ->
 get_modules_list(AppFile, AppDetail) ->
     case proplists:get_value(modules, AppDetail) of
         undefined ->
-            {error, {invalid_app_file, AppFile}};
+            {warning, {invalid_app_file, AppFile}};
         ModulesList ->
             {ok, ModulesList}
     end.
@@ -203,7 +208,7 @@ has_all_beams(EbinDir, [Module | ModuleList]) ->
         true ->
             has_all_beams(EbinDir, ModuleList);
         false ->
-            {error, {missing_beam_file, Module, BeamFile}}
+            {warning, {missing_beam_file, Module, BeamFile}}
     end;
 has_all_beams(_, []) ->
     ok.

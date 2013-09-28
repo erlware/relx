@@ -57,7 +57,7 @@ Options
 | -l    | --lib-dir    | string  |         | Additional dirs to search for OTP apps |
 | -p    | --path    | string  |         | Additional dirs to add to Erlang code path |
 |       | --default-libs | boolean | true | Whether to use the default system added lib dirs (means you must add them all manually) |
-| -V    | --verbose    | integer | 0       | The verbosity level between 0 and 2 |
+| -V    | --verbose    | integer | 2       | The verbosity level between 0 and 3 |
 | -a    | --override_app | string | | An app name and a directory to override in the form appname:dir |
 | -c    | --config     | string  | ./relx.config | Config file path |
 

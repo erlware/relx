@@ -431,10 +431,16 @@ make_tar(State, Release, OutputDir) ->
     Prefix = code:root_dir(),
     ErtsVersion = rlx_release:erts(Release),
     ErtsDir = filename:join([Prefix]),
+    Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
+           {outdir, OutputDir} |
+            case rlx_state:get(State, include_erts, true) of
+                true ->
+                    [{erts, ErtsDir}];
+                false ->
+                    []
+            end],
     case systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]),
-                           [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
-                           {erts, ErtsDir},
-                           {outdir, OutputDir}]) of
+                           Opts) of
         ok ->
             TempDir = ec_file:insecure_mkdtemp(),
             try
@@ -456,19 +462,25 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
     file:rename(filename:join(OutputDir, Name++".tar.gz"), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
-    ok = erl_tar:create(TarFile,
-                        [{"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)},
-                         {filename:join(["erts-"++ErtsVersion, "bin", "nodetool"]),
-                          hd(nodetool_contents())},
-                         {filename:join(["erts-"++ErtsVersion, "bin", "install_upgrade.escript"]),
-                          hd(install_upgrade_escript_contents())},
-                         {"lib", filename:join(TempDir, "lib")},
-                         {"releases", filename:join(TempDir, "releases")},
-                         {filename:join(["releases", "RELEASES"]),
-                          filename:join([OutputDir, "releases", "RELEASES"])},
-                         {filename:join(["releases", Vsn, "vm.args"]),
-                          filename:join([OutputDir, "releases", Vsn, "vm.args"])},
-                         {"bin", filename:join([OutputDir, "bin"])}], [compressed]),
+    ok =
+        erl_tar:create(TarFile,
+                       [{"lib", filename:join(TempDir, "lib")},
+                        {"releases", filename:join(TempDir, "releases")},
+                        {filename:join(["releases", "RELEASES"]),
+                         filename:join([OutputDir, "releases", "RELEASES"])},
+                        {filename:join(["releases", Vsn, "vm.args"]),
+                         filename:join([OutputDir, "releases", Vsn, "vm.args"])},
+                        {"bin", filename:join([OutputDir, "bin"])} |
+                        case rlx_state:get(State, include_erts, true) of
+                            true ->
+                                [{"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)},
+                                 {filename:join(["erts-"++ErtsVersion, "bin", "nodetool"]),
+                                  hd(nodetool_contents())},
+                                 {filename:join(["erts-"++ErtsVersion, "bin", "install_upgrade.escript"]),
+                                  hd(install_upgrade_escript_contents())}];
+                            false ->
+                                []
+                        end], [compressed]),
     rlx_log:info(rlx_state:log(State),
                  "tarball ~s successfully created!~n", [TarFile]),
     ec_file:remove(TempDir, [recursive]),

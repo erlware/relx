@@ -32,6 +32,8 @@
          info/3,
          error/2,
          error/3,
+         warn/2,
+         warn/3,
          log_level/1,
          atom_log_level/1,
          format/1]).
@@ -63,11 +65,9 @@
 
 -type log_level() :: int_log_level() | atom_log_level().
 
--type int_log_level() :: 0..2.
+-type int_log_level() :: 0..3.
 
-%% Why no warn? because for our purposes there is no difference between error
-%% and warn
--type atom_log_level() :: error | info | debug.
+-type atom_log_level() :: error | warn | info | debug.
 
 -type log_fun() :: fun(() -> iolist()).
 
@@ -83,16 +83,18 @@
 new(LogLevel) ->
     new(LogLevel, api).
 
-new(LogLevel, Caller) when LogLevel >= 0, LogLevel =< 2 ->
+new(LogLevel, Caller) when LogLevel >= 0, LogLevel =< 3 ->
     #state_t{mod=?MODULE, log_level=LogLevel, caller=Caller};
 new(AtomLogLevel, Caller)
   when AtomLogLevel =:= error;
+       AtomLogLevel =:= warn;
        AtomLogLevel =:= info;
        AtomLogLevel =:= debug ->
     LogLevel = case AtomLogLevel of
                    error -> 0;
-                   info -> 1;
-                   debug -> 2
+                   warn -> 1;
+                   info -> 2;
+                   debug -> 3
                end,
     new(LogLevel, Caller).
 
@@ -142,6 +144,21 @@ error(LogState, String) ->
 error(LogState, FormatString, Args) ->
     log(LogState, ?RLX_ERROR, colorize(LogState, ?GREEN, false, FormatString), Args).
 
+%% @doc log at the warn level given the current log state with a string or
+%% format string that returns a function
+-spec warn(t(), string() | log_fun()) -> ok.
+warn(LogState, Fun)
+    when erlang:is_function(Fun) ->
+    log(LogState, ?RLX_WARN, fun() -> colorize(LogState, ?MAGENTA, false, Fun()) end);
+warn(LogState, String) ->
+    warn(LogState, "~s~n", [String]).
+
+%% @doc log at the warn level given the current log state with a format string
+%% and argements @see io:format/2
+-spec warn(t(), string(), [any()]) -> ok.
+warn(LogState, FormatString, Args) ->
+    log(LogState, ?RLX_WARN, colorize(LogState, ?MAGENTA, false, FormatString), Args).
+
 %% @doc Execute the fun passed in if log level is as expected.
 -spec log(t(), int_log_level(), log_fun()) -> ok.
 log(#state_t{mod=?MODULE, log_level=DetailLogLevel}, LogLevel, Fun)
@@ -178,6 +195,8 @@ log_level(#state_t{mod=?MODULE, log_level=DetailLogLevel}) ->
 -spec atom_log_level(t()) -> atom_log_level().
 atom_log_level(#state_t{mod=?MODULE, log_level=?RLX_ERROR}) ->
     error;
+atom_log_level(#state_t{mod=?MODULE, log_level=?RLX_WARN}) ->
+    warn;
 atom_log_level(#state_t{mod=?MODULE, log_level=?RLX_INFO}) ->
     info;
 atom_log_level(#state_t{mod=?MODULE, log_level=?RLX_DEBUG}) ->

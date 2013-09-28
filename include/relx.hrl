@@ -17,8 +17,9 @@
 %%
 
 -define(RLX_ERROR, 0).
--define(RLX_INFO, 1).
--define(RLX_DEBUG, 2).
+-define(RLX_WARN, 1).
+-define(RLX_INFO, 2).
+-define(RLX_DEBUG, 3).
 
 %% This is the default form of error messages for the Relx
 %% system. It is expected that everything that returns an error use
