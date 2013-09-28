@@ -80,7 +80,7 @@ format_error({not_directory, Dir}) ->
     io_lib:format("Library directory does not exist: ~s", [Dir]);
 format_error({invalid_log_level, LogLevel}) ->
     io_lib:format("Invalid log level specified -V ~p, log level must be in the"
-                 " range 0..2", [LogLevel]);
+                 " range 0..3", [LogLevel]);
 format_error({invalid_target, Target}) ->
     io_lib:format("Invalid action specified: ~s", [Target]).
 
@@ -136,7 +136,7 @@ validate_config(Config) ->
 create_log(Opts, Acc) ->
     LogLevel = proplists:get_value(log_level, Opts, 0),
     if
-        LogLevel >= 0, LogLevel =< 2 ->
+        LogLevel >= 0, LogLevel =< 3 ->
             create_goals(Opts, [{log, rlx_log:new(LogLevel, command_line)} | Acc]);
         true ->
             ?RLX_ERROR({invalid_log_level, LogLevel})

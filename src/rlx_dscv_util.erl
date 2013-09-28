@@ -97,6 +97,8 @@ discover_dir(ProcessDir, File, file) ->
             [{ok, Result}];
         {noresult, _} ->
             [];
+        Warn = {warning, _} ->
+            [Warn];
         Err = {error, _} ->
             [Err]
     end;

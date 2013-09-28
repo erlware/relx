@@ -138,12 +138,11 @@ bad_ebin_case(Config) ->
     Filename = filename:join([AppDir,  <<"ebin">>, BadName ++ ".app"]),
     ok = filelib:ensure_dir(Filename),
     ok = ec_file:write_term(Filename, get_bad_app_metadata(BadName, BadVsn)),
-    write_beam_file(AppDir, BadName),
     State0 = proplists:get_value(state, Config),
     {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
-    ?assertMatch({error, {_, [{invalid_app_file, Filename}]}},
-                 rlx_provider:do(DiscoverProvider, State1)).
-
+    {ok, State2} = rlx_provider:do(DiscoverProvider, State1),
+    ?assertMatch([], [App || App <- rlx_state:available_apps(State2),
+                             BadName =:= rlx_app_info:name(App)]).
 
 %%%===================================================================
 %%% Helper functions
@@ -178,7 +177,7 @@ get_bad_app_metadata(Name, Vsn) ->
     ["{application, ", Name, ",
      [{description, \"\"},
       {vsn, \"", Vsn, "\"},
-      {modules, [],
+      {modules, [missing],
       {applications, [kernel, stdlib]}]}."].
 
 
