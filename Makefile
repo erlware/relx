@@ -32,7 +32,7 @@ endif
 REBAR=$(shell which rebar)
 
 ifeq ($(REBAR),)
-$(error "Rebar not available on this system")
+REBAR=$(CURDIR)/rebar
 endif
 
 # =============================================================================
@@ -62,15 +62,22 @@ all: deps compile escript
 # Rules to build the system
 # =============================================================================
 
-deps:
+REBAR_URL=https://github.com/rebar/rebar/wiki/rebar
+$(REBAR):
+	curl -Lo rebar $(REBAR_URL) || wget $(REBAR_URL)
+	chmod a+x rebar
+
+get-rebar: $(REBAR)
+
+deps: $(REBAR)
 	$(REBAR) get-deps
 	$(REBAR) compile
 
-update-deps:
+update-deps: $(REBAR)
 	$(REBAR) update-deps
 	$(REBAR) compile
 
-compile:
+compile: $(REBAR)
 	$(REBAR) skip_deps=true compile
 
 escript: deps
@@ -122,7 +129,7 @@ clean-common-test-data:
 # data. Without this rebar eunit gets very confused
 	- rm -rf $(CURDIR)/test/*_SUITE_data
 
-clean: clean-common-test-data
+clean: clean-common-test-data $(REBAR)
 	- rm -rf $(CURDIR)/test/*.beam
 	- rm -rf $(CURDIR)/logs
 	- rm -rf $(CURDIR)/ebin
