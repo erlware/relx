@@ -740,9 +740,6 @@ if [ -z \"$COOKIE_ARG\" ]; then
     exit 1
 fi
 
-# Setup remote shell command to control node
-REMSH=\"$ERTS_PATH/erl $REMSH_NAME_ARG $REMSH_REMSH_ARG $COOKIE_ARG\"
-
 find_erts_dir
 find_sys_config
 export ROOTDIR=$RELEASE_ROOT_DIR
@@ -752,6 +749,9 @@ export PROGNAME=erl
 export LD_LIBRARY_PATH=$ERTS_DIR/lib
 
 cd $ROOTDIR
+
+# Setup remote shell command to control node
+REMSH=\"$ERTS_DIR/bin/erl $REMSH_NAME_ARG $REMSH_REMSH_ARG $COOKIE_ARG\"
 
 # Setup command to control the node
 NODETOOL=\"$ERTS_DIR/bin/escript $ERTS_DIR/bin/nodetool $NAME_ARG $COOKIE_ARG\"
