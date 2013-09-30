@@ -740,9 +740,6 @@ if [ -z \"$COOKIE_ARG\" ]; then
     exit 1
 fi
 
-# Setup remote shell command to control node
-REMSH=\"$ERTS_PATH/erl $REMSH_NAME_ARG $REMSH_REMSH_ARG $COOKIE_ARG\"
-
 find_erts_dir
 find_sys_config
 export ROOTDIR=$RELEASE_ROOT_DIR
@@ -753,8 +750,11 @@ export LD_LIBRARY_PATH=$ERTS_DIR/lib
 
 cd $ROOTDIR
 
+# Setup remote shell command to control node
+REMSH=\"$BINDIR/erl $REMSH_NAME_ARG $REMSH_REMSH_ARG $COOKIE_ARG\"
+
 # Setup command to control the node
-NODETOOL=\"$ERTS_DIR/bin/escript $ERTS_DIR/bin/nodetool $NAME_ARG $COOKIE_ARG\"
+NODETOOL=\"$BINDIR/escript $BINDIR/nodetool $NAME_ARG $COOKIE_ARG\"
 
 # Check the first argument for instructions
 case \"$1\" in
@@ -782,7 +782,7 @@ case \"$1\" in
         HEART_COMMAND=\"$SCRIPT_DIR/bin/$REL_NAME $HEART_OPTION $RUN_PARAM\"
         export HEART_COMMAND
         mkdir -p $PIPE_DIR
-        $ERTS_DIR/bin/run_erl -daemon $PIPE_DIR $RUNNER_LOG_DIR \"exec $RELEASE_ROOT_DIR/bin/$REL_NAME $START_OPTION $RUN_PARAM\" 2>&1
+        $BINDIR/run_erl -daemon $PIPE_DIR $RUNNER_LOG_DIR \"exec $RELEASE_ROOT_DIR/bin/$REL_NAME $START_OPTION $RUN_PARAM\" 2>&1
         ;;
 
     stop)
@@ -851,7 +851,7 @@ case \"$1\" in
         fi
 
         shift
-        exec $ERTS_DIR/bin/to_erl $PIPE_DIR
+        exec $BINDIR/to_erl $PIPE_DIR
         ;;
 
     remote_console)
@@ -886,7 +886,7 @@ case \"$1\" in
         node_name=`echo $NAME_ARG | awk '{print $2}'`
         erlang_cookie=`echo $COOKIE_ARG | awk '{print $2}'`
 
-        exec $ERTS_DIR/bin/escript $ERTS_DIR/bin/install_upgrade.escript $REL_NAME $node_name $erlang_cookie $2
+        exec $BINDIR/escript $BINDIR/install_upgrade.escript $REL_NAME $node_name $erlang_cookie $2
         ;;
 
     console|console_clean|console_boot)
