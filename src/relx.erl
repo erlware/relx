@@ -30,7 +30,7 @@
 
 -export_type([error/0]).
 
--include_lib("relx/include/relx.hrl").
+-include("relx.hrl").
 
 %%============================================================================
 %% types

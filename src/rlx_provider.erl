@@ -33,7 +33,7 @@
 
 -export_type([t/0]).
 
--include_lib("relx/include/relx.hrl").
+-include_lib("relx.hrl").
 
 %%%===================================================================
 %%% Types
