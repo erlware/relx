@@ -30,7 +30,7 @@
 
 -define(DIRECTORY_RE, ".*(\/|\\\\)$").
 
--include_lib("relx/include/relx.hrl").
+-include_lib("relx.hrl").
 
 %%============================================================================
 %% API
