@@ -27,7 +27,7 @@
 -export([do/2,
          format_error/1]).
 
--include_lib("relx/include/relx.hrl").
+-include_lib("relx.hrl").
 
 %%============================================================================
 %% API
