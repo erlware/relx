@@ -27,7 +27,7 @@
 -export([do/2,
          format_error/1]).
 
--include_lib("relx.hrl").
+-include("relx.hrl").
 
 %%============================================================================
 %% Types
