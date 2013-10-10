@@ -44,7 +44,7 @@
               log_level/0,
               log_fun/0]).
 
--include_lib("relx.hrl").
+-include("relx.hrl").
 
 -define(RED, 31).
 -define(GREEN, 32).

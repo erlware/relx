@@ -52,7 +52,7 @@
               application_spec/0,
               application_goal/0]).
 
--include_lib("relx.hrl").
+-include("relx.hrl").
 
 -record(release_t, {name :: atom(),
                     vsn :: ec_semver:any_version(),
