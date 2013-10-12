@@ -174,6 +174,10 @@ load_terms({vm_args, VmArgs}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
 load_terms({sys_config, SysConfig}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, filename:absname(SysConfig))};
+load_terms({overlay_vars, OverlayVars}, {ok, State}) ->
+    CurrentOverlayVars = rlx_state:get(State, overlay_vars),
+    NewOverlayVars = lists:umerge(lists:usort(OverlayVars), lists:usort(CurrentOverlayVars)),
+    {ok, rlx_state:put(State, overlay_vars, NewOverlayVars)};
 load_terms({Name, Value}, {ok, State})
   when erlang:is_atom(Name) ->
     {ok, rlx_state:put(State, Name, Value)};

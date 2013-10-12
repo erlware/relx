@@ -134,9 +134,13 @@ new(PropList, Targets)
                  upfrom = proplists:get_value(upfrom, PropList, undefined),
                  default_configured_release={proplists:get_value(relname, PropList, undefined),
                                   proplists:get_value(relvsn, PropList, undefined)}},
-    rlx_state:put(create_logic_providers(State0),
-                  default_libs,
-                  proplists:get_value(default_libs, PropList, true)).
+    State1 = rlx_state:put(create_logic_providers(State0),
+                           default_libs,
+                           proplists:get_value(default_libs, PropList, true)),
+
+    rlx_state:put(create_logic_providers(State1),
+                  overlay_vars,
+                  proplists:get_value(overlay_vars, PropList, [])).
 
 %% @doc the actions targeted for this system
 -spec actions(t()) -> [action()].

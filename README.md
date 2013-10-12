@@ -60,6 +60,7 @@ Options
 | -V    | --verbose    | integer | 2       | The verbosity level between 0 and 3 |
 | -a    | --override_app | string | | An app name and a directory to override in the form appname:dir |
 | -c    | --config     | string  | ./relx.config | Config file path |
+|       | --overlay_vars     | string  |  | Path to a file of overlay variables |
 
 Wiki
 ----
