@@ -457,7 +457,8 @@ overlay_release(Config) ->
     create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
     ConfigFile = filename:join([LibDir1, "relx.config"]),
-    OverlayVars = filename:join([LibDir1, "vars.config"]),
+    OverlayVars1 = filename:join([LibDir1, "vars1.config"]),
+    OverlayVars2 = filename:join([LibDir1, "vars2.config"]),
     Template = filename:join([LibDir1, "test_template"]),
     TestDir = "first_test_dir",
     TestFile = "test_file",
@@ -465,11 +466,11 @@ overlay_release(Config) ->
     TestFileFull = filename:join(TestDirFull, TestFile),
     SecondTestDir = "second_test_dir",
     write_config(ConfigFile,
-                 [{overlay_vars, OverlayVars},
+                 [{overlay_vars, [OverlayVars1, OverlayVars2]},
                   {overlay, [{mkdir, "{{target_dir}}/fooo"},
-                             {copy, OverlayVars,
-                              "{{target_dir}}/{{foo_dir}}/vars.config"},
-                             {copy, OverlayVars,
+                             {copy, OverlayVars1,
+                              "{{target_dir}}/{{foo_dir}}/vars1.config"},
+                             {copy, OverlayVars1,
                               "{{target_dir}}/{{yahoo}}/"},
                              {copy, TestDirFull,
                               "{{target_dir}}/"++SecondTestDir++"/"},
@@ -479,11 +480,15 @@ overlay_release(Config) ->
                    [goal_app_1,
                     goal_app_2]}]),
 
-    VarsFile = filename:join([LibDir1, "vars.config"]),
-    write_config(VarsFile, [{yahoo, "yahoo"},
-                            {yahoo2, [{foo, "bar"}]},
-                            {yahoo3, [{bar, "{{yahoo}}/{{yahoo2.foo}}"}]},
-                            {foo_dir, "foodir"}]),
+    VarsFile1 = filename:join([LibDir1, "vars1.config"]),
+    write_config(VarsFile1, [{yahoo, "yahoo"},
+                             {yahoo2, [{foo, "bar"}]},
+                             {yahoo3, [{bar, "{{yahoo}}/{{yahoo2.foo}}"}]},
+                             {foo_dir, "foodir"}]),
+
+    VarsFile2 = filename:join([LibDir1, "vars2.config"]),
+    write_config(VarsFile2, [{google, "yahoo"},
+                             {yahoo2, [{foo, "foo"}]}]),
 
     ok = rlx_util:mkdir_p(TestDirFull),
     ok = file:write_file(TestFileFull, test_template_contents()),
@@ -510,8 +515,8 @@ overlay_release(Config) ->
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
     ?assert(ec_file:exists(filename:join(OutputDir, "fooo"))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars.config"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars1.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars1.config"]))),
     io:format("DirFile ~p~n", [filename:join([OutputDir, SecondTestDir, TestDir, TestFile])]),
     ?assert(ec_file:exists(filename:join([OutputDir, SecondTestDir, TestDir, TestFile]))),
 
@@ -579,12 +584,14 @@ overlay_release(Config) ->
                  proplists:get_value(default_release, TemplateData)),
     ?assertEqual("yahoo",
                  proplists:get_value(yahoo, TemplateData)),
-    ?assertEqual("bar",
+    ?assertEqual("foo",
                  proplists:get_value(yahoo2_foo, TemplateData)),
     ?assertEqual("foodir",
                  proplists:get_value(foo_dir, TemplateData)),
-    ?assertEqual("yahoo/bar",
-                 proplists:get_value(yahoo3, TemplateData)).
+    ?assertEqual("yahoo/foo",
+                 proplists:get_value(yahoo3, TemplateData)),
+    ?assertEqual("yahoo",
+                 proplists:get_value(google, TemplateData)).
 
 make_goalless_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -918,4 +925,5 @@ test_template_contents() ->
         "{yahoo, \"{{yahoo}}\"}.\n"
         "{yahoo2_foo, \"{{yahoo2.foo}}\"}.\n"
         "{foo_dir, \"{{foo_dir}}\"}.\n"
-        "{yahoo3, \"{{yahoo3.bar}}\"}.\n".
+        "{yahoo3, \"{{yahoo3.bar}}\"}.\n"
+        "{google, \"{{google}}\"}.\n".
