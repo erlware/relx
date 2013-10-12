@@ -105,26 +105,38 @@ get_overlay_vars_from_file(State, OverlayVars) ->
     case rlx_state:get(State, overlay_vars, undefined) of
         undefined ->
             do_overlay(State, OverlayVars);
-        FileName ->
-            read_overlay_vars(State, OverlayVars, FileName)
+        [H | _]=FileNames when is_list(H) ->
+            read_overlay_vars(State, OverlayVars, FileNames);
+        FileName when is_list(FileName) ->
+            read_overlay_vars(State, OverlayVars, [FileName])
     end.
 
--spec read_overlay_vars(rlx_state:t(), proplists:proplist(), file:name()) ->
+-spec read_overlay_vars(rlx_state:t(), proplists:proplist(), [file:name()]) ->
                                    {ok, rlx_state:t()} | relx:error().
-read_overlay_vars(State, OverlayVars, FileName) ->
-    RelativeRoot = get_relative_root(State),
-    RelativePath = filename:join(RelativeRoot, erlang:iolist_to_binary(FileName)),
-    case file:consult(RelativePath) of
-        {ok, Terms} ->
-            case render_overlay_vars(OverlayVars, Terms, []) of
-                {ok, NewTerms} ->
-                    do_overlay(State, NewTerms ++ OverlayVars);
-                Error ->
-                    Error
-            end;
-        {error, Reason} ->
-            ?RLX_ERROR({unable_to_read_varsfile, FileName, Reason})
+read_overlay_vars(State, OverlayVars, FileNames) ->
+    Terms = merge_overlay_vars(State, FileNames),
+    case render_overlay_vars(OverlayVars, Terms, []) of
+        {ok, NewTerms} ->
+            do_overlay(State, OverlayVars ++ NewTerms);
+        Error ->
+            Error
     end.
+
+-spec merge_overlay_vars(rlx_state:t(), [file:name()]) ->
+                                proplists:proplist().
+merge_overlay_vars(State, FileNames) ->
+    RelativeRoot = get_relative_root(State),
+    lists:foldl(fun(FileName, Acc) ->
+                        RelativePath = filename:join(RelativeRoot, erlang:iolist_to_binary(FileName)),
+                        case file:consult(RelativePath) of
+                            {ok, Terms} ->
+                                lists:ukeymerge(1, lists:ukeysort(1, Terms), Acc);
+                            {error, Reason} ->
+                                rlx_log:warn(rlx_state:log(State),
+                                            format_error({unable_to_read_varsfile, FileName, Reason})),
+                                Acc
+                        end
+                end, [], FileNames).
 
 -spec render_overlay_vars(proplists:proplist(), proplists:proplist(),
                          proplists:proplist()) ->
