@@ -37,11 +37,11 @@
 %% looking for OTP Applications
 -spec do(rlx_state:t(), [file:name()]) -> {ok, [rlx_app_info:t()]} | relx:error().
 do(State, LibDirs) ->
-    rlx_log:info(rlx_state:log(State),
-                 fun() ->
-                           ["Resolving OTP Applications from directories:\n",
-                            string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
-                 end),
+    ec_cmd_log:info(rlx_state:log(State),
+                    fun() ->
+                            ["Resolving OTP Applications from directories:\n",
+                             string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
+                    end),
     resolve_app_metadata(State, LibDirs).
 
 -spec format_error([ErrorDetail::term()]) -> iolist().
@@ -58,25 +58,25 @@ resolve_app_metadata(State, LibDirs) ->
               {error, Ret} ->
                   Ret
           end
-         || Err <- AppMeta0,
-            case Err of
-                {error, _} ->
-                    true;
-                {warning, W} ->
-                    rlx_log:warn(rlx_state:log(State), format_detail(W)),
-                    false;
-                _ ->
-                    false
-            end] of
+          || Err <- AppMeta0,
+             case Err of
+                 {error, _} ->
+                     true;
+                 {warning, W} ->
+                     ec_cmd_log:warn(rlx_state:log(State), format_detail(W)),
+                     false;
+                 _ ->
+                     false
+             end] of
         [] ->
             SkipApps = rlx_state:skip_apps(State),
             AppMeta1 = [App || {ok, App} <- setup_overrides(State, AppMeta0),
                                not lists:keymember(rlx_app_info:name(App), 1, SkipApps)],
-            rlx_log:debug(rlx_state:log(State),
-                          fun() ->
-                                  ["Resolved the following OTP Applications from the system: \n",
-                                   [[rlx_app_info:format(2, App), "\n"] || App <- AppMeta1]]
-                          end),
+            ec_cmd_log:debug(rlx_state:log(State),
+                             fun() ->
+                                     ["Resolved the following OTP Applications from the system: \n",
+                                      [[rlx_app_info:format(2, App), "\n"] || App <- AppMeta1]]
+                             end),
             {ok, AppMeta1};
         Errors ->
             ?RLX_ERROR(Errors)

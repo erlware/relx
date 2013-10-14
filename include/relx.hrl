@@ -16,10 +16,12 @@
 %% under the License.
 %%
 
--define(RLX_ERROR, 0).
--define(RLX_WARN, 1).
--define(RLX_INFO, 2).
--define(RLX_DEBUG, 3).
+-include_lib("erlware_commons/include/ec_cmd_log.hrl").
+
+-define(RLX_ERROR, ?EC_ERROR).
+-define(RLX_WARN, ?EC_WARN).
+-define(RLX_INFO, ?EC_INFO).
+-define(RLX_DEBUG, ?EC_DEBUG).
 
 %% This is the default form of error messages for the Relx
 %% system. It is expected that everything that returns an error use
