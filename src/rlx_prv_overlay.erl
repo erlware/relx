@@ -105,6 +105,8 @@ get_overlay_vars_from_file(State, OverlayVars) ->
     case rlx_state:get(State, overlay_vars, undefined) of
         undefined ->
             do_overlay(State, OverlayVars);
+        [] ->
+            do_overlay(State, OverlayVars);
         [H | _]=FileNames when is_list(H) ->
             read_overlay_vars(State, OverlayVars, FileNames);
         FileName when is_list(FileName) ->
