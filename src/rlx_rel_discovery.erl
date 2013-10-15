@@ -38,7 +38,7 @@
 -spec do(rlx_state:t(), [file:name()], [rlx_app_info:t()]) ->
                 {ok, [rlx_release:t()]} | relx:error().
 do(State, LibDirs, AppMeta) ->
-    rlx_log:info(rlx_state:log(State),
+    ec_cmd_log:info(rlx_state:log(State),
                  fun() ->
                          ["Resolving available OTP Releases from directories:\n",
                           string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
@@ -75,7 +75,7 @@ resolve_rel_metadata(State, LibDirs, AppMeta) ->
     case Errors of
         [] ->
             ReleaseMeta1 = [RelMeta || {ok, RelMeta} <- ReleaseMeta0],
-            rlx_log:debug(rlx_state:log(State),
+            ec_cmd_log:debug(rlx_state:log(State),
                           fun() ->
                                   ["Resolved the following OTP Releases from the system: \n",
                                    [[rlx_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta1]]

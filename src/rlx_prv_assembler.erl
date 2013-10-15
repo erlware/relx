@@ -380,14 +380,14 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
                             systools:make_script(Name, CorrectedOptions)
                     end) of
         ok ->
-            rlx_log:error(rlx_state:log(State),
+            ec_cmd_log:error(rlx_state:log(State),
                           "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
             {ok, State};
         error ->
             ?RLX_ERROR({release_script_generation_error, ReleaseFile});
         {ok, _, []} ->
-            rlx_log:error(rlx_state:log(State),
+            ec_cmd_log:error(rlx_state:log(State),
                           "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
             {ok, State};
@@ -481,7 +481,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                             false ->
                                 []
                         end], [compressed]),
-    rlx_log:info(rlx_state:log(State),
+    ec_cmd_log:info(rlx_state:log(State),
                  "tarball ~s successfully created!~n", [TarFile]),
     ec_file:remove(TempDir, [recursive]),
     {ok, State}.
@@ -503,7 +503,7 @@ make_upfrom_script(State, Release, UpFrom) ->
                silent],
     CurrentRel = strip_rel(rlx_release:relfile(Release)),
     UpFromRel = strip_rel(rlx_release:relfile(UpFrom)),
-    rlx_log:debug(rlx_state:log(State),
+    ec_cmd_log:debug(rlx_state:log(State),
                   "systools:make_relup(~p, ~p, ~p, ~p)",
                   [CurrentRel, UpFromRel, UpFromRel, Options]),
     case make_script(Options,
@@ -511,14 +511,14 @@ make_upfrom_script(State, Release, UpFrom) ->
                              systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], CorrectOptions)
                      end)  of
         ok ->
-            rlx_log:error(rlx_state:log(State),
+            ec_cmd_log:error(rlx_state:log(State),
                           "relup from ~s to ~s successfully created!",
                           [UpFromRel, CurrentRel]),
             {ok, State};
         error ->
             ?RLX_ERROR({relup_script_generation_error, CurrentRel, UpFromRel});
         {ok, RelUp, _, []} ->
-            rlx_log:error(rlx_state:log(State),
+            ec_cmd_log:error(rlx_state:log(State),
                           "relup successfully created!"),
             write_relup_file(State, Release, RelUp),
             {ok, State};

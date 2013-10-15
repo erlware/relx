@@ -138,7 +138,7 @@ release_sort({{RelNameA, RelVsnA}, _}, {{RelNameB, RelVsnB}, _}) ->
         ec_semver:lte(RelVsnA, RelVsnB).
 
 solve_release(State0, DepGraph, RelName, RelVsn) ->
-    rlx_log:debug(rlx_state:log(State0),
+    ec_cmd_log:debug(rlx_state:log(State0),
                   "Solving Release ~p-~s~n",
                   [RelName, RelVsn]),
     try
@@ -169,11 +169,11 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
 set_resolved(State, Release0, Pkgs) ->
    case rlx_release:realize(Release0, Pkgs, rlx_state:available_apps(State)) of
        {ok, Release1} ->
-           rlx_log:info(rlx_state:log(State),
+           ec_cmd_log:info(rlx_state:log(State),
                         "Resolved ~p-~s~n",
                         [rlx_release:name(Release1),
                          rlx_release:vsn(Release1)]),
-           rlx_log:debug(rlx_state:log(State),
+           ec_cmd_log:debug(rlx_state:log(State),
                          fun() ->
                                  rlx_release:format(0, Release1)
                          end),
