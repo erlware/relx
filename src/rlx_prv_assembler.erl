@@ -729,7 +729,7 @@ REMSH_NAME=`echo $NAME_ARG | awk '{print $2}'`
 
 # Note the `date +%s`, used to allow multiple remsh to the same node transparently
 REMSH_NAME_ARG=\"$REMSH_TYPE remsh`date +%s`@`echo $REMSH_NAME | awk -F@ '{print $2}'`\"
-REMSH_REMSH_ARG=\"-remsh $REMSH_NAME\"
+REMSH_REMSH_ARG=\"-remsh $REMSH_NAME -boot start_clean\"
 
 # Extract the target cookie
 COOKIE_ARG=`grep '^-setcookie' $VMARGS_PATH`
