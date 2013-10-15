@@ -343,8 +343,10 @@ include_erts(State, Release, OutputDir, RelDir) ->
                 true ->
                     ok = ec_file:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive]),
-                    ok = ec_file:remove(filename:join([LocalErts, "bin", "erl"])),
-                    ok = file:write_file(filename:join([LocalErts, "bin", "erl"]), erl_script(ErtsVersion)),
+                    Erl = filename:join([LocalErts, "bin", "erl"]),
+                    ok = ec_file:remove(Erl),
+                    ok = file:write_file(Erl, erl_script(ErtsVersion)),
+                    ok = file:change_mode(Erl, 8#755),
                     case rlx_state:get(State, extended_start_script, false) of
                         true ->
                             ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
@@ -473,11 +475,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                         {"bin", filename:join([OutputDir, "bin"])} |
                         case rlx_state:get(State, include_erts, true) of
                             true ->
-                                [{"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)},
-                                 {filename:join(["erts-"++ErtsVersion, "bin", "nodetool"]),
-                                  hd(nodetool_contents())},
-                                 {filename:join(["erts-"++ErtsVersion, "bin", "install_upgrade.escript"]),
-                                  hd(install_upgrade_escript_contents())}];
+                                [{"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}];
                             false ->
                                 []
                         end], [compressed]),
