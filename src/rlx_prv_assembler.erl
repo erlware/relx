@@ -970,7 +970,7 @@ main([RelName, NodeName, Cookie, VersionArg]) ->
                           [ReleasePackage], ?TIMEOUT) of
                 {ok, Vsn} ->
                     ?INFO(\"Unpacked successfully: ~p~n\", [Vsn]),
-                    install_and_permafy(TargetNode, Vsn);
+                    install_and_permafy(TargetNode, RelName, Vsn);
                 {error, UnpackReason} ->
                     print_existing_versions(TargetNode),
                     ?INFO(\"Unpack failed: ~p~n\",[UnpackReason]),
@@ -979,13 +979,13 @@ main([RelName, NodeName, Cookie, VersionArg]) ->
         old ->
             %% no need to unpack, has been installed previously
             ?INFO(\"Release ~s is marked old, switching to it.~n\",[Version]),
-            install_and_permafy(TargetNode, Version);
+            install_and_permafy(TargetNode, RelName, Version);
         unpacked ->
             ?INFO(\"Release ~s is already unpacked, now installing.~n\",[Version]),
-            install_and_permafy(TargetNode, Version);
+            install_and_permafy(TargetNode, RelName, Version);
         current -> %% installed and in-use, just needs to be permanent
             ?INFO(\"Release ~s is already installed and current. Making permanent.~n\",[Version]),
-            permafy(TargetNode, Version);
+            permafy(TargetNode, RelName, Version);
         permanent ->
             ?INFO(\"Release ~s is already installed, and set permanent.~n\",[Version])
     end;
@@ -995,7 +995,7 @@ main(_) ->
 parse_version(V) when is_list(V) ->
     hd(string:tokens(V,\"/\")).
 
-install_and_permafy(TargetNode, Vsn) ->
+install_and_permafy(TargetNode, RelName, Vsn) ->
     case rpc:call(TargetNode, release_handler, check_install_release, [Vsn], ?TIMEOUT) of
         {ok, _OtherVsn, _Desc} ->
             ok;
@@ -1006,7 +1006,7 @@ install_and_permafy(TargetNode, Vsn) ->
     case rpc:call(TargetNode, release_handler, install_release, [Vsn], ?TIMEOUT) of
         {ok, _, _} ->
             ?INFO(\"Installed Release: ~s~n\", [Vsn]),
-            permafy(TargetNode, Vsn),
+            permafy(TargetNode, RelName, Vsn),
             ok;
         {error, {no_such_release, Vsn}} ->
             VerList =
@@ -1017,8 +1017,10 @@ install_and_permafy(TargetNode, Vsn) ->
             erlang:halt(2)
     end.
 
-permafy(TargetNode, Vsn) ->
+permafy(TargetNode, RelName, Vsn) ->
     ok = rpc:call(TargetNode, release_handler, make_permanent, [Vsn], ?TIMEOUT),
+    file:copy(filename:join([\"bin\", RelName++\"-\"++Vsn]),
+              filename:join([\"bin\", RelName])),
     ?INFO(\"Made release permanent: ~p~n\", [Vsn]),
     ok.
 
