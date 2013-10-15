@@ -343,8 +343,10 @@ include_erts(State, Release, OutputDir, RelDir) ->
                 true ->
                     ok = ec_file:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive]),
-                    ok = ec_file:remove(filename:join([LocalErts, "bin", "erl"])),
-                    ok = file:write_file(filename:join([LocalErts, "bin", "erl"]), erl_script(ErtsVersion)),
+                    Erl = filename:join([LocalErts, "bin", "erl"]),
+                    ok = ec_file:remove(Erl),
+                    ok = file:write_file(Erl, erl_script(ErtsVersion)),
+                    ok = file:change_mode(Erl, 8#755),
                     case rlx_state:get(State, extended_start_script, false) of
                         true ->
                             ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
@@ -473,11 +475,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                         {"bin", filename:join([OutputDir, "bin"])} |
                         case rlx_state:get(State, include_erts, true) of
                             true ->
-                                [{"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)},
-                                 {filename:join(["erts-"++ErtsVersion, "bin", "nodetool"]),
-                                  hd(nodetool_contents())},
-                                 {filename:join(["erts-"++ErtsVersion, "bin", "install_upgrade.escript"]),
-                                  hd(install_upgrade_escript_contents())}];
+                                [{"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}];
                             false ->
                                 []
                         end], [compressed]),
@@ -731,7 +729,7 @@ REMSH_NAME=`echo $NAME_ARG | awk '{print $2}'`
 
 # Note the `date +%s`, used to allow multiple remsh to the same node transparently
 REMSH_NAME_ARG=\"$REMSH_TYPE remsh`date +%s`@`echo $REMSH_NAME | awk -F@ '{print $2}'`\"
-REMSH_REMSH_ARG=\"-remsh $REMSH_NAME\"
+REMSH_REMSH_ARG=\"-remsh $REMSH_NAME -boot start_clean\"
 
 # Extract the target cookie
 COOKIE_ARG=`grep '^-setcookie' $VMARGS_PATH`
