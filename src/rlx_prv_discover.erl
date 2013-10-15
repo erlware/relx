@@ -100,22 +100,27 @@ add_common_project_dirs(State) ->
             Ebin = filename:join(Root, "ebin"),
             lists:foldl(fun(Dir, LibDirs) ->
                                 case ec_file:exists(Dir) of
-                            true ->
-                                [erlang:iolist_to_binary(Dir) | LibDirs];
-                            false ->
-                                LibDirs
-                        end
-                end, [], [Deps, Lib, Apps, Ebin])
+                                    true ->
+                                        [erlang:iolist_to_binary(Dir) | LibDirs];
+                                    false ->
+                                        LibDirs
+                                end
+                        end, [], [Deps, Lib, Apps, Ebin])
     end.
 
 -spec add_system_lib_dir(rlx_state:t()) -> [file:name()].
 add_system_lib_dir(State) ->
     ExcludeSystem = rlx_state:get(State, discover_exclude_system, false),
-    case ExcludeSystem of
-        true ->
-            [];
-        false ->
-            erlang:iolist_to_binary(code:lib_dir())
+    case rlx_state:get(State, system_libs, undefined) of
+        undefined ->
+            case ExcludeSystem of
+                true ->
+                    [];
+                false ->
+                    erlang:iolist_to_binary(code:lib_dir())
+            end;
+        SystemLibs ->
+            erlang:iolist_to_binary(SystemLibs)
     end.
 
 add_release_output_dir(State) ->
