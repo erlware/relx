@@ -38,7 +38,8 @@
          make_invalid_config_release/1,
          make_relup_release/1,
          make_relup_release2/1,
-         make_one_app_top_level_release/1]).
+         make_one_app_top_level_release/1,
+         make_dev_mode_release/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -69,7 +70,7 @@ all() ->
      make_implicit_config_release, make_rerun_overridden_release,
      overlay_release, make_goalless_release, make_depfree_release,
      make_invalid_config_release, make_relup_release, make_relup_release2,
-     make_one_app_top_level_release].
+     make_one_app_top_level_release, make_dev_mode_release].
 
 make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -832,6 +833,46 @@ make_one_app_top_level_release(Config) ->
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)).
 
+make_dev_mode_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    [(fun({Name, Vsn}) ->
+              create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+     ||
+        App <-
+            [{create_random_name("lib_app1_"), create_random_vsn()}
+             || _ <- lists:seq(1, 100)]],
+
+    create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    SysConfig = filename:join([LibDir1, "config", "sys.config"]),
+    write_config(SysConfig, [{this_is_a_test, "yup it is"}]),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    write_config(ConfigFile,
+                 [{dev_mode, true},
+                  {sys_config, SysConfig},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               create_random_name("relx-output")]),
+    {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
+                          OutputDir, ConfigFile),
+    [{{foo, "0.0.1"}, _Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "non_goal_1-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "non_goal_2-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "goal_app_1-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "goal_app_2-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "lib_dep_1-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "releases", "0.0.1",
+                                              "sys.config"]))).
+
 
 %%%===================================================================
 %%% Helper Functions
@@ -888,6 +929,7 @@ create_random_vsn() ->
                    ".", erlang:integer_to_list(random:uniform(100))]).
 
 write_config(Filename, Values) ->
+    ok = filelib:ensure_dir(Filename),
     ok = ec_file:write(Filename,
                        [io_lib:format("~p.\n", [Val]) || Val <- Values]).
 
