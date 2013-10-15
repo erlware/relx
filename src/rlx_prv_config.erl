@@ -105,7 +105,6 @@ parent_dir([_H], Acc) ->
 parent_dir([H | T], Acc) ->
     parent_dir(T, [H | Acc]).
 
-
 -spec load_config(file:filename(), rlx_state:t()) ->
                          {ok, rlx_state:t()} | relx:error().
 load_config(ConfigFile, State) ->
@@ -153,6 +152,8 @@ load_terms({skip_apps, SkipApps0}, {ok, State0}) ->
     {ok, rlx_state:skip_apps(State0, SkipApps0)};
 load_terms({overrides, Overrides0}, {ok, State0}) ->
     {ok, rlx_state:overrides(State0, Overrides0)};
+load_terms({dev_mode, DevMode}, {ok, State0}) ->
+    {ok, rlx_state:dev_mode(State0, DevMode)};
 load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
     Release0 = rlx_release:new(RelName, Vsn),
     case rlx_release:goals(Release0, Applications) of

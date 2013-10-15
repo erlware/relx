@@ -61,6 +61,8 @@
          put/3,
          caller/1,
          caller/2,
+         dev_mode/1,
+         dev_mode/2,
          upfrom/1,
          format/1,
          format/2]).
@@ -88,6 +90,7 @@
                   skip_apps=[] :: [AppName::atom()],
                   configured_releases :: releases(),
                   realized_releases :: releases(),
+                  dev_mode=false :: boolean(),
                   upfrom :: string() | binary() | undefined,
                   config_values :: ec_dictionary:dictionary(Key::atom(),
                                                             Value::term())}).
@@ -209,7 +212,7 @@ vm_args(#state_t{vm_args=VmArgs}) ->
 
 -spec vm_args(t(), file:filename()) -> t().
 vm_args(State, VmArgs) ->
-	State#state_t{vm_args=VmArgs}.
+    State#state_t{vm_args=VmArgs}.
 
 -spec sys_config(t()) -> file:filename() | undefined.
 sys_config(#state_t{sys_config=SysConfig}) ->
@@ -316,6 +319,15 @@ caller(#state_t{caller=Caller}) ->
 -spec caller(t(), caller()) -> t().
 caller(S, Caller) ->
     S#state_t{caller=Caller}.
+
+-spec dev_mode(t()) -> boolean().
+dev_mode(#state_t{dev_mode=DevMode}) ->
+    DevMode.
+
+-spec dev_mode(t(), boolean()) -> t().
+dev_mode(S, DevMode) ->
+    S#state_t{dev_mode=DevMode}.
+
 
 -spec upfrom(t()) -> string() | binary() | undefined.
 upfrom(#state_t{upfrom=UpFrom}) ->
