@@ -201,6 +201,7 @@ opt_spec_list() ->
       "Provide an app name and a directory to override in the form <appname>:<app directory>"},
      {config, $c, "config", {string, ""}, "The path to a config file"},
      {overlay_vars, undefined, "overlay_vars", string, "Path to a file of overlay variables"},
+     {system_libs, undefined, "system_libs", string, "Path to dir of Erlang system libs"},
      {version, $v, "version", undefined, "Print relx version"},
      {root_dir, $r, "root", string, "The project root directory"}].
 

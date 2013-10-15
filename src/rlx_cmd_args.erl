@@ -252,7 +252,13 @@ create_disable_default_libs(Opts, Acc) ->
                                  {ok, rlx_state:cmd_args()} | relx:error().
 create_overlay_vars(Opts, Acc) ->
     OverlayVars = proplists:get_all_values(overlay_vars, Opts),
-    create_upfrom(Opts,  [{overlay_vars, OverlayVars} | Acc]).
+    create_system_libs(Opts,  [{overlay_vars, OverlayVars} | Acc]).
+
+-spec create_system_libs([getopt:option()], rlx_state:cmd_args()) ->
+                                 {ok, rlx_state:cmd_args()} | relx:error().
+create_system_libs(Opts, Acc) ->
+    SystemLibs = proplists:get_value(system_libs, Opts, undefined),
+    create_upfrom(Opts,  [{system_libs, SystemLibs} | Acc]).
 
 -spec create_upfrom([getopt:option()], rlx_state:cmd_args()) ->
     {ok, rlx_state:cmd_args()} | relx:error().

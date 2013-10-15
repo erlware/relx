@@ -138,7 +138,11 @@ new(PropList, Targets)
                            default_libs,
                            proplists:get_value(default_libs, PropList, true)),
 
-    rlx_state:put(create_logic_providers(State1),
+    State2 = rlx_state:put(create_logic_providers(State1),
+                           system_libs,
+                           proplists:get_value(system_libs, PropList, undefined)),
+
+    rlx_state:put(create_logic_providers(State2),
                   overlay_vars,
                   proplists:get_value(overlay_vars, PropList, [])).
 
