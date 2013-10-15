@@ -71,7 +71,7 @@
              cmd_args/0,
              action/0]).
 
--record(state_t, {log :: rlx_log:t(),
+-record(state_t, {log :: ec_cmd_log:t(),
                   root_dir :: file:name(),
                   caller :: caller(),
                   actions=[] :: [action()],
@@ -118,7 +118,7 @@ new(PropList, Targets)
     {ok, Root} = file:get_cwd(),
     Caller = proplists:get_value(caller, PropList, api),
     State0 =
-        #state_t{log = proplists:get_value(log, PropList, rlx_log:new(error, Caller)),
+        #state_t{log = proplists:get_value(log, PropList, ec_cmd_log:new(error, Caller)),
                  output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
                  config_file=proplists:get_value(config, PropList, undefined),
@@ -167,7 +167,7 @@ skip_apps(State, SkipApps) ->
     State#state_t{skip_apps=SkipApps}.
 
 %% @doc get the current log state for the system
--spec log(t()) -> rlx_log:t().
+-spec log(t()) -> ec_cmd_log:t().
 log(#state_t{log=LogState}) ->
     LogState.
 
@@ -330,7 +330,7 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
     Values1 = ec_dictionary:to_list(Values0),
     [rlx_util:indent(Indent),
      <<"state(">>, erlang:atom_to_list(Caller), <<"):\n">>,
-     rlx_util:indent(Indent + 2), <<"log: ">>, rlx_log:format(LogState), <<",\n">>,
+     rlx_util:indent(Indent + 2), <<"log: ">>, ec_cmd_log:format(LogState), <<",\n">>,
      rlx_util:indent(Indent + 2), "config file: ", rlx_util:optional_to_string(ConfigFile), "\n",
      rlx_util:indent(Indent + 2), "goals: \n",
      [[rlx_util:indent(Indent + 3), rlx_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
@@ -371,7 +371,7 @@ to_binary(Dir)
 -include_lib("eunit/include/eunit.hrl").
 
 new_test() ->
-    LogState = rlx_log:new(error),
+    LogState = ec_cmd_log:new(error),
     RCLState = new([{log, LogState}], [release]),
     ?assertMatch(LogState, log(RCLState)).
 

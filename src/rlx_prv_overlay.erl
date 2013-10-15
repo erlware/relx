@@ -132,14 +132,14 @@ merge_overlay_vars(State, FileNames) ->
                             {ok, Terms} ->
                                 lists:ukeymerge(1, lists:ukeysort(1, Terms), Acc);
                             {error, Reason} ->
-                                rlx_log:warn(rlx_state:log(State),
-                                            format_error({unable_to_read_varsfile, FileName, Reason})),
+                                ec_cmd_log:warn(rlx_state:log(State),
+                                                format_error({unable_to_read_varsfile, FileName, Reason})),
                                 Acc
                         end
                 end, [], FileNames).
 
 -spec render_overlay_vars(proplists:proplist(), proplists:proplist(),
-                         proplists:proplist()) ->
+                          proplists:proplist()) ->
                                  {ok, proplists:proplist()} | relx:error().
 render_overlay_vars(OverlayVars, [{Key, Value} | Rest], Acc)
   when erlang:is_list(Value) ->
@@ -202,7 +202,7 @@ generate_app_vars(App) ->
 
 -spec generate_state_vars(rlx_state:t()) -> proplists:proplist().
 generate_state_vars(State) ->
-    [{log, rlx_log:format(rlx_state:log(State))},
+    [{log, ec_cmd_log:format(rlx_state:log(State))},
      {output_dir, rlx_state:output_dir(State)},
      {target_dir, rlx_state:output_dir(State)},
      {overridden, [AppName || {AppName, _} <- rlx_state:overrides(State)]},

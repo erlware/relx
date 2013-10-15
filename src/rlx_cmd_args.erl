@@ -137,7 +137,7 @@ create_log(Opts, Acc) ->
     LogLevel = proplists:get_value(log_level, Opts, 0),
     if
         LogLevel >= 0, LogLevel =< 3 ->
-            create_goals(Opts, [{log, rlx_log:new(LogLevel, command_line)} | Acc]);
+            create_goals(Opts, [{log, ec_cmd_log:new(LogLevel, command_line)} | Acc]);
         true ->
             ?RLX_ERROR({invalid_log_level, LogLevel})
     end.
