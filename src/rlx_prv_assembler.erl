@@ -41,6 +41,7 @@ init(State) ->
 %% looking for OTP Applications
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State) ->
+    print_dev_mode(State),
     {RelName, RelVsn} = rlx_state:default_configured_release(State),
     Release = rlx_state:get_realized_release(State, RelName, RelVsn),
     OutputDir = rlx_state:output_dir(State),
@@ -139,6 +140,15 @@ format_error({tar_generation_error, Module, Errors}) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+print_dev_mode(State) ->
+    case rlx_state:dev_mode(State) of
+        true ->
+            ec_cmd_log:info(rlx_state:log(State),
+                            "Dev mode enabled, release will be symlinked");
+        false ->
+            ok
+    end.
+
 -spec create_output_dir(file:name()) ->
                                ok | {error, Reason::term()}.
 create_output_dir(OutputDir) ->
@@ -157,7 +167,7 @@ create_output_dir(OutputDir) ->
 copy_app_directories_to_output(State, Release, OutputDir) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = ec_file:mkdir_p(LibDir),
-    Apps = rlx_release:application_details(Release),
+    Apps = prepare_applications(State, rlx_release:application_details(Release)),
     Result = lists:filter(fun({error, _}) ->
                                    true;
                               (_) ->
@@ -171,6 +181,14 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
             E;
         [] ->
             create_release_info(State, Release, OutputDir)
+    end.
+
+prepare_applications(State, Apps) ->
+    case rlx_state:dev_mode(State) of
+        true ->
+            [rlx_app_info:link(App, true) || App <- Apps];
+        false ->
+            Apps
     end.
 
 copy_app(LibDir, App) ->
@@ -323,13 +341,29 @@ copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir) ->
                 false ->
                     ?RLX_ERROR({config_does_not_exist, ConfigPath});
                 true ->
-                    ok = ec_file:copy(ConfigPath, RelSysConfPath),
-                    include_erts(State, Release, OutputDir, RelDir)
+                    copy_or_symlink_sys_config_file(State, Release, OutputDir, RelDir,
+                                                    ConfigPath, RelSysConfPath)
             end
     end.
 
+%% @doc copy config/sys.config or generate one to releases/VSN/sys.config
+-spec copy_or_symlink_sys_config_file(rlx_state:t(), rlx_release:t(),
+                                      file:name(), file:name(),
+                                      file:name(), file:name()) ->
+                                             {ok, rlx_state:t()} | relx:error().
+copy_or_symlink_sys_config_file(State, Release, OutputDir, RelDir,
+                                ConfigPath, RelSysConfPath) ->
+    case rlx_state:dev_mode(State) of
+        true ->
+            ok = file:make_symlink(ConfigPath, RelSysConfPath);
+        _ ->
+            ok = ec_file:copy(ConfigPath, RelSysConfPath)
+    end,
+    include_erts(State, Release, OutputDir, RelDir).
+
 %% @doc Optionally add erts directory to release, if defined.
--spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) -> {ok, rlx_state:t()} | relx:error().
+-spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) ->
+                          {ok, rlx_state:t()} | relx:error().
 include_erts(State, Release, OutputDir, RelDir) ->
     case rlx_state:get(State, include_erts, true) of
         true ->
@@ -383,7 +417,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
                     end) of
         ok ->
             ec_cmd_log:error(rlx_state:log(State),
-                          "release successfully created!"),
+                             "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
             {ok, State};
         error ->
@@ -1170,7 +1204,6 @@ append_node_suffix(Name, Suffix) ->
         [Node] ->
             list_to_atom(lists:concat([Node, Suffix, os:getpid()]))
     end.
-
 
 %%
 %% Given a string or binary, parse it into a list of terms, ala file:consult/0

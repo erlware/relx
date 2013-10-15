@@ -197,6 +197,8 @@ opt_spec_list() ->
       "Whether to use the default system added lib dirs (means you must add them all manually). Default is true"},
      {log_level, $V, "verbose", {integer, 2},
       "Verbosity level, maybe between 0 and 3"},
+     {dev_mode, $d, "dev-mode", {boolean, false},
+      "Symlink the applications and configuration into the release instead of copying"},
      {override_app, $a, "override_app", string,
       "Provide an app name and a directory to override in the form <appname>:<app directory>"},
      {config, $c, "config", {string, ""}, "The path to a config file"},
