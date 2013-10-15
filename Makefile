@@ -99,13 +99,13 @@ ct: compile clean-common-test-data
 
 test: compile dialyzer eunit ct
 
-$(DEPS_PLT):
+$(DEPS_PLT): compile
 	@echo Building local erts plt at $(DEPS_PLT)
 	@echo
 	$(DIALYZER) --output_plt $(DEPS_PLT) --build_plt \
 	   --apps erts kernel stdlib -r deps
 
-dialyzer: $(DEPS_PLT)
+dialyzer: compile $(DEPS_PLT)
 	$(DIALYZER) --fullpath --plt $(DEPS_PLT) \
 		 -I include -Wrace_conditions -r ./ebin
 
