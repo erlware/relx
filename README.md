@@ -62,7 +62,7 @@ Options
 | -a    | --override_app | string | | An app name and a directory to override in the form appname:dir |
 | -c    | --config     | string  | ./relx.config | Config file path |
 |       | --overlay_vars     | string  |  | Path to a file of overlay variables |
-
+| -d    | --dev-mode     | boolean | false | Symlink all applications and configuration into the release instead of copying|
 Wiki
 ----
 
