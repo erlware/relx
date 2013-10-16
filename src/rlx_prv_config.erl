@@ -177,7 +177,8 @@ load_terms({sys_config, SysConfig}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, filename:absname(SysConfig))};
 load_terms({overlay_vars, OverlayVars}, {ok, State}) ->
     CurrentOverlayVars = rlx_state:get(State, overlay_vars),
-    NewOverlayVars = lists:umerge(lists:usort(OverlayVars), lists:usort(CurrentOverlayVars)),
+    NewOverlayVars = list_of_overlay_vars_files(OverlayVars),
+    NewOverlayVars = lists:umerge(lists:usort(NewOverlayVars), lists:usort(CurrentOverlayVars)),
     {ok, rlx_state:put(State, overlay_vars, NewOverlayVars)};
 load_terms({Name, Value}, {ok, State})
   when erlang:is_atom(Name) ->
@@ -196,3 +197,12 @@ gen_providers(Providers, State) ->
                    (_, E={_, {error, _}}) ->
                         E
                 end, {[], {ok, State}}, Providers).
+
+list_of_overlay_vars_files(undefined) ->
+    [];
+list_of_overlay_vars_files([]) ->
+    [];
+list_of_overlay_vars_files([H | _]=FileNames) when erlang:is_list(H) ->
+    FileNames;
+list_of_overlay_vars_files(FileName) when is_list(FileName) ->
+    [FileName].
