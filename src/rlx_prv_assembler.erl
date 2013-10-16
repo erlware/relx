@@ -167,6 +167,7 @@ create_output_dir(OutputDir) ->
 copy_app_directories_to_output(State, Release, OutputDir) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = ec_file:mkdir_p(LibDir),
+    IncludeSrc = rlx_state:include_src(State),
     Apps = prepare_applications(State, rlx_release:application_details(Release)),
     Result = lists:filter(fun({error, _}) ->
                                    true;
@@ -174,7 +175,7 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
                                    false
                            end,
                           lists:flatten(ec_plists:map(fun(App) ->
-                                                              copy_app(LibDir, App)
+                                                              copy_app(LibDir, App, IncludeSrc)
                                                       end, Apps))),
     case Result of
         [E | _] ->
@@ -191,7 +192,7 @@ prepare_applications(State, Apps) ->
             Apps
     end.
 
-copy_app(LibDir, App) ->
+copy_app(LibDir, App, IncludeSrc) ->
     AppName = erlang:atom_to_list(rlx_app_info:name(App)),
     AppVsn = rlx_app_info:vsn_as_string(App),
     AppDir = rlx_app_info:dir(App),
@@ -202,16 +203,16 @@ copy_app(LibDir, App) ->
             %% a release dir
             ok;
         true ->
-            copy_app(App, AppDir, TargetDir)
+            copy_app(App, AppDir, TargetDir, IncludeSrc)
     end.
 
-copy_app(App, AppDir, TargetDir) ->
+copy_app(App, AppDir, TargetDir, IncludeSrc) ->
     remove_symlink_or_directory(TargetDir),
     case rlx_app_info:link(App) of
         true ->
             link_directory(AppDir, TargetDir);
         false ->
-            copy_directory(AppDir, TargetDir)
+            copy_directory(AppDir, TargetDir, IncludeSrc)
     end.
 
 remove_symlink_or_directory(TargetDir) ->
@@ -235,16 +236,21 @@ link_directory(AppDir, TargetDir) ->
             ok
     end.
 
-copy_directory(AppDir, TargetDir) ->
+copy_directory(AppDir, TargetDir, IncludeSrc) ->
     ec_plists:map(fun(SubDir) ->
                           copy_dir(AppDir, TargetDir, SubDir)
                   end, ["ebin",
                         "include",
                         "priv",
-                        "src",
-                        "c_src",
                         "README",
-                        "LICENSE"]).
+                        "LICENSE" |
+                        case IncludeSrc of
+                            true ->
+                                ["src",
+                                 "c_src"];
+                            false ->
+                                []
+                        end]).
 
 copy_dir(AppDir, TargetDir, SubDir) ->
     SubSource = filename:join(AppDir, SubDir),

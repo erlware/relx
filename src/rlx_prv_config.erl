@@ -154,6 +154,8 @@ load_terms({overrides, Overrides0}, {ok, State0}) ->
     {ok, rlx_state:overrides(State0, Overrides0)};
 load_terms({dev_mode, DevMode}, {ok, State0}) ->
     {ok, rlx_state:dev_mode(State0, DevMode)};
+load_terms({include_src, IncludeSrc}, {ok, State0}) ->
+    {ok, rlx_state:include_src(State0, IncludeSrc)};
 load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
     Release0 = rlx_release:new(RelName, Vsn),
     case rlx_release:goals(Release0, Applications) of

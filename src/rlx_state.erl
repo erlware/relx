@@ -63,6 +63,8 @@
          caller/2,
          dev_mode/1,
          dev_mode/2,
+         include_src/1,
+         include_src/2,
          upfrom/1,
          format/1,
          format/2]).
@@ -91,6 +93,7 @@
                   configured_releases :: releases(),
                   realized_releases :: releases(),
                   dev_mode=false :: boolean(),
+                  include_src=true :: boolean(),
                   upfrom :: string() | binary() | undefined,
                   config_values :: ec_dictionary:dictionary(Key::atom(),
                                                             Value::term())}).
@@ -328,6 +331,13 @@ dev_mode(#state_t{dev_mode=DevMode}) ->
 dev_mode(S, DevMode) ->
     S#state_t{dev_mode=DevMode}.
 
+-spec include_src(t()) -> boolean().
+include_src(#state_t{include_src=IncludeSrc}) ->
+    IncludeSrc.
+
+-spec include_src(t(), boolean()) -> t().
+include_src(S, IncludeSrc) ->
+    S#state_t{include_src=IncludeSrc}.
 
 -spec upfrom(t()) -> string() | binary() | undefined.
 upfrom(#state_t{upfrom=UpFrom}) ->
