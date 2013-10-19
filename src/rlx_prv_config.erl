@@ -156,6 +156,18 @@ load_terms({dev_mode, DevMode}, {ok, State0}) ->
     {ok, rlx_state:dev_mode(State0, DevMode)};
 load_terms({include_src, IncludeSrc}, {ok, State0}) ->
     {ok, rlx_state:include_src(State0, IncludeSrc)};
+load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications}, {ok, State0}) ->
+    Release0 = rlx_release:new(RelName, Vsn),
+    ExtendRelease = rlx_state:get_configured_release(State0, RelName2, Vsn),
+    Applications1 = rlx_release:goals(ExtendRelease),
+    case rlx_release:goals(Release0,
+                          lists:umerge(lists:usort(Applications),
+                                      lists:usort(Applications1))) of
+        E={error, _} ->
+            E;
+        {ok, Release1} ->
+            {ok, rlx_state:add_configured_release(State0, Release1)}
+        end;
 load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
     Release0 = rlx_release:new(RelName, Vsn),
     case rlx_release:goals(Release0, Applications) of
