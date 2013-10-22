@@ -115,6 +115,10 @@ format_error({relup_generation_error, CurrentName, UpFromName}) ->
 format_error({relup_generation_warning, Module, Warnings}) ->
     ["Warnings generating relup \s",
      rlx_util:indent(2), Module:format_warning(Warnings)];
+format_error({no_upfrom_release_found, undefined}) ->
+    io_lib:format("No earlier release for relup found", []);
+format_error({no_upfrom_release_found, Vsn}) ->
+    io_lib:format("Upfrom release version (~s) for relup not found", [Vsn]);
 format_error({relup_script_generation_error,
               {relup_script_generation_error, systools_relup,
                {missing_sasl, _}}}) ->
@@ -453,8 +457,9 @@ make_script(Options, RunFun) ->
     end.
 
 make_relup(State, Release) ->
+    Vsn = rlx_state:upfrom(State),
     UpFrom =
-        case rlx_state:upfrom(State) of
+        case Vsn of
             undefined ->
                 get_last_release(State, Release);
             Vsn ->
@@ -462,7 +467,7 @@ make_relup(State, Release) ->
         end,
     case UpFrom of
         undefined ->
-            ?RLX_ERROR(no_upfrom_release_found);
+            ?RLX_ERROR({no_upfrom_release_found, Vsn});
         _ ->
             make_upfrom_script(State, Release, UpFrom)
     end.
@@ -580,7 +585,7 @@ get_up_release(State, Release, Vsn) ->
     try
         ec_dictionary:get({Name, Vsn}, rlx_state:realized_releases(State))
     catch
-        throw:notfound ->
+        throw:not_found ->
             undefined
     end.
 
