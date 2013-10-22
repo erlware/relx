@@ -204,7 +204,7 @@ opt_spec_list() ->
      {config, $c, "config", {string, ""}, "The path to a config file"},
      {overlay_vars, undefined, "overlay_vars", string, "Path to a file of overlay variables"},
      {system_libs, undefined, "system_libs", string, "Path to dir of Erlang system libs"},
-     {version, $v, "version", undefined, "Print relx version"},
+     {version, undefined, "version", undefined, "Print relx version"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
 -spec format_error(Reason::term()) -> string().
