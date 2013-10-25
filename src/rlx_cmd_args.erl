@@ -300,8 +300,14 @@ create_paths(Opts, Acc) ->
             Error;
         ok ->
             code:add_pathsa([filename:absname(Path) || Path <- Dirs]),
-            {ok, Acc}
+            create_dev_mode(Opts, Acc)
     end.
+
+-spec create_dev_mode([getopt:option()], rlx_state:cmd_args()) ->
+                           {ok, rlx_state:cmd_args()} | relx:error().
+create_dev_mode(Opts, Acc) ->
+    DevMode = proplists:get_value(dev_mode, Opts, false),
+    {ok, [{dev_mode, DevMode} | Acc]}.
 
 -spec check_lib_dirs([string()]) -> ok | relx:error().
 check_lib_dirs([]) ->
