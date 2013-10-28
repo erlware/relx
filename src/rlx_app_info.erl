@@ -40,6 +40,7 @@
          new/5,
          name/1,
          name/2,
+         original_vsn/1,
          vsn/1,
          vsn/2,
          vsn_as_string/1,
@@ -60,6 +61,7 @@
 -include("relx.hrl").
 
 -record(app_info_t, {name :: atom(),
+                     original_vsn :: string(),
                      vsn :: ec_semver:semver(),
                      dir :: file:name(),
                      link=false :: boolean(),
@@ -97,7 +99,9 @@ new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)
         {fail, _} ->
             ?RLX_ERROR({vsn_parse, AppName});
         ParsedVsn ->
-            {ok, #app_info_t{name=AppName, vsn=ParsedVsn, dir=Dir,
+            {ok, #app_info_t{name=AppName, original_vsn=Vsn,
+                             vsn=ParsedVsn,
+                             dir=Dir,
                              active_deps=ActiveDeps,
                              library_deps=LibraryDeps,
                              link=Link}}
@@ -114,6 +118,10 @@ name(AppInfo=#app_info_t{}, AppName)
 
 -spec vsn(t()) -> ec_semver:semver().
 vsn(#app_info_t{vsn=Vsn}) ->
+    Vsn.
+
+-spec original_vsn(t()) -> string().
+original_vsn(#app_info_t{original_vsn=Vsn}) ->
     Vsn.
 
 -spec vsn_as_string(t()) -> string().

@@ -196,7 +196,7 @@ generate_release_vars(Release) ->
 -spec generate_app_vars(rlx_app_info:t()) -> AppInfo::tuple().
 generate_app_vars(App) ->
     {rlx_app_info:name(App),
-     [{version, rlx_app_info:vsn_as_string(App)},
+     [{version, rlx_app_info:original_vsn(App)},
       {dir, rlx_app_info:dir(App)},
       {active_dependencies, rlx_app_info:active_deps(App)},
       {library_dependencies, rlx_app_info:library_deps(App)},

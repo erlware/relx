@@ -281,7 +281,7 @@ create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
             throw:not_found ->
                 {TypeAnnot, void}
         end,
-    Vsn = rlx_app_info:vsn_as_string(App),
+    Vsn = rlx_app_info:original_vsn(App),
     case BaseAnnots of
         {void, void} ->
             {AppName, Vsn};
