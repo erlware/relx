@@ -193,7 +193,7 @@ prepare_applications(State, Apps) ->
 
 copy_app(LibDir, App) ->
     AppName = erlang:atom_to_list(rlx_app_info:name(App)),
-    AppVsn = rlx_app_info:vsn_as_string(App),
+    AppVsn = rlx_app_info:original_vsn(App),
     AppDir = rlx_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
     if
@@ -614,7 +614,7 @@ get_code_paths(Release, OutDir) ->
     LibDir = filename:join(OutDir, "lib"),
     [filename:join([LibDir,
                     erlang:atom_to_list(rlx_app_info:name(App)) ++ "-" ++
-                        rlx_app_info:vsn_as_string(App), "ebin"]) ||
+                        rlx_app_info:original_vsn(App), "ebin"]) ||
         App <- rlx_release:application_details(Release)].
 
 unless_exists_write_default(Path, File) ->
