@@ -28,7 +28,8 @@
          is_error/1,
          error_reason/1,
          indent/1,
-         optional_to_string/1]).
+         optional_to_string/1,
+         wildcard_paths/1]).
 
 -define(ONE_LEVEL_INDENT, "     ").
 %%============================================================================
@@ -95,6 +96,23 @@ optional_to_string(undefined) ->
     "";
 optional_to_string(Value) when is_list(Value) ->
     Value.
+
+%% @doc expand wildcards and names in the given paths
+-spec wildcard_paths([file:filename_all()]) -> [string()].
+wildcard_paths(Paths) ->
+    [filename:absname(Expanded) || Path <- Paths, Expanded <- wildcard(Path)].
+
+%% In case the given directory does not expand,
+%% we return it back in a list so we trigger the
+%% proper error reportings.
+-spec wildcard(file:filename_all()) -> [string()].
+wildcard(Path) when is_binary(Path) ->
+    wildcard(binary_to_list(Path));
+wildcard(Path) when is_list(Path) ->
+    case filelib:wildcard(Path) of
+        []   -> [Path];
+        Paths -> Paths
+    end.
 
 %%%===================================================================
 %%% Test Functions
