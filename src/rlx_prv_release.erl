@@ -88,7 +88,7 @@ create_dep_graph(State) ->
 -spec find_default_release(rlx_state:t(), rlx_depsolver:t()) ->
                                   {ok, rlx_state:t()} | relx:error().
 find_default_release(State, DepGraph) ->
-    case rlx_state:default_configured_release(State) of
+    try rlx_state:default_configured_release(State) of
         {undefined, undefined} ->
             resolve_default_release(State, DepGraph);
         {RelName, undefined} ->
@@ -97,6 +97,9 @@ find_default_release(State, DepGraph) ->
             ?RLX_ERROR({no_release_name, Vsn});
         {RelName, RelVsn} ->
             solve_release(State, DepGraph, RelName, RelVsn)
+    catch
+        {multiple_release_names, _, _}=Error ->
+            ?RLX_ERROR(Error)
     end.
 
 resolve_default_release(State0, DepGraph) ->
@@ -128,14 +131,13 @@ resolve_default_version(State0, DepGraph, RelName) ->
                           boolean().
 release_sort({{RelName, RelVsnA}, _},
              {{RelName, RelVsnB}, _}) ->
-    ec_semver:lte(RelVsnA, RelVsnB);
-release_sort({{RelNameA, RelVsnA}, _}, {{RelNameB, RelVsnB}, _}) ->
+    ec_semver:lte(RelVsnB, RelVsnA);
+release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
     %% The release names are different. When the releases are named differently
     %% we can not just take the lastest version. You *must* provide a default
     %% release name at least. So we throw an error here that the top can catch
     %% and return
-    erlang:atom_to_list(RelNameA) =< erlang:atom_to_list(RelNameB) andalso
-        ec_semver:lte(RelVsnA, RelVsnB).
+    erlang:throw({multiple_release_names, RelA, RelB}).
 
 solve_release(State0, DepGraph, RelName, RelVsn) ->
     ec_cmd_log:debug(rlx_state:log(State0),
