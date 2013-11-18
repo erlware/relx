@@ -24,6 +24,7 @@
          end_per_suite/1,
          all/0,
          normal_passing_case/1,
+         lib_expansion_case/1,
          lib_fail_case/1,
          spec_parse_fail_case/1,
          config_fail_case/1]).
@@ -41,7 +42,7 @@ end_per_suite(_Config) ->
     ok.
 
 all() ->
-    [normal_passing_case, lib_fail_case, config_fail_case].
+    [normal_passing_case, lib_expansion_case, lib_fail_case, config_fail_case].
 
 normal_passing_case(Config) ->
     DataDir = proplists:get_value(data_dir, Config),
@@ -70,6 +71,18 @@ normal_passing_case(Config) ->
                    {{45,22},{[],[<<"build">>,21]}}, between}],
                  rlx_state:goals(State)).
 
+lib_expansion_case(Config) ->
+    DataDir = proplists:get_value(data_dir, Config),
+    Lib1 = filename:join(DataDir, <<"lib1">>),
+    Lib2 = filename:join(DataDir, <<"lib2">>),
+    ok = rlx_util:mkdir_p(Lib1),
+    ok = rlx_util:mkdir_p(Lib2),
+
+    CmdLine = ["-l", filename:join(DataDir, "*")],
+    {ok, {Opts, Targets}} = getopt:parse(relx:opt_spec_list(), CmdLine),
+    {ok, State} = rlx_cmd_args:args2state(Opts, Targets),
+    ?assertMatch([Lib1, Lib2],
+                 rlx_state:lib_dirs(State)).
 
 lib_fail_case(Config) ->
     DataDir = proplists:get_value(data_dir, Config),

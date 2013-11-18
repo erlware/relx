@@ -223,11 +223,12 @@ create_output_dir(Opts, Acc) ->
 create_lib_dirs(Opts, Acc) ->
     Dirs = proplists:get_all_values(lib_dir, Opts) ++
         proplists:get_value(lib_dirs, Opts, []),
-    case check_lib_dirs(Dirs) of
+    ExpDirs = rlx_util:wildcard_paths(Dirs),
+    case check_lib_dirs(ExpDirs) of
         Error = {error, _} ->
             Error;
         ok ->
-            create_root_dir(Opts, [{lib_dirs, [filename:absname(Dir) || Dir <- Dirs]} | Acc])
+            create_root_dir(Opts, [{lib_dirs, ExpDirs} | Acc])
     end.
 
 -spec create_root_dir([getopt:option()], rlx_state:cmd_args()) ->
