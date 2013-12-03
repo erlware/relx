@@ -52,8 +52,56 @@ format_error(ErrorDetails)
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+
+-spec app_files(list(binary())) -> list(binary()).
+app_files(LibDirs) ->
+    lists:foldl(fun(LibDir, Acc) ->
+                        Files = app_files_paths(LibDir),
+                        BinFiles = lists:map(fun(F) ->
+                                                     list_to_binary(F)
+                                             end, Files),
+                        Acc ++ BinFiles
+                end, [], LibDirs).
+
+-spec app_files_paths(binary()) -> list(string()).
+app_files_paths(LibDir) ->
+    %% Search for Erlang apps in the lib dir itself
+    Path1 = filename:join([binary_to_list(LibDir),
+                           "*.app"]),
+    %% Search for Erlang apps in subdirs of lib dir
+    Path2 = filename:join([binary_to_list(LibDir),
+                           "*",
+                           "ebin",
+                           "*.app"]),
+    lists:foldl(fun(Path, Acc) ->
+                        Files = filelib:wildcard(Path),
+                        Files ++ Acc
+                end, [], [Path1, Path2]).
+
+-spec get_app_metadata(rlx_state:t(), list(binary())) -> list({ok, rlx_app_info:t()}).
+get_app_metadata(State, LibDirs) ->
+    lists:foldl(fun(AppFile, Acc) ->
+                        case is_valid_otp_app(AppFile) of
+                            {ok, _} = AppMeta ->
+                                [AppMeta|Acc];
+                            {warning, W} ->
+                                ec_cmd_log:warn(rlx_state:log(State), format_detail(W)),
+                                Acc;
+                            {error, E} ->
+                                ec_cmd_log:error(rlx_state:log(State), format_detail(E)),
+                                Acc;
+                            _ ->
+                                Acc
+                        end
+                end, [], app_files(LibDirs)).
+
 resolve_app_metadata(State, LibDirs) ->
-    AppMeta0 = lists:flatten(rlx_dscv_util:do(fun discover_dir/2, LibDirs)),
+    AppMeta0 = case rlx_state:get(State, enable_shallow_app_discovery, false) of
+                   true ->
+                       get_app_metadata(State, LibDirs);
+                   false ->
+                       lists:flatten(rlx_dscv_util:do(fun discover_dir/2, LibDirs))
+               end,
     case [case Err of
               {error, Ret} ->
                   Ret
@@ -139,9 +187,10 @@ discover_dir(_File, directory) ->
 discover_dir(File, file) ->
     is_valid_otp_app(File).
 
--spec is_valid_otp_app(file:name()) -> {ok, rlx_app_info:t()} | {error, Reason::term()} |
+-spec is_valid_otp_app(file:name()) -> {ok, rlx_app_info:t()} |
+                                       {warning, Reason::term()} |
+                                       {error, Reason::term()} |
                                        {noresult, false}.
-
 is_valid_otp_app(File) ->
     %% Is this an ebin dir?
     EbinDir = filename:dirname(File),
@@ -159,7 +208,9 @@ is_valid_otp_app(File) ->
 
 
 -spec gather_application_info(file:name(), file:filename()) ->
-                                     {ok, rlx_app_info:t()} | {error, Reason::term()}.
+                                     {ok, rlx_app_info:t()} |
+                                     {warning, Reason::term()} |
+                                     {error, Reason::term()}.
 gather_application_info(EbinDir, File) ->
     AppDir = filename:dirname(EbinDir),
     case file:consult(File) of
@@ -175,7 +226,9 @@ gather_application_info(EbinDir, File) ->
                                 file:name(),
                                 atom(),
                                 proplists:proplist()) ->
-                                       {ok, list()} | {error, Reason::term()}.
+                                       {ok, list()} |
+                                       {warning, Reason::term()} |
+                                       {error, Reason::term()}.
 validate_application_info(EbinDir, AppFile, AppName, AppDetail) ->
     AppDir = filename:dirname(EbinDir),
     case get_modules_list(AppFile, AppDetail) of
@@ -190,7 +243,9 @@ validate_application_info(EbinDir, AppFile, AppName, AppDetail) ->
     end.
 
 -spec get_modules_list(file:name(), proplists:proplist()) ->
-                              {ok, list()} | {error, Reason::term()}.
+                              {ok, list()} |
+                              {warning, Reason::term()} |
+                              {error, Reason::term()}.
 get_modules_list(AppFile, AppDetail) ->
     case proplists:get_value(modules, AppDetail) of
         undefined ->
