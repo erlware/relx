@@ -38,12 +38,18 @@
 -spec do(rlx_state:t(), [file:name()], [rlx_app_info:t()]) ->
                 {ok, [rlx_release:t()]} | relx:error().
 do(State, LibDirs, AppMeta) ->
-    ec_cmd_log:info(rlx_state:log(State),
-                 fun() ->
-                         ["Resolving available OTP Releases from directories:\n",
-                          string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
-                 end),
-    resolve_rel_metadata(State, LibDirs, AppMeta).
+    case rlx_state:get(State, disable_rel_discovery, false) of
+        true ->
+            ec_cmd_log:debug(rlx_state:log(State), "Disbaled resolving of OTP releases"),
+            {ok, []};
+        false ->
+            ec_cmd_log:info(rlx_state:log(State),
+                            fun() ->
+                                    ["Resolving available OTP Releases from directories:\n",
+                                     string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
+                            end),
+            resolve_rel_metadata(State, LibDirs, AppMeta)
+    end.
 
 -spec format_error([ErrorDetail::term()]) -> iolist().
 format_error(ErrorDetails)
