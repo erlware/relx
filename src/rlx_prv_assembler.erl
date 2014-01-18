@@ -426,14 +426,14 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
                             systools:make_script(Name, CorrectedOptions)
                     end) of
         ok ->
-            ec_cmd_log:error(rlx_state:log(State),
+            ec_cmd_log:info(rlx_state:log(State),
                              "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
             {ok, State};
         error ->
             ?RLX_ERROR({release_script_generation_error, ReleaseFile});
         {ok, _, []} ->
-            ec_cmd_log:error(rlx_state:log(State),
+            ec_cmd_log:info(rlx_state:log(State),
                           "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
             {ok, State};
