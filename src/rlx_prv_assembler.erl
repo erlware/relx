@@ -937,8 +937,8 @@ case \"$1\" in
         # however, for debugging, sometimes start_clean.boot is useful.
         # For e.g. 'setup', one may even want to name another boot script.
         case \"$1\" in
-            console)        [ -f $REL_DIR/$REL_NAME.boot ] && BOOTFILE=$REL_NAME || BOOTFILE=start ;;
-            console_clean)  BOOTFILE=start_clean ;;
+            console)        [ -f $REL_DIR/$REL_NAME.boot ] && BOOTFILE=$REL_DIR/$REL_NAME || BOOTFILE=$REL_DIR/start ;;
+            console_clean)  BOOTFILE=$ROOTDIR/bin/start_clean ;;
             console_boot)
                 shift
                 BOOTFILE=\"$1\"
@@ -948,7 +948,7 @@ case \"$1\" in
         # Setup beam-required vars
         EMU=beam
         PROGNAME=`echo $0 | sed 's/.*\\///'`
-        CMD=\"$BINDIR/erlexec -boot $REL_DIR/$BOOTFILE -mode embedded -config $CONFIG_PATH -args_file $VMARGS_PATH\"
+        CMD=\"$BINDIR/erlexec -boot $BOOTFILE -mode embedded -config $CONFIG_PATH -args_file $VMARGS_PATH\"
         export EMU
         export PROGNAME
 
