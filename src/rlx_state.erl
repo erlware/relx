@@ -27,6 +27,7 @@
          log/1,
          actions/1,
          output_dir/1,
+         output_dir/2,
          lib_dirs/1,
          add_lib_dirs/2,
          overrides/1,
@@ -185,6 +186,10 @@ log(#state_t{log=LogState}) ->
 -spec output_dir(t()) -> file:name().
 output_dir(#state_t{output_dir=OutDir}) ->
     OutDir.
+
+-spec output_dir(t(), Directory::file:filename()) -> t().
+output_dir(State, Directory) ->
+    State#state_t{output_dir=Directory}.
 
 -spec lib_dirs(t()) -> [file:name()].
 lib_dirs(#state_t{lib_dirs=LibDir}) ->

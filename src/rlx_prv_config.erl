@@ -189,6 +189,8 @@ load_terms({vm_args, VmArgs}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
 load_terms({sys_config, SysConfig}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, filename:absname(SysConfig))};
+load_terms({output_dir, OutputDir}, {ok, State}) ->
+    {ok, rlx_state:output_dir(State, filename:absname(OutputDir))};
 load_terms({overlay_vars, OverlayVars}, {ok, State}) ->
     CurrentOverlayVars = rlx_state:get(State, overlay_vars),
     NewOverlayVars0 = list_of_overlay_vars_files(OverlayVars),
