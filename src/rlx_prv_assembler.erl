@@ -302,6 +302,22 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                                           rlx_release:erts(Release),
                                           ErlOpts);
                     true ->
+                        case rlx_state:get(State, extended_start_script, false) of
+                            true ->
+                                Prefix = code:root_dir(),
+                                ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
+                                                  filename:join([BinDir, "start_clean.boot"])),
+                                NodeToolFile = nodetool_contents(),
+                                InstallUpgradeFile = install_upgrade_escript_contents(),
+                                NodeTool = filename:join([BinDir, "nodetool"]),
+                                InstallUpgrade = filename:join([BinDir, "install_upgrade.escript"]),
+                                ok = file:write_file(NodeTool, NodeToolFile),
+                                ok = file:write_file(InstallUpgrade, InstallUpgradeFile),
+                                ok = file:change_mode(NodeTool, 8#755),
+                                ok = file:change_mode(InstallUpgrade, 8#755);
+                            false ->
+                                ok
+                        end,
                         extended_bin_file_contents(RelName, RelVsn, rlx_release:erts(Release), ErlOpts)
                 end,
     %% We generate the start script by default, unless the user
@@ -394,21 +410,6 @@ include_erts(State, Release, OutputDir, RelDir) ->
                     ok = ec_file:remove(Erl),
                     ok = file:write_file(Erl, erl_script(ErtsVersion)),
                     ok = file:change_mode(Erl, 8#755),
-                    case rlx_state:get(State, extended_start_script, false) of
-                        true ->
-                            ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
-                                              filename:join([OutputDir, "bin", "start_clean.boot"])),
-                            NodeToolFile = nodetool_contents(),
-                            InstallUpgradeFile = install_upgrade_escript_contents(),
-                            NodeTool = filename:join([LocalErts, "bin", "nodetool"]),
-                            InstallUpgrade = filename:join([LocalErts, "bin", "install_upgrade.escript"]),
-                            ok = file:write_file(NodeTool, NodeToolFile),
-                            ok = file:write_file(InstallUpgrade, InstallUpgradeFile),
-                            ok = file:change_mode(NodeTool, 8#755),
-                            ok = file:change_mode(InstallUpgrade, 8#755);
-                        false ->
-                            ok
-                    end,
                     make_boot_script(State, Release, OutputDir, RelDir)
             end;
         _ ->
@@ -809,7 +810,7 @@ cd $ROOTDIR
 REMSH=\"$BINDIR/erl $REMSH_NAME_ARG $REMSH_REMSH_ARG $COOKIE_ARG\"
 
 # Setup command to control the node
-NODETOOL=\"$BINDIR/escript $BINDIR/nodetool $NAME_ARG $COOKIE_ARG\"
+NODETOOL=\"$BINDIR/escript $ROOTDIR/bin/nodetool $NAME_ARG $COOKIE_ARG\"
 
 # Check the first argument for instructions
 case \"$1\" in
@@ -941,7 +942,7 @@ case \"$1\" in
         node_name=`echo $NAME_ARG | awk '{print $2}'`
         erlang_cookie=`echo $COOKIE_ARG | awk '{print $2}'`
 
-        exec $BINDIR/escript $BINDIR/install_upgrade.escript $REL_NAME $node_name $erlang_cookie $2
+        exec $BINDIR/escript $ROOTDIR/bin/install_upgrade.escript $REL_NAME $node_name $erlang_cookie $2
         ;;
 
     console|console_clean|console_boot)
