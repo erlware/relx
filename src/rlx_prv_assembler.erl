@@ -315,24 +315,26 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
             ok = file:write_file(BareRel, StartFile),
             ok = file:change_mode(BareRel, 8#777)
     end,
-    copy_or_generate_vmargs_file(State, RelName, RelDir),
+    copy_or_generate_vmargs_file(State, Release, OutputDir, RelDir),
     copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir).
 
 %% @doc copy vm.args or generate one to releases/VSN/vm.args
--spec copy_or_generate_vmargs_file(rlx_state:t(), string(), file:name()) ->
+-spec copy_or_generate_vmargs_file(rlx_state:t(), rlx_release:t(), file:name(), file:name()) ->
                                               {ok, rlx_state:t()} | relx:error().
 
-copy_or_generate_vmargs_file(State, RelName, RelDir) ->
+copy_or_generate_vmargs_file(State, Release, OutputDir, RelDir) ->
     RelVmargsPath = filename:join([RelDir, "vm.args"]),
     case rlx_state:vm_args(State) of
         undefined ->
+            RelName = erlang:atom_to_list(rlx_release:name(Release)),
             unless_exists_write_default(RelVmargsPath, vm_args_file(RelName));
         ArgsPath ->
             case filelib:is_regular(ArgsPath) of
                 false ->
                     ?RLX_ERROR({vmargs_does_not_exist, ArgsPath});
                 true ->
-                    ec_file:copy(ArgsPath, RelVmargsPath)
+                    copy_or_symlink_config_file(State, Release, OutputDir, RelDir,
+                                                ArgsPath, RelVmargsPath)
             end
     end.
 
@@ -351,23 +353,24 @@ copy_or_generate_sys_config_file(State, Release, OutputDir, RelDir) ->
                 false ->
                     ?RLX_ERROR({config_does_not_exist, ConfigPath});
                 true ->
-                    copy_or_symlink_sys_config_file(State, Release, OutputDir, RelDir,
+                    copy_or_symlink_config_file(State, Release, OutputDir, RelDir,
                                                     ConfigPath, RelSysConfPath)
             end
     end.
 
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
--spec copy_or_symlink_sys_config_file(rlx_state:t(), rlx_release:t(),
-                                      file:name(), file:name(),
-                                      file:name(), file:name()) ->
-                                             {ok, rlx_state:t()} | relx:error().
-copy_or_symlink_sys_config_file(State, Release, OutputDir, RelDir,
-                                ConfigPath, RelSysConfPath) ->
+-spec copy_or_symlink_config_file(rlx_state:t(), rlx_release:t(),
+                                  file:name(), file:name(),
+                                  file:name(), file:name()) ->
+                                         {ok, rlx_state:t()} | relx:error().
+copy_or_symlink_config_file(State, Release, OutputDir, RelDir,
+                                ConfigPath, RelConfPath) ->
+    ensure_not_exist(RelConfPath),
     case rlx_state:dev_mode(State) of
         true ->
-            ok = file:make_symlink(ConfigPath, RelSysConfPath);
+            ok = file:make_symlink(ConfigPath, RelConfPath);
         _ ->
-            ok = ec_file:copy(ConfigPath, RelSysConfPath)
+            ok = ec_file:copy(ConfigPath, RelConfPath)
     end,
     include_erts(State, Release, OutputDir, RelDir).
 
@@ -634,6 +637,15 @@ unless_exists_write_default(Path, File) ->
             ok;
         false ->
             ok = file:write_file(Path, File)
+    end.
+
+-spec ensure_not_exist(file:name()) -> ok.
+ensure_not_exist(RelConfPath) ->
+    case ec_file:exists(RelConfPath) of
+        false ->
+            ok;
+        _ ->
+            ec_file:remove(RelConfPath)
     end.
 
 erl_script(ErtsVsn) ->

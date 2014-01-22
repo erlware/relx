@@ -900,10 +900,14 @@ make_dev_mode_release(Config) ->
     SysConfig = filename:join([LibDir1, "config", "sys.config"]),
     write_config(SysConfig, [{this_is_a_test, "yup it is"}]),
 
+    VmArgs = filename:join([LibDir1, "config", "vm.args"]),
+    ec_file:write(VmArgs, ""),
+
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     write_config(ConfigFile,
                  [{dev_mode, true},
                   {sys_config, SysConfig},
+                  {vm_args, VmArgs},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}]),
@@ -919,7 +923,9 @@ make_dev_mode_release(Config) ->
     ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "goal_app_2-0.0.1"]))),
     ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "lib_dep_1-0.0.1"]))),
     ?assert(ec_file:is_symlink(filename:join([OutputDir, "releases", "0.0.1",
-                                              "sys.config"]))).
+                                              "sys.config"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "releases", "0.0.1",
+                                              "vm.args"]))).
 
 
 %%%===================================================================
