@@ -961,7 +961,7 @@ case \"$1\" in
         # Setup beam-required vars
         EMU=beam
         PROGNAME=`echo $0 | sed 's/.*\\///'`
-        CMD=\"$BINDIR/erlexec -boot $BOOTFILE -mode embedded -config $CONFIG_PATH -args_file $VMARGS_PATH\"
+        CMD=\"$BINDIR/erlexec -boot $BOOTFILE -env ERL_LIBS $REL_DIR/lib -config $CONFIG_PATH -args_file $VMARGS_PATH\"
         export EMU
         export PROGNAME
 
