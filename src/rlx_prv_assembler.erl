@@ -305,8 +305,11 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                         case rlx_state:get(State, extended_start_script, false) of
                             true ->
                                 Prefix = code:root_dir(),
+                                DstFile = filename:join([BinDir, "start_clean.boot"]),
+                                %% Explicitly remove before cp, since it is 0444 mode
+                                ec_file:remove(DstFile),
                                 ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
-                                                  filename:join([BinDir, "start_clean.boot"])),
+                                                  DstFile),
                                 NodeToolFile = nodetool_contents(),
                                 InstallUpgradeFile = install_upgrade_escript_contents(),
                                 NodeTool = filename:join([BinDir, "nodetool"]),
