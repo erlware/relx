@@ -376,7 +376,7 @@ copy_or_generate_sys_config_file(State, RelDir) ->
 
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
 -spec copy_or_symlink_config_file(rlx_state:t(), file:name(), file:name()) ->
-                                         {ok, rlx_state:t()} | relx:error().
+                                         ok.
 copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
     ensure_not_exist(RelConfPath),
     case rlx_state:dev_mode(State) of
