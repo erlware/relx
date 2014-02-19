@@ -83,8 +83,8 @@ format_error({unable_to_render_template, FromFile, Reason}) ->
     io_lib:format("Unable to render template ~s because ~p",
                   [FromFile, Reason]);
 format_error({unable_to_compile_template, FromFile, Reason}) ->
-    io_lib:format("Unable to compile template ~s because ~p",
-                  [FromFile, Reason]);
+    io_lib:format("Unable to compile template ~s because \n~s",
+                  [FromFile, [format_errors(F, Es) || {F, Es} <- Reason]]);
 format_error({unable_to_make_dir, Absolute, Error}) ->
     io_lib:format("Unable to make directory ~s because ~p",
                   [Absolute, Error]).
@@ -92,6 +92,25 @@ format_error({unable_to_make_dir, Absolute, Error}) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
+
+format_errors(File, [{none, Mod, E}|Es]) ->
+    [io_lib:format("~s~s: ~ts~n",
+                   [rlx_util:indent(2), File,
+                    Mod:format_error(E)])
+     |format_errors(File, Es)];
+format_errors(File, [{{Line, Col}, Mod, E}|Es]) ->
+    [io_lib:format("~s~s:~w:~w: ~ts~n",
+                   [rlx_util:indent(2), File, Line, Col,
+                    Mod:format_error(E)])
+     |format_errors(File, Es)];
+format_errors(File, [{Line, Mod, E}|Es]) ->
+    [io_lib:format("~s~s:~w: ~ts~n",
+                   [rlx_util:indent(2), File, Line,
+                    Mod:format_error(E)])
+     |format_errors(File, Es)];
+format_errors(_, []) -> [].
+
+
 -spec generate_overlay_vars(rlx_state:t(), rlx_release:t()) ->
                                    {ok, rlx_state:t()} | relx:error().
 generate_overlay_vars(State, Release) ->
@@ -262,7 +281,7 @@ handle_errors(State, Result) ->
                                    {ok, rlx_state:t()} | relx:error().
 do_individual_overlay(State, OverlayVars, {mkdir, Dir}) ->
     ModuleName = make_template_name("rlx_mkdir_template", Dir),
-    case erlydtl:compile(erlang:iolist_to_binary(Dir), ModuleName) of
+    case erlydtl:compile(erlang:iolist_to_binary(Dir), ModuleName, [report_warnings, return_errors]) of
         {ok, ModuleName} ->
             case render(ModuleName, OverlayVars) of
                 {ok, IoList} ->
@@ -278,7 +297,7 @@ do_individual_overlay(State, OverlayVars, {mkdir, Dir}) ->
                 {error, Error} ->
                     ?RLX_ERROR({dir_render_failed, Dir, Error})
             end;
-        {error, Reason} ->
+        {error, Reason, _Warnings} ->
             ?RLX_ERROR({unable_to_compile_template, Dir, Reason})
     end;
 do_individual_overlay(State, OverlayVars, {copy, From, To}) ->
@@ -361,7 +380,7 @@ is_directory(ToFile0, ToFile1) ->
                              ok | relx:error().
 render_template(OverlayVars, Data) ->
     TemplateName = make_template_name("rlx_template_renderer", Data),
-    case erlydtl:compile(Data, TemplateName) of
+    case erlydtl:compile(Data, TemplateName, [report_warnings, return_errors]) of
         Good when Good =:= ok; Good =:= {ok, TemplateName} ->
             case render(TemplateName, OverlayVars) of
                 {ok, IoData} ->
@@ -369,7 +388,7 @@ render_template(OverlayVars, Data) ->
                 {error, Reason} ->
                     ?RLX_ERROR({unable_to_render_template, Data, Reason})
             end;
-        {error, Reason} ->
+        {error, Reason, _Warnings} ->
             ?RLX_ERROR({unable_to_compile_template, Data, Reason})
     end.
 
@@ -397,7 +416,7 @@ write_template(OverlayVars, FromFile, ToFile) ->
                      fun((term()) -> {ok, rlx_state:t()} | relx:error())) ->
                             {ok, rlx_state:t()} | relx:error().
 file_render_do(OverlayVars, Data, TemplateName, NextAction) ->
-    case erlydtl:compile(erlang:iolist_to_binary(Data), TemplateName) of
+    case erlydtl:compile(erlang:iolist_to_binary(Data), TemplateName, [report_warnings, return_errors]) of
         {ok, TemplateName} ->
             case render(TemplateName, OverlayVars) of
                 {ok, IoList} ->
@@ -405,7 +424,7 @@ file_render_do(OverlayVars, Data, TemplateName, NextAction) ->
                 {error, Error} ->
                     ?RLX_ERROR({render_failed, Data, Error})
             end;
-        {error, Reason} ->
+        {error, Reason, _Warnings} ->
             ?RLX_ERROR({unable_to_compile_template, Data, Reason})
     end.
 
