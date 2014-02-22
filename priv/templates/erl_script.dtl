@@ -10,4 +10,4 @@ export EMU
 export ROOTDIR
 export BINDIR
 export PROGNAME
-exec \"$BINDIR/erlexec\" ${1+\"$@\"}
+exec "$BINDIR/erlexec" ${1+"$@"}

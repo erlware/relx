@@ -12,12 +12,12 @@ ERL_OPTS={{ erl_opts }}
 
 find_erts_dir() {
     local erts_dir=$RELEASE_ROOT_DIR/erts-$ERTS_VSN
-    if [ -d \"$erts_dir\" ]; then
+    if [ -d "$erts_dir" ]; then
         ERTS_DIR=$erts_dir;
         ROOTDIR=$RELEASE_ROOT_DIR
     else
         local erl=`which erl`
-        local erl_root=`$erl -noshell -eval \"io:format(\\\"~s\\\", [code:root_dir()]).\" -s init stop`
+        local erl_root=`$erl -noshell -eval "io:format(\\"~s\\", [code:root_dir()])." -s init stop`
         ERTS_DIR=$erl_root/erts-$ERTS_VSN
         ROOTDIR=$erl_root
     fi
@@ -26,8 +26,8 @@ find_erts_dir() {
 
 find_sys_config() {
     local possible_sys=$REL_DIR/sys.config
-    if [ -f \"$possible_sys\" ]; then
-        SYS_CONFIG=\"-config $possible_sys\"
+    if [ -f "$possible_sys" ]; then
+        SYS_CONFIG="-config $possible_sys"
     fi
 }
 
