@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR=`dirname $0`
 RELEASE_ROOT_DIR=`cd $SCRIPT_DIR/.. && pwd`
-REL_NAME={{ rel_nam }}
+REL_NAME={{ rel_name }}
 REL_VSN={{ rel_vsn }}
 ERTS_VSN={{ erts_vsn }}
 REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_VSN
