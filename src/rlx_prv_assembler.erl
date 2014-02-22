@@ -646,43 +646,31 @@ ensure_not_exist(RelConfPath) ->
     end.
 
 erl_script(ErtsVsn) ->
-    render(erl_script, [{erts_vsn, ErtsVsn}]).
+    render(erl_script_dtl, [{erts_vsn, ErtsVsn}]).
                 
 bin_file_contents(RelName, RelVsn, ErtsVsn, ErlOpts) ->
-    render(bin, [{rel_name, RelName}, {rel_vsn, RelVsn}, {erts_vsn, ErtsVsn},
-                 {erl_opts, ErlOpts}]).
+    render(bin_dtl, [{rel_name, RelName}, {rel_vsn, RelVsn},
+                     {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
 
 extended_bin_file_contents(RelName, RelVsn, ErtsVsn, ErlOpts) ->
-    render(extended_bin, [{rel_name, RelName}, {rel_vsn, RelVsn},
-                          {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
+    render(extended_bin_dtl, [{rel_name, RelName}, {rel_vsn, RelVsn},
+                              {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
 
 install_upgrade_escript_contents() ->
-    read_file("install_upgrade_escript").
+    render(install_upgrade_escript_dtl).
 
 nodetool_contents() ->
-    read_file("nodetool").
+    render(nodetool_dtl).
 
 sys_config_file() ->
-    read_file("sys_config").
+    render(sys_config_dtl).
 
 vm_args_file(RelName) ->
-    render(vm_args, [{rel_name, RelName}]).
+    render(vm_args_dtl, [{rel_name, RelName}]).
 
-render(TemplateName, Data) ->
-    TemplatePath = template_path(TemplateName),
-    {ok, Rendered} = case erlydtl:compile(TemplatePath, TemplateName) of
-        ok -> TemplateName:render(Data);
-        {ok, Template} -> Template:render(Data)
-    end,
+render(Template) ->
+    render(Template, []).
+
+render(Template, Data) ->
+    {ok, Rendered} = Template:render(Data),
     Rendered.
-
-template_path(TemplateName) ->
-    BaseName = string:join([erlang:atom_to_list(TemplateName), ".dtl"]),
-    filename:join([code:priv_dir(relx), "templates", BaseName]).
-
-read_file(FileName) ->
-    {ok, Contents} = file:read_file(file_path(FileName)),
-    Contents.
-
-file_path(FileName) ->
-    filename:join([code:priv_dir(relx), "files", FileName]).
