@@ -30,6 +30,8 @@
 
 -define(DIRECTORY_RE, ".*(\/|\\\\)$").
 
+-define(ERLYDTL_COMPILE_OPTS, [report_warnings, return_errors, {auto_escape, false}]).
+
 -include("relx.hrl").
 
 %%============================================================================
@@ -281,7 +283,7 @@ handle_errors(State, Result) ->
                                    {ok, rlx_state:t()} | relx:error().
 do_individual_overlay(State, OverlayVars, {mkdir, Dir}) ->
     ModuleName = make_template_name("rlx_mkdir_template", Dir),
-    case erlydtl:compile(erlang:iolist_to_binary(Dir), ModuleName, [report_warnings, return_errors]) of
+    case erlydtl:compile(erlang:iolist_to_binary(Dir), ModuleName, ?ERLYDTL_COMPILE_OPTS) of
         {ok, ModuleName} ->
             case render(ModuleName, OverlayVars) of
                 {ok, IoList} ->
@@ -380,7 +382,7 @@ is_directory(ToFile0, ToFile1) ->
                              ok | relx:error().
 render_template(OverlayVars, Data) ->
     TemplateName = make_template_name("rlx_template_renderer", Data),
-    case erlydtl:compile(Data, TemplateName, [report_warnings, return_errors]) of
+    case erlydtl:compile(Data, TemplateName, ?ERLYDTL_COMPILE_OPTS) of
         Good when Good =:= ok; Good =:= {ok, TemplateName} ->
             case render(TemplateName, OverlayVars) of
                 {ok, IoData} ->
@@ -416,7 +418,7 @@ write_template(OverlayVars, FromFile, ToFile) ->
                      fun((term()) -> {ok, rlx_state:t()} | relx:error())) ->
                             {ok, rlx_state:t()} | relx:error().
 file_render_do(OverlayVars, Data, TemplateName, NextAction) ->
-    case erlydtl:compile(erlang:iolist_to_binary(Data), TemplateName, [report_warnings, return_errors]) of
+    case erlydtl:compile(erlang:iolist_to_binary(Data), TemplateName, ?ERLYDTL_COMPILE_OPTS) of
         {ok, TemplateName} ->
             case render(TemplateName, OverlayVars) of
                 {ok, IoList} ->
