@@ -129,6 +129,7 @@ new(PropList, Targets)
                  output_dir=proplists:get_value(output_dir, PropList, ""),
                  lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
                  config_file=proplists:get_value(config, PropList, undefined),
+                 sys_config=proplists:get_value(sys_config, PropList, undefined),
                  dev_mode = proplists:get_value(dev_mode, PropList),
                  actions = Targets,
                  caller = Caller,

@@ -253,7 +253,13 @@ create_disable_default_libs(Opts, Acc) ->
                                  {ok, rlx_state:cmd_args()} | relx:error().
 create_overlay_vars(Opts, Acc) ->
     OverlayVars = proplists:get_all_values(overlay_vars, Opts),
-    create_system_libs(Opts,  [{overlay_vars, OverlayVars} | Acc]).
+    create_sys_config(Opts,  [{overlay_vars, OverlayVars} | Acc]).
+
+-spec create_sys_config([getopt:option()], rlx_state:cmd_args()) ->
+                                 {ok, rlx_state:cmd_args()} | relx:error().
+create_sys_config(Opts, Acc) ->
+    SysConfig = proplists:get_value(sys_config, Opts, undefined),
+    create_system_libs(Opts, [{sys_config, SysConfig} | Acc]).
 
 -spec create_system_libs([getopt:option()], rlx_state:cmd_args()) ->
                                  {ok, rlx_state:cmd_args()} | relx:error().
