@@ -35,6 +35,11 @@ ifeq ($(REBAR),)
 REBAR=$(CURDIR)/rebar
 endif
 
+# Unset rebar when building on Travis
+ifeq ($(TRAVIS),true)
+REBAR=""
+endif
+
 # =============================================================================
 # Handle version discovery
 # =============================================================================
