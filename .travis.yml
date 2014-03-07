@@ -13,7 +13,7 @@ otp_release:
   - R14B04
   - R14B03
   - R14B02
-script: "make rebuild"
+script: "make get-rebar && make rebuild"
 branches:
   only:
     - master

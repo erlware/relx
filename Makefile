@@ -31,6 +31,11 @@ endif
 
 REBAR=$(shell which rebar)
 
+# If building on travis, use the rebar in the current directory
+ifeq ($(TRAVIS),true)
+REBAR=$(CURDIR)/rebar
+endif
+
 ifeq ($(REBAR),)
 REBAR=$(CURDIR)/rebar
 endif
