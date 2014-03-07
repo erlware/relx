@@ -31,13 +31,13 @@ endif
 
 REBAR=$(shell which rebar)
 
-ifeq ($(REBAR),)
+# If building on travis, use the rebar in the current directory
+ifeq ($(TRAVIS),true)
 REBAR=$(CURDIR)/rebar
 endif
 
-# Unset rebar when building on Travis
-ifeq ($(TRAVIS),true)
-REBAR=""
+ifeq ($(REBAR),)
+REBAR=$(CURDIR)/rebar
 endif
 
 # =============================================================================
