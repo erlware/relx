@@ -115,19 +115,24 @@ discover_real_symlink_dir(ProcessDir, File) ->
     ok = file:set_cwd(File),
     {ok, ActualRealDir} = file:get_cwd(),
     ok = file:set_cwd(CurCwd),
-    lists:prefix(iolist_to_list(filename:absname(ActualRealDir)),
-                 iolist_to_list(filename:absname(File))),
-    case ProcessDir(File, directory) of
-        {ok, Result, true} ->
-            [{ok, Result} | recurse(ProcessDir, File)];
-        {noresult, true} ->
-            recurse(ProcessDir, File);
-        {ok, Result, _} ->
-            [{ok, Result}];
-        {noresult, _} ->
+    case lists:prefix(iolist_to_list(filename:absname(ActualRealDir)),
+                 iolist_to_list(filename:absname(File))) of
+        true ->
+            %% Ignore cycles
             [];
-        Err = {error, _} ->
-            [Err]
+        false ->
+            case ProcessDir(File, directory) of
+                {ok, Result, true} ->
+                    [{ok, Result} | recurse(ProcessDir, File)];
+                {noresult, true} ->
+                    recurse(ProcessDir, File);
+                {ok, Result, _} ->
+                    [{ok, Result}];
+                {noresult, _} ->
+                    [];
+                Err = {error, _} ->
+                    [Err]
+            end
     end.
 
 recurse(ProcessDir, File) ->
