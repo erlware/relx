@@ -29,16 +29,7 @@ ifeq ($(ERL),)
 $(error "Erlang not available on this system")
 endif
 
-REBAR=$(shell which rebar)
-
-# If building on travis, use the rebar in the current directory
-ifeq ($(TRAVIS),true)
 REBAR=$(CURDIR)/rebar
-endif
-
-ifeq ($(REBAR),)
-REBAR=$(CURDIR)/rebar
-endif
 
 # =============================================================================
 # Handle version discovery
@@ -67,32 +58,25 @@ all: deps compile escript
 # Rules to build the system
 # =============================================================================
 
-REBAR_URL=https://github.com/rebar/rebar/wiki/rebar
-$(REBAR):
-	curl -Lo rebar $(REBAR_URL) || wget $(REBAR_URL)
-	chmod a+x rebar
-
-get-rebar: $(REBAR)
-
 deps: $(REBAR)
 	$(REBAR) get-deps
-	$(REBAR) compile
+	$(REBAR) compile -r
 
 update-deps: $(REBAR)
 	$(REBAR) update-deps
-	$(REBAR) compile
+	$(REBAR) compile -r
 
 compile: $(REBAR)
-	$(REBAR) skip_deps=true compile
+	$(REBAR) compile
 
 escript: deps
-	$(REBAR) skip_deps=true escriptize
+	$(REBAR) escriptize
 
 doc:
-	$(REBAR) skip_deps=true doc
+	$(REBAR) doc
 
 eunit: compile clean-common-test-data
-	$(REBAR) skip_deps=true eunit
+	$(REBAR) eunit
 
 ct: compile clean-common-test-data
 	mkdir -p $(CURDIR) logs
@@ -124,7 +108,7 @@ shell: deps compile
 # rebuilt). However, eunit runs the tests, which probably
 # fails (thats probably why You want them in the shell). This
 # runs eunit but tells make to ignore the result.
-	- @$(REBAR) skip_deps=true eunit
+	- @$(REBAR) eunit
 	@$(ERL) $(ERLFLAGS)
 
 pdf:
@@ -139,7 +123,7 @@ clean: clean-common-test-data $(REBAR)
 	- rm -rf $(CURDIR)/test/*.beam
 	- rm -rf $(CURDIR)/logs
 	- rm -rf $(CURDIR)/ebin
-	$(REBAR) skip_deps=true clean
+	$(REBAR) clean
 
 distclean: clean
 	- rm -rf $(DEPS_PLT)
