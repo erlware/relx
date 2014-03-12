@@ -26,7 +26,9 @@
          all/0,
          normal_case/1,
          no_beam_case/1,
-         bad_ebin_case/1]).
+         bad_ebin_case/1,
+         shallow_app_discovery/1
+        ]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -53,7 +55,7 @@ init_per_testcase(_, Config) ->
 
 
 all() ->
-    [normal_case, no_beam_case, bad_ebin_case].
+    [normal_case, no_beam_case, bad_ebin_case, shallow_app_discovery].
 
 normal_case(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -83,8 +85,7 @@ normal_case(Config) ->
     lists:foreach(fun(App) ->
                           ?assertMatch(true, lists:member(App, rlx_state:available_apps(State2)))
                   end, Apps2),
-    Length = erlang:length(Apps2) +
-        erlang:length(Apps2),
+    Length = erlang:length(Apps1) + erlang:length(Apps2),
     ?assertMatch(Length, erlang:length(rlx_state:available_apps(State2))).
 
 no_beam_case(Config) ->
@@ -145,6 +146,38 @@ bad_ebin_case(Config) ->
     {ok, State2} = rlx_provider:do(DiscoverProvider, State1),
     ?assertMatch([], [App || App <- rlx_state:available_apps(State2),
                              BadName =:= rlx_app_info:name(App)]).
+
+shallow_app_discovery(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    Apps1 = [(fun({Name, Vsn}) ->
+                      create_app(LibDir1, Name, Vsn)
+              end)(App)
+             ||
+                App <-
+                    [{create_random_name("lib_app1_"), create_random_vsn()}
+                     || _ <- lists:seq(1, 100)]],
+
+    LibDir2 = proplists:get_value(lib2, Config),
+    Apps2 = [(fun({Name, Vsn}) ->
+                      create_app(LibDir2, Name, Vsn)
+              end)(App)
+             || App <-
+                    [{create_random_name("lib_app2_"), create_random_vsn()}
+                     || _ <- lists:seq(1, 100)]],
+    State0 = rlx_state:put(proplists:get_value(state, Config),
+                           default_libs, false),
+    State1 = rlx_state:put(State0, enable_shallow_app_discovery, true),
+    {DiscoverProvider, {ok, State2}} = rlx_provider:new(rlx_prv_discover, State1),
+    {ok, State3} = rlx_provider:do(DiscoverProvider, State2),
+    lists:foreach(fun(App) ->
+                          ?assertMatch(true, lists:member(App, rlx_state:available_apps(State3)))
+                  end, Apps1),
+
+    lists:foreach(fun(App) ->
+                          ?assertMatch(true, lists:member(App, rlx_state:available_apps(State3)))
+                  end, Apps2),
+    Length = erlang:length(Apps1) + erlang:length(Apps2),
+    ?assertMatch(Length, erlang:length(rlx_state:available_apps(State3))).
 
 %%%===================================================================
 %%% Helper functions
