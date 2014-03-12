@@ -31,8 +31,16 @@ find_sys_config() {
     fi
 }
 
+find_vm_args() {
+    local possible_vm_args=$REL_DIR/vm.args
+    if [ -f "$possible_vm_args" ]; then
+        VM_ARGS="-args_file $possible_vm_args"
+    fi
+}
+
 find_erts_dir
 find_sys_config
+find_vm_args
 export ROOTDIR=$RELEASE_ROOT_DIR
 export BINDIR=$ERTS_DIR/bin
 export EMU=beam
@@ -41,4 +49,4 @@ export LD_LIBRARY_PATH=$ERTS_DIR/lib:$LD_LIBRARY_PATH
 
 cd $ROOTDIR
 
-$BINDIR/erlexec $ERL_OPTS $SYS_CONFIG -boot $REL_DIR/$REL_NAME $@
+$BINDIR/erlexec $ERL_OPTS $SYS_CONFIG $VM_ARGS -boot $REL_DIR/$REL_NAME $@
