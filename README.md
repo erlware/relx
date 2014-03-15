@@ -31,6 +31,8 @@ To build relx and generate a standalone escript executable:
 
 This creates the executable `relx`.
 
+Note, if using your own `rebar`, it must at least be > version [2.2.0](https://github.com/rebar/rebar/releases)
+
 Config File
 -----------
 
