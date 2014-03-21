@@ -25,13 +25,6 @@ find_erts_dir() {
 
 }
 
-find_sys_config() {
-    local possible_sys=$REL_DIR/sys.config
-    if [ -f "$possible_sys" ]; then
-        SYS_CONFIG="-config $possible_sys"
-    fi
-}
-
 # Use $CWD/vm.args if exists, otherwise releases/APP_VSN/vm.args, or else etc/vm.args
 if [ -e "$RELEASE_ROOT_DIR/vm.args" ]; then
     VMARGS_PATH=$RELEASE_ROOT_DIR/vm.args
@@ -83,7 +76,6 @@ if [ -z "$COOKIE_ARG" ]; then
 fi
 
 find_erts_dir
-find_sys_config
 export ROOTDIR=$RELEASE_ROOT_DIR
 export BINDIR=$ERTS_DIR/bin
 export EMU=beam
