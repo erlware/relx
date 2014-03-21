@@ -10,6 +10,7 @@ ERTS_VSN={{ erts_vsn }}
 REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_VSN
 ERL_OPTS={{ erl_opts }}
 PIPE_DIR=/tmp/erl_pipes/{{ rel_name }}/
+RUNNER_LOG_DIR=${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}
 
 find_erts_dir() {
     local erts_dir=$RELEASE_ROOT_DIR/erts-$ERTS_VSN
@@ -45,7 +46,6 @@ else
     fi
 fi
 
-RUNNER_LOG_DIR=$RELEASE_ROOT_DIR/log
 # Make sure log directory exists
 mkdir -p $RUNNER_LOG_DIR
 
