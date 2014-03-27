@@ -12,3 +12,4 @@ test/*_data
 _rel/*
 .*
 erl_crash.dump
+rebar
