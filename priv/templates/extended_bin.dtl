@@ -34,15 +34,17 @@ find_sys_config() {
 }
 
 # Use $CWD/vm.args if exists, otherwise releases/APP_VSN/vm.args, or else etc/vm.args
-if [ -e "$RELEASE_ROOT_DIR/vm.args" ]; then
-    VMARGS_PATH=$RELEASE_ROOT_DIR/vm.args
-    USE_DIR=$RELEASE_ROOT_DIR
-else
-    USE_DIR=$REL_DIR
-    if [ -e "$REL_DIR/vm.args" ]; then
-        VMARGS_PATH="$REL_DIR/vm.args"
+if [ -z "$VMARGS_PATH" ]; then
+    if [ -e "$RELEASE_ROOT_DIR/vm.args" ]; then
+        VMARGS_PATH=$RELEASE_ROOT_DIR/vm.args
+        USE_DIR=$RELEASE_ROOT_DIR
     else
-        VMARGS_PATH="$REL_DIR/vm.args"
+        USE_DIR=$REL_DIR
+        if [ -e "$REL_DIR/vm.args" ]; then
+            VMARGS_PATH="$REL_DIR/vm.args"
+        else
+            VMARGS_PATH="$REL_DIR/vm.args"
+        fi
     fi
 fi
 
@@ -50,13 +52,15 @@ fi
 mkdir -p $RUNNER_LOG_DIR
 
 # Use releases/VSN/sys.config if it exists otherwise use etc/app.config
-if [ -e "$USE_DIR/sys.config" ]; then
-    CONFIG_PATH="$USE_DIR/sys.config"
-else
-    if [ -e "$REL_DIR/sys.config" ]; then
-        CONFIG_PATH="$REL_DIR/sys.config"
+if [ -z "$CONFIG_PATH" ]; then
+    if [ -e "$USE_DIR/sys.config" ]; then
+        CONFIG_PATH="$USE_DIR/sys.config"
     else
-        CONFIG_PATH="$REL_DIR/app.config"
+        if [ -e "$REL_DIR/sys.config" ]; then
+            CONFIG_PATH="$REL_DIR/sys.config"
+        else
+            CONFIG_PATH="$REL_DIR/app.config"
+        fi
     fi
 fi
 
