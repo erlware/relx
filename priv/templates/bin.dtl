@@ -2,51 +2,61 @@
 
 set -e
 
-SCRIPT_DIR=`dirname $0`
-RELEASE_ROOT_DIR=`cd $SCRIPT_DIR/.. && pwd`
-REL_NAME={{ rel_name }}
-REL_VSN={{ rel_vsn }}
-ERTS_VSN={{ erts_vsn }}
-REL_DIR=$RELEASE_ROOT_DIR/releases/$REL_VSN
-ERL_OPTS={{ erl_opts }}
+SCRIPT_DIR="$(dirname "$0")"
+RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REL_NAME="{{ rel_name }}"
+REL_VSN="{{ rel_vsn }}"
+ERTS_VSN="{{ erts_vsn }}"
+REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
+ERL_OPTS="{{ erl_opts }}"
 
 find_erts_dir() {
-    local erts_dir=$RELEASE_ROOT_DIR/erts-$ERTS_VSN
+    local erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
     if [ -d "$erts_dir" ]; then
-        ERTS_DIR=$erts_dir;
-        ROOTDIR=$RELEASE_ROOT_DIR
+        ERTS_DIR="$erts_dir";
+        ROOTDIR="$RELEASE_ROOT_DIR"
     else
-        local erl=`which erl`
-        local erl_root=`$erl -noshell -eval "io:format(\\"~s\\", [code:root_dir()])." -s init stop`
-        ERTS_DIR=$erl_root/erts-$ERTS_VSN
-        ROOTDIR=$erl_root
+        local erl="$(which erl)"
+        local erl_root="$("$erl" -noshell -eval "io:format(\\"~s\\", [code:root_dir()])." -s init stop)"
+        ERTS_DIR="$erl_root/erts-$ERTS_VSN"
+        ROOTDIR="$erl_root"
     fi
 
 }
 
 find_sys_config() {
-    local possible_sys=$REL_DIR/sys.config
+    local possible_sys="$REL_DIR/sys.config"
     if [ -f "$possible_sys" ]; then
-        SYS_CONFIG="-config $possible_sys"
+        SYS_CONFIG="$possible_sys"
     fi
 }
 
 find_vm_args() {
-    local possible_vm_args=$REL_DIR/vm.args
+    local possible_vm_args="$REL_DIR/vm.args"
     if [ -f "$possible_vm_args" ]; then
-        VM_ARGS="-args_file $possible_vm_args"
+        VM_ARGS="$possible_vm_args"
     fi
 }
 
 find_erts_dir
 find_sys_config
 find_vm_args
-export ROOTDIR=$RELEASE_ROOT_DIR
-export BINDIR=$ERTS_DIR/bin
-export EMU=beam
-export PROGNAME=erl
-export LD_LIBRARY_PATH=$ERTS_DIR/lib:$LD_LIBRARY_PATH
+export ROOTDIR="$RELEASE_ROOT_DIR"
+export BINDIR="$ERTS_DIR/bin"
+export EMU="beam"
+export PROGNAME="erl"
+export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
 
-cd $ROOTDIR
+cd "$ROOTDIR"
 
-$BINDIR/erlexec $ERL_OPTS $SYS_CONFIG $VM_ARGS -boot $REL_DIR/$REL_NAME $@
+# Save extra arguments
+ARGS="$@"
+
+# Build arguments for erlexec
+set -- "$ERL_OPTS"
+[ "$SYS_CONFIG" ] && set -- "$@" -config "$SYS_CONFIG"
+[ "$VM_ARGS" ] && set -- "$@" -args_file "$VM_ARGS"
+set -- "$@" -boot "$REL_DIR/$REL_NAME" "$ARGS"
+
+# Boot the release
+"$BINDIR/erlexec" "$@"
