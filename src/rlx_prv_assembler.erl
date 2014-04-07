@@ -296,9 +296,10 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     VsnRel = filename:join(BinDir, rlx_release:canonical_name(Release)),
     BareRel = filename:join(BinDir, RelName),
     ErlOpts = rlx_state:get(State, erl_opts, ""),
+    {OsFamily, _OsName} = os:type(),
     StartFile = case rlx_state:get(State, extended_start_script, false) of
                     false ->
-                        bin_file_contents(RelName, RelVsn,
+                        bin_file_contents(OsFamily, RelName, RelVsn,
                                           rlx_release:erts(Release),
                                           ErlOpts);
                     true ->
@@ -321,7 +322,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                             false ->
                                 ok
                         end,
-                        extended_bin_file_contents(RelName, RelVsn, rlx_release:erts(Release), ErlOpts)
+                        extended_bin_file_contents(OsFamily, RelName, RelVsn, rlx_release:erts(Release), ErlOpts)
                 end,
     %% We generate the start script by default, unless the user
     %% tells us not too
@@ -329,14 +330,33 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
         false ->
             ok;
         _ ->
-            ok = file:write_file(VsnRel, StartFile),
-            ok = file:change_mode(VsnRel, 8#777),
-            ok = file:write_file(BareRel, StartFile),
-            ok = file:change_mode(BareRel, 8#777)
+            VsnRelStartFile = case OsFamily of
+                unix -> VsnRel;
+                win32 -> string:concat(VsnRel, ".cmd")
+            end,
+            ok = file:write_file(VsnRelStartFile, StartFile),
+            ok = file:change_mode(VsnRelStartFile, 8#777),
+            BareRelStartFile = case OsFamily of
+                unix -> BareRel;
+                win32 -> string:concat(BareRel, ".cmd")
+            end,
+            ok = file:write_file(BareRelStartFile, StartFile),
+            ok = file:change_mode(BareRelStartFile, 8#777)
     end,
+    ReleasesDir = filename:join(OutputDir, "releases"),
+    generate_start_erl_data_file(Release, ReleasesDir),
     copy_or_generate_vmargs_file(State, Release, RelDir),
     copy_or_generate_sys_config_file(State, RelDir),
     include_erts(State, Release, OutputDir, RelDir).
+
+%% @doc generate a start_erl.data file
+-spec generate_start_erl_data_file(rlx_release:t(), file:name()) ->
+                                   ok | relx:error().
+generate_start_erl_data_file(Release, ReleasesDir) ->
+    ErtsVersion = rlx_release:erts(Release),
+    ReleaseVersion = rlx_release:vsn(Release),
+    Data = ErtsVersion ++ " " ++ ReleaseVersion,
+    ok = file:write_file(filename:join(ReleasesDir, "start_erl.data"), Data).
 
 %% @doc copy vm.args or generate one to releases/VSN/vm.args
 -spec copy_or_generate_vmargs_file(rlx_state:t(), rlx_release:t(), file:name()) ->
@@ -396,16 +416,39 @@ include_erts(State, Release, OutputDir, RelDir) ->
             ErtsVersion = rlx_release:erts(Release),
             ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
             LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
+            {OsFamily, _OsName} = os:type(),
             case filelib:is_dir(ErtsDir) of
                 false ->
                     ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
                 true ->
                     ok = ec_file:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive]),
-                    Erl = filename:join([LocalErts, "bin", "erl"]),
-                    ok = ec_file:remove(Erl),
-                    ok = file:write_file(Erl, erl_script(ErtsVersion)),
-                    ok = file:change_mode(Erl, 8#755),
+                    case OsFamily of
+                        unix ->
+                            Erl = filename:join([LocalErts, "bin", "erl"]),
+                            ok = ec_file:remove(Erl),
+                            ok = file:write_file(Erl, erl_script(ErtsVersion)),
+                            ok = file:change_mode(Erl, 8#755);
+                        win32 ->
+                            ErlIni = filename:join([LocalErts, "bin", "erl.ini"]),
+                            ok = ec_file:remove(ErlIni),
+                            ok = file:write_file(ErlIni, erl_ini(OutputDir, ErtsVersion))
+                    end,
+                    case rlx_state:get(State, extended_start_script, false) of
+                        true ->
+                            ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
+                                              filename:join([OutputDir, "bin", "start_clean.boot"])),
+                            NodeToolFile = nodetool_contents(),
+                            InstallUpgradeFile = install_upgrade_escript_contents(),
+                            NodeTool = filename:join([LocalErts, "bin", "nodetool"]),
+                            InstallUpgrade = filename:join([LocalErts, "bin", "install_upgrade.escript"]),
+                            ok = file:write_file(NodeTool, NodeToolFile),
+                            ok = file:write_file(InstallUpgrade, InstallUpgradeFile),
+                            ok = file:change_mode(NodeTool, 8#755),
+                            ok = file:change_mode(InstallUpgrade, 8#755);
+                        false ->
+                            ok
+                    end,
                     make_boot_script(State, Release, OutputDir, RelDir)
             end;
         _ ->
@@ -648,13 +691,26 @@ ensure_not_exist(RelConfPath) ->
 erl_script(ErtsVsn) ->
     render(erl_script_dtl, [{erts_vsn, ErtsVsn}]).
                 
-bin_file_contents(RelName, RelVsn, ErtsVsn, ErlOpts) ->
-    render(bin_dtl, [{rel_name, RelName}, {rel_vsn, RelVsn},
-                     {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
+bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
+    Template = case OsFamily of
+        unix -> bin_dtl;
+        win32 -> bin_windows_dtl
+    end,
+    render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
+                      {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
 
-extended_bin_file_contents(RelName, RelVsn, ErtsVsn, ErlOpts) ->
-    render(extended_bin_dtl, [{rel_name, RelName}, {rel_vsn, RelVsn},
-                              {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
+extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
+    Template = case OsFamily of
+        unix -> extended_bin_dtl;
+        win32 -> extended_bin_windows_dtl
+    end,
+    render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
+                      {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
+
+erl_ini(OutputDir, ErtsVsn) ->
+    ErtsDirName = string:concat("erts-", ErtsVsn),
+    BinDir = filename:join([OutputDir, ErtsDirName, bin]),
+    render(erl_ini_dtl, [{bin_dir, BinDir}, {output_dir, OutputDir}]).
 
 install_upgrade_escript_contents() ->
     render(install_upgrade_escript_dtl).

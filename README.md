@@ -33,6 +33,19 @@ This creates the executable `relx`.
 
 Note, if using your own `rebar`, it must at least be > version [2.2.0](https://github.com/rebar/rebar/releases)
 
+Building on Windows
+-------------------
+
+To build relx on Windows you'll need to have rebar installed and the path to
+the rebar binary added to the `PATH` environment variable. To start the build
+use the `bootstrap` batch file:
+
+    c:\> bootstrap
+
+This creates the executable `relx` and the `relx.cmd` shortcut script. Copy
+both of these files to a directory and make the directory available to the
+`PATH` environment variable.
+
 Config File
 -----------
 
