@@ -410,9 +410,21 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
 -spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) ->
                           {ok, rlx_state:t()} | relx:error().
 include_erts(State, Release, OutputDir, RelDir) ->
-    case rlx_state:get(State, include_erts, true) of
-        true ->
-            Prefix = code:root_dir(),
+    Prefix = case rlx_state:get(State, include_erts, true) of
+                 false ->
+                     false;
+                 true ->
+                     code:root_dir();
+                 P ->
+                     filename:absname(P)
+    end,
+
+    case Prefix of
+        false ->
+            make_boot_script(State, Release, OutputDir, RelDir);
+        _ ->
+            ec_cmd_log:info(rlx_state:log(State),
+                            "Including Erts from ~s~n", [Prefix]),
             ErtsVersion = rlx_release:erts(Release),
             ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
             LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
@@ -450,11 +462,8 @@ include_erts(State, Release, OutputDir, RelDir) ->
                             ok
                     end,
                     make_boot_script(State, Release, OutputDir, RelDir)
-            end;
-        _ ->
-            make_boot_script(State, Release, OutputDir, RelDir)
+            end
     end.
-
 
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) ->
                               {ok, rlx_state:t()} | relx:error().
@@ -518,16 +527,19 @@ make_relup(State, Release) ->
 make_tar(State, Release, OutputDir) ->
     Name = atom_to_list(rlx_release:name(Release)),
     Vsn = rlx_release:vsn(Release),
-    Prefix = code:root_dir(),
     ErtsVersion = rlx_release:erts(Release),
-    ErtsDir = filename:join([Prefix]),
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
            {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
                 true ->
+                    Prefix = code:root_dir(),
+                    ErtsDir = filename:join([Prefix]),
                     [{erts, ErtsDir}];
                 false ->
-                    []
+                    [];
+                Prefix ->
+                    ErtsDir = filename:join([Prefix]),
+                    [{erts, ErtsDir}]
             end],
     case systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]),
                            Opts) of
@@ -562,10 +574,10 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                          filename:join([OutputDir, "releases", Vsn, "vm.args"])},
                         {"bin", filename:join([OutputDir, "bin"])} |
                         case rlx_state:get(State, include_erts, true) of
-                            true ->
-                                [{"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}];
                             false ->
-                                []
+                                [];
+                            _ ->
+                                [{"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
                         end], [compressed]),
     ec_cmd_log:info(rlx_state:log(State),
                  "tarball ~s successfully created!~n", [TarFile]),
