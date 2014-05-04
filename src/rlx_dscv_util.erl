@@ -110,11 +110,8 @@ discover_dir(ProcessDir, File, symlink) ->
             discover_real_symlink_dir(ProcessDir, File)
     end.
 
-discover_real_symlink_dir(ProcessDir, File) ->
-    {ok, CurCwd} = file:get_cwd(),
-    ok = file:set_cwd(File),
-    {ok, ActualRealDir} = file:get_cwd(),
-    ok = file:set_cwd(CurCwd),
+discover_real_symlink_dir(ProcessDir, File) ->    
+    {ok, ActualRealDir} = file:read_link(File),    
     case lists:prefix(iolist_to_list(filename:absname(ActualRealDir)),
                  iolist_to_list(filename:absname(File))) of
         true ->
