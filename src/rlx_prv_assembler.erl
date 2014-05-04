@@ -316,9 +316,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                                 NodeTool = filename:join([BinDir, "nodetool"]),
                                 InstallUpgrade = filename:join([BinDir, "install_upgrade.escript"]),
                                 ok = file:write_file(NodeTool, NodeToolFile),
-                                ok = file:write_file(InstallUpgrade, InstallUpgradeFile),
-                                ok = file:change_mode(NodeTool, 8#755),
-                                ok = file:change_mode(InstallUpgrade, 8#755);
+                                ok = file:write_file(InstallUpgrade, InstallUpgradeFile);
                             false ->
                                 ok
                         end,
