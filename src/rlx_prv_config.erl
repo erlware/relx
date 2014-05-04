@@ -122,7 +122,12 @@ load_config(ConfigFile, State) ->
 -spec load_terms(term(), {ok, rlx_state:t()} | relx:error()) ->
                         {ok, rlx_state:t()} | relx:error().
 load_terms({default_release, RelName, RelVsn}, {ok, State}) ->
-    {ok, rlx_state:default_configured_release(State, RelName, RelVsn)};
+    case rlx_state:default_configured_release(State) of
+        {undefined, undefined} ->
+            {ok, rlx_state:default_configured_release(State, RelName, RelVsn)};
+        _ ->
+            {ok, State}
+    end;
 load_terms({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
     {ok, State};
