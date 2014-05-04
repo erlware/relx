@@ -267,7 +267,7 @@ make_overridden_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({OverrideAppName, OverrideVsn}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
-    {ok, Real} = file:read_link(filename:join([OutputDir, "lib",
+    {ok, Real} = file:read_link(filename:join([OutputDir, "foo", "lib",
                                                OverrideApp ++ "-" ++ OverrideVsn])),
     ?assertMatch(OverrideAppDir, Real).
 
@@ -485,7 +485,7 @@ make_rerun_overridden_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({OverrideAppName, OverrideVsn}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
-    {ok, Real} = file:read_link(filename:join([OutputDir, "lib",
+    {ok, Real} = file:read_link(filename:join([OutputDir, "foo", "lib",
                                                OverrideApp ++ "-" ++ OverrideVsn])),
     ?assertMatch(OverrideAppDir, Real).
 
@@ -563,19 +563,19 @@ overlay_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
-    ?assert(ec_file:exists(filename:join(OutputDir, "fooo"))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars1.config"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars1.config"]))),
-    io:format("DirFile ~p~n", [filename:join([OutputDir, SecondTestDir, TestDir, TestFile])]),
-    ?assert(ec_file:exists(filename:join([OutputDir, SecondTestDir, TestDir, TestFile]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "fooo"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "foodir", "vars1.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "yahoo", "vars1.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", SecondTestDir, TestDir, TestFile]))),
 
-    TemplateData = case file:consult(filename:join([OutputDir, "test_template_resolved"])) of
+    TemplateData = case file:consult(filename:join([OutputDir, "foo", "test_template_resolved"])) of
                        {ok, Details} ->
                            Details;
                        Error ->
                            erlang:throw({failed_to_consult, Error})
                    end,
-    {ok, ReadFileInfo} = file:read_file_info(filename:join([OutputDir, "test_template_resolved"])),
+    
+    {ok, ReadFileInfo} = file:read_file_info(filename:join([OutputDir, "foo", "test_template_resolved"])),
     ?assertEqual(8#100777, ReadFileInfo#file_info.mode),
 
     ?assertEqual(erlang:system_info(version),
@@ -610,9 +610,9 @@ overlay_release(Config) ->
                  proplists:get_value(lib_dep_1_link, TemplateData)),
     ?assertEqual("(3:debug)",
                  proplists:get_value(log, TemplateData)),
-    ?assertEqual(OutputDir,
+    ?assertEqual(filename:join(OutputDir, "foo"),
                  proplists:get_value(output_dir, TemplateData)),
-    ?assertEqual(OutputDir,
+    ?assertEqual(filename:join(OutputDir, "foo"),
                  proplists:get_value(target_dir, TemplateData)),
     ?assertEqual([],
                  proplists:get_value(overridden, TemplateData)),
@@ -917,14 +917,14 @@ make_dev_mode_release(Config) ->
                           OutputDir, ConfigFile),
     [{{foo, "0.0.1"}, _Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
 
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "non_goal_1-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "non_goal_2-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "goal_app_1-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "goal_app_2-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "lib", "lib_dep_1-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "releases", "0.0.1",
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                               "sys.config"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "releases", "0.0.1",
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                               "vm.args"]))).
 
 

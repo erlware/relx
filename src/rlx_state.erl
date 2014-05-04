@@ -26,8 +26,9 @@
 -export([new/2,
          log/1,
          actions/1,
-         output_dir/1,
-         output_dir/2,
+         output_dir/1,         
+         base_output_dir/1,
+         base_output_dir/2,
          lib_dirs/1,
          add_lib_dirs/2,
          overrides/1,
@@ -185,11 +186,16 @@ log(#state_t{log=LogState}) ->
     LogState.
 
 -spec output_dir(t()) -> file:name().
-output_dir(#state_t{output_dir=OutDir}) ->
+output_dir(State=#state_t{output_dir=OutDir}) ->
+    {RelName, _RelVsn} = default_configured_release(State),
+    filename:join(OutDir, RelName).
+
+-spec base_output_dir(t()) -> file:name().
+base_output_dir(#state_t{output_dir=OutDir}) ->
     OutDir.
 
--spec output_dir(t(), Directory::file:filename()) -> t().
-output_dir(State, Directory) ->
+-spec base_output_dir(t(), Directory::file:filename()) -> t().
+base_output_dir(State, Directory) ->
     State#state_t{output_dir=Directory}.
 
 -spec lib_dirs(t()) -> [file:name()].
