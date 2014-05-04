@@ -700,7 +700,7 @@ ensure_not_exist(RelConfPath) ->
 
 erl_script(ErtsVsn) ->
     render(erl_script_dtl, [{erts_vsn, ErtsVsn}]).
-                
+
 bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
     Template = case OsFamily of
         unix -> bin_dtl;
