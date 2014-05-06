@@ -139,7 +139,7 @@ new(PropList, Targets)
                  realized_releases=ec_dictionary:new(ec_dict),
                  config_values=ec_dictionary:new(ec_dict),
                  overrides = proplists:get_value(overrides, PropList, []),
-                 root_dir = proplists:get_value(root_dir, PropList, Root),
+                 root_dir = filename:absname(proplists:get_value(root_dir, PropList, Root)),
                  upfrom = proplists:get_value(upfrom, PropList, undefined),
                  default_configured_release={proplists:get_value(relname, PropList, undefined),
                                   proplists:get_value(relvsn, PropList, undefined)}},
@@ -238,7 +238,7 @@ root_dir(#state_t{root_dir=RootDir}) ->
 
 -spec root_dir(t(), file:filename()) -> t().
 root_dir(State, RootDir) ->
-    State#state_t{root_dir=RootDir}.
+    State#state_t{root_dir=filename:absname(RootDir)}.
 
 -spec providers(t(), [rlx_provider:t()]) -> t().
 providers(M, NewProviders) ->
