@@ -61,15 +61,17 @@ normal_passing_case(Config) ->
                "-n", RelName, "-v", RelVsn, "-o", Outdir],
     {ok, {Opts, Targets}} = getopt:parse(relx:opt_spec_list(), CmdLine),
     {ok, State} = rlx_cmd_args:args2state(Opts, Targets),
+    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State),
+    {ok, State2} = rlx_provider:do(ConfigProvider, State1),
     ?assertMatch([Lib1, Lib2],
-                 rlx_state:lib_dirs(State)),
-    ?assertMatch(Outdir, rlx_state:base_output_dir(State)),
+                 rlx_state:lib_dirs(State2)),
+    ?assertMatch(Outdir, rlx_state:output_dir(State2)),
 
     ?assertMatch([{app1,{{33,33},{[],[<<"build4">>]}},lte},
                   {app2,
                    {{33,22},{[],[]}},
                    {{45,22},{[],[<<"build">>,21]}}, between}],
-                 rlx_state:goals(State)).
+                 rlx_state:goals(State2)).
 
 lib_expansion_case(Config) ->
     DataDir = proplists:get_value(data_dir, Config),
@@ -81,8 +83,10 @@ lib_expansion_case(Config) ->
     CmdLine = ["-l", filename:join(DataDir, "*")],
     {ok, {Opts, Targets}} = getopt:parse(relx:opt_spec_list(), CmdLine),
     {ok, State} = rlx_cmd_args:args2state(Opts, Targets),
+    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State),
+    {ok, State2} = rlx_provider:do(ConfigProvider, State1),
     ?assertMatch([Lib1, Lib2],
-                 rlx_state:lib_dirs(State)).
+                 rlx_state:lib_dirs(State2)).
 
 lib_fail_case(Config) ->
     DataDir = proplists:get_value(data_dir, Config),

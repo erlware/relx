@@ -33,16 +33,16 @@
                         {ok, {rlx_state:t(), [string()]}} |
                         relx:error().
 args2state(Opts, Targets) ->
-    RelName = rlx_util:to_atom(proplists:get_value(relname, Opts, undefined)),
-    RelVsn = proplists:get_value(relvsn, Opts, undefined),
     case convert_targets(Targets) of
         {ok, AtomizedTargets} ->
-            case create_log(Opts, [{relname, RelName},
-                                   {relvsn, RelVsn}]) of
+            case run_creates(Opts) of
                 Error = {error, _} ->
                     Error;
                 {ok, CommandLineConfig} ->
-                    handle_config(Opts, AtomizedTargets, CommandLineConfig)
+                    RelName = rlx_util:to_atom(proplists:get_value(relname, Opts, undefined)),
+                    RelVsn = proplists:get_value(relvsn, Opts, undefined),
+                    handle_config(Opts, AtomizedTargets, 
+                                 [{default_release, {RelName, RelVsn}} | CommandLineConfig])
             end;
         Error ->
             Error
@@ -95,7 +95,7 @@ handle_config(Opts, Targets, CommandLineConfig) ->
         Error = {error, _} ->
             Error;
         {ok, Config} ->
-            {ok, rlx_state:new([{config, Config} | CommandLineConfig], Targets)}
+            {ok, rlx_state:new(Config, CommandLineConfig, Targets)}
     end.
 
 -spec convert_targets([string()]) -> {ok, release | relup} | relx:error().
@@ -131,40 +131,137 @@ validate_config(Config) ->
             ?RLX_ERROR({invalid_config_file, Config})
     end.
 
--spec create_log([getopt:option()], rlx_state:cmd_args()) ->
-                        {ok, rlx_state:cmd_args()} | relx:error().
-create_log(Opts, Acc) ->
+run_creates(Opts) ->    
+    try 
+        Conf = lists:flatten(lists:foldl(fun(X, Acc) ->
+                                                  [create(X, Opts) | Acc]
+                                          end, [], proplists:get_keys(Opts))),
+        {ok, Conf}
+    catch
+        throw:E ->
+            E
+    end.
+    
+create(log_level, Opts) ->
     LogLevel = proplists:get_value(log_level, Opts, 0),
     if
         LogLevel >= 0, LogLevel =< 3 ->
-            create_goals(Opts, [{log, ec_cmd_log:new(LogLevel, command_line)} | Acc]);
+            {log, ec_cmd_log:new(LogLevel, command_line)};
         true ->
-            ?RLX_ERROR({invalid_log_level, LogLevel})
-    end.
-
--spec create_goals([getopt:option()], rlx_state:cmd_args()) ->
-                          {ok, rlx_state:cmd_args()} | relx:error().
-create_goals(Opts, Acc) ->
+            throw(?RLX_ERROR({invalid_log_level, LogLevel}))
+    end;    
+create(goal, Opts) ->
     Goals = proplists:get_value(goals, Opts, []) ++
         proplists:get_all_values(goal, Opts),
     case convert_goals(Goals, []) of
         Error={error, _} ->
-            Error;
+            throw(Error);
         {ok, Specs} ->
-            create_overrides(Opts, [{goals, Specs} | Acc])
-    end.
-
--spec create_overrides([getopt:option()], rlx_state:cmd_args()) ->
-                              {ok, rlx_state:cmd_args()} | relx:error().
-create_overrides(Opts, Acc) ->
+            {goals, Specs}
+    end;
+create(goals, Opts) ->
+    Goals = proplists:get_value(goals, Opts, []) ++
+        proplists:get_all_values(goal, Opts),
+    case convert_goals(Goals, []) of
+        Error={error, _} ->
+            throw(Error);
+        {ok, Specs} ->
+            {goals, Specs}
+    end;
+create(overrides, Opts) ->
     Overrides = proplists:get_all_values(override, Opts) ++
         proplists:get_value(overrides, Opts, []),
     case convert_overrides(Overrides, []) of
         {ok, Overrides} ->
-            create_output_dir(Opts, [{overrides, Overrides} | Acc]);
+            {overrides, Overrides};
         Error ->
-            Error
-    end.
+            throw(Error)
+    end;
+create(output_dir, Opts) ->
+    OutputDir = proplists:get_value(output_dir, Opts, "./_rel"),
+    {output_dir, filename:absname(OutputDir)};
+create(lib_dir, Opts) ->
+    Dirs = proplists:get_all_values(lib_dir, Opts) ++
+        proplists:get_value(lib_dirs, Opts, []),
+    ExpDirs = rlx_util:wildcard_paths(Dirs),
+    case check_lib_dirs(ExpDirs) of
+        Error = {error, _} ->
+            throw(Error);
+        ok ->
+            LibDirs = [rlx_util:to_binary(Dir) || Dir <- ExpDirs],
+            {lib_dirs, LibDirs}
+    end;
+create(lib_dirs, Opts) ->
+    Dirs = proplists:get_all_values(lib_dir, Opts) ++
+        proplists:get_value(lib_dirs, Opts, []),
+    ExpDirs = rlx_util:wildcard_paths(Dirs),
+    case check_lib_dirs(ExpDirs) of
+        Error = {error, _} ->
+            throw(Error);
+        ok ->
+            LibDirs = [rlx_util:to_binary(Dir) || Dir <- ExpDirs],
+            {lib_dirs, LibDirs}
+    end;
+create(root_dir, Opts) ->
+    Dir = proplists:get_value(root_dir, Opts, undefined),
+    case Dir of
+        undefined ->
+            {ok, Cwd} = file:get_cwd(),
+            {root_dir, Cwd};
+        _ ->
+            {root_dir, filename:absname(Dir)}
+    end;
+create(default_libs, Opts) ->
+    Def = proplists:get_value(default_libs, Opts, true),
+    {default_libs, Def};
+create(overlay_vars, Opts)->
+    OverlayVars = proplists:get_all_values(overlay_vars, Opts),
+    {overlay_vars, OverlayVars};
+create(sys_config, Opts) ->
+    SysConfig = proplists:get_value(sys_config, Opts, undefined),
+    {sys_config, SysConfig};
+create(system_libs, Opts) ->
+    SystemLibs = proplists:get_value(system_libs, Opts, undefined),
+    {system_libs, SystemLibs};
+create(upfrom, Opts) ->
+    case proplists:get_value(upfrom, Opts, undefined) of
+        undefined ->
+            [];
+        UpFrom ->
+            {upfrom, UpFrom}
+    end;
+create(caller, Opts) ->
+    case proplists:get_value(caller, Opts, api) of
+        "command_line" ->
+            {caller, command_line};
+        "commandline" ->
+            {caller, command_line};
+        "api" ->
+            {caller, api};
+        api ->
+            {caller, api};
+        commandline ->
+            {caller, command_line};
+        command_line ->
+            {caller, command_line};
+        Caller ->
+            ?RLX_ERROR({invalid_caller, Caller})
+    end;
+create(paths, Opts) ->
+    Dirs = proplists:get_all_values(path, Opts) ++
+        proplists:get_value(paths, Opts, []),
+    case check_lib_dirs(Dirs) of
+        Error = {error, _} ->
+            throw(Error);
+        ok ->
+            code:add_pathsa([filename:absname(Path) || Path <- Dirs]),
+            []
+    end;
+create(dev_mode, Opts) ->
+    DevMode = proplists:get_value(dev_mode, Opts, false),
+    {dev_mode, DevMode};
+create(_, _) ->
+    [].
 
 -spec convert_overrides([{atom(), string() | binary()} |
                          string() | binary()], [{atom(), string() | binary()}]) ->
@@ -211,110 +308,6 @@ parse_goal(RawSpec, Rest, Acc) ->
         {fail, _} ->
             ?RLX_ERROR({failed_to_parse, RawSpec})
     end.
-
--spec create_output_dir([getopt:option()], rlx_state:cmd_args()) ->
-                               {ok, rlx_state:cmd_args()} | relx:error().
-create_output_dir(Opts, Acc) ->
-    OutputDir = proplists:get_value(output_dir, Opts, "./_rel"),
-    create_lib_dirs(Opts, [{output_dir, filename:absname(OutputDir)} | Acc]).
-
--spec create_lib_dirs([getopt:option()], rlx_state:cmd_args()) ->
-                               {ok, rlx_state:cmd_args()} | relx:error().
-create_lib_dirs(Opts, Acc) ->
-    Dirs = proplists:get_all_values(lib_dir, Opts) ++
-        proplists:get_value(lib_dirs, Opts, []),
-    ExpDirs = rlx_util:wildcard_paths(Dirs),
-    case check_lib_dirs(ExpDirs) of
-        Error = {error, _} ->
-            Error;
-        ok ->
-            create_root_dir(Opts, [{lib_dirs, ExpDirs} | Acc])
-    end.
-
--spec create_root_dir([getopt:option()], rlx_state:cmd_args()) ->
-                               {ok, rlx_state:cmd_args()} | relx:error().
-create_root_dir(Opts, Acc) ->
-    Dir = proplists:get_value(root_dir, Opts, undefined),
-    case Dir of
-        undefined ->
-            {ok, Cwd} = file:get_cwd(),
-            create_disable_default_libs(Opts, [{root_dir, Cwd} | Acc]);
-        _ ->
-            create_disable_default_libs(Opts, [{root_dir, Dir} | Acc])
-    end.
-
--spec create_disable_default_libs([getopt:option()], rlx_state:cmd_args()) ->
-                                         {ok, rlx_state:cmd_args()} | relx:error().
-create_disable_default_libs(Opts, Acc) ->
-    Def = proplists:get_value(default_libs, Opts, true),
-    create_overlay_vars(Opts,  [{default_libs, Def} | Acc]).
-
--spec create_overlay_vars([getopt:option()], rlx_state:cmd_args()) ->
-                                 {ok, rlx_state:cmd_args()} | relx:error().
-create_overlay_vars(Opts, Acc) ->
-    OverlayVars = proplists:get_all_values(overlay_vars, Opts),
-    create_sys_config(Opts,  [{overlay_vars, OverlayVars} | Acc]).
-
--spec create_sys_config([getopt:option()], rlx_state:cmd_args()) ->
-                                 {ok, rlx_state:cmd_args()} | relx:error().
-create_sys_config(Opts, Acc) ->
-    SysConfig = proplists:get_value(sys_config, Opts, undefined),
-    create_system_libs(Opts, [{sys_config, SysConfig} | Acc]).
-
--spec create_system_libs([getopt:option()], rlx_state:cmd_args()) ->
-                                 {ok, rlx_state:cmd_args()} | relx:error().
-create_system_libs(Opts, Acc) ->
-    SystemLibs = proplists:get_value(system_libs, Opts, undefined),
-    create_upfrom(Opts,  [{system_libs, SystemLibs} | Acc]).
-
--spec create_upfrom([getopt:option()], rlx_state:cmd_args()) ->
-    {ok, rlx_state:cmd_args()} | relx:error().
-create_upfrom(Opts, Acc) ->
-    case proplists:get_value(upfrom, Opts, undefined) of
-        undefined ->
-            create_caller(Opts, Acc);
-        UpFrom ->
-            create_caller(Opts,  [{upfrom, UpFrom} | Acc])
-    end.
-
--spec create_caller([getopt:option()], rlx_state:cmd_args()) ->
-                           {ok, rlx_state:cmd_args()} | relx:error().
-create_caller(Opts, Acc) ->
-    case proplists:get_value(caller, Opts, api) of
-        "command_line" ->
-            create_paths(Opts, [{caller, command_line} | Acc]);
-        "commandline" ->
-            create_paths(Opts, [{caller, command_line} | Acc]);
-        "api" ->
-            create_paths(Opts, [{caller, api} | Acc]);
-        api ->
-            create_paths(Opts, [{caller, api} | Acc]);
-        commandline ->
-            create_paths(Opts, [{caller, command_line} | Acc]);
-        command_line ->
-            create_paths(Opts, [{caller, command_line} | Acc]);
-        Caller ->
-            ?RLX_ERROR({invalid_caller, Caller})
-    end.
-
--spec create_paths([getopt:option()], rlx_state:cmd_args()) ->
-                           {ok, rlx_state:cmd_args()} | relx:error().
-create_paths(Opts, Acc) ->
-    Dirs = proplists:get_all_values(path, Opts) ++
-        proplists:get_value(paths, Opts, []),
-    case check_lib_dirs(Dirs) of
-        Error = {error, _} ->
-            Error;
-        ok ->
-            code:add_pathsa([filename:absname(Path) || Path <- Dirs]),
-            create_dev_mode(Opts, Acc)
-    end.
-
--spec create_dev_mode([getopt:option()], rlx_state:cmd_args()) ->
-                           {ok, rlx_state:cmd_args()} | relx:error().
-create_dev_mode(Opts, Acc) ->
-    DevMode = proplists:get_value(dev_mode, Opts, false),
-    {ok, [{dev_mode, DevMode} | Acc]}.
 
 -spec check_lib_dirs([string()]) -> ok | relx:error().
 check_lib_dirs([]) ->

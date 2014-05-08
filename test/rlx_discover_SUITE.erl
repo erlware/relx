@@ -48,10 +48,12 @@ init_per_testcase(_, Config) ->
     LibDir2 = filename:join([DataDir, create_random_name("lib_dir2_")]),
     ok = rlx_util:mkdir_p(LibDir1),
     ok = rlx_util:mkdir_p(LibDir2),
-    State = rlx_state:new([{lib_dirs, [LibDir1, LibDir2]}], [release]),
+    State = rlx_state:new([], [{lib_dirs, [LibDir1, LibDir2]}], [release]),
+    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State),
+    {ok, State2} = rlx_provider:do(ConfigProvider, State1),
     [{lib1, LibDir1},
      {lib2, LibDir2},
-     {state, State} | Config].
+     {state, State2} | Config].
 
 
 all() ->
@@ -78,6 +80,7 @@ normal_case(Config) ->
                             default_libs, false),
     {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
     {ok, State2} = rlx_provider:do(DiscoverProvider, State1),
+
     lists:foreach(fun(App) ->
                           ?assertMatch(true, lists:member(App, rlx_state:available_apps(State2)))
                   end, Apps1),

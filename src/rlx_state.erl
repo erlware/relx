@@ -24,6 +24,7 @@
 -module(rlx_state).
 
 -export([new/2,
+         new/3,
          log/1,
          actions/1,
          output_dir/1,         
@@ -36,8 +37,11 @@
          skip_apps/1,
          skip_apps/2,
          goals/1,
+         goals/2,
          config_file/1,
          config_file/2,
+         cli_args/1,
+         cli_args/2,
          providers/1,
          providers/2,
          vm_args/1,
@@ -68,6 +72,7 @@
          include_src/1,
          include_src/2,
          upfrom/1,
+         upfrom/2,
          format/1,
          format/2]).
 
@@ -84,13 +89,14 @@
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
+                  cli_args=[] :: proplists:proplist(),
                   goals=[] :: [rlx_depsolver:constraint()],
                   providers=[] :: [rlx_provider:t()],
                   available_apps=[] :: [rlx_app_info:t()],
-                  default_configured_release :: {rlx_release:name(), rlx_release:vsn()},
+                  default_configured_release :: {rlx_release:name(), rlx_release:vsn()} | undefined,
                   vm_args :: file:filename() | undefined,
                   sys_config :: file:filename() | undefined,
-                  overrides :: [{AppName::atom(), Directory::file:filename()}],
+                  overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps=[] :: [AppName::atom()],
                   configured_releases :: releases(),
                   realized_releases :: releases(),
@@ -116,45 +122,37 @@
 %%============================================================================
 %% API
 %%============================================================================
-%% @doc Create a new 'log level' for the system
--spec new(proplists:proplist(), undefined | [atom()]) -> t().
-new(PropList, undefined) ->
-    new(PropList, [release]);
-new(PropList, Targets)
-  when erlang:is_list(PropList),
+-spec new(string(), undefined | [atom()]) -> t().
+new(Config, Targets) ->
+    new(Config, [], Targets).
+
+-spec new(string(), proplists:proplist(), undefined | [atom()]) -> t().
+new(Config, CommandLineConfig, undefined) ->
+    new(Config, CommandLineConfig, [release]);
+new(Config, CommandLineConfig, Targets)
+  when erlang:is_list(CommandLineConfig),
      erlang:is_list(Targets) ->
     {ok, Root} = file:get_cwd(),
-    Caller = proplists:get_value(caller, PropList, api),
-    State0 =
-        #state_t{log = proplists:get_value(log, PropList, ec_cmd_log:new(error, Caller)),
-                 output_dir=proplists:get_value(output_dir, PropList, ""),
-                 lib_dirs=[to_binary(Dir) || Dir <- proplists:get_value(lib_dirs, PropList, [])],
-                 config_file=proplists:get_value(config, PropList, undefined),
-                 sys_config=proplists:get_value(sys_config, PropList, undefined),
-                 dev_mode = proplists:get_value(dev_mode, PropList),
-                 actions = Targets,
-                 caller = Caller,
-                 goals=proplists:get_value(goals, PropList, []),
-                 providers = [],
-                 configured_releases=ec_dictionary:new(ec_dict),
-                 realized_releases=ec_dictionary:new(ec_dict),
-                 config_values=ec_dictionary:new(ec_dict),
-                 overrides = proplists:get_value(overrides, PropList, []),
-                 root_dir = filename:absname(proplists:get_value(root_dir, PropList, Root)),
-                 upfrom = proplists:get_value(upfrom, PropList, undefined),
-                 default_configured_release={proplists:get_value(relname, PropList, undefined),
-                                  proplists:get_value(relvsn, PropList, undefined)}},
-    State1 = rlx_state:put(create_logic_providers(State0),
-                           default_libs,
-                           proplists:get_value(default_libs, PropList, true)),
 
-    State2 = rlx_state:put(create_logic_providers(State1),
-                           system_libs,
-                           proplists:get_value(system_libs, PropList, undefined)),
+    Caller = proplists:get_value(caller, CommandLineConfig, api),
+    Log = proplists:get_value(log, CommandLineConfig, ec_cmd_log:new(error, Caller)),
 
-    rlx_state:put(create_logic_providers(State2),
-                  overlay_vars,
-                  proplists:get_value(overlay_vars, PropList, [])).
+    State0 = #state_t{log=Log,
+                      config_file=Config,
+                      cli_args=CommandLineConfig,
+                      actions=Targets,
+                      caller=Caller,
+                      root_dir=Root,
+                      output_dir=filename:join(Root, "_rel"),
+                      providers=[],
+                      default_configured_release=undefined,
+                      configured_releases=ec_dictionary:new(ec_dict),
+                      realized_releases=ec_dictionary:new(ec_dict),
+                      config_values=ec_dictionary:new(ec_dict)},
+    State1 = rlx_state:put(State0, default_libs, true),
+    State2 = rlx_state:put(State1, system_libs, undefined),
+    State3 = rlx_state:put(State2, overlay_vars, []),
+    create_logic_providers(State3).
 
 %% @doc the actions targeted for this system
 -spec actions(t()) -> [action()].
@@ -210,6 +208,10 @@ add_lib_dirs(State=#state_t{lib_dirs=LibDir}, Dirs) ->
 goals(#state_t{goals=TS}) ->
     TS.
 
+-spec goals(t(), [rlx_depsolver:constraint()]) -> t().
+goals(State, Goals) ->
+    State#state_t{goals=Goals}.
+
 -spec config_file(t()) -> file:filename() | undefined.
 config_file(#state_t{config_file=ConfigFiles}) ->
     ConfigFiles.
@@ -217,6 +219,14 @@ config_file(#state_t{config_file=ConfigFiles}) ->
 -spec config_file(t(), file:filename() | undefined) -> t().
 config_file(State, ConfigFiles) ->
     State#state_t{config_file=ConfigFiles}.
+
+-spec cli_args(t()) -> proplists:proplist().
+cli_args(#state_t{cli_args=CliArgs}) ->
+    CliArgs.
+
+-spec cli_args(t(), proplists:proplist()) -> t().
+cli_args(State, CliArgs) ->
+    State#state_t{cli_args=CliArgs}.
 
 -spec providers(t()) -> [rlx_provider:t()].
 providers(#state_t{providers=Providers}) ->
@@ -356,6 +366,10 @@ include_src(S, IncludeSrc) ->
 upfrom(#state_t{upfrom=UpFrom}) ->
     UpFrom.
 
+-spec upfrom(t(), string() | binary() | undefined) -> t().
+upfrom(State, UpFrom) ->
+    State#state_t{upfrom=UpFrom}.
+
 -spec format(t()) -> iolist().
 format(Mod) ->
     format(Mod, 0).
@@ -395,13 +409,6 @@ create_logic_providers(State0) ->
     State5#state_t{providers=[ConfigProvider, DiscoveryProvider,
                               ReleaseProvider, OverlayProvider, AssemblerProvider]}.
 
-to_binary(Dir)
-  when erlang:is_list(Dir) ->
-    erlang:list_to_binary(Dir);
-to_binary(Dir)
-  when erlang:is_binary(Dir) ->
-    Dir.
-
 %%%===================================================================
 %%% Test Functions
 %%%===================================================================
@@ -411,7 +418,7 @@ to_binary(Dir)
 
 new_test() ->
     LogState = ec_cmd_log:new(error),
-    RCLState = new([{log, LogState}], [release]),
+    RCLState = new(LogState, [], [release]),
     ?assertMatch(LogState, log(RCLState)).
 
 -endif.

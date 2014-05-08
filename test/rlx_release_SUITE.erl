@@ -60,9 +60,11 @@ init_per_testcase(_, Config) ->
     DataDir = proplists:get_value(data_dir, Config),
     LibDir1 = filename:join([DataDir, create_random_name("lib_dir1_")]),
     ok = rlx_util:mkdir_p(LibDir1),
-    State = rlx_state:new([{lib_dirs, [LibDir1]}], [release]),
+    State = rlx_state:new([], [{lib_dirs, [LibDir1]}], [release]),
+    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State),
+    {ok, State2} = rlx_provider:do(ConfigProvider, State1),
     [{lib1, LibDir1},
-     {state, State} | Config].
+     {state, State2} | Config].
 
 all() ->
     [make_release, make_extend_release, make_scriptless_release,
@@ -563,10 +565,10 @@ overlay_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "fooo"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "foodir", "vars1.config"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "yahoo", "vars1.config"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", SecondTestDir, TestDir, TestFile]))),
+    ?assert(ec_file:exists(filename:join(OutputDir, "fooo"))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars1.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars1.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, SecondTestDir, TestDir, TestFile]))),
 
     TemplateData = case file:consult(filename:join([OutputDir, "foo", "test_template_resolved"])) of
                        {ok, Details} ->

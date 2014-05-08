@@ -365,7 +365,6 @@ fix_rebar_brokenness(Filename) ->
                 true ->
                     Alt2;
                 false ->
-                    io:format("~p~n", [Alt2]),
                     erlang:throw(unable_to_find_data_files)
             end
     end.

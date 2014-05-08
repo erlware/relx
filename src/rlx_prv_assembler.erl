@@ -605,7 +605,7 @@ make_upfrom_script(State, Release, UpFrom) ->
     case make_script(Options,
                      fun(CorrectOptions) ->
                              systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], CorrectOptions)
-                     end)  of
+                     end) of
         ok ->
             ec_cmd_log:error(rlx_state:log(State),
                           "relup from ~s to ~s successfully created!",

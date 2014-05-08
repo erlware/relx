@@ -114,23 +114,34 @@ load_config(ConfigFile, State) ->
                  {error, Reason} ->
                      ?RLX_ERROR({consult, ConfigFile, Reason});
                  {ok, Terms} ->
-                     lists:foldl(fun load_terms/2, {ok, State}, Terms)
+                     CliTerms = rlx_state:cli_args(State),
+                     lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, Terms))
              end,
     ok = file:set_cwd(CurrentCwd),
     Result.
 
 -spec load_terms(term(), {ok, rlx_state:t()} | relx:error()) ->
                         {ok, rlx_state:t()} | relx:error().
-load_terms({default_release, RelName, RelVsn}, {ok, State}) ->
-    case rlx_state:default_configured_release(State) of
-        {undefined, undefined} ->
-            {ok, rlx_state:default_configured_release(State, RelName, RelVsn)};
-        _ ->
-            {ok, State}
-    end;
+load_terms({default_release, {RelName, RelVsn}}, {ok, State}) ->
+    {ok, rlx_state:default_configured_release(State, RelName, RelVsn)};
 load_terms({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
     {ok, State};
+load_terms({default_libs, DefaultLibs}, {ok, State}) ->
+    State2 = rlx_state:put(State,
+                           default_libs,
+                           DefaultLibs),
+    {ok, State2};
+load_terms({system_libs, SystemLibs}, {ok, State}) ->
+    State2 = rlx_state:put(State,
+                           system_libs,
+                           SystemLibs),
+    {ok, State2};
+load_terms({overlay_vars, OverlayVars}, {ok, State}) ->
+    State2 = rlx_state:put(State,
+                           overlay_vars,
+                           list_of_overlay_vars_files(OverlayVars)),
+    {ok, State2};
 load_terms({lib_dirs, Dirs}, {ok, State}) ->
     State2 =
         rlx_state:add_lib_dirs(State,
@@ -159,6 +170,10 @@ load_terms({overrides, Overrides0}, {ok, State0}) ->
     {ok, rlx_state:overrides(State0, Overrides0)};
 load_terms({dev_mode, DevMode}, {ok, State0}) ->
     {ok, rlx_state:dev_mode(State0, DevMode)};
+load_terms({goals, Goals}, {ok, State0}) ->
+    {ok, rlx_state:goals(State0, Goals)};
+load_terms({upfrom, UpFrom}, {ok, State0}) ->
+    {ok, rlx_state:upfrom(State0, UpFrom)};
 load_terms({include_src, IncludeSrc}, {ok, State0}) ->
     {ok, rlx_state:include_src(State0, IncludeSrc)};
 load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications}, {ok, State0}) ->
@@ -199,6 +214,8 @@ load_terms({sys_config, SysConfig}, {ok, State}) ->
         _ ->
             {ok, State}
     end;
+load_terms({root_dir, Root}, {ok, State}) ->
+    {ok, rlx_state:root_dir(State, filename:absname(Root))};
 load_terms({output_dir, OutputDir}, {ok, State}) ->
     {ok, rlx_state:base_output_dir(State, filename:absname(OutputDir))};
 load_terms({overlay_vars, OverlayVars}, {ok, State}) ->
@@ -232,3 +249,26 @@ list_of_overlay_vars_files([H | _]=FileNames) when erlang:is_list(H) ->
     FileNames;
 list_of_overlay_vars_files(FileName) when is_list(FileName) ->
     [FileName].
+
+merge_configs([], ConfigTerms) ->
+    ConfigTerms;
+merge_configs([{_Key, undefined} | CliTerms], ConfigTerms) ->
+    merge_configs(CliTerms, ConfigTerms);
+merge_configs([{_Key, []} | CliTerms], ConfigTerms) ->
+    merge_configs(CliTerms, ConfigTerms);
+merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
+    case Key of
+        X when X =:= lib_dirs
+             ; X =:= goals
+             ; X =:= overlay_vars
+             ; X =:= overrides ->
+            case lists:keyfind(Key, 1, ConfigTerms) of
+                {Key, Value2} ->
+                    MergedValue = lists:umerge([Value, Value2]),
+                    merge_configs(CliTerms, lists:keyreplace(Key, 1, ConfigTerms, {Key, MergedValue}));
+                false ->
+                    merge_configs(CliTerms, [{Key, Value} | ConfigTerms])
+            end;
+        _ ->
+            merge_configs(CliTerms, [{Key, Value} | ConfigTerms])
+    end.
