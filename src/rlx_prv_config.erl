@@ -137,11 +137,6 @@ load_terms({system_libs, SystemLibs}, {ok, State}) ->
                            system_libs,
                            SystemLibs),
     {ok, State2};
-load_terms({overlay_vars, OverlayVars}, {ok, State}) ->
-    State2 = rlx_state:put(State,
-                           overlay_vars,
-                           list_of_overlay_vars_files(OverlayVars)),
-    {ok, State2};
 load_terms({lib_dirs, Dirs}, {ok, State}) ->
     State2 =
         rlx_state:add_lib_dirs(State,

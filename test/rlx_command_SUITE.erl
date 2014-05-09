@@ -65,7 +65,7 @@ normal_passing_case(Config) ->
     {ok, State2} = rlx_provider:do(ConfigProvider, State1),
     ?assertMatch([Lib1, Lib2],
                  rlx_state:lib_dirs(State2)),
-    ?assertMatch(Outdir, rlx_state:output_dir(State2)),
+    ?assertMatch(Outdir, rlx_state:base_output_dir(State2)),
 
     ?assertMatch([{app1,{{33,33},{[],[<<"build4">>]}},lte},
                   {app2,

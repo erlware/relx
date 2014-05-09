@@ -135,8 +135,7 @@ new(Config, CommandLineConfig, Targets)
     {ok, Root} = file:get_cwd(),
 
     Caller = proplists:get_value(caller, CommandLineConfig, api),
-    Log = proplists:get_value(log, CommandLineConfig, ec_cmd_log:new(error, Caller)),
-
+    Log = proplists:get_value(log, CommandLineConfig, ec_cmd_log:new(error, Caller)),    
     State0 = #state_t{log=Log,
                       config_file=Config,
                       cli_args=CommandLineConfig,
@@ -148,7 +147,7 @@ new(Config, CommandLineConfig, Targets)
                       default_configured_release=undefined,
                       configured_releases=ec_dictionary:new(ec_dict),
                       realized_releases=ec_dictionary:new(ec_dict),
-                      config_values=ec_dictionary:new(ec_dict)},
+                      config_values=ec_dictionary:new(ec_dict)},    
     State1 = rlx_state:put(State0, default_libs, true),
     State2 = rlx_state:put(State1, system_libs, undefined),
     State3 = rlx_state:put(State2, overlay_vars, []),
@@ -404,10 +403,31 @@ create_logic_providers(State0) ->
     {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State0),
     {DiscoveryProvider, {ok, State2}} = rlx_provider:new(rlx_prv_discover, State1),
     {ReleaseProvider, {ok, State3}} = rlx_provider:new(rlx_prv_release, State2),
-    {OverlayProvider, {ok, State4}} = rlx_provider:new(rlx_prv_overlay, State3),
-    {AssemblerProvider, {ok, State5}} = rlx_provider:new(rlx_prv_assembler, State4),
+    {OverlayProvider, {ok, State4}} = rlx_provider:new(rlx_prv_overlay, State3),    
+    {ActionProviders, State5} = add_providers([release, relup, tar], State4),         
     State5#state_t{providers=[ConfigProvider, DiscoveryProvider,
-                              ReleaseProvider, OverlayProvider, AssemblerProvider]}.
+                              ReleaseProvider, OverlayProvider | ActionProviders]}.
+
+add_providers(Actions, State) -> 
+    add_providers(Actions, [], State).
+
+add_providers([], Providers, State) -> 
+    {lists:reverse(Providers), State};
+add_providers([Action | T], Providers, State) ->
+    case lists:member(Action, actions(State)) of
+        true ->                                
+            {Provider, {ok, State1}} = new_provider(Action, State),
+            add_providers(T, [Provider | Providers], State1);
+        false ->
+            add_providers(T, Providers, State)
+    end.
+
+new_provider(release, State) ->
+    rlx_provider:new(rlx_prv_assembler, State);
+new_provider(relup, State) ->
+    rlx_provider:new(rlx_prv_relup, State);
+new_provider(tar, State) ->
+    rlx_provider:new(rlx_prv_archive, State).
 
 %%%===================================================================
 %%% Test Functions
@@ -418,7 +438,7 @@ create_logic_providers(State0) ->
 
 new_test() ->
     LogState = ec_cmd_log:new(error),
-    RCLState = new(LogState, [], [release]),
+    RCLState = new("", [{log, LogState}], [release]),
     ?assertMatch(LogState, log(RCLState)).
 
 -endif.

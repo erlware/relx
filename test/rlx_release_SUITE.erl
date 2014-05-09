@@ -222,7 +222,6 @@ make_scriptless_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
-
 make_overridden_release(Config) ->
     DataDir = proplists:get_value(data_dir, Config),
     OverrideDir1 = filename:join([DataDir, create_random_name("override_dir_")]),
@@ -565,10 +564,10 @@ overlay_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
-    ?assert(ec_file:exists(filename:join(OutputDir, "fooo"))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foodir", "vars1.config"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "yahoo", "vars1.config"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, SecondTestDir, TestDir, TestFile]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "fooo"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "foodir", "vars1.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "yahoo", "vars1.config"]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", SecondTestDir, TestDir, TestFile]))),
 
     TemplateData = case file:consult(filename:join([OutputDir, "foo", "test_template_resolved"])) of
                        {ok, Details} ->
