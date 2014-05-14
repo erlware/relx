@@ -30,7 +30,7 @@ relx_rem_sh() {
     # Generate a unique id used to allow multiple remsh to the same node
     # transparently
     id="remsh$(relx_gen_id)-${NAME}"
-
+    
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
          -setcookie "$COOKIE"
@@ -96,6 +96,19 @@ fi
 # Extract the name type and name from the NAME_ARG for REMSH
 NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
 NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
+
+# User can specify an sname without @hostname
+# This will fail when creating remote shell
+# So here we check for @ and add @hostname if missing
+case $NAME in
+    *@*)
+        # Nothing to do
+        ;;
+    *)
+        # Add @hostname
+        NAME=$NAME@`hostname`
+        ;;
+esac
 
 # Extract the target cookie
 COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH")"
