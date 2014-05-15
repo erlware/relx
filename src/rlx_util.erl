@@ -21,7 +21,10 @@
 %%% @doc Trivial utility file to help handle common tasks
 -module(rlx_util).
 
--export([mkdir_p/1,
+-export([get_code_paths/2,
+         release_output_dir/2,
+         make_script/2,
+         mkdir_p/1,
          to_binary/1,
          to_string/1,
          to_atom/1,
@@ -40,6 +43,36 @@
 %%============================================================================
 %% API
 %%============================================================================
+
+%% @doc Generates the correct set of code paths for the system.
+-spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].
+get_code_paths(Release, OutDir) ->
+    LibDir = filename:join(OutDir, "lib"),
+    [filename:join([LibDir,
+                    erlang:atom_to_list(rlx_app_info:name(App)) ++ "-" ++
+                        rlx_app_info:original_vsn(App), "ebin"]) ||
+        App <- rlx_release:application_details(Release)].
+
+-spec release_output_dir(rlx_state:t(), rlx_release:t()) -> string().
+release_output_dir(State, Release) ->
+    OutputDir = rlx_state:output_dir(State),
+    filename:join([OutputDir,
+                   "releases",
+                   rlx_release:vsn(Release)]).
+
+-spec make_script([term()],
+                  fun(([term()]) -> Res)) -> Res.
+make_script(Options, RunFun) ->
+    %% Erts 5.9 introduced a non backwards compatible option to
+    %% erlang this takes that into account
+    Erts = erlang:system_info(version),
+    case ec_semver:gte(Erts, "5.9") of
+        true ->
+            RunFun([no_warn_sasl | Options]);
+        _ ->
+            RunFun(Options)
+    end.
+
 %% @doc Makes a directory including parent dirs if they are missing.
 -spec mkdir_p(string()) -> ok | {error, Reason::file:posix()}.
 mkdir_p(Path) ->

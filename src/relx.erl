@@ -118,7 +118,7 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
 -spec do(file:name(), atom(), string(), [goal()], [file:name()],
          ec_cmd_log:log_level(), [file:name()], [{atom(), file:name()}], file:name() | undefined) ->
                 ok | error() | {ok, rlx_state:t()}.
-do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
+do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->    
     do([{relname, RelName},
         {relvsn, RelVsn},
         {goals, Goals},
@@ -258,7 +258,7 @@ handle_output(_State, command_line, _) ->
 handle_output(_State, api, Result) ->
     Result.
 
-run_providers(ConfigProvider, Providers, State0) ->
+run_providers(ConfigProvider, Providers, State0) ->    
     case Providers of
         [ConfigProvider | Rest] ->
             %% IF the config provider is still the first provider do not run it

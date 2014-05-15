@@ -128,7 +128,7 @@ add_release_output_dir(State) ->
         true ->
             [];
         false ->
-            Output = erlang:iolist_to_binary(rlx_state:output_dir(State)),
+            Output = erlang:iolist_to_binary(rlx_state:base_output_dir(State)),
             case ec_file:exists(erlang:binary_to_list(Output)) of
                 true ->
                     Output;

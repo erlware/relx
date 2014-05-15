@@ -60,9 +60,11 @@ init_per_testcase(_, Config) ->
     DataDir = proplists:get_value(data_dir, Config),
     LibDir1 = filename:join([DataDir, create_random_name("lib_dir1_")]),
     ok = rlx_util:mkdir_p(LibDir1),
-    State = rlx_state:new([{lib_dirs, [LibDir1]}], [release]),
+    State = rlx_state:new([], [{lib_dirs, [LibDir1]}], [release]),
+    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State),
+    {ok, State2} = rlx_provider:do(ConfigProvider, State1),
     [{lib1, LibDir1},
-     {state, State} | Config].
+     {state, State2} | Config].
 
 all() ->
     [make_release, make_extend_release, make_scriptless_release,
@@ -219,7 +221,6 @@ make_scriptless_release(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
-
 
 make_overridden_release(Config) ->
     DataDir = proplists:get_value(data_dir, Config),
