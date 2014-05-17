@@ -390,6 +390,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                     end,
                     case rlx_state:get(State, extended_start_script, false) of
                         true ->
+                            ok = ec_file:remove(filename:join([OutputDir, "bin", "start_clean.boot"])),
                             ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
                                               filename:join([OutputDir, "bin", "start_clean.boot"])),
                             NodeToolFile = nodetool_contents(),
