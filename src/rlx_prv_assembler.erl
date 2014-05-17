@@ -446,6 +446,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                     end,
                     case rlx_state:get(State, extended_start_script, false) of
                         true ->
+                            ok = ec_file:remove(filename:join([OutputDir, "bin", "start_clean.boot"])),
                             ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
                                               filename:join([OutputDir, "bin", "start_clean.boot"])),
                             NodeToolFile = nodetool_contents(),
@@ -700,7 +701,7 @@ ensure_not_exist(RelConfPath) ->
 
 erl_script(ErtsVsn) ->
     render(erl_script_dtl, [{erts_vsn, ErtsVsn}]).
-                
+
 bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
     Template = case OsFamily of
         unix -> bin_dtl;
