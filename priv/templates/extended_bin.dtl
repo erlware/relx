@@ -323,7 +323,7 @@ case "$1" in
         # or other supervision services
 
         [ -f "$REL_DIR/$REL_NAME.boot" ] && BOOTFILE="$REL_NAME" || BOOTFILE=start
-        FOREGROUNDOPTIONS="-noinput +Bd"
+        FOREGROUNDOPTIONS="-noshell -noinput +Bd"
 
         # Setup beam-required vars
         EMU=beam
@@ -337,7 +337,7 @@ case "$1" in
 
         # Build an array of arguments to pass to exec later on
         # Build it here because this command will be used for logging.
-        set -- "$BINDIR/erlexec" "$FOREGROUNDOPTIONS" \
+        set -- "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$REL_DIR/$BOOTFILE" -mode embedded -config "$CONFIG_PATH" \
             -args_file "$VMARGS_PATH"
 
