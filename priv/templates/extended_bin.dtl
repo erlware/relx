@@ -30,7 +30,7 @@ relx_rem_sh() {
     # Generate a unique id used to allow multiple remsh to the same node
     # transparently
     id="remsh$(relx_gen_id)-${NAME}"
-    
+
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
          -setcookie "$COOKIE"
@@ -60,8 +60,8 @@ if [ -z "$VMARGS_PATH" ]; then
         VMARGS_PATH="$RELEASE_ROOT_DIR/vm.args"
         USE_DIR="$RELEASE_ROOT_DIR"
     else
-        USE_DIR="$REL_DIR"        
-        VMARGS_PATH="$REL_DIR/vm.args"        
+        USE_DIR="$REL_DIR"
+        VMARGS_PATH="$REL_DIR/vm.args"
     fi
 fi
 
@@ -156,7 +156,7 @@ case "$1" in
         # Set arguments for the heart command
         set -- "$SCRIPT_DIR/$REL_NAME" "$HEART_OPTION"
         [ "$RUN_PARAM" ] && set -- "$@" "$RUN_PARAM"
-        
+
         # Export the HEART_COMMAND
         HEART_COMMAND="$@"
         export HEART_COMMAND
@@ -298,7 +298,7 @@ case "$1" in
         export PROGNAME
 
         # Store passed arguments since they will be erased by `set`
-        ARGS="$@"   
+        ARGS="$@"
 
         # Build an array of arguments to pass to exec later on
         # Build it here because this command will be used for logging.
@@ -323,7 +323,7 @@ case "$1" in
         # or other supervision services
 
         [ -f "$REL_DIR/$REL_NAME.boot" ] && BOOTFILE="$REL_NAME" || BOOTFILE=start
-        FOREGROUNDOPTIONS="-noinput +Bd"
+        FOREGROUNDOPTIONS="-noshell -noinput +Bd"
 
         # Setup beam-required vars
         EMU=beam
@@ -333,11 +333,11 @@ case "$1" in
         export PROGNAME
 
         # Store passed arguments since they will be erased by `set`
-        ARGS="$@"   
+        ARGS="$@"
 
         # Build an array of arguments to pass to exec later on
         # Build it here because this command will be used for logging.
-        set -- "$BINDIR/erlexec" "$FOREGROUNDOPTIONS" \
+        set -- "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$REL_DIR/$BOOTFILE" -mode embedded -config "$CONFIG_PATH" \
             -args_file "$VMARGS_PATH"
 
