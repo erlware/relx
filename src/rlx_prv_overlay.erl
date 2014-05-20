@@ -30,7 +30,7 @@
 
 -define(DIRECTORY_RE, ".*(\/|\\\\)$").
 
--define(ERLYDTL_COMPILE_OPTS, [report_warnings, return_errors, {auto_escape, false}]).
+-define(ERLYDTL_COMPILE_OPTS, [report_warnings, return_errors, {auto_escape, false}, {out_dir, false}]).
 
 -include("relx.hrl").
 
