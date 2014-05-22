@@ -41,7 +41,7 @@ args2state(Opts, Targets) ->
                 {ok, CommandLineConfig} ->
                     RelName = rlx_util:to_atom(proplists:get_value(relname, Opts, undefined)),
                     RelVsn = proplists:get_value(relvsn, Opts, undefined),
-                    handle_config(Opts, AtomizedTargets, 
+                    handle_config(Opts, AtomizedTargets,
                                  [{default_release, {RelName, RelVsn}} | CommandLineConfig])
             end;
         Error ->
@@ -131,8 +131,8 @@ validate_config(Config) ->
             ?RLX_ERROR({invalid_config_file, Config})
     end.
 
-run_creates(Opts) ->    
-    try 
+run_creates(Opts) ->
+    try
         Conf = lists:flatten(lists:foldl(fun(X, Acc) ->
                                                   [create(X, Opts) | Acc]
                                           end, [], proplists:get_keys(Opts))),
@@ -141,7 +141,7 @@ run_creates(Opts) ->
         throw:E ->
             E
     end.
-    
+
 create(log_level, Opts) ->
     LogLevel = proplists:get_value(log_level, Opts, 0),
     if
@@ -149,7 +149,7 @@ create(log_level, Opts) ->
             {log, ec_cmd_log:new(LogLevel, command_line)};
         true ->
             throw(?RLX_ERROR({invalid_log_level, LogLevel}))
-    end;    
+    end;
 create(goal, Opts) ->
     Goals = proplists:get_value(goals, Opts, []) ++
         proplists:get_all_values(goal, Opts),
@@ -168,12 +168,21 @@ create(goals, Opts) ->
         {ok, Specs} ->
             {goals, Specs}
     end;
-create(overrides, Opts) ->
-    Overrides = proplists:get_all_values(override, Opts) ++
-        proplists:get_value(overrides, Opts, []),
+create(override, Opts) ->
+    Overrides = proplists:get_value(overrides, Opts, []) ++
+        proplists:get_all_values(override, Opts),
     case convert_overrides(Overrides, []) of
-        {ok, Overrides} ->
-            {overrides, Overrides};
+        {ok, Overrides2} ->
+            {overrides, Overrides2};
+        Error ->
+            throw(Error)
+    end;
+create(overrides, Opts) ->
+    Overrides = proplists:get_value(overrides, Opts, []) ++
+        proplists:get_all_values(override, Opts),
+    case convert_overrides(Overrides, []) of
+        {ok, Overrides2} ->
+            {overrides, Overrides2};
         Error ->
             throw(Error)
     end;
@@ -275,7 +284,7 @@ convert_overrides([Override | Rest], Acc)
   when erlang:is_list(Override); erlang:is_binary(Override) ->
     case re:split(Override, ":") of
         [AppName, AppDir] ->
-            convert_overrides(Rest, [{erlang:iolist_to_binary(AppName), AppDir} | Acc]);
+            convert_overrides(Rest, [{rlx_util:to_atom(AppName), AppDir} | Acc]);
         _ ->
              ?RLX_ERROR({failed_to_parse_override, Override})
     end;
