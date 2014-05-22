@@ -19,7 +19,7 @@ find_erts_dir() {
         ROOTDIR="$RELEASE_ROOT_DIR"
     else
         local erl="$(which erl)"
-        local erl_root="$("$erl" -noshell -eval "io:format(\\"~s\\", [code:root_dir()])." -s init stop)"
+        local erl_root=$("$erl" -noshell -eval "io:format(\"~s\", [code:root_dir()])." -s init stop)
         ERTS_DIR="$erl_root/erts-$ERTS_VSN"
         ROOTDIR="$erl_root"
     fi
