@@ -118,7 +118,7 @@ do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Configs) ->
 -spec do(file:name(), atom(), string(), [goal()], [file:name()],
          ec_cmd_log:log_level(), [file:name()], [{atom(), file:name()}], file:name() | undefined) ->
                 ok | error() | {ok, rlx_state:t()}.
-do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->    
+do(RootDir, RelName, RelVsn, Goals, LibDirs, LogLevel, OutputDir, Overrides, Config) ->
     do([{relname, RelName},
         {relvsn, RelVsn},
         {goals, Goals},
@@ -199,7 +199,7 @@ opt_spec_list() ->
       "Verbosity level, maybe between 0 and 3"},
      {dev_mode, $d, "dev-mode", {boolean, false},
       "Symlink the applications and configuration into the release instead of copying"},
-     {override_app, $a, "override_app", string,
+     {override, $a, "override", string,
       "Provide an app name and a directory to override in the form <appname>:<app directory>"},
      {config, $c, "config", {string, ""}, "The path to a config file"},
      {overlay_vars, undefined, "overlay_vars", string, "Path to a file of overlay variables"},
@@ -258,7 +258,7 @@ handle_output(_State, command_line, _) ->
 handle_output(_State, api, Result) ->
     Result.
 
-run_providers(ConfigProvider, Providers, State0) ->    
+run_providers(ConfigProvider, Providers, State0) ->
     case Providers of
         [ConfigProvider | Rest] ->
             %% IF the config provider is still the first provider do not run it
