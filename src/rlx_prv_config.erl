@@ -265,5 +265,5 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
                     merge_configs(CliTerms, [{Key, Value} | ConfigTerms])
             end;
         _ ->
-            merge_configs(CliTerms, [{Key, Value} | ConfigTerms])
+            merge_configs(CliTerms, lists:keystore(Key, 1, ConfigTerms, {Key, Value}))
     end.
