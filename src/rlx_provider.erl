@@ -27,6 +27,8 @@
 -export([new/2,
          do/2,
          impl/1,
+         get_provider/2,
+         get_target_providers/2,
          format_error/1,
          format_error/2,
          format/1]).
@@ -39,16 +41,11 @@
 %%% Types
 %%%===================================================================
 
--opaque t() :: {?MODULE, module()}.
+-type t() :: record(provider).
 
+-type provider_name() :: atom().
 
--ifdef(have_callback_support).
-
--callback init(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
--callback do(rlx_state:t()) ->  {ok, rlx_state:t()} | relx:error().
--callback format_error(Reason::term()) -> iolist().
-
--else.
+-ifdef(no_callback_support).
 
 %% In the case where R14 or lower is being used to compile the system
 %% we need to export a behaviour info
@@ -61,6 +58,12 @@ behaviour_info(callbacks) ->
 behaviour_info(_) ->
     undefined.
 
+-else.
+
+-callback init(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
+-callback do(rlx_state:t()) ->  {ok, rlx_state:t()} | relx:error().
+-callback format_error(Reason::term()) -> iolist().
+
 -endif.
 
 %%%===================================================================
@@ -72,15 +75,14 @@ behaviour_info(_) ->
 %%
 %% @param ModuleName The module name.
 %% @param State0 The current state of the system
--spec new(module(), rlx_state:t()) ->
-                 {t(), {ok, rlx_state:t()}} | relx:error().
+-spec new(atom(), rlx_state:t()) ->
+                 {ok, rlx_state:t()} | relx:error().
 new(ModuleName, State0) when is_atom(ModuleName) ->
-    State1 = ModuleName:init(State0),
     case code:which(ModuleName) of
         non_existing ->
             ?RLX_ERROR({non_existing, ModuleName});
         _ ->
-            {{?MODULE, ModuleName}, State1}
+            ModuleName:init(State0)
     end.
 
 %% @doc Manipulate the state of the system, that new state
@@ -89,23 +91,27 @@ new(ModuleName, State0) when is_atom(ModuleName) ->
 %% @param State the current state of the system
 -spec do(Provider::t(), rlx_state:t()) ->
                 {ok, rlx_state:t()} | relx:error().
-do({?MODULE, Mod}, State) ->
-    Mod:do(State).
+do(Provider, State) ->
+    (Provider#provider.provider_impl):do(State).
 
 %%% @doc get the name of the module that implements the provider
 %%% @param Provider the provider object
 -spec impl(Provider::t()) -> module().
-impl({?MODULE, Mod}) ->
-    Mod.
+impl(Provider) ->
+    Provider#provider.name.
 
 %% @doc format an error produced from a provider.
 -spec format_error(Reason::term()) -> iolist().
+format_error({provider_not_found, ModuleName}) ->
+    io_lib:format("Provider ~p not found", [ModuleName]);
 format_error({non_existing, ModuleName}) ->
-    io_lib:format("~p does not exist in the system", [ModuleName]).
+    io_lib:format("~p does not exist in the system", [ModuleName]);
+format_error({cycle_fault, Msg}) ->
+    Msg.
 
 %% @doc format an error produced from a provider.
 -spec format_error(t(), Reason::term()) -> iolist().
-format_error({?MODULE, Mod}, Error) ->
+format_error(#provider{provider_impl=Mod}, Error) ->
     Mod:format_error(Error).
 
 %% @doc print the provider module name
@@ -113,5 +119,57 @@ format_error({?MODULE, Mod}, Error) ->
 %% @param T - The provider
 %% @return An iolist describing the provider
 -spec format(t()) -> iolist().
-format({?MODULE, Mod}) ->
+format(#provider{provider_impl=Mod}) ->
     erlang:atom_to_list(Mod).
+
+get_target_providers(Target, State) ->
+    Providers = rlx_state:providers(State),
+    Provider = get_provider(Target, Providers),
+    process_deps(Provider, Providers).
+
+-spec get_provider(provider_name(), [t()]) -> t().
+get_provider(ProviderName, [Provider = #provider{name = ProviderName} | _]) ->
+    Provider;
+get_provider(ProviderName, [_ | Rest]) ->
+    get_provider(ProviderName, Rest);
+get_provider(ProviderName, _) ->
+    format_error({provider_not_found, ProviderName}).
+
+process_deps(Provider, Providers) ->
+    {DepChain, _, _} = process_deps(Provider, Providers, []),
+    ['NONE' | Rest] =
+        reorder_providers(lists:flatten([{'NONE', Provider#provider.name} | DepChain])),
+    Rest.
+
+process_deps(Provider, Providers, Seen) ->
+    case lists:member(Provider, Seen) of
+        true ->
+            {[], Providers, Seen};
+        false ->
+            Deps = Provider#provider.deps,
+            DepList = lists:map(fun(Dep) ->
+                                        {Dep, Provider#provider.name}
+                                end, Deps),
+            {NewDeps, _, NewSeen} =
+                lists:foldl(fun(Arg, Acc) ->
+                                    process_dep(Arg, Acc)
+                            end,
+                                                {[], Providers, Seen}, Deps),
+            {[DepList | NewDeps], Providers, NewSeen}
+    end.
+
+process_dep(ProviderName, {Deps, Providers, Seen}) ->
+    Provider = get_provider(ProviderName, Providers),
+    {NewDeps, _, NewSeen} = process_deps(Provider, Providers, [ProviderName | Seen]),
+    {[Deps | NewDeps], Providers, NewSeen}.
+
+%% @doc Reorder the providers according to thier dependency set.
+reorder_providers(OProviderList) ->
+    case rlx_topo:sort(OProviderList) of
+        {ok, ProviderList} ->
+            ProviderList;
+        {error, {rlx_topo, {cycle, _}}} ->
+            format_error({cycle_fault,
+                          "There was a cycle in the provider list. "
+                          "Unable to complete build!"})
+    end.

@@ -30,16 +30,28 @@
 
 -include("relx.hrl").
 
+-define(PROVIDER, relup).
+-define(DEPS, [release]).
+
 %%============================================================================
 %% API
 %%============================================================================
+
 -spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
-    {ok, State}.
+    State1 = rlx_state:add_provider(State, #provider{name = ?PROVIDER,
+                                                     provider_impl = ?MODULE,
+                                                     bare = false,
+                                                     deps = ?DEPS,
+                                                     example = "build",
+                                                     short_desc = "",
+                                                     desc = "",
+                                                     opts = []}),
+    {ok, State1}.
 
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State) ->
-    {RelName, RelVsn} = rlx_state:default_configured_release(State),            
+    {RelName, RelVsn} = rlx_state:default_configured_release(State),
     Release0 = rlx_state:get_realized_release(State, RelName, RelVsn),
     make_relup(State, Release0).
 
@@ -151,4 +163,3 @@ write_relup_file(State, Release, Relup) ->
 strip_rel(Name) ->
     rlx_util:to_string(filename:join(filename:dirname(Name),
                                      filename:basename(Name, ".rel"))).
-

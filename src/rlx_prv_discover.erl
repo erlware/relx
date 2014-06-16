@@ -31,12 +31,24 @@
 
 -include("relx.hrl").
 
+-define(PROVIDER, discover).
+-define(DEPS, [config]).
+
 %%============================================================================
 %% API
 %%============================================================================
+
 -spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
-    {ok, State}.
+    State1 = rlx_state:add_provider(State, #provider{name = ?PROVIDER,
+                                                     provider_impl = ?MODULE,
+                                                     bare = false,
+                                                     deps = ?DEPS,
+                                                     example = "build",
+                                                     short_desc = "",
+                                                     desc = "",
+                                                     opts = []}),
+    {ok, State1}.
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications

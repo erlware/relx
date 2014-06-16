@@ -61,10 +61,10 @@ init_per_testcase(_, Config) ->
     LibDir1 = filename:join([DataDir, create_random_name("lib_dir1_")]),
     ok = rlx_util:mkdir_p(LibDir1),
     State = rlx_state:new([], [{lib_dirs, [LibDir1]}], [release]),
-    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State),
-    {ok, State2} = rlx_provider:do(ConfigProvider, State1),
+    ConfigProvider = rlx_provider:get_provider(config, rlx_state:providers(State)),
+    {ok, State1} = rlx_provider:do(ConfigProvider, State),
     [{lib1, LibDir1},
-     {state, State2} | Config].
+     {state, State1} | Config].
 
 all() ->
     [make_release, make_extend_release, make_scriptless_release,
@@ -575,7 +575,7 @@ overlay_release(Config) ->
                        Error ->
                            erlang:throw({failed_to_consult, Error})
                    end,
-    
+
     {ok, ReadFileInfo} = file:read_file_info(filename:join([OutputDir, "foo", "test_template_resolved"])),
     ?assertEqual(8#100777, ReadFileInfo#file_info.mode),
 
@@ -742,12 +742,12 @@ make_relup_release(Config) ->
     {ok, _} = relx:do(foo, "0.0.2", [], [LibDir1], 3,
                          OutputDir, ConfigFile),
     {ok, State} = relx:do([{relname, foo},
-                              {relvsn, "0.0.3"},
-                              {goals, []},
-                              {lib_dirs, [LibDir1]},
-                              {log_level, 3},
-                              {output_dir, OutputDir},
-                              {config, ConfigFile}], ["release", "relup"]),
+                           {relvsn, "0.0.3"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release", "relup"]),
 
     %% we should have one 'resolved' release and three discovered realized_releases.
     ?assertMatch([{foo, "0.0.1"},

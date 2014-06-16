@@ -44,6 +44,7 @@
          cli_args/2,
          providers/1,
          providers/2,
+         add_provider/2,
          vm_args/1,
          vm_args/2,
          sys_config/1,
@@ -122,11 +123,11 @@
 %%============================================================================
 %% API
 %%============================================================================
--spec new(string(), undefined | [atom()]) -> t().
+-spec new(string(), undefined | [atom()]) -> t() | relx:error().
 new(Config, Targets) ->
     new(Config, [], Targets).
 
--spec new(string(), proplists:proplist(), undefined | [atom()]) -> t().
+-spec new(string(), proplists:proplist(), undefined | [atom()]) -> t() | relx:error().
 new(Config, CommandLineConfig, undefined) ->
     new(Config, CommandLineConfig, [release]);
 new(Config, CommandLineConfig, Targets)
@@ -151,6 +152,7 @@ new(Config, CommandLineConfig, Targets)
     State1 = rlx_state:put(State0, default_libs, true),
     State2 = rlx_state:put(State1, system_libs, undefined),
     State3 = rlx_state:put(State2, overlay_vars, []),
+
     create_logic_providers(State3).
 
 %% @doc the actions targeted for this system
@@ -258,6 +260,10 @@ root_dir(State, RootDir) ->
 -spec providers(t(), [rlx_provider:t()]) -> t().
 providers(M, NewProviders) ->
     M#state_t{providers=NewProviders}.
+
+-spec add_provider(t(), rlx_provider:t()) -> t().
+add_provider(M=#state_t{providers=Providers}, Provider) ->
+    M#state_t{providers=[Provider | Providers]}.
 
 -spec add_configured_release(t(), rlx_release:t()) -> t().
 add_configured_release(M=#state_t{configured_releases=Releases}, Release) ->
@@ -398,47 +404,26 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
 %%% Internal Functions
 %%%===================================================================
 
--spec create_logic_providers(t()) -> t().
-create_logic_providers(State0) ->
-    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State0),
-    {DiscoveryProvider, {ok, State2}} = rlx_provider:new(rlx_prv_discover, State1),
-    {ReleaseProvider, {ok, State3}} = rlx_provider:new(rlx_prv_release, State2),
-    {OverlayProvider, {ok, State4}} = rlx_provider:new(rlx_prv_overlay, State3),
-    {ActionProviders, State5} = add_providers([release, relup, tar], State4),
-    State5#state_t{providers=[ConfigProvider, DiscoveryProvider,
-                              ReleaseProvider, OverlayProvider | ActionProviders]}.
+-spec create_logic_providers(t()) -> t() | relx:error().
+create_logic_providers(State) ->
+    create_all(State, [rlx_prv_config,
+                       rlx_prv_discover,
+                       rlx_prv_overlay,
+                       rlx_prv_release,
+                       rlx_prv_assembler,
+                       rlx_prv_relup,
+                       rlx_prv_archive]).
 
-add_providers(Actions, State) ->
-    add_providers(Actions, [], State).
-
-add_providers([], Providers, State) ->
-    {lists:reverse(Providers), State};
-add_providers([Action | T], Providers, State) ->
-    case lists:member(Action, actions(State)) of
-        true ->
-            {Provider, {ok, State1}} = new_provider(Action, State),
-            add_providers(T, [Provider | Providers], State1);
-        false ->
-            add_providers(T, Providers, State)
+create_all(State, []) ->
+    State;
+create_all(State, [Module | Rest]) ->
+    case rlx_provider:new(Module, State) of
+        {ok, State1} ->
+            create_all(State1, Rest);
+        Error ->
+             Error
     end.
-
-new_provider(release, State) ->
-    rlx_provider:new(rlx_prv_assembler, State);
-new_provider(relup, State) ->
-    rlx_provider:new(rlx_prv_relup, State);
-new_provider(tar, State) ->
-    rlx_provider:new(rlx_prv_archive, State).
 
 %%%===================================================================
 %%% Test Functions
 %%%===================================================================
-
--ifndef(NOTEST).
--include_lib("eunit/include/eunit.hrl").
-
-new_test() ->
-    LogState = ec_cmd_log:new(error),
-    RCLState = new("", [{log, LogState}], [release]),
-    ?assertMatch(LogState, log(RCLState)).
-
--endif.
