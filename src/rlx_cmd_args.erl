@@ -87,15 +87,15 @@ format_error({invalid_target, Target}) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec handle_config([getopt:option()], [atom()], proplists:proplist()) ->
-                           {ok, {rlx_state:t(), [string()]}} |
-                           relx:error().
+-spec handle_config(any(), [atom()], proplists:proplist()) ->
+                           {ok, {rlx_state:t(), [string()]}} | relx:error().
 handle_config(Opts, Targets, CommandLineConfig) ->
-    case validate_config(proplists:get_value(config, Opts, [])) of
-        Error = {error, _} ->
-            Error;
-        {ok, Config} ->
-            {ok, rlx_state:new(Config, CommandLineConfig, Targets)}
+    {ok, Config} = validate_config(proplists:get_value(config, Opts, [])),
+    case rlx_state:new(Config, CommandLineConfig, Targets) of
+        {error, Error} ->
+            {error, Error};
+        State ->
+            {ok, State}
     end.
 
 -spec convert_targets([string()]) -> {ok, release | relup} | relx:error().
@@ -117,8 +117,8 @@ convert_targets(["tar" | T], Acc) ->
 convert_targets([Target | _T], _Acc) ->
     ?RLX_ERROR({invalid_target, Target}).
 
--spec validate_config(file:filename() | undefined) ->
-                             {ok, file:filename() | undefined} | relx:error().
+-spec validate_config(file:filename() | list() | undefined) ->
+                             {ok, file:filename() | list() | undefined}.
 validate_config(undefined) ->
     {ok, undefined};
 validate_config("") ->

@@ -21,10 +21,10 @@
 %%% @doc This provider uses the lib_dir setting of the state. It searches the
 %%% Lib Dirs looking for all OTP Applications that are available. When it finds
 %%% those OTP Applications it loads the information about them and adds them to
-%%% the state of available apps. This implements the rlx_provider behaviour.
+%%% the state of available apps. This implements the provider behaviour.
 -module(rlx_prv_release).
 
--behaviour(rlx_provider).
+-behaviour(provider).
 
 -export([init/1,
          do/1,
@@ -32,12 +32,24 @@
 
 -include("relx.hrl").
 
+-define(PROVIDER, resolve_release).
+-define(DEPS, [discover]).
+
 %%============================================================================
 %% API
 %%============================================================================
+
 -spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
-    {ok, State}.
+    State1 = rlx_state:add_provider(State, providers:create([{name, ?PROVIDER},
+                                                             {module, ?MODULE},
+                                                             {bare, false},
+                                                             {deps, ?DEPS},
+                                                             {example, ""},
+                                                             {short_desc, ""},
+                                                             {desc, ""},
+                                                             {opts, []}])),
+    {ok, State1}.
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications

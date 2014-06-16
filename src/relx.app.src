@@ -23,4 +23,4 @@
   {vsn, "semver"},
   {modules, []},
   {registered, []},
-  {applications, [kernel, stdlib, getopt, erlware_commons]}]}.
+  {applications, [kernel, stdlib, getopt, erlware_commons, providers]}]}.
