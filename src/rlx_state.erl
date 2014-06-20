@@ -27,7 +27,7 @@
          new/3,
          log/1,
          actions/1,
-         output_dir/1,         
+         output_dir/1,
          base_output_dir/1,
          base_output_dir/2,
          lib_dirs/1,
@@ -93,7 +93,7 @@
                   goals=[] :: [rlx_depsolver:constraint()],
                   providers=[] :: [rlx_provider:t()],
                   available_apps=[] :: [rlx_app_info:t()],
-                  default_configured_release :: {rlx_release:name(), rlx_release:vsn()} | undefined,
+                  default_configured_release :: {rlx_release:name() | undefined, rlx_release:vsn() |undefined} | undefined,
                   vm_args :: file:filename() | undefined,
                   sys_config :: file:filename() | undefined,
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
@@ -135,7 +135,7 @@ new(Config, CommandLineConfig, Targets)
     {ok, Root} = file:get_cwd(),
 
     Caller = proplists:get_value(caller, CommandLineConfig, api),
-    Log = proplists:get_value(log, CommandLineConfig, ec_cmd_log:new(error, Caller)),    
+    Log = proplists:get_value(log, CommandLineConfig, ec_cmd_log:new(error, Caller)),
     State0 = #state_t{log=Log,
                       config_file=Config,
                       cli_args=CommandLineConfig,
@@ -147,7 +147,7 @@ new(Config, CommandLineConfig, Targets)
                       default_configured_release=undefined,
                       configured_releases=ec_dictionary:new(ec_dict),
                       realized_releases=ec_dictionary:new(ec_dict),
-                      config_values=ec_dictionary:new(ec_dict)},    
+                      config_values=ec_dictionary:new(ec_dict)},
     State1 = rlx_state:put(State0, default_libs, true),
     State2 = rlx_state:put(State1, system_libs, undefined),
     State3 = rlx_state:put(State2, overlay_vars, []),
@@ -300,8 +300,8 @@ update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
                                                   Release,
                                                   Releases)}.
 
--spec default_configured_release(t()) ->
-                             {rlx_release:name() | undefined, rlx_release:vsn() | undefined}.
+-spec default_configured_release(t()) -> {rlx_release:name() | undefined,
+                                         rlx_release:vsn() | undefined}.
 default_configured_release(#state_t{default_configured_release=Def}) ->
     Def.
 
@@ -403,19 +403,19 @@ create_logic_providers(State0) ->
     {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State0),
     {DiscoveryProvider, {ok, State2}} = rlx_provider:new(rlx_prv_discover, State1),
     {ReleaseProvider, {ok, State3}} = rlx_provider:new(rlx_prv_release, State2),
-    {OverlayProvider, {ok, State4}} = rlx_provider:new(rlx_prv_overlay, State3),    
-    {ActionProviders, State5} = add_providers([release, relup, tar], State4),         
+    {OverlayProvider, {ok, State4}} = rlx_provider:new(rlx_prv_overlay, State3),
+    {ActionProviders, State5} = add_providers([release, relup, tar], State4),
     State5#state_t{providers=[ConfigProvider, DiscoveryProvider,
                               ReleaseProvider, OverlayProvider | ActionProviders]}.
 
-add_providers(Actions, State) -> 
+add_providers(Actions, State) ->
     add_providers(Actions, [], State).
 
-add_providers([], Providers, State) -> 
+add_providers([], Providers, State) ->
     {lists:reverse(Providers), State};
 add_providers([Action | T], Providers, State) ->
     case lists:member(Action, actions(State)) of
-        true ->                                
+        true ->
             {Provider, {ok, State1}} = new_provider(Action, State),
             add_providers(T, [Provider | Providers], State1);
         false ->
