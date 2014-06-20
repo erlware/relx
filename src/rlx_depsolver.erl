@@ -119,7 +119,7 @@
 -endif.
 -opaque t() :: {?MODULE, dep_graph()}.
 -type pkg() :: {pkg_name(), vsn()}.
--type pkg_name() :: binary() | atom().
+-type pkg_name() :: string() | binary() | atom().
 -type raw_vsn() :: ec_semver:any_version().
 
 -type vsn() :: 'NO_VSN'
