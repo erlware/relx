@@ -301,7 +301,7 @@ update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
                                                   Releases)}.
 
 -spec default_configured_release(t()) -> {rlx_release:name() | undefined,
-                                         rlx_release:vsn() | undefined}.
+                                         rlx_release:vsn() | undefined} | default.
 default_configured_release(#state_t{default_configured_release=Def}) ->
     Def.
 
