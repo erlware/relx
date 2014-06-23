@@ -96,7 +96,9 @@ find_default_release(State, DepGraph) ->
         {undefined, Vsn} ->
             ?RLX_ERROR({no_release_name, Vsn});
         {RelName, RelVsn} ->
-            solve_release(State, DepGraph, RelName, RelVsn)
+            solve_release(State, DepGraph, RelName, RelVsn);
+        undefined ->
+            ?RLX_ERROR(no_releases_in_system)
     catch
         {multiple_release_names, _, _}=Error ->
             ?RLX_ERROR(Error)
