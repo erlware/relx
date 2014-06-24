@@ -123,7 +123,8 @@ load_config(ConfigFile, State) ->
 -spec load_terms(term(), {ok, rlx_state:t()} | relx:error()) ->
                         {ok, rlx_state:t()} | relx:error().
 load_terms({default_release, {RelName, RelVsn}}, {ok, State}) ->
-    {ok, rlx_state:default_configured_release(State, RelName, RelVsn)};
+    NewVsn = parse_vsn(RelVsn),
+    {ok, rlx_state:default_configured_release(State, RelName, NewVsn)};
 load_terms({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
     {ok, State};
@@ -172,8 +173,9 @@ load_terms({upfrom, UpFrom}, {ok, State0}) ->
 load_terms({include_src, IncludeSrc}, {ok, State0}) ->
     {ok, rlx_state:include_src(State0, IncludeSrc)};
 load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications}, {ok, State0}) ->
-    Release0 = rlx_release:new(RelName, Vsn),
-    ExtendRelease = rlx_state:get_configured_release(State0, RelName2, Vsn),
+    NewVsn = parse_vsn(Vsn),
+    Release0 = rlx_release:new(RelName, NewVsn),
+    ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn),
     Applications1 = rlx_release:goals(ExtendRelease),
     case rlx_release:goals(Release0,
                           lists:umerge(lists:usort(Applications),
@@ -184,7 +186,8 @@ load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications}, {ok, Sta
             {ok, rlx_state:add_configured_release(State0, Release1)}
         end;
 load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
-    Release0 = rlx_release:new(RelName, Vsn),
+    NewVsn = parse_vsn(Vsn),
+    Release0 = rlx_release:new(RelName, NewVsn),
     case rlx_release:goals(Release0, Applications) of
         E={error, _} ->
             E;
@@ -193,7 +196,8 @@ load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
         end;
 load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
             Applications}, {ok, State}) ->
-    Release0 = rlx_release:erts(rlx_release:new(RelName, Vsn), ErtsVsn),
+    NewVsn = parse_vsn(Vsn),
+    Release0 = rlx_release:erts(rlx_release:new(RelName, NewVsn), ErtsVsn),
     case rlx_release:goals(Release0, Applications) of
         E={error, _} ->
             E;
@@ -267,3 +271,8 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
         _ ->
             merge_configs(CliTerms, lists:keystore(Key, 1, ConfigTerms, {Key, Value}))
     end.
+
+parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
+    binary_to_list(ec_git_vsn:vsn([]));
+parse_vsn(Vsn) ->
+    Vsn.
