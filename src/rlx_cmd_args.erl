@@ -269,6 +269,17 @@ create(paths, Opts) ->
 create(dev_mode, Opts) ->
     DevMode = proplists:get_value(dev_mode, Opts, false),
     {dev_mode, DevMode};
+create(include_erts, Opts) ->
+    case proplists:get_value(include_erts, Opts, true) of
+        IncludeErts when IncludeErts =:= true
+                       ; IncludeErts =:= "true" ->
+            {include_erts, true};
+        IncludeErts when IncludeErts =:= false
+                       ; IncludeErts =:= "false" ->
+            {include_erts, false};
+        Erts when is_list(Erts) ->
+            {include_erts, Erts}
+    end;
 create(_, _) ->
     [].
 
