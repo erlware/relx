@@ -199,6 +199,8 @@ opt_spec_list() ->
       "Verbosity level, maybe between 0 and 3"},
      {dev_mode, $d, "dev-mode", boolean,
       "Symlink the applications and configuration into the release instead of copying"},
+     {include_erts, $i, "include-erts", string,
+      "If true include a copy of erts used to build with, if a path include erts at that path. If false, do not include erts"},
      {override, $a, "override", string,
       "Provide an app name and a directory to override in the form <appname>:<app directory>"},
      {config, $c, "config", {string, ""}, "The path to a config file"},
