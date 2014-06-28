@@ -276,7 +276,7 @@ case "$1" in
         # For e.g. 'setup', one may even want to name another boot script.
         case "$1" in
             console)
-                if [ "$REL_DIR/$REL_NAME.boot" ]; then
+                if [ -f "$REL_DIR/$REL_NAME.boot" ]; then
                   BOOTFILE="$REL_DIR/$REL_NAME"
                 else
                   BOOTFILE="$REL_DIR/start"
