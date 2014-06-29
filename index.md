@@ -18,7 +18,7 @@ $ cat relx.config
 
 $ ./relx
 ...
-$ ls _rel/
+$ ls _rel/erlangdc/
 bin  erts-5.10.1  lib  log  releases
 {% endhighlight %}
 
