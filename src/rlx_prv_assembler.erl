@@ -101,7 +101,7 @@ print_dev_mode(State) ->
 -spec create_output_dir(file:name()) ->
                                ok | {error, Reason::term()}.
 create_output_dir(OutputDir) ->
-    case filelib:is_dir(OutputDir) of
+    case ec_file:is_dir(OutputDir) of
         false ->
             case rlx_util:mkdir_p(OutputDir) of
                 ok ->
@@ -169,7 +169,7 @@ remove_symlink_or_directory(TargetDir) ->
         true ->
             ec_file:remove(TargetDir);
         false ->
-            case filelib:is_dir(TargetDir) of
+            case ec_file:is_dir(TargetDir) of
                 true ->
                     ok = ec_file:remove(TargetDir, [recursive]);
                 false ->
@@ -204,7 +204,7 @@ copy_directory(AppDir, TargetDir, IncludeSrc) ->
 copy_dir(AppDir, TargetDir, SubDir) ->
     SubSource = filename:join(AppDir, SubDir),
     SubTarget = filename:join(TargetDir, SubDir),
-    case filelib:is_dir(SubSource) of
+    case ec_file:is_dir(SubSource) of
         true ->
             ok = rlx_util:mkdir_p(SubTarget),
             case ec_file:copy(SubSource, SubTarget, [recursive]) of
@@ -371,7 +371,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
             ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
             LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
             {OsFamily, _OsName} = os:type(),
-            case filelib:is_dir(ErtsDir) of
+            case ec_file:is_dir(ErtsDir) of
                 false ->
                     ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
                 true ->
