@@ -32,9 +32,12 @@ relx_rem_sh() {
     # transparently
     id="remsh$(relx_gen_id)-${NAME}"
 
+    # Get the node's ticktime so that we use the same thing.
+    TICKTIME="$(relx_nodetool rpcterms net_kernel get_net_ticktime)"
+
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
-         -setcookie "$COOKIE"
+         -setcookie "$COOKIE" -kernel net_ticktime $TICKTIME
 }
 
 # Generate a random id
@@ -46,7 +49,7 @@ relx_gen_id() {
 relx_nodetool() {
     command="$1"; shift
     "$ERTS_DIR/bin/escript" "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
-                                 -setcookie "$COOKIE" "$command"
+                                 -setcookie "$COOKIE" "$command" $@
 }
 
 # Output a start command for the last argument of run_erl
