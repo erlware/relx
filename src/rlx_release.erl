@@ -92,7 +92,7 @@
 %%============================================================================
 %% API
 %%============================================================================
--spec new(atom(), string(), undefined | file:name()) -> t().
+-spec new(atom() | string(), string(), undefined | file:name()) -> t().
 new(ReleaseName, ReleaseVsn, Relfile) ->
     #release_t{name=to_atom(ReleaseName), vsn=ReleaseVsn,
                relfile = Relfile,
