@@ -214,14 +214,20 @@ add_package_version({?MODULE, Dom0}, RawPkg, RawVsn, RawPkgConstraints) ->
     Info2 =
         case gb_trees:lookup(Pkg, Dom0) of
             {value, Info0} ->
-                case lists:keytake(Vsn, 1, Info0) of
-                    {value, {Vsn, Constraints}, Info1} ->
-                        [{Vsn, join_constraints(Constraints,
-                                                PkgConstraints)}
-                         | Info1];
-                    false ->
-                        [{Vsn,  PkgConstraints}  | Info0]
-                end;
+                %% Sort Vsns from greatest to lowest
+                lists:reverse(
+                  lists:sort(fun(X, Y) ->
+                                     ec_semver:lte(element(1, X), element(1, Y))
+                             end,
+                            case lists:keytake(Vsn, 1, Info0) of
+                                {value, {Vsn, Constraints}, Info1} ->
+                                    [{Vsn, join_constraints(Constraints,
+                                                            PkgConstraints)}
+                                     | Info1];
+                                false ->
+                                    [{Vsn,  PkgConstraints}  | Info0]
+
+                            end));
             none ->
                 [{Vsn, PkgConstraints}]
         end,
@@ -621,7 +627,6 @@ pkgs(DepGraph, Visited, Pkg, Constraints, OtherPkgs, PathInd) ->
                 NewVisited = [{Pkg, Vsn} | Visited],
                 Res = all_pkgs(DepGraph, NewVisited, DepPkgs ++ OtherPkgs, UConstraints, PathInd),
                 Res
-
         end,
     case constrained_package_versions(DepGraph, Pkg, Constraints) of
         [] ->
