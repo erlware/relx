@@ -110,7 +110,7 @@ case $NAME in
         ;;
     *)
         # Add @hostname
-        NAME=$NAME@`hostname`
+        NAME=$NAME@`hostname -f`
         ;;
 esac
 
@@ -136,15 +136,13 @@ cd "$ROOTDIR"
 # Check the first argument for instructions
 case "$1" in
     start|start_boot)
-
         # Make sure there is not already a node running
-        #RES=`$NODETOOL ping`
-        #if [ "$RES" = "pong" ]; then
-        #    echo "Node is already running!"
-        #    exit 1
-        #fi
-        # Save this for later.
-        CMD=$1
+        relx_nodetool "ping" > /dev/null
+        ES="$?"
+        if [ "$ES" -eq 0 ]; then
+            echo "Node is already running!"
+            exit 1
+        fi
         case "$1" in
             start)
                 shift
@@ -231,7 +229,7 @@ case "$1" in
 
     attach)
         # Make sure a node IS running
-        RES="$(relx_nodetool "ping")"
+        relx_nodetool "ping" > /dev/null
         ES="$?"
         if [ "$ES" -ne 0 ]; then
             echo "Node is not running!"
@@ -244,7 +242,7 @@ case "$1" in
 
     remote_console)
         # Make sure a node IS running
-        RES="$(relx_nodetool "ping")"
+        relx_nodetool "ping" > /dev/null
         ES="$?"
         if [ "$ES" -ne 0 ]; then
             echo "Node is not running!"
@@ -264,7 +262,7 @@ case "$1" in
         fi
 
         # Make sure a node IS running
-        RES="$(relx_nodetool "ping")"
+        relx_nodetool "ping" > /dev/null
         ES="$?"
         if [ "$ES" -ne 0 ]; then
             echo "Node is not running!"
