@@ -48,8 +48,9 @@ relx_gen_id() {
 # Control a node
 relx_nodetool() {
     command="$1"; shift
+
     "$ERTS_DIR/bin/escript" "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
-                                 -setcookie "$COOKIE" "$command" $@
+                                -setcookie "$COOKIE" "$command" $@
 }
 
 # Output a start command for the last argument of run_erl
@@ -191,10 +192,8 @@ case "$1" in
                 PID=$(ps -efw|grep "$SCRIPT_DIR/.*/[b]eam"|awk '{print $2}')
                 ;;
         esac
-        relx_nodetool "stop"
-        ES="$?"
-        if [ "$ES" -ne 0 ]; then
-            exit "$ES"
+        if ! relx_nodetool "stop"; then
+            exit $?
         fi
         while $(kill -0 "$PID" 2>/dev/null);
         do
@@ -204,36 +203,29 @@ case "$1" in
 
     restart)
         ## Restart the VM without exiting the process
-        relx_nodetool "restart"
-        ES="$?"
-        if [ "$ES" -ne 0 ]; then
-            exit $ES
+        if ! relx_nodetool "restart"; then
+            exit $?
         fi
         ;;
 
     reboot)
         ## Restart the VM completely (uses heart to restart it)
-        relx_nodetool "reboot"
-        ES="$?"
-        if [ "$ES" -ne 0 ]; then
-            exit $ES
+        if ! relx_nodetool "reboot"; then
+            exit $?
         fi
         ;;
 
     ping)
         ## See if the VM is alive
-        relx_nodetool "ping"
-        ES="$?"
-        if [ "$ES" -ne 0 ]; then
-            exit $ES
+        if ! relx_nodetool "ping"; then
+            exit $?
         fi
         ;;
 
     attach)
         # Make sure a node IS running
-        RES="$(relx_nodetool "ping")"
-        ES="$?"
-        if [ "$ES" -ne 0 ]; then
+        if ! relx_nodetool "ping" > /dev/null; then
+            ES="$?"
             echo "Node is not running!"
             exit $ES
         fi
@@ -244,9 +236,8 @@ case "$1" in
 
     remote_console)
         # Make sure a node IS running
-        RES="$(relx_nodetool "ping")"
-        ES="$?"
-        if [ "$ES" -ne 0 ]; then
+        if ! relx_nodetool "ping" > /dev/null; then
+            ES="$?"
             echo "Node is not running!"
             exit $ES
         fi
@@ -264,9 +255,8 @@ case "$1" in
         fi
 
         # Make sure a node IS running
-        RES="$(relx_nodetool "ping")"
-        ES="$?"
-        if [ "$ES" -ne 0 ]; then
+        if ! relx_nodetool "ping" > /dev/null; then
+            ES="$?"
             echo "Node is not running!"
             exit $ES
         fi
