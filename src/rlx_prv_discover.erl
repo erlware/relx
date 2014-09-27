@@ -109,6 +109,7 @@ add_common_project_dirs(State) ->
             Apps = filename:join(Root, "apps"),
             Lib = filename:join(Root, "lib"),
             Deps = filename:join(Root, "deps"),
+            Rebar3Deps = filename:join(Root, "_deps"),
             Ebin = filename:join(Root, "ebin"),
             lists:foldl(fun(Dir, LibDirs) ->
                                 case ec_file:exists(Dir) of
@@ -117,7 +118,7 @@ add_common_project_dirs(State) ->
                                     false ->
                                         LibDirs
                                 end
-                        end, [], [Deps, Lib, Apps, Ebin])
+                        end, [], [Rebar3Deps, Deps, Lib, Apps, Ebin])
     end.
 
 -spec add_system_lib_dir(rlx_state:t()) -> [file:name()].
