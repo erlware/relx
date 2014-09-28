@@ -30,31 +30,42 @@
 
 -include("relx.hrl").
 
+-define(PROVIDER, release).
+-define(DEPS, [overlay]).
+
 %%============================================================================
 %% API
 %%============================================================================
 -spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
-    {ok, State}.
+    State1 = rlx_state:add_provider(State, #provider{name = ?PROVIDER,
+                                                     provider_impl = ?MODULE,
+                                                     bare = false,
+                                                     deps = ?DEPS,
+                                                     example = "release",
+                                                     short_desc = "",
+                                                     desc = "",
+                                                     opts = []}),
+    {ok, State1}.
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
-do(State) ->        
+do(State) ->
     print_dev_mode(State),
     {RelName, RelVsn} = rlx_state:default_configured_release(State),
     Release = rlx_state:get_realized_release(State, RelName, RelVsn),
-    OutputDir = rlx_state:output_dir(State),    
+    OutputDir = rlx_state:output_dir(State),
     case create_output_dir(OutputDir) of
         ok ->
             case rlx_release:realized(Release) of
-                true ->                    
+                true ->
                     copy_app_directories_to_output(State, Release, OutputDir);
                 false ->
                     ?RLX_ERROR({unresolved_release, RelName, RelVsn})
             end;
         Error ->
-            Error    
+            Error
     end.
 
 -spec format_error(ErrorDetail::term()) -> iolist().

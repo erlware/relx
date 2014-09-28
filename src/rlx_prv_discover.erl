@@ -31,12 +31,24 @@
 
 -include("relx.hrl").
 
+-define(PROVIDER, discover).
+-define(DEPS, [config]).
+
 %%============================================================================
 %% API
 %%============================================================================
+
 -spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
-    {ok, State}.
+    State1 = rlx_state:add_provider(State, #provider{name = ?PROVIDER,
+                                                     provider_impl = ?MODULE,
+                                                     bare = false,
+                                                     deps = ?DEPS,
+                                                     example = "build",
+                                                     short_desc = "",
+                                                     desc = "",
+                                                     opts = []}),
+    {ok, State1}.
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
@@ -97,6 +109,7 @@ add_common_project_dirs(State) ->
             Apps = filename:join(Root, "apps"),
             Lib = filename:join(Root, "lib"),
             Deps = filename:join(Root, "deps"),
+            Rebar3Deps = filename:join(Root, "_deps"),
             Ebin = filename:join(Root, "ebin"),
             lists:foldl(fun(Dir, LibDirs) ->
                                 case ec_file:exists(Dir) of
@@ -105,7 +118,7 @@ add_common_project_dirs(State) ->
                                     false ->
                                         LibDirs
                                 end
-                        end, [], [Deps, Lib, Apps, Ebin])
+                        end, [], [Rebar3Deps, Deps, Lib, Apps, Ebin])
     end.
 
 -spec add_system_lib_dir(rlx_state:t()) -> [file:name()].

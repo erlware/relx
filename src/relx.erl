@@ -57,6 +57,7 @@ main(Args) ->
                                  true ->
                                      usage();
                                  false ->
+                                     application:start(relx),
                                      do([{caller, command_line} | Options], NonOptions)
                              end
                      end;
@@ -240,16 +241,17 @@ run_relx_process(State) ->
 %% providers again and run the rest of them (because they could have been
 %% updated by the config process).
 run_providers(State0) ->
-    [ConfigProvider | _] = rlx_state:providers(State0),
+    [Target | _] = rlx_state:actions(State0),
+    [ConfigProvider | _] = rlx_provider:get_target_providers(Target, State0),
     case run_provider(ConfigProvider, {ok, State0}) of
-        Err = {error, _} ->
-            Err;
         {ok, State1} ->
             RootDir = rlx_state:root_dir(State1),
             ok = file:set_cwd(RootDir),
-            Providers = rlx_state:providers(State1),
+            Providers = rlx_provider:get_target_providers(Target, State1),
             Result = run_providers(ConfigProvider, Providers, State1),
-            handle_output(State1, rlx_state:caller(State1), Result)
+            handle_output(State1, rlx_state:caller(State1), Result);
+        Err ->
+            Err
     end.
 
 handle_output(State, command_line, E={error, _}) ->
@@ -270,11 +272,10 @@ run_providers(ConfigProvider, Providers, State0) ->
             lists:foldl(fun run_provider/2, {ok, State0}, Providers)
     end.
 
--spec run_provider(rlx_provider:t(), {ok, rlx_state:t()} | error()) ->
+-spec run_provider(atom(), {ok, rlx_state:t()} | error()) ->
                           {ok, rlx_state:t()} | error().
-run_provider(_Provider, Error = {error, _}) ->
-    Error;
-run_provider(Provider, {ok, State0}) ->
+run_provider(ProviderName, {ok, State0}) ->
+    Provider = rlx_provider:get_provider(ProviderName, rlx_state:providers(State0)),
     ec_cmd_log:debug(rlx_state:log(State0), "Running provider ~p~n",
                      [rlx_provider:impl(Provider)]),
     case rlx_provider:do(Provider, State0) of
@@ -286,7 +287,9 @@ run_provider(Provider, {ok, State0}) ->
             ec_cmd_log:debug(rlx_state:log(State0), "Provider (~p) failed with: ~p~n",
                              [rlx_provider:impl(Provider), E]),
             E
-    end.
+    end;
+run_provider(_ProviderName, Error) ->
+    Error.
 
 -spec usage() -> ok.
 usage() ->
