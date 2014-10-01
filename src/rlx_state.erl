@@ -216,11 +216,11 @@ goals(#state_t{goals=TS}) ->
 goals(State, Goals) ->
     State#state_t{goals=Goals}.
 
--spec config_file(t()) -> file:filename() | undefined.
+-spec config_file(t()) -> file:filename() | proplists:proplist() | undefined.
 config_file(#state_t{config_file=ConfigFiles}) ->
     ConfigFiles.
 
--spec config_file(t(), file:filename() | undefined) -> t().
+-spec config_file(t(), file:filename() | proplists:proplist() | undefined) -> t().
 config_file(State, ConfigFiles) ->
     State#state_t{config_file=ConfigFiles}.
 

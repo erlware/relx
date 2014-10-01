@@ -69,7 +69,7 @@ format_error({invalid_option_arg, Arg}) ->
             io_lib:format("Invalid code path argument -n ~p~n", [Path])
     end;
 format_error({invalid_config_file, Config}) ->
-    io_lib:format("Invalid configuration file specified: ~s", [Config]);
+    io_lib:format("Invalid configuration file specified: ~p", [Config]);
 format_error({invalid_caller, Caller}) ->
     io_lib:format("Invalid caller specified: ~s", [Caller]);
 format_error({failed_to_parse, Spec}) ->
@@ -128,7 +128,7 @@ validate_config(Config) ->
         true ->
             {ok, filename:absname(Config)};
         false ->
-            ?RLX_ERROR({invalid_config_file, Config})
+            {ok, Config}
     end.
 
 run_creates(Opts) ->

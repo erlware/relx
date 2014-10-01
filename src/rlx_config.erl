@@ -97,20 +97,26 @@ parent_dir([_H], Acc) ->
 parent_dir([H | T], Acc) ->
     parent_dir(T, [H | Acc]).
 
--spec load_config(file:filename(), rlx_state:t()) ->
+-spec load_config(file:filename() | proplists:proplist(), rlx_state:t()) ->
                          {ok, rlx_state:t()} | relx:error().
 load_config(ConfigFile, State) ->
     {ok, CurrentCwd} = file:get_cwd(),
-    ok = file:set_cwd(filename:dirname(ConfigFile)),
-    Result = case file:consult(ConfigFile) of
-                 {error, Reason} ->
-                     ?RLX_ERROR({consult, ConfigFile, Reason});
-                 {ok, Terms} ->
-                     CliTerms = rlx_state:cli_args(State),
-                     lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, Terms))
-             end,
-    ok = file:set_cwd(CurrentCwd),
-    Result.
+    case filelib:is_regular(ConfigFile) of
+        true ->
+            ok = file:set_cwd(filename:dirname(ConfigFile)),
+            Result = case file:consult(ConfigFile) of
+                         {error, Reason} ->
+                             ?RLX_ERROR({consult, ConfigFile, Reason});
+                         {ok, Terms} ->
+                             CliTerms = rlx_state:cli_args(State),
+                             lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, Terms))
+                     end,
+            ok = file:set_cwd(CurrentCwd),
+            Result;
+        false ->
+            CliTerms = rlx_state:cli_args(State),
+            lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, ConfigFile))
+    end.
 
 -spec load_terms(term(), {ok, rlx_state:t()} | relx:error()) ->
                         {ok, rlx_state:t()} | relx:error().

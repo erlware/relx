@@ -377,7 +377,12 @@ get_relative_root(State) ->
         [] ->
             rlx_state:root_dir(State);
         Config ->
-            filename:dirname(Config)
+            case filelib:is_regular(Config) of
+                true ->
+                    filename:dirname(Config);
+                false ->
+                    rlx_state:root_dir(State)
+            end
     end.
 
 -spec is_directory(file:name(), file:name()) -> boolean().

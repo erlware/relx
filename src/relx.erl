@@ -21,6 +21,7 @@
 -module(relx).
 
 -export([main/1,
+         main/2,
          do/2,
          do/7,
          do/8,
@@ -44,6 +45,9 @@
 %%============================================================================
 -spec main([string()]) -> ok | error() | {ok, rlx_state:t()}.
 main(Args) ->
+    main([], Args).
+
+main(ApiOptions, Args) ->
     OptSpecList = opt_spec_list(),
     Result = case getopt:parse(OptSpecList, Args) of
                  {ok, {Options, NonOptions}} ->
@@ -58,7 +62,7 @@ main(Args) ->
                                      usage();
                                  false ->
                                      application:start(relx),
-                                     do([{caller, command_line} | Options], NonOptions)
+                                     do(ApiOptions++[{caller, command_line} | Options], NonOptions)
                              end
                      end;
                  {error, Detail} ->
