@@ -90,12 +90,16 @@ format_error({invalid_target, Target}) ->
 -spec handle_config(any(), [atom()], proplists:proplist()) ->
                            {ok, {rlx_state:t(), [string()]}} | relx:error().
 handle_config(Opts, Targets, CommandLineConfig) ->
-    {ok, Config} = validate_config(proplists:get_value(config, Opts, [])),
-    case rlx_state:new(Config, CommandLineConfig, Targets) of
-        {error, Error} ->
-            {error, Error};
-        State ->
-            {ok, State}
+    case validate_config(proplists:get_value(config, Opts, [])) of
+        Error = {error, _} ->
+            Error;
+        {ok, Config} ->
+            case rlx_state:new(Config, CommandLineConfig, Targets) of
+                {error, Error} ->
+                    {error, Error};
+                State ->
+                    {ok, State}
+            end
     end.
 
 -spec convert_targets([string()]) -> {ok, release | relup} | relx:error().
@@ -118,7 +122,7 @@ convert_targets([Target | _T], _Acc) ->
     ?RLX_ERROR({invalid_target, Target}).
 
 -spec validate_config(file:filename() | list() | undefined) ->
-                             {ok, file:filename() | list() | undefined}.
+                             {ok, file:filename() | list() | undefined} | relx:error().
 validate_config(undefined) ->
     {ok, undefined};
 validate_config("") ->
@@ -128,7 +132,14 @@ validate_config(Config) ->
         true ->
             {ok, filename:absname(Config)};
         false ->
-            {ok, Config}
+            case io_lib:printable_list(Config) of
+                true ->
+                    ?RLX_ERROR({invalid_config_file, Config});
+                false when is_list(Config) ->
+                    {ok, Config};
+                false ->
+                    ?RLX_ERROR({invalid_config_file, Config})
+            end
     end.
 
 run_creates(Opts) ->
