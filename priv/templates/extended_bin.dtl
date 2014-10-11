@@ -53,6 +53,13 @@ relx_nodetool() {
                                 -setcookie "$COOKIE" "$command" $@
 }
 
+# Run an escript in the node's environment
+relx_escript() {
+    command="$1"; shift
+    export RELEASE_ROOT_DIR
+
+    "$ERTS_DIR/bin/escript" "$ROOTDIR/$command" $@
+}
 # Output a start command for the last argument of run_erl
 relx_start_command() {
     printf "exec \"%s\" \"%s\"" "$RELEASE_ROOT_DIR/bin/$REL_NAME" \
@@ -222,6 +229,13 @@ case "$1" in
         fi
         ;;
 
+    escript)
+        ## Run an escript under the node's environment
+        if ! relx_escript $@; then
+            exit $?
+        fi
+        ;;
+
     attach)
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
@@ -345,7 +359,7 @@ case "$1" in
         exec "$@" -- "${1+$ARGS}"
         ;;
     *)
-        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade}"
+        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|escript}"
         exit 1
         ;;
 esac
