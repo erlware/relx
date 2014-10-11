@@ -22,7 +22,7 @@
 %%% into a release directory.
 -module(rlx_prv_overlay).
 
--behaviour(rlx_provider).
+-behaviour(provider).
 
 -export([init/1,
          do/1,
@@ -34,12 +34,24 @@
 
 -include("relx.hrl").
 
+-define(PROVIDER, overlay).
+-define(DEPS, [resolve_release]).
+
 %%============================================================================
 %% API
 %%============================================================================
+
 -spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
-    {ok, State}.
+    State1 = rlx_state:add_provider(State, providers:create([{name, ?PROVIDER},
+                                                             {module, ?MODULE},
+                                                             {bare, false},
+                                                             {deps, ?DEPS},
+                                                             {example, "overlay"},
+                                                             {short_desc, ""},
+                                                             {desc, ""},
+                                                             {opts, []}])),
+    {ok, State1}.
 
 %% @doc recursively dig down into the library directories specified in the state
 %% looking for OTP Applications
@@ -365,7 +377,12 @@ get_relative_root(State) ->
         [] ->
             rlx_state:root_dir(State);
         Config ->
-            filename:dirname(Config)
+            case filelib:is_regular(Config) of
+                true ->
+                    filename:dirname(Config);
+                false ->
+                    rlx_state:root_dir(State)
+            end
     end.
 
 -spec is_directory(file:name(), file:name()) -> boolean().

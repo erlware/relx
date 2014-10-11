@@ -21,7 +21,7 @@
 %%% @doc This provider uses the lib_dir setting of the state. It searches the
 %%% Lib Dirs looking for all OTP Applications that are available. When it finds
 %%% those OTP Applications it loads the information about them and adds them to
-%%% the state of available apps. This implements the rlx_provider behaviour.
+%%% the state of available apps. This implements provider behaviour.
 -module(rlx_dscv_util).
 
 -export([do/2,
@@ -110,8 +110,8 @@ discover_dir(ProcessDir, File, symlink) ->
             discover_real_symlink_dir(ProcessDir, File)
     end.
 
-discover_real_symlink_dir(ProcessDir, File) ->    
-    {ok, ActualRealDir} = file:read_link(File),    
+discover_real_symlink_dir(ProcessDir, File) ->
+    {ok, ActualRealDir} = file:read_link(File),
     case lists:prefix(iolist_to_list(filename:absname(ActualRealDir)),
                  iolist_to_list(filename:absname(File))) of
         true ->

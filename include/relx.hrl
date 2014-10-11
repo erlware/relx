@@ -1,4 +1,3 @@
-
 %% Copyright 2012 Erlware, LLC. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,

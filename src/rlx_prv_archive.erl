@@ -22,7 +22,7 @@
 %%% into a release directory.
 -module(rlx_prv_archive).
 
--behaviour(rlx_provider).
+-behaviour(provider).
 
 -export([init/1,
          do/1,
@@ -30,12 +30,25 @@
 
 -include("relx.hrl").
 
+-define(PROVIDER, tar).
+-define(DEPS, [release]).
+
 %%============================================================================
 %% API
 %%============================================================================
+
 -spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
 init(State) ->
-    {ok, State}.
+    State1 = rlx_state:add_provider(State, providers:create([{name, ?PROVIDER},
+                                                             {module, ?MODULE},
+                                                             {bare, false},
+                                                             {deps, ?DEPS},
+                                                             {example, "tar"},
+                                                             {short_desc, ""},
+                                                             {desc, ""},
+                                                             {opts, []}])),
+
+    {ok, State1}.
 
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State) ->

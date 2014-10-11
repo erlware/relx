@@ -49,11 +49,10 @@ init_per_testcase(_, Config) ->
     ok = rlx_util:mkdir_p(LibDir1),
     ok = rlx_util:mkdir_p(LibDir2),
     State = rlx_state:new([], [{lib_dirs, [LibDir1, LibDir2]}], [release]),
-    {ConfigProvider, {ok, State1}} = rlx_provider:new(rlx_prv_config, State),
-    {ok, State2} = rlx_provider:do(ConfigProvider, State1),
+    {ok, State1} = rlx_config:do(State),
     [{lib1, LibDir1},
      {lib2, LibDir2},
-     {state, State2} | Config].
+     {state, State1} | Config].
 
 
 all() ->
@@ -78,8 +77,9 @@ normal_case(Config) ->
                      || _ <- lists:seq(1, 100)]],
     State0 = rlx_state:put(proplists:get_value(state, Config),
                             default_libs, false),
-    {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
-    {ok, State2} = rlx_provider:do(DiscoverProvider, State1),
+    {ok, State1} = providers:new(rlx_prv_discover, State0),
+    DiscoverProvider = providers:get_provider(discover, rlx_state:providers(State1)),
+    {ok, State2} = providers:do(DiscoverProvider, State1),
 
     lists:foreach(fun(App) ->
                           ?assertMatch(true, lists:member(App, rlx_state:available_apps(State2)))
@@ -116,10 +116,11 @@ no_beam_case(Config) ->
     State0 = proplists:get_value(state, Config),
     %% Deliberately disable release discovery when running `rlx_prv_discover`
     State1 = rlx_state:put(State0, disable_rel_discovery, true),
-    {DiscoverProvider, {ok, State2}} = rlx_provider:new(rlx_prv_discover, State1),
+    {ok, State2} = providers:new(rlx_prv_discover, State1),
+    DiscoverProvider = providers:get_provider(discover, rlx_state:providers(State2)),
 
     ?assertMatch({ok, _},
-                 rlx_provider:do(DiscoverProvider, State2)).
+                 providers:do(DiscoverProvider, State2)).
 
 bad_ebin_case(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -145,8 +146,9 @@ bad_ebin_case(Config) ->
     ok = filelib:ensure_dir(Filename),
     ok = ec_file:write_term(Filename, get_bad_app_metadata(BadName, BadVsn)),
     State0 = proplists:get_value(state, Config),
-    {DiscoverProvider, {ok, State1}} = rlx_provider:new(rlx_prv_discover, State0),
-    {ok, State2} = rlx_provider:do(DiscoverProvider, State1),
+    {ok, State1} = providers:new(rlx_prv_discover, State0),
+    DiscoverProvider = providers:get_provider(discover, rlx_state:providers(State1)),
+    {ok, State2} = providers:do(DiscoverProvider, State1),
     ?assertMatch([], [App || App <- rlx_state:available_apps(State2),
                              BadName =:= rlx_app_info:name(App)]).
 
@@ -170,8 +172,9 @@ shallow_app_discovery(Config) ->
     State0 = rlx_state:put(proplists:get_value(state, Config),
                            default_libs, false),
     State1 = rlx_state:put(State0, enable_shallow_app_discovery, true),
-    {DiscoverProvider, {ok, State2}} = rlx_provider:new(rlx_prv_discover, State1),
-    {ok, State3} = rlx_provider:do(DiscoverProvider, State2),
+    {ok, State2} = providers:new(rlx_prv_discover, State1),
+    DiscoverProvider = providers:get_provider(discover, rlx_state:providers(State2)),
+    {ok, State3} = providers:do(DiscoverProvider, State2),
     lists:foreach(fun(App) ->
                           ?assertMatch(true, lists:member(App, rlx_state:available_apps(State3)))
                   end, Apps1),

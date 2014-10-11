@@ -32,7 +32,8 @@
 %%%-------------------------------------------------------------------
 -module(rlx_topo).
 
--export([sort_apps/1,
+-export([sort/1,
+         sort_apps/1,
          format_error/1]).
 
 -include("relx.hrl").
@@ -64,6 +65,12 @@ sort_apps(Apps) ->
         E ->
             E
     end.
+
+%% @doc Do a topological sort on the list of pairs.
+-spec sort([pair()]) -> {ok, [atom()]} | relx:error().
+sort(Pairs) ->
+    iterate(Pairs, [], all(Pairs)).
+
 %% @doc nicely format the error from the sort.
 -spec format_error(Reason::term()) -> iolist().
 format_error({cycle, Pairs}) ->
@@ -82,11 +89,6 @@ format_error({cycle, Pairs}) ->
 %%====================================================================
 %% Internal Functions
 %%====================================================================
-%% @doc Do a topological sort on the list of pairs.
--spec sort([pair()]) -> {ok, [atom()]} | relx:error().
-sort(Pairs) ->
-    iterate(Pairs, [], all(Pairs)).
-
 -spec names_to_apps([atom()], [rlx_app_info:t()]) -> [rlx_app_info:t()].
 names_to_apps(Names, Apps) ->
  [find_app_by_name(Name, Apps) || Name <- Names].

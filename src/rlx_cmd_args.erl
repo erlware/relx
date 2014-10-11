@@ -69,7 +69,7 @@ format_error({invalid_option_arg, Arg}) ->
             io_lib:format("Invalid code path argument -n ~p~n", [Path])
     end;
 format_error({invalid_config_file, Config}) ->
-    io_lib:format("Invalid configuration file specified: ~s", [Config]);
+    io_lib:format("Invalid configuration file specified: ~p", [Config]);
 format_error({invalid_caller, Caller}) ->
     io_lib:format("Invalid caller specified: ~s", [Caller]);
 format_error({failed_to_parse, Spec}) ->
@@ -87,15 +87,19 @@ format_error({invalid_target, Target}) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec handle_config([getopt:option()], [atom()], proplists:proplist()) ->
-                           {ok, {rlx_state:t(), [string()]}} |
-                           relx:error().
+-spec handle_config(any(), [atom()], proplists:proplist()) ->
+                           {ok, {rlx_state:t(), [string()]}} | relx:error().
 handle_config(Opts, Targets, CommandLineConfig) ->
     case validate_config(proplists:get_value(config, Opts, [])) of
         Error = {error, _} ->
             Error;
         {ok, Config} ->
-            {ok, rlx_state:new(Config, CommandLineConfig, Targets)}
+            case rlx_state:new(Config, CommandLineConfig, Targets) of
+                {error, Error} ->
+                    {error, Error};
+                State ->
+                    {ok, State}
+            end
     end.
 
 -spec convert_targets([string()]) -> {ok, release | relup} | relx:error().
@@ -117,8 +121,8 @@ convert_targets(["tar" | T], Acc) ->
 convert_targets([Target | _T], _Acc) ->
     ?RLX_ERROR({invalid_target, Target}).
 
--spec validate_config(file:filename() | undefined) ->
-                             {ok, file:filename() | undefined} | relx:error().
+-spec validate_config(file:filename() | list() | undefined) ->
+                             {ok, file:filename() | list() | undefined} | relx:error().
 validate_config(undefined) ->
     {ok, undefined};
 validate_config("") ->
@@ -128,7 +132,14 @@ validate_config(Config) ->
         true ->
             {ok, filename:absname(Config)};
         false ->
-            ?RLX_ERROR({invalid_config_file, Config})
+            case io_lib:printable_list(Config) of
+                true ->
+                    ?RLX_ERROR({invalid_config_file, Config});
+                false when is_list(Config) ->
+                    {ok, Config};
+                false ->
+                    ?RLX_ERROR({invalid_config_file, Config})
+            end
     end.
 
 run_creates(Opts) ->

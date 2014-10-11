@@ -21,13 +21,10 @@
 %%%  A module that provides config parsing and support to the system
 %%% @end
 %%%-------------------------------------------------------------------
--module(rlx_prv_config).
-
--behaviour(rlx_provider).
+-module(rlx_config).
 
 %% API
--export([init/1,
-         do/1,
+-export([do/1,
          format_error/1]).
 
 -include("relx.hrl").
@@ -35,11 +32,6 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
-%% @doc Required by the system, but not used in this provider
--spec init(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
-init(State) ->
-    {ok, State}.
 
 %% @doc parse all the configs currently specified in the state,
 %% populating the state as a result.
@@ -105,20 +97,26 @@ parent_dir([_H], Acc) ->
 parent_dir([H | T], Acc) ->
     parent_dir(T, [H | Acc]).
 
--spec load_config(file:filename(), rlx_state:t()) ->
+-spec load_config(file:filename() | proplists:proplist(), rlx_state:t()) ->
                          {ok, rlx_state:t()} | relx:error().
 load_config(ConfigFile, State) ->
     {ok, CurrentCwd} = file:get_cwd(),
-    ok = file:set_cwd(filename:dirname(ConfigFile)),
-    Result = case file:consult(ConfigFile) of
-                 {error, Reason} ->
-                     ?RLX_ERROR({consult, ConfigFile, Reason});
-                 {ok, Terms} ->
-                     CliTerms = rlx_state:cli_args(State),
-                     lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, Terms))
-             end,
-    ok = file:set_cwd(CurrentCwd),
-    Result.
+    case filelib:is_regular(ConfigFile) of
+        true ->
+            ok = file:set_cwd(filename:dirname(ConfigFile)),
+            Result = case file:consult(ConfigFile) of
+                         {error, Reason} ->
+                             ?RLX_ERROR({consult, ConfigFile, Reason});
+                         {ok, Terms} ->
+                             CliTerms = rlx_state:cli_args(State),
+                             lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, Terms))
+                     end,
+            ok = file:set_cwd(CurrentCwd),
+            Result;
+        false ->
+            CliTerms = rlx_state:cli_args(State),
+            lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, ConfigFile))
+    end.
 
 -spec load_terms(term(), {ok, rlx_state:t()} | relx:error()) ->
                         {ok, rlx_state:t()} | relx:error().
@@ -143,6 +141,8 @@ load_terms({lib_dirs, Dirs}, {ok, State}) ->
         rlx_state:add_lib_dirs(State,
                                [list_to_binary(Dir) || Dir <- rlx_util:wildcard_paths(Dirs)]),
     {ok, State2};
+load_terms({hooks, Hooks}, {ok, State0}) ->
+    add_hooks(Hooks, State0);
 load_terms({providers, Providers0}, {ok, State0}) ->
     Providers1 = gen_providers(Providers0, State0),
     case Providers1 of
@@ -231,14 +231,21 @@ load_terms(InvalidTerm, _) ->
     ?RLX_ERROR({invalid_term, InvalidTerm}).
 
 -spec gen_providers([module()], rlx_state:t()) ->
-                           {[rlx_provider:t()], {ok, rlx_state:t()} | relx:error()}.
+                           {[providers:t()], {ok, rlx_state:t()} | relx:error()}.
 gen_providers(Providers, State) ->
     lists:foldl(fun(ProviderName, {Providers1, {ok, State1}}) ->
-                        {Provider, State2} = rlx_provider:new(ProviderName, State1),
+                        {Provider, State2} = providers:new(ProviderName, State1),
                         {[Provider | Providers1], State2};
                    (_, E={_, {error, _}}) ->
                         E
                 end, {[], {ok, State}}, Providers).
+
+add_hooks(Hooks, State) ->
+    {ok, lists:foldl(fun({pre, Target, Hook}, StateAcc) ->
+                             rlx_state:prepend_hook(StateAcc, Target, Hook);
+                        ({post, Target, Hook}, StateAcc) ->
+                             rlx_state:append_hook(StateAcc, Target, Hook)
+                     end, State, Hooks)}.
 
 list_of_overlay_vars_files(undefined) ->
     [];
