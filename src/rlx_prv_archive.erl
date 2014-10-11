@@ -38,11 +38,11 @@ init(State) ->
     {ok, State}.
 
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
-do(State) ->    
+do(State) ->
     {RelName, RelVsn} = rlx_state:default_configured_release(State),
     Release = rlx_state:get_realized_release(State, RelName, RelVsn),
-    OutputDir = rlx_state:output_dir(State),        
-    make_tar(State, Release, OutputDir).        
+    OutputDir = rlx_state:output_dir(State),
+    make_tar(State, Release, OutputDir).
 
 format_error({tar_unknown_generation_error, Module, Vsn}) ->
     io_lib:format("Tarball generation error of ~s ~s",
@@ -94,6 +94,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
     file:rename(filename:join(OutputDir, Name++".tar.gz"), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
+    OverlayFiles = overlay_files(rlx_state:get(State, overlay, undefined), OutputDir),
     ok =
         erl_tar:create(TarFile,
                        [{"lib", filename:join(TempDir, "lib")},
@@ -108,9 +109,29 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                                 [];
                             _ ->
                                 [{"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
-                        end], [compressed]),
+                        end]++OverlayFiles, [compressed]),
     ec_cmd_log:info(rlx_state:log(State),
                  "tarball ~s successfully created!~n", [TarFile]),
     ec_file:remove(TempDir, [recursive]),
     {ok, State}.
 
+overlay_files(undefined, _) ->
+    [];
+overlay_files(Overlay, OutputDir) ->
+    [{to(O), filename:join(OutputDir, to(O))} || O <- Overlay, filter(O)].
+
+to({copy, _, To}) ->
+    To;
+to({mkdir, To}) ->
+    To;
+to({template, _, To}) ->
+    To.
+
+filter({copy, _, _}) ->
+    true;
+filter({mkdir, _}) ->
+    true;
+filter({template, _, _}) ->
+    true;
+filter(_) ->
+    false.
