@@ -118,7 +118,7 @@ case $NAME in
         ;;
     *)
         # Add @hostname
-        NAME=$NAME@`hostname`
+        NAME=$NAME@`hostname -f`
         ;;
 esac
 
