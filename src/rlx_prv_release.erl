@@ -28,7 +28,7 @@
 
 -export([init/1,
          do/1,
-         format_error/1]).
+         format_error/2]).
 
 -include("relx.hrl").
 
@@ -58,24 +58,24 @@ do(State) ->
     DepGraph = create_dep_graph(State),
     find_default_release(State, DepGraph).
 
--spec format_error(ErrorDetail::term()) -> iolist().
-format_error(no_goals_specified) ->
+-spec format_error(ErrorDetail::term(), rlx_state:t()) -> iolist().
+format_error(no_goals_specified, _) ->
     "No goals specified for this release ~n";
-format_error({no_release_name, Vsn}) ->
+format_error({no_release_name, Vsn}, _) ->
     io_lib:format("A target release version was specified (~s) but no name", [Vsn]);
-format_error({invalid_release_info, Info}) ->
+format_error({invalid_release_info, Info}, _) ->
     io_lib:format("Target release information is in an invalid format ~p", [Info]);
-format_error({multiple_release_names, RelA, RelB}) ->
+format_error({multiple_release_names, RelA, RelB}, _) ->
     io_lib:format("No default release name was specified and there are multiple "
                   "releases in the config: ~s, ~s",
                   [RelA, RelB]);
-format_error(no_releases_in_system) ->
+format_error(no_releases_in_system, _) ->
     "No releases have been specified in the system!";
-format_error({no_releases_for, RelName}) ->
+format_error({no_releases_for, RelName}, _) ->
     io_lib:format("No releases exist in the system for ~s!", [RelName]);
-format_error({release_not_found, {RelName, RelVsn}}) ->
+format_error({release_not_found, {RelName, RelVsn}}, _) ->
     io_lib:format("No releases exist in the system for ~p:~s!", [RelName, RelVsn]);
-format_error({failed_solve, Error}) ->
+format_error({failed_solve, Error}, _) ->
     io_lib:format("Failed to solve release:\n ~s",
                   [rlx_depsolver:format_error({error, Error})]).
 %%%===================================================================

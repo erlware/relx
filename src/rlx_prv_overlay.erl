@@ -26,7 +26,7 @@
 
 -export([init/1,
          do/1,
-         format_error/1]).
+         format_error/2]).
 
 -define(DIRECTORY_RE, ".*(\/|\\\\)$").
 
@@ -66,40 +66,40 @@ do(State) ->
             ?RLX_ERROR({unresolved_release, RelName, RelVsn})
     end.
 
--spec format_error(ErrorDetail::term()) -> iolist().
-format_error({unresolved_release, RelName, RelVsn}) ->
+-spec format_error(ErrorDetail::term(), rlx_state:t()) -> iolist().
+format_error({unresolved_release, RelName, RelVsn}, _) ->
     io_lib:format("The release has not been resolved ~p-~s", [RelName, RelVsn]);
-format_error({ec_file_error, AppDir, TargetDir, E}) ->
+format_error({ec_file_error, AppDir, TargetDir, E}, _) ->
     io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
                   [AppDir, TargetDir, E]);
-format_error({unable_to_read_varsfile, FileName, Reason}) ->
+format_error({unable_to_read_varsfile, FileName, Reason}, _) ->
     io_lib:format("Unable to read vars file (~s) for overlay due to: ~p",
                   [FileName, Reason]);
-format_error({overlay_failed, Errors}) ->
-    [[format_error(rlx_util:error_reason(Error)), "\n"] || Error <- Errors];
-format_error({dir_render_failed, Dir, Error}) ->
+format_error({overlay_failed, Errors}, State) ->
+    [[format_error(rlx_util:error_reason(Error), State), "\n"] || Error <- Errors];
+format_error({dir_render_failed, Dir, Error}, _) ->
     io_lib:format("rendering mkdir path failed ~s with ~p",
                   [Dir, Error]);
-format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
+format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}, _) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),
                    file:format_error(Reason)]);
-format_error({copy_failed, FromFile, ToFile, Err}) ->
+format_error({copy_failed, FromFile, ToFile, Err}, _) ->
     io_lib:format("Unable to copy from ~s to ~s because of ~p",
                   [FromFile, ToFile, Err]);
-format_error({unable_to_write, ToFile, Reason}) ->
+format_error({unable_to_write, ToFile, Reason}, _) ->
     io_lib:format("Unable to write to ~s because ~p",
                   [ToFile, Reason]);
-format_error({unable_to_enclosing_dir, ToFile, Reason}) ->
+format_error({unable_to_enclosing_dir, ToFile, Reason}, _) ->
     io_lib:format("Unable to create enclosing directory for ~s because ~p",
                   [ToFile, Reason]);
-format_error({unable_to_render_template, FromFile, Reason}) ->
+format_error({unable_to_render_template, FromFile, Reason}, _) ->
     io_lib:format("Unable to render template ~s because ~p",
                   [FromFile, Reason]);
-format_error({unable_to_compile_template, FromFile, Reason}) ->
+format_error({unable_to_compile_template, FromFile, Reason}, _) ->
     io_lib:format("Unable to compile template ~s because \n~s",
                   [FromFile, [format_errors(F, Es) || {F, Es} <- Reason]]);
-format_error({unable_to_make_dir, Absolute, Error}) ->
+format_error({unable_to_make_dir, Absolute, Error}, _) ->
     io_lib:format("Unable to make directory ~s because ~p",
                   [Absolute, Error]).
 
@@ -168,7 +168,7 @@ merge_overlay_vars(State, FileNames) ->
                                 lists:ukeymerge(1, lists:ukeysort(1, Terms), Acc);
                             {error, Reason} ->
                                 ec_cmd_log:warn(rlx_state:log(State),
-                                                format_error({unable_to_read_varsfile, FileName, Reason})),
+                                                format_error({unable_to_read_varsfile, FileName, Reason}, State)),
                                 Acc
                         end
                 end, [], FileNames).

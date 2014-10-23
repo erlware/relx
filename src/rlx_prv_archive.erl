@@ -26,7 +26,7 @@
 
 -export([init/1,
          do/1,
-         format_error/1]).
+         format_error/2]).
 
 -include("relx.hrl").
 
@@ -57,13 +57,13 @@ do(State) ->
     OutputDir = rlx_state:output_dir(State),
     make_tar(State, Release, OutputDir).
 
-format_error({tar_unknown_generation_error, Module, Vsn}) ->
+format_error({tar_unknown_generation_error, Module, Vsn}, _) ->
     io_lib:format("Tarball generation error of ~s ~s",
                   [Module, Vsn]);
-format_error({tar_generation_warn, Module, Warnings}) ->
+format_error({tar_generation_warn, Module, Warnings}, _) ->
     io_lib:format("Tarball generation warnings for ~p : ~p",
                   [Module, Warnings]);
-format_error({tar_generation_error, Module, Errors}) ->
+format_error({tar_generation_error, Module, Errors}, _) ->
     io_lib:format("Tarball generation error for ~p reason ~p",
                   [Module, Errors]).
 
