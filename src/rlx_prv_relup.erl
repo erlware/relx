@@ -70,9 +70,9 @@ format_error({relup_script_generation_error,
                {missing_sasl, _}}}, _) ->
     "Unfortunately, due to requirements in systools, you need to have the sasl application "
         "in both the current release and the release to upgrade from.";
-format_error({relup_script_generation_error, Module, Errors}, _) ->
+format_error({relup_script_generation_error, Module, Errors}, State) ->
     ["Errors generating relup \n",
-     rlx_util:indent(2), Module:format_error(Errors)].
+     rlx_util:indent(2), Module:format_error(Errors, State)].
 
 make_relup(State, Release) ->
     Vsn = rlx_state:upfrom(State),

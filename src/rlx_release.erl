@@ -41,7 +41,7 @@
          canonical_name/1,
          format/1,
          format/2,
-         format_error/1]).
+         format_error/2]).
 
 -export_type([t/0,
               name/0,
@@ -217,14 +217,14 @@ format_goal({Constraint, AppType, AppInc}) ->
 format_goal(Constraint) ->
     rlx_depsolver:format_constraint(Constraint).
 
--spec format_error(Reason::term()) -> iolist().
-format_error({topo_error, E}) ->
-    rlx_topo:format_error(E);
-format_error({failed_to_parse, Con}) ->
+-spec format_error(Reason::term(), rlx_state:t()) -> iolist().
+format_error({topo_error, E}, State) ->
+    rlx_topo:format_error(E, State);
+format_error({failed_to_parse, Con}, _) ->
     io_lib:format("Failed to parse constraint ~p", [Con]);
-format_error({invalid_constraint, _, Con}) ->
+format_error({invalid_constraint, _, Con}, _) ->
     io_lib:format("Invalid constraint specified ~p", [Con]);
-format_error({not_realized, Name, Vsn}) ->
+format_error({not_realized, Name, Vsn}, _) ->
     io_lib:format("Unable to produce metadata release: ~p-~s has not been realized",
                   [Name, Vsn]).
 

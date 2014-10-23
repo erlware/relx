@@ -78,6 +78,7 @@ format_error({release_not_found, {RelName, RelVsn}}, _) ->
 format_error({failed_solve, Error}, _) ->
     io_lib:format("Failed to solve release:\n ~s",
                   [rlx_depsolver:format_error({error, Error})]).
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================

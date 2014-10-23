@@ -16,6 +16,7 @@
 %%
 
 -include_lib("erlware_commons/include/ec_cmd_log.hrl").
+-include_lib("providers/include/providers.hrl").
 
 -define(RLX_ERROR, ?EC_ERROR).
 -define(RLX_WARN, ?EC_WARN).
@@ -26,5 +27,4 @@
 %% system. It is expected that everything that returns an error use
 %% this and that they all expose a format_error/1 message that returns
 %% an iolist.
--define(RLX_ERROR(Reason),
-        {error, {?MODULE, Reason}}).
+-define(RLX_ERROR(Reason), ?PRV_ERROR(Reason)).

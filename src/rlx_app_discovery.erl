@@ -25,7 +25,7 @@
 -module(rlx_app_discovery).
 
 -export([do/2,
-         format_error/1]).
+         format_error/2]).
 
 -include("relx.hrl").
 
@@ -44,10 +44,10 @@ do(State, LibDirs) ->
                     end),
     resolve_app_metadata(State, LibDirs).
 
--spec format_error([ErrorDetail::term()]) -> iolist().
-format_error(ErrorDetails)
+-spec format_error([ErrorDetail::term()], rlx_state:t()) -> iolist().
+format_error(ErrorDetails, State)
   when erlang:is_list(ErrorDetails) ->
-    [[format_detail(ErrorDetail), "\n"] || ErrorDetail <- ErrorDetails].
+    [[format_detail(ErrorDetail, State), "\n"] || ErrorDetail <- ErrorDetails].
 
 %%%===================================================================
 %%% Internal Functions
@@ -85,10 +85,10 @@ get_app_metadata(State, LibDirs) ->
                             {ok, _} = AppMeta ->
                                 [AppMeta|Acc];
                             {warning, W} ->
-                                ec_cmd_log:warn(rlx_state:log(State), format_detail(W)),
+                                ec_cmd_log:warn(rlx_state:log(State), format_detail(W, State)),
                                 Acc;
                             {error, E} ->
-                                ec_cmd_log:error(rlx_state:log(State), format_detail(E)),
+                                ec_cmd_log:error(rlx_state:log(State), format_detail(E, State)),
                                 Acc;
                             _ ->
                                 Acc
@@ -111,7 +111,7 @@ resolve_app_metadata(State, LibDirs) ->
                  {error, _} ->
                      true;
                  {warning, W} ->
-                     ec_cmd_log:warn(rlx_state:log(State), format_detail(W)),
+                     ec_cmd_log:warn(rlx_state:log(State), format_detail(W, State)),
                      false;
                  _ ->
                      false
@@ -155,30 +155,30 @@ resolve_override(AppName, FileName0) ->
             {ok, rlx_app_info:link(App, true)}
     end.
 
--spec format_detail(ErrorDetail::term()) -> iolist().
-format_detail({missing_beam_file, Module, BeamFile}) ->
+-spec format_detail(ErrorDetail::term(), rlx_state:t()) -> iolist().
+format_detail({missing_beam_file, Module, BeamFile}, _) ->
     io_lib:format("Missing beam file ~p ~p", [Module, BeamFile]);
-format_detail({error, {invalid_override, AppName, FileName}}) ->
+format_detail({error, {invalid_override, AppName, FileName}}, _) ->
     io_lib:format("Override {~p, ~p} is not a valid OTP App. Perhaps you forgot to build it?",
                   [AppName, FileName]);
-format_detail({accessing, File, eaccess}) ->
+format_detail({accessing, File, eaccess}, _) ->
     io_lib:format("permission denied accessing file ~s", [File]);
-format_detail({accessing, File, Type}) ->
+format_detail({accessing, File, Type}, _) ->
     io_lib:format("error (~p) accessing file ~s", [Type, File]);
-format_detail({no_beam_files, EbinDir}) ->
+format_detail({no_beam_files, EbinDir}, _) ->
     io_lib:format("no beam files found in directory ~s", [EbinDir]);
-format_detail({not_a_directory, EbinDir}) ->
+format_detail({not_a_directory, EbinDir}, _) ->
     io_lib:format("~s is not a directory when it should be a directory", [EbinDir]);
-format_detail({unable_to_load_app, AppDir, _}) ->
+format_detail({unable_to_load_app, AppDir, _}, _) ->
     io_lib:format("Unable to load the application metadata from ~s", [AppDir]);
-format_detail({invalid_app_file, File}) ->
+format_detail({invalid_app_file, File}, _) ->
     io_lib:format("Application metadata file exists but is malformed: ~s",
                   [File]);
-format_detail({unversioned_app, AppDir, _AppName}) ->
+format_detail({unversioned_app, AppDir, _AppName}, _) ->
     io_lib:format("Application metadata exists but version is not available: ~s",
                   [AppDir]);
-format_detail({app_info_error, {Module, Detail}}) ->
-    Module:format_error(Detail).
+format_detail({app_info_error, {Module, Detail}}, State) ->
+    Module:format_error(Detail, State).
 
 -spec discover_dir([file:name()], directory | file) ->
                           {ok, rlx_app_info:t()} | {error, Reason::term()}.

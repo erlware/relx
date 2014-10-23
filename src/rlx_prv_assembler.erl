@@ -89,9 +89,9 @@ format_error({release_script_generation_warning, Module, Warnings}, _) ->
 format_error({unable_to_create_output_dir, OutputDir}, _) ->
     io_lib:format("Unable to create output directory (possible permissions issue): ~s",
                   [OutputDir]);
-format_error({release_script_generation_error, Module, Errors}, _) ->
+format_error({release_script_generation_error, Module, Errors}, State) ->
     ["Errors generating release \n",
-     rlx_util:indent(2), Module:format_error(Errors)];
+     rlx_util:indent(2), Module:format_error(Errors, State)];
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}, _) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),

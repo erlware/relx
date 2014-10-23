@@ -96,9 +96,9 @@ format_error({unable_to_enclosing_dir, ToFile, Reason}, _) ->
 format_error({unable_to_render_template, FromFile, Reason}, _) ->
     io_lib:format("Unable to render template ~s because ~p",
                   [FromFile, Reason]);
-format_error({unable_to_compile_template, FromFile, Reason}, _) ->
+format_error({unable_to_compile_template, FromFile, Reason}, State) ->
     io_lib:format("Unable to compile template ~s because \n~s",
-                  [FromFile, [format_errors(F, Es) || {F, Es} <- Reason]]);
+                  [FromFile, [format_errors(F, Es, State) || {F, Es} <- Reason]]);
 format_error({unable_to_make_dir, Absolute, Error}, _) ->
     io_lib:format("Unable to make directory ~s because ~p",
                   [Absolute, Error]).
@@ -107,22 +107,22 @@ format_error({unable_to_make_dir, Absolute, Error}, _) ->
 %%% Internal Functions
 %%%===================================================================
 
-format_errors(File, [{none, Mod, E}|Es]) ->
+format_errors(File, [{none, Mod, E}|Es], State) ->
     [io_lib:format("~s~s: ~ts~n",
                    [rlx_util:indent(2), File,
-                    Mod:format_error(E)])
-     |format_errors(File, Es)];
-format_errors(File, [{{Line, Col}, Mod, E}|Es]) ->
+                    Mod:format_error(E, State)])
+     |format_errors(File, Es, State)];
+format_errors(File, [{{Line, Col}, Mod, E}|Es], State) ->
     [io_lib:format("~s~s:~w:~w: ~ts~n",
                    [rlx_util:indent(2), File, Line, Col,
-                    Mod:format_error(E)])
-     |format_errors(File, Es)];
-format_errors(File, [{Line, Mod, E}|Es]) ->
+                    Mod:format_error(E, State)])
+     |format_errors(File, Es, State)];
+format_errors(File, [{Line, Mod, E}|Es], State) ->
     [io_lib:format("~s~s:~w: ~ts~n",
                    [rlx_util:indent(2), File, Line,
-                    Mod:format_error(E)])
-     |format_errors(File, Es)];
-format_errors(_, []) -> [].
+                    Mod:format_error(E, State)])
+     |format_errors(File, Es, State)];
+format_errors(_, [], _State) -> [].
 
 
 -spec generate_overlay_vars(rlx_state:t(), rlx_release:t()) ->
