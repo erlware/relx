@@ -352,11 +352,11 @@ case "$1" in
             -args_file "$VMARGS_PATH"
 
         # Dump environment info for logging purposes
-        echo "Exec: $@" -- "${1+$ARGS}"
+        echo "Exec: $@" -- ${1+$ARGS}
         echo "Root: $ROOTDIR"
 
         # Start the VM
-        exec "$@" -- "${1+$ARGS}"
+        exec "$@" -- ${1+$ARGS}
         ;;
     *)
         echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|escript}"
