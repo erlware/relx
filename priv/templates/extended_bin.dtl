@@ -9,7 +9,6 @@ REL_VSN="{{ rel_vsn }}"
 ERTS_VSN="{{ erts_vsn }}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
-PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/{{ rel_name }}/}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 
 find_erts_dir() {
@@ -121,6 +120,8 @@ case $NAME in
         NAME=$NAME@`hostname -f`
         ;;
 esac
+
+PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 # Extract the target cookie
 COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH")"
