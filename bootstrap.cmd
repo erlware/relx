@@ -6,7 +6,7 @@
 
 :: Create a shortcut file for running the relx command
 @set relx_cmd=relx.cmd
-@echo @echo off > %relx_cmd%
-@echo setlocal >> %relx_cmd%
-@echo set relx=%%~f0 >> %relx_cmd%
-@echo escript ^"%%relx:.cmd=%%^" %%* >> %relx_cmd%
+@echo @echo off> %relx_cmd%
+@echo setlocal>> %relx_cmd%
+@echo set relx=%%~f0>> %relx_cmd%
+@echo escript ^"%%relx:.cmd=%%^" %%*>> %relx_cmd%
