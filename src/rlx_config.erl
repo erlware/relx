@@ -205,7 +205,12 @@ load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
             {ok, rlx_state:add_configured_release(State, Release1)}
     end;
 load_terms({vm_args, VmArgs}, {ok, State}) ->
-    {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
+    case rlx_state:vm_args(State) of
+        undefined ->
+            {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
+        _ ->
+            {ok, State}
+    end;
 load_terms({sys_config, SysConfig}, {ok, State}) ->
     case rlx_state:sys_config(State) of
         undefined ->

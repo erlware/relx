@@ -240,6 +240,9 @@ create(overlay_vars, Opts)->
 create(sys_config, Opts) ->
     SysConfig = proplists:get_value(sys_config, Opts, undefined),
     {sys_config, SysConfig};
+create(vm_args, Opts) ->
+    VmArgs = proplists:get_value(vm_args, Opts, undefined),
+    {vm_args, VmArgs};
 create(system_libs, Opts) ->
     SystemLibs = proplists:get_value(system_libs, Opts, undefined),
     {system_libs, SystemLibs};
