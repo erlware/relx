@@ -34,7 +34,7 @@
 
 -export([sort/1,
          sort_apps/1,
-         format_error/1]).
+         format_error/2]).
 
 -include("relx.hrl").
 
@@ -72,8 +72,8 @@ sort(Pairs) ->
     iterate(Pairs, [], all(Pairs)).
 
 %% @doc nicely format the error from the sort.
--spec format_error(Reason::term()) -> iolist().
-format_error({cycle, Pairs}) ->
+-spec format_error(Reason::term(), rlx_state:t()) -> iolist().
+format_error({cycle, Pairs}, _) ->
     ["Cycle detected in dependency graph, this must be resolved "
      "before we can continue:\n",
     case Pairs of

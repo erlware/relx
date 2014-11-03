@@ -269,7 +269,7 @@ parse_version(RawVsn)
        erlang:is_binary(RawVsn) ->
     ec_semver:parse(RawVsn);
 parse_version(Vsn)
-  when erlang:is_tuple(Vsn) ->
+  when erlang:is_tuple(Vsn) ; erlang:is_atom(Vsn) ->
     Vsn.
 
 %% @doc check that a specified constraint is a valid constraint.
@@ -351,6 +351,8 @@ format_culprits(Culprits) ->
 
 %% @doc A formatted version tuple
 -spec format_version(vsn()) -> iolist().
+format_version('NO_VSN') ->
+    "";
 format_version(Version) ->
     rlx_depsolver_culprit:format_version(Version).
 
