@@ -4,6 +4,7 @@ ebin/*
 .eunit
 .relx_plt
 relx
+relx.cmd
 priv/templates/*.erl
 # This is a generated file that should be ignored
 src/rcl_goal.erl
