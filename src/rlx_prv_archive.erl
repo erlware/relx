@@ -112,6 +112,8 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
         erl_tar:create(TarFile,
                        [{"lib", filename:join(TempDir, "lib")},
                         {"releases", filename:join(TempDir, "releases")},
+                        {filename:join(["releases", "start_erl.data"]),
+                         filename:join([OutputDir, "releases", "start_erl.data"])},
                         {filename:join(["releases", "RELEASES"]),
                          filename:join([OutputDir, "releases", "RELEASES"])},
                         {filename:join(["releases", Vsn, "vm.args"]),
