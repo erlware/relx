@@ -29,11 +29,11 @@
 
 @call :find_erts_dir
 @call :find_sys_config
+@call :set_boot_script_var
 
 @set bindir=%erts_dir%\bin
 @set vm_args=%rel_dir%\vm.args
 @set progname=erl.exe
-@set boot_script=%rel_dir%\%rel_name%
 @set clean_boot_script=%release_root_dir%\bin\start_clean
 @set erlsrv="%bindir%\erlsrv.exe"
 @set epmd="%bindir%\epmd.exe"
@@ -54,11 +54,6 @@
 
 :: Write the erl.ini file to set up paths relative to this script
 @call :write_ini
-
-:: If a start.boot file is not present, copy one from the named .boot file
-@if not exist "%rel_dir%\start.boot" (
-  @copy "%rel_dir%\%rel_name%.boot" "%rel_dir%\start.boot" >nul
-)
 
 @if "%1"=="install" @goto install
 @if "%1"=="uninstall" @goto uninstall
@@ -108,6 +103,15 @@
 @set possible_sys=%rel_dir%\sys.config
 @if exist %possible_sys% (
   @set sys_config=-config %possible_sys%
+)
+@goto :eof
+
+:: set boot_script variable
+:set_boot_script_var
+@if exist "%rel_dir%\%rel_name%.boot" (
+  @set boot_script=%rel_dir%\%rel_name%
+) else (
+  @set boot_script=%rel_dir%\start
 )
 @goto :eof
 
