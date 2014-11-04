@@ -31,7 +31,7 @@
 -include("relx.hrl").
 
 -define(PROVIDER, relup).
--define(DEPS, [release]).
+-define(DEPS, [rel_discover, release]).
 
 %%============================================================================
 %% API
