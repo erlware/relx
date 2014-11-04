@@ -285,6 +285,7 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
     end.
 
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
-    binary_to_list(ec_git_vsn:vsn([]));
+    {ok, V} = ec_git_vsn:vsn([]),
+    V;
 parse_vsn(Vsn) ->
     Vsn.

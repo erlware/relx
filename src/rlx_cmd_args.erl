@@ -22,7 +22,7 @@
 -module(rlx_cmd_args).
 
 -export([args2state/2,
-         format_error/1]).
+         format_error/2]).
 
 -include("relx.hrl").
 
@@ -48,10 +48,10 @@ args2state(Opts, Targets) ->
             Error
     end.
 
--spec format_error(Reason::term()) -> iolist().
-format_error({invalid_targets, Targets}) ->
+-spec format_error(Reason::term(), rlx_state:t()) -> iolist().
+format_error({invalid_targets, Targets}, _) ->
     io_lib:format("One config must be specified! not ~p~n", [Targets]);
-format_error({invalid_option_arg, Arg}) ->
+format_error({invalid_option_arg, Arg}, _) ->
     case Arg of
         {goals, Goal} ->
             io_lib:format("Invalid Goal argument -g ~p~n", [Goal]);
@@ -68,20 +68,20 @@ format_error({invalid_option_arg, Arg}) ->
         {path, Path} ->
             io_lib:format("Invalid code path argument -n ~p~n", [Path])
     end;
-format_error({invalid_config_file, Config}) ->
+format_error({invalid_config_file, Config}, _) ->
     io_lib:format("Invalid configuration file specified: ~p", [Config]);
-format_error({invalid_caller, Caller}) ->
+format_error({invalid_caller, Caller}, _) ->
     io_lib:format("Invalid caller specified: ~s", [Caller]);
-format_error({failed_to_parse, Spec}) ->
+format_error({failed_to_parse, Spec}, _) ->
     io_lib:format("Unable to parse spec ~s", [Spec]);
-format_error({failed_to_parse_override, QA}) ->
+format_error({failed_to_parse_override, QA}, _) ->
     io_lib:format("Failed to parse app override ~s", [QA]);
-format_error({not_directory, Dir}) ->
+format_error({not_directory, Dir}, _) ->
     io_lib:format("Library directory does not exist: ~s", [Dir]);
-format_error({invalid_log_level, LogLevel}) ->
+format_error({invalid_log_level, LogLevel}, _) ->
     io_lib:format("Invalid log level specified -V ~p, log level must be in the"
                  " range 0..3", [LogLevel]);
-format_error({invalid_target, Target}) ->
+format_error({invalid_target, Target}, _) ->
     io_lib:format("Invalid action specified: ~s", [Target]).
 
 %%%===================================================================
