@@ -71,9 +71,9 @@ format_error({no_releases_for, RelName}, _) ->
     io_lib:format("No releases exist in the system for ~s!", [RelName]);
 format_error({release_not_found, {RelName, RelVsn}}, _) ->
     io_lib:format("No releases exist in the system for ~p:~s!", [RelName, RelVsn]);
-format_error({failed_solve, Error}, _) ->
+format_error({failed_solve, Error}, State) ->
     io_lib:format("Failed to solve release:\n ~s",
-                  [rlx_depsolver:format_error({error, Error})]).
+                  [rlx_depsolver:format_error({error, Error}, State)]).
 
 %%%===================================================================
 %%% Internal Functions

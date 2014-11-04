@@ -25,7 +25,7 @@
 
 %% API
 -export([do/1,
-         format_error/1]).
+         format_error/2]).
 
 -include("relx.hrl").
 
@@ -46,11 +46,11 @@ do(State) ->
             load_config(ConfigFile, State)
     end.
 
--spec format_error(Reason::term()) -> iolist().
-format_error({consult, ConfigFile, Reason}) ->
+-spec format_error(Reason::term(), rlx_state:t()) -> iolist().
+format_error({consult, ConfigFile, Reason}, _) ->
     io_lib:format("Unable to read file ~s: ~s", [ConfigFile,
                                                  file:format_error(Reason)]);
-format_error({invalid_term, Term}) ->
+format_error({invalid_term, Term}, _) ->
     io_lib:format("Invalid term in config file: ~p", [Term]).
 
 %%%===================================================================

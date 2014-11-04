@@ -438,7 +438,8 @@ add_hook(post, {PreHooks, PostHooks}, Hook) ->
 
 -spec create_logic_providers(t()) -> t() | relx:error().
 create_logic_providers(State) ->
-    create_all(State, [rlx_prv_discover,
+    create_all(State, [rlx_prv_app_discover,
+                       rlx_prv_rel_discover,
                        rlx_prv_overlay,
                        rlx_prv_release,
                        rlx_prv_assembler,
