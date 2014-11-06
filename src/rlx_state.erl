@@ -36,6 +36,8 @@
          overrides/2,
          skip_apps/1,
          skip_apps/2,
+         debug_info/1,
+         debug_info/2,
          goals/1,
          goals/2,
          config_file/1,
@@ -102,6 +104,7 @@
                   sys_config :: file:filename() | undefined,
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps=[] :: [AppName::atom()],
+                  debug_info=keep :: keep | strip,
                   configured_releases :: releases(),
                   realized_releases :: releases(),
                   dev_mode=false :: boolean(),
@@ -182,6 +185,14 @@ skip_apps(#state_t{skip_apps=Apps}) ->
 -spec skip_apps(t(), [AppName::atom()]) -> t().
 skip_apps(State, SkipApps) ->
     State#state_t{skip_apps=SkipApps}.
+
+-spec debug_info(t()) -> keep | strip.
+debug_info(#state_t{debug_info=DebugInfo}) ->
+    DebugInfo.
+
+-spec debug_info(t(), keep | strip) -> t().
+debug_info(State, DebugInfo) ->
+    State#state_t{debug_info=DebugInfo}.
 
 %% @doc get the current log state for the system
 -spec log(t()) -> ec_cmd_log:t().
