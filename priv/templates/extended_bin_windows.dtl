@@ -31,6 +31,7 @@
 @call :find_sys_config
 @call :set_boot_script_var
 
+@set service_name=%rel_name%_%rel_vsn%
 @set bindir=%erts_dir%\bin
 @set vm_args=%rel_dir%\vm.args
 @set progname=erl.exe
@@ -55,11 +56,18 @@
 :: Write the erl.ini file to set up paths relative to this script
 @call :write_ini
 
+:: If a start.boot file is not present, copy one from the named .boot file
+@if not exist "%rel_dir%\start.boot" (
+  @copy "%rel_dir%\%rel_name%.boot" "%rel_dir%\start.boot" >nul
+)
+
 @if "%1"=="install" @goto install
 @if "%1"=="uninstall" @goto uninstall
 @if "%1"=="start" @goto start
 @if "%1"=="stop" @goto stop
 @if "%1"=="restart" @call :stop && @goto start
+@if "%1"=="upgrade" @goto relup
+@if "%1"=="downgrade" @goto relup
 @if "%1"=="console" @goto console
 @if "%1"=="ping" @goto ping
 @if "%1"=="list" @goto list
@@ -128,39 +136,58 @@
 
 :: Display usage information
 :usage
-@echo usage: %~n0 ^(install^|uninstall^|start^|stop^|restart^|console^|ping^|list^|attach^)
+@echo usage: %~n0 ^(install^|uninstall^|start^|stop^|restart^|upgrade^|downgrade^|console^|ping^|list^|attach^)
 @goto :eof
 
 :: Install the release as a Windows service
+:: or install the specified version passed as argument
 :install
-@set args=%erl_opts% -setcookie %cookie% ++ -rootdir \"%rootdir%\"
-@set start_erl=%erts_dir%\bin\start_erl.exe
-@set description=Erlang node %node_name% in %rootdir%
-@%erlsrv% add %rel_name% %node_type% "%node_name%" -c "%description%" ^
-          -w "%rootdir%" -m "%start_erl%" -args "%args%" ^
-          -stopaction "init:stop()."
+@if "" == "%2" (
+  :: Install the service
+  @set args=%erl_opts% -setcookie %cookie% ++ -rootdir \"%rootdir%\"
+  @set start_erl=%erts_dir%\bin\start_erl.exe
+  @set description=Erlang node %node_name% in %rootdir%
+  @%erlsrv% add %service_name% %node_type% "%node_name%" -c "%description%" ^
+            -w "%rootdir%" -m "%start_erl%" -args "%args%" ^
+            -stopaction "init:stop()."
+) else (
+  :: relup and reldown
+  goto relup
+)
 @goto :eof
 
 :: Uninstall the Windows service
 :uninstall
-@%erlsrv% remove %rel_name%
+@%erlsrv% remove %service_name%
 @%epmd% -kill
 @goto :eof
 
 :: Start the Windows service
 :start
-@%erlsrv% start %rel_name%
+@%erlsrv% start %service_name%
 @goto :eof
 
 :: Stop the Windows service
 :stop
-@%erlsrv% stop %rel_name%
+@%erlsrv% stop %service_name%
+@goto :eof
+
+:: Relup and reldown
+:relup
+@if "" == "%2" (
+  @echo Missing package argument
+  @echo Usage: %rel_name% %1 {package base name}
+  @echo NOTE {package base name} MUST NOT include the .tar.gz suffix
+  @set ERRORLEVEL=1
+  @exit /b %ERRORLEVEL%
+)
+@%escript% "%rootdir%/bin/install_upgrade.escript" "%rel_name%" "%node_name%" "%cookie%" "%2"
 @goto :eof
 
 :: Start a console
 :console
 @start "%rel_name% console" %werl% -boot "%boot_script%" "%sys_config%" ^
-       -args_file "%vm_args%" %node_type% %node_name%
+       -args_file "%vm_args%"
 @goto :eof
 
 :: Ping the running node
@@ -170,7 +197,7 @@
 
 :: List installed Erlang services
 :list
-@%erlsrv% list %rel_name%
+@%erlsrv% list %service_name%
 @goto :eof
 
 :: Attach to a running node
