@@ -23,7 +23,7 @@
 :: of this script
 @set script_dir=%~dp0
 @for %%A in ("%script_dir%\..") do @(
-  @set release_root_dir=%%~fA
+  set release_root_dir=%%~fA
 )
 @set rel_dir=%release_root_dir%\releases\%rel_vsn%
 
@@ -44,13 +44,13 @@
 
 :: Extract node type and name from vm.args
 @for /f "usebackq tokens=1-2" %%I in (`findstr /b "\-name \-sname" "%vm_args%"`) do @(
-  @set node_type=%%I
-  @set node_name=%%J
+  set node_type=%%I
+  set node_name=%%J
 )
 
 :: Extract cookie from vm.args
 @for /f "usebackq tokens=1-2" %%I in (`findstr /b \-setcookie "%vm_args%"`) do @(
-  @set cookie=%%J
+  set cookie=%%J
 )
 
 :: Write the erl.ini file to set up paths relative to this script
@@ -58,7 +58,7 @@
 
 :: If a start.boot file is not present, copy one from the named .boot file
 @if not exist "%rel_dir%\start.boot" (
-  @copy "%rel_dir%\%rel_name%.boot" "%rel_dir%\start.boot" >nul
+  copy "%rel_dir%\%rel_name%.boot" "%rel_dir%\start.boot" >nul
 )
 
 @if "%1"=="install" @goto install
@@ -81,9 +81,9 @@
 :find_erts_dir
 @set possible_erts_dir=%release_root_dir%\erts-%erts_vsn%
 @if exist "%possible_erts_dir%" (
-  @call :set_erts_dir_from_default
+  call :set_erts_dir_from_default
 ) else (
-  @call :set_erts_dir_from_erl
+  call :set_erts_dir_from_erl
 )
 @goto :eof
 
@@ -96,11 +96,11 @@
 :: Set the ERTS dir from erl
 :set_erts_dir_from_erl
 @for /f "delims=" %%i in ('where erl') do @(
-  @set erl=%%i
+  set erl=%%i
 )
 @set dir_cmd="%erl%" -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop
 @for /f %%i in ('%%dir_cmd%%') do @(
-  @set erl_root=%%i
+  set erl_root=%%i
 )
 @set erts_dir=%erl_root%\erts-%erts_vsn%
 @set rootdir=%erl_root%
@@ -110,16 +110,16 @@
 :find_sys_config
 @set possible_sys=%rel_dir%\sys.config
 @if exist %possible_sys% (
-  @set sys_config=-config %possible_sys%
+  set sys_config=-config %possible_sys%
 )
 @goto :eof
 
 :: set boot_script variable
 :set_boot_script_var
 @if exist "%rel_dir%\%rel_name%.boot" (
-  @set boot_script=%rel_dir%\%rel_name%
+  set boot_script=%rel_dir%\%rel_name%
 ) else (
-  @set boot_script=%rel_dir%\start
+  set boot_script=%rel_dir%\start
 )
 @goto :eof
 
@@ -144,10 +144,10 @@
 :install
 @if "" == "%2" (
   :: Install the service
-  @set args=%erl_opts% -setcookie %cookie% ++ -rootdir \"%rootdir%\"
-  @set start_erl=%erts_dir%\bin\start_erl.exe
-  @set description=Erlang node %node_name% in %rootdir%
-  @%erlsrv% add %service_name% %node_type% "%node_name%" -c "%description%" ^
+  set args=%erl_opts% -setcookie %cookie% ++ -rootdir \"%rootdir%\"
+  set start_erl=%erts_dir%\bin\start_erl.exe
+  set description=Erlang node %node_name% in %rootdir%
+  %erlsrv% add %service_name% %node_type% "%node_name%" -c "%description%" ^
             -w "%rootdir%" -m "%start_erl%" -args "%args%" ^
             -stopaction "init:stop()."
 ) else (
@@ -175,11 +175,11 @@
 :: Relup and reldown
 :relup
 @if "" == "%2" (
-  @echo Missing package argument
-  @echo Usage: %rel_name% %1 {package base name}
-  @echo NOTE {package base name} MUST NOT include the .tar.gz suffix
-  @set ERRORLEVEL=1
-  @exit /b %ERRORLEVEL%
+  echo Missing package argument
+  echo Usage: %rel_name% %1 {package base name}
+  echo NOTE {package base name} MUST NOT include the .tar.gz suffix
+  set ERRORLEVEL=1
+  exit /b %ERRORLEVEL%
 )
 @%escript% "%rootdir%/bin/install_upgrade.escript" "%rel_name%" "%node_name%" "%cookie%" "%2"
 @goto :eof
