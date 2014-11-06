@@ -162,6 +162,8 @@ load_terms({add_providers, Providers0}, {ok, State0}) ->
     end;
 load_terms({skip_apps, SkipApps0}, {ok, State0}) ->
     {ok, rlx_state:skip_apps(State0, SkipApps0)};
+load_terms({debug_info, DebugInfo}, {ok, State0}) ->
+    {ok, rlx_state:debug_info(State0, DebugInfo)};
 load_terms({overrides, Overrides0}, {ok, State0}) ->
     {ok, rlx_state:overrides(State0, Overrides0)};
 load_terms({dev_mode, DevMode}, {ok, State0}) ->

@@ -60,7 +60,23 @@ do(State) ->
         ok ->
             case rlx_release:realized(Release) of
                 true ->
-                    copy_app_directories_to_output(State, Release, OutputDir);
+                    case copy_app_directories_to_output(State, Release, OutputDir) of
+                        {ok, State1} ->
+                            case rlx_state:debug_info(State1) =:= strip
+                                andalso rlx_state:dev_mode(State1) =:= false of
+                                true ->
+                                    case beam_lib:strip_release(OutputDir) of
+                                        {ok, _} ->
+                                            {ok, State1};
+                                        {error, _, Reason} ->
+                                            ?RLX_ERROR({strip_release, Reason})
+                                    end;
+                                false ->
+                                    {ok, State1}
+                            end;
+                        E ->
+                            E
+                    end;
                 false ->
                     ?RLX_ERROR({unresolved_release, RelName, RelVsn})
             end;
@@ -95,7 +111,10 @@ format_error({release_script_generation_error, Module, Errors}, State) ->
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}, _) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),
-                   file:format_error(Reason)]).
+                   file:format_error(Reason)]);
+format_error({strip_release, Reason}, _) ->
+    io_lib:format("Stripping debug info from release beam files failed becuase ~s",
+                  [beam_lib:format_error(Reason)]).
 
 %%%===================================================================
 %%% Internal Functions
