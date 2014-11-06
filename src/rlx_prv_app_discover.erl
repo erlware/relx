@@ -22,7 +22,8 @@
 %%% Lib Dirs looking for all OTP Applications that are available. When it finds
 %%% those OTP Applications it loads the information about them and adds them to
 %%% the state of available apps. This implements the provider behaviour.
--module(rlx_prv_discover).
+-module(rlx_prv_app_discover).
+
 -behaviour(provider).
 
 -export([init/1,
@@ -31,7 +32,7 @@
 
 -include("relx.hrl").
 
--define(PROVIDER, discover).
+-define(PROVIDER, app_discover).
 -define(DEPS, []).
 
 %%============================================================================
@@ -57,15 +58,8 @@ do(State0) ->
     LibDirs = get_lib_dirs(State0),
     case rlx_app_discovery:do(State0, LibDirs) of
         {ok, AppMeta} ->
-            case rlx_rel_discovery:do(State0, LibDirs, AppMeta) of
-                {ok, Releases} ->
-                    State1 = rlx_state:available_apps(State0, AppMeta),
-                    {ok, rlx_state:realized_releases(State1, lists:foldl(fun add/2,
-                                                                         ec_dictionary:new(ec_dict),
-                                                                         Releases))};
-                Error ->
-                    Error
-            end;
+            State1 = rlx_state:available_apps(State0, AppMeta),
+            {ok, State1};
         Error ->
             Error
     end.
@@ -79,11 +73,6 @@ format_error(_, _) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-%% @doc only add the release if its not documented in the system
-add(Rel, Dict) ->
-    RelName = rlx_release:name(Rel),
-    RelVsn = rlx_release:vsn(Rel),
-    ec_dictionary:add({RelName, RelVsn}, Rel, Dict).
 
 get_lib_dirs(State) ->
     LibDirs0 = rlx_state:lib_dirs(State),
@@ -93,8 +82,7 @@ get_lib_dirs(State) ->
         true ->
             lists:flatten([LibDirs0,
                            add_common_project_dirs(State),
-                           add_system_lib_dir(State),
-                           add_release_output_dir(State)])
+                           add_system_lib_dir(State)])
     end.
 
 -spec add_common_project_dirs(rlx_state:t()) -> [file:name()].
@@ -134,18 +122,4 @@ add_system_lib_dir(State) ->
             end;
         SystemLibs ->
             erlang:iolist_to_binary(SystemLibs)
-    end.
-
-add_release_output_dir(State) ->
-    case rlx_state:get(State, disable_discover_release_output, false) of
-        true ->
-            [];
-        false ->
-            Output = erlang:iolist_to_binary(rlx_state:base_output_dir(State)),
-            case ec_file:exists(erlang:binary_to_list(Output)) of
-                true ->
-                    Output;
-                false ->
-                    []
-            end
     end.
