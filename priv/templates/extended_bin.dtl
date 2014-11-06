@@ -117,7 +117,14 @@ case $NAME in
         ;;
     *)
         # Add @hostname
-        NAME=$NAME@`hostname -f`
+        case $NAME_TYPE in
+             sname)
+                 NAME=$NAME@`hostname -s`
+                 ;;
+             name)
+                 NAME=$NAME@`hostname -f`
+                 ;;
+        esac
         ;;
 esac
 
