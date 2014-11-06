@@ -298,7 +298,8 @@ run_provider(_ProviderName, Error) ->
 
 -spec usage() -> ok.
 usage() ->
-    getopt:usage(opt_spec_list(), "relx", "[*release-specification-file*]").
+    getopt:usage(opt_spec_list(), "relx", "[<task>]"),
+    io:format("Several tasks are available:~n~nrelease\t\tCreate release.~nrelup\t\tGenerate a release upgrade.~ntar\t\tCreate tarball archive of a release.~n~n").
 
 -spec report_error(rlx_state:t(), error()) -> none() | error().
 report_error(State, Error) ->
