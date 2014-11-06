@@ -31,7 +31,7 @@
 -include("relx.hrl").
 
 -define(PROVIDER, tar).
--define(DEPS, [release]).
+-define(DEPS, [release, relup]).
 
 %%============================================================================
 %% API
