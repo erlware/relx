@@ -28,7 +28,7 @@
 
 -export([init/1,
          do/1,
-         format_error/2]).
+         format_error/1]).
 
 -include("relx.hrl").
 
@@ -66,8 +66,8 @@ do(State0) ->
 
 %% @doc this is here to comply with the signature. However, we do not actually
 %% produce any errors and so simply return an empty string.
--spec format_error(any(), rlx_state:t()) -> iolist().
-format_error(_, _) ->
+-spec format_error(any()) -> iolist().
+format_error(_) ->
     "".
 
 %%%===================================================================

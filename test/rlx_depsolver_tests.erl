@@ -137,7 +137,7 @@ fail_test() ->
 
     Ret = rlx_depsolver:solve(Dom0, [{app1, "0.1"}]),
     %% We do this to make sure all errors can be formated.
-    _ = rlx_depsolver:format_error(Ret, []),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[{app1,{{0,1},{[],[]}}}],
                       [{app1,{{0,1},{[],[]}}},[[{app2,{{0,2},{[],[]}}}]]]}],
@@ -215,7 +215,7 @@ conflicting_failing_test() ->
                                                                   {app5, [{"2.0.0", []},
                                                                           {"6.0.0", []}]}]),
     Ret = rlx_depsolver:solve(Dom0, [app1, app3]),
-    _ = rlx_depsolver:format_error(Ret, []),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[app1],
                       [{app1,{{3,0},{[],[]}}},
@@ -351,7 +351,7 @@ filter_versions_test() ->
 
     Ret = rlx_depsolver:filter_packages(Packages,
                                         [{"foo", "1.0.0", '~~~~'} | Cons]),
-    _ = rlx_depsolver:format_error(Ret, []),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error, {invalid_constraints, [{<<"foo">>,{{1,0,0},{[],[]}},'~~~~'}]}}, Ret).
 
 
@@ -370,11 +370,11 @@ missing_test() ->
                                                                           {"0.2", []},
                                                                           {"0.3", []}]}]),
     Ret1 = rlx_depsolver:solve(Dom0, [{app4, "0.1"}, {app3, "0.1"}]),
-    _ = rlx_depsolver:format_error(Ret1, []),
+    _ = rlx_depsolver:format_error(Ret1),
     ?assertMatch({error,{unreachable_package,app4}}, Ret1),
 
     Ret2 = rlx_depsolver:solve(Dom0, [{app1, "0.1"}]),
-    _ = rlx_depsolver:format_error(Ret2, []),
+    _ = rlx_depsolver:format_error(Ret2),
     ?assertMatch({error,{unreachable_package,app4}},
                  Ret2).
 
@@ -387,7 +387,7 @@ binary_test() ->
                                                          World),
                               [<<"foo">>]),
 
-    _ = rlx_depsolver:format_error(Ret, []),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[<<"foo">>],[{<<"foo">>,{{1,2,3},{[],[]}}}]}],
                     [{{<<"foo">>,{{1,2,3},{[],[]}}},
@@ -408,7 +408,7 @@ doesnt_exist_test() ->
     Constraints = [{<<"foo">>,[{<<"1.2.3">>, [{<<"bar">>, <<"2.0.0">>, gt}]}]}],
     World = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), Constraints),
     Ret = rlx_depsolver:solve(World, [<<"foo">>]),
-    _ = rlx_depsolver:format_error(Ret, []),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,{unreachable_package,<<"bar">>}}, Ret).
 
 %%
@@ -428,7 +428,7 @@ not_new_enough_test() ->
                    {<<"bar">>, [{<<"2.0.0">>, []}]}],
     World = rlx_depsolver:add_packages(rlx_depsolver:new_graph(), Constraints),
     Ret = rlx_depsolver:solve(World, [<<"foo">>]),
-    _ = rlx_depsolver:format_error(Ret, []),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[<<"foo">>],[{<<"foo">>,{{1,2,3},{[],[]}}}]}],
                     [{{<<"foo">>,{{1,2,3},{[],[]}}},
@@ -449,7 +449,7 @@ impossible_dependency_test() ->
                                        [{<<"foo">>, [{<<"1.2.3">>,[{ <<"bar">>, <<"2.0.0">>, gt}]}]},
                                         {<<"bar">>, [{<<"2.0.0">>, [{ <<"foo">>, <<"3.0.0">>, gt}]}]}]),
     Ret = rlx_depsolver:solve(World, [<<"foo">>]),
-    _ = rlx_depsolver:format_error(Ret, []),
+    _ = rlx_depsolver:format_error(Ret),
     ?assertMatch({error,
                   [{[{[<<"foo">>],[{<<"foo">>,{{1,2,3},{[],[]}}}]}],
                     [{{<<"foo">>,{{1,2,3},{[],[]}}},

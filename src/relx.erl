@@ -26,7 +26,7 @@
          do/7,
          do/8,
          do/9,
-         format_error/2,
+         format_error/1,
          opt_spec_list/0]).
 
 -export_type([error/0]).
@@ -216,18 +216,18 @@ opt_spec_list() ->
      {version, undefined, "version", undefined, "Print relx version"},
      {root_dir, $r, "root", string, "The project root directory"}].
 
--spec format_error(Reason::term(), rlx_state:t()) -> string().
-format_error({invalid_return_value, Provider, Value}, _) ->
+-spec format_error(Reason::term()) -> string().
+format_error({invalid_return_value, Provider, Value}) ->
     io_lib:format(lists:flatten([providers:format(Provider), " returned an invalid value ",
                                  io_lib:format("~p", [Value])]), []);
-format_error({opt_parse, {invalid_option, Opt}}, _) ->
+format_error({opt_parse, {invalid_option, Opt}}) ->
     io_lib:format("invalid option ~s~n", [Opt]);
-format_error({opt_parse, Arg}, _) ->
+format_error({opt_parse, Arg}) ->
     io_lib:format("~p~n", [Arg]);
-format_error({error, {relx, Reason}}, State) ->
-    format_error(Reason, State);
-format_error({error, {Module, Reason}}, State) ->
-    io_lib:format("~s~n", [Module:format_error(Reason, State)]).
+format_error({error, {relx, Reason}}) ->
+    format_error(Reason);
+format_error({error, {Module, Reason}}) ->
+    io_lib:format("~s~n", [Module:format_error(Reason)]).
 
 %%============================================================================
 %% internal api
@@ -305,13 +305,13 @@ usage() ->
 report_error(State, Error) ->
     case Error of
         {error, {relx, {opt_parse, _}}} ->
-            io:format(standard_error, format_error(Error, State), []),
+            io:format(standard_error, format_error(Error), []),
             usage();
        {error, {rlx_cmd_args, _}} ->
-            io:format(standard_error, format_error(Error, State), []),
+            io:format(standard_error, format_error(Error), []),
             usage();
         _ ->
-            io:format(standard_error, format_error(Error, State), [])
+            io:format(standard_error, format_error(Error), [])
     end,
     case rlx_state:caller(State) of
         command_line ->

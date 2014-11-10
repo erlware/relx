@@ -31,7 +31,7 @@
 -module(rlx_depsolver_culprit).
 
 -export([search/3,
-        format_error/2,
+        format_error/1,
         format_version/1,
         format_constraint/1,
         format_roots/1,
@@ -68,19 +68,19 @@ search(State, ActiveCons, [NewCon | Constraints]) ->
             search(State, [NewCon | ActiveCons], Constraints)
     end.
 
-format_error({error, {unreachable_package, AppName}}, _) ->
+format_error({error, {unreachable_package, AppName}}) ->
     ["Dependency ", format_constraint(AppName), " is specified as a dependency ",
      "but is not reachable by the system.\n"];
-format_error({error, {invalid_constraints, Constraints}}, _) ->
+format_error({error, {invalid_constraints, Constraints}}) ->
     ["Invalid constraint ", add_s(Constraints), " specified ",
      lists:foldl(fun(Con, "") ->
                          [io_lib:format("~p", [Con])];
                     (Con, Acc) ->
                          [io_lib:format("~p", [Con]), ", " | Acc]
                  end, "", Constraints)];
-format_error({error, Detail}, State) ->
-    format_error(Detail, State);
-format_error(Details, _) when erlang:is_list(Details) ->
+format_error({error, Detail}) ->
+    format_error(Detail);
+format_error(Details) when erlang:is_list(Details) ->
     ["Unable to solve constraints, the following solutions were attempted \n\n",
      [[format_error_path("    ", Detail)] || Detail <- Details]].
 
