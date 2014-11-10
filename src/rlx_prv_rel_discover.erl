@@ -23,7 +23,7 @@
 
 -export([init/1,
          do/1,
-         format_error/2]).
+         format_error/1]).
 
 -include("relx.hrl").
 
@@ -59,8 +59,8 @@ do(State0) ->
             Error
     end.
 
--spec format_error(any(), rlx_state:t()) -> iolist().
-format_error(_, _) ->
+-spec format_error(any()) -> iolist().
+format_error(_) ->
     "".
 
 %%%===================================================================

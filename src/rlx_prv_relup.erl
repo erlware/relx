@@ -26,7 +26,7 @@
 
 -export([init/1,
          do/1,
-         format_error/2]).
+         format_error/1]).
 
 -include("relx.hrl").
 
@@ -55,24 +55,24 @@ do(State) ->
     Release0 = rlx_state:get_realized_release(State, RelName, RelVsn),
     make_relup(State, Release0).
 
-format_error({relup_generation_error, CurrentName, UpFromName}, _) ->
+format_error({relup_generation_error, CurrentName, UpFromName}) ->
     io_lib:format("Unknown internal release error generating the relup from ~s to ~s",
                   [UpFromName, CurrentName]);
-format_error({relup_generation_warning, Module, Warnings}, _) ->
+format_error({relup_generation_warning, Module, Warnings}) ->
     ["Warnings generating relup \s",
      rlx_util:indent(2), Module:format_warning(Warnings)];
-format_error({no_upfrom_release_found, undefined}, _) ->
+format_error({no_upfrom_release_found, undefined}) ->
     io_lib:format("No earlier release for relup found", []);
-format_error({no_upfrom_release_found, Vsn}, _) ->
+format_error({no_upfrom_release_found, Vsn}) ->
     io_lib:format("Upfrom release version (~s) for relup not found", [Vsn]);
 format_error({relup_script_generation_error,
               {relup_script_generation_error, systools_relup,
-               {missing_sasl, _}}}, _) ->
+               {missing_sasl, _}}}) ->
     "Unfortunately, due to requirements in systools, you need to have the sasl application "
         "in both the current release and the release to upgrade from.";
-format_error({relup_script_generation_error, Module, Errors}, State) ->
+format_error({relup_script_generation_error, Module, Errors}) ->
     ["Errors generating relup \n",
-     rlx_util:indent(2), Module:format_error(Errors, State)].
+     rlx_util:indent(2), Module:format_error(Errors)].
 
 make_relup(State, Release) ->
     Vsn = rlx_state:upfrom(State),

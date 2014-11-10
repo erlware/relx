@@ -26,7 +26,7 @@
 
 -export([init/1,
          do/1,
-         format_error/2]).
+         format_error/1]).
 
 -include("relx.hrl").
 
@@ -84,35 +84,35 @@ do(State) ->
             Error
     end.
 
--spec format_error(ErrorDetail::term(), rlx_state:t()) -> iolist().
-format_error({unresolved_release, RelName, RelVsn}, _) ->
+-spec format_error(ErrorDetail::term()) -> iolist().
+format_error({unresolved_release, RelName, RelVsn}) ->
     io_lib:format("The release has not been resolved ~p-~s", [RelName, RelVsn]);
-format_error({ec_file_error, AppDir, TargetDir, E}, _) ->
+format_error({ec_file_error, AppDir, TargetDir, E}) ->
     io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
                   [AppDir, TargetDir, E]);
-format_error({config_does_not_exist, Path}, _) ->
+format_error({config_does_not_exist, Path}) ->
     io_lib:format("The config file specified for this release (~s) does not exist!",
                   [Path]);
-format_error({specified_erts_does_not_exist, ErtsVersion}, _) ->
+format_error({specified_erts_does_not_exist, ErtsVersion}) ->
     io_lib:format("Specified version of erts (~s) does not exist",
                   [ErtsVersion]);
-format_error({release_script_generation_error, RelFile}, _) ->
+format_error({release_script_generation_error, RelFile}) ->
     io_lib:format("Unknown internal release error generating the release file to ~s",
                   [RelFile]);
-format_error({release_script_generation_warning, Module, Warnings}, _) ->
+format_error({release_script_generation_warning, Module, Warnings}) ->
     ["Warnings generating release \s",
      rlx_util:indent(2), Module:format_warning(Warnings)];
-format_error({unable_to_create_output_dir, OutputDir}, _) ->
+format_error({unable_to_create_output_dir, OutputDir}) ->
     io_lib:format("Unable to create output directory (possible permissions issue): ~s",
                   [OutputDir]);
-format_error({release_script_generation_error, Module, Errors}, State) ->
+format_error({release_script_generation_error, Module, Errors}) ->
     ["Errors generating release \n",
-     rlx_util:indent(2), Module:format_error(Errors, State)];
-format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}, _) ->
+     rlx_util:indent(2), Module:format_error(Errors)];
+format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),
                    file:format_error(Reason)]);
-format_error({strip_release, Reason}, _) ->
+format_error({strip_release, Reason}) ->
     io_lib:format("Stripping debug info from release beam files failed becuase ~s",
                   [beam_lib:format_error(Reason)]).
 

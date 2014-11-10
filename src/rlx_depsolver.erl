@@ -76,7 +76,7 @@
 -module(rlx_depsolver).
 
 %% Public Api
--export([format_error/2,
+-export([format_error/1,
          format_roots/1,
          format_culprits/1,
          format_constraint/1,
@@ -326,9 +326,9 @@ filter_packages(PVPairs, RawConstraints) ->
 %% could not be satisfied
 -spec format_error({error, {unreachable_package, list()} |
                            {invalid_constraints, [constraint()]} |
-                           list()}, rlx_state:t()) -> iolist().
-format_error(Error, State) ->
-    rlx_depsolver_culprit:format_error(Error, State).
+                           list()}) -> iolist().
+format_error(Error) ->
+    rlx_depsolver_culprit:format_error(Error).
 
 %% @doc Return a formatted list of roots of the dependency trees which
 %% could not be satisified. These may also have versions attached.

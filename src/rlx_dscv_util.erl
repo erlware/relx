@@ -25,7 +25,7 @@
 -module(rlx_dscv_util).
 
 -export([do/2,
-         format_error/2]).
+         format_error/1]).
 
 -include("relx.hrl").
 
@@ -54,8 +54,8 @@ do(ProcessDir, LibDirs) ->
                                                      ec_file:type(LibDir))
                                 end, LibDirs)).
 
--spec format_error([ErrorDetail::term()], rlx_state:t()) -> iolist().
-format_error(ErrorDetails, _)
+-spec format_error([ErrorDetail::term()]) -> iolist().
+format_error(ErrorDetails)
   when erlang:is_list(ErrorDetails) ->
     [[format_detail(ErrorDetail), "\n"] || ErrorDetail <- ErrorDetails].
 

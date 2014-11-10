@@ -52,7 +52,7 @@
          library_deps/2,
          link/1,
          link/2,
-         format_error/2,
+         format_error/1,
          format/2,
          format/1]).
 
@@ -170,8 +170,8 @@ link(#app_info_t{link=Link}) ->
 link(AppInfo, NewLink) ->
     AppInfo#app_info_t{link=NewLink}.
 
--spec format_error(Reason::term(), rlx_state:t()) -> iolist().
-format_error({vsn_parse, AppName}, _) ->
+-spec format_error(Reason::term()) -> iolist().
+format_error({vsn_parse, AppName}) ->
     io_lib:format("Error parsing version for ~p",
                   [AppName]).
 
