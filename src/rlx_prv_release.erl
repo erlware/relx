@@ -97,19 +97,21 @@ create_dep_graph(State) ->
 -spec find_default_release(rlx_state:t(), rlx_depsolver:t()) ->
                                   {ok, rlx_state:t()} | relx:error().
 find_default_release(State, DepGraph) ->
-    try rlx_state:default_configured_release(State) of
-        {undefined, undefined} ->
-            resolve_default_release(State, DepGraph);
-        {RelName, undefined} ->
-            resolve_default_version(State, DepGraph, RelName);
-        {undefined, Vsn} ->
-            ?RLX_ERROR({no_release_name, Vsn});
-        {RelName, RelVsn} ->
-            solve_release(State, DepGraph, RelName, RelVsn);
-        undefined ->
-            ?RLX_ERROR(no_releases_in_system)
+    try
+        case rlx_state:default_configured_release(State) of
+            {undefined, undefined} ->
+                resolve_default_release(State, DepGraph);
+            {RelName, undefined} ->
+                resolve_default_version(State, DepGraph, RelName);
+            {undefined, Vsn} ->
+                ?RLX_ERROR({no_release_name, Vsn});
+            {RelName, RelVsn} ->
+                solve_release(State, DepGraph, RelName, RelVsn);
+            undefined ->
+                ?RLX_ERROR(no_releases_in_system)
+        end
     catch
-        {multiple_release_names, _, _}=Error ->
+        throw:{multiple_release_names, _, _}=Error ->
             ?RLX_ERROR(Error)
     end.
 
