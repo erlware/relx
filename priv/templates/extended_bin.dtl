@@ -118,10 +118,10 @@ case $NAME in
     *)
         # Add @hostname
         case $NAME_TYPE in
-             sname)
+             -sname)
                  NAME=$NAME@`hostname -s`
                  ;;
-             name)
+             -name)
                  NAME=$NAME@`hostname -f`
                  ;;
         esac
