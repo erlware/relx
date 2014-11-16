@@ -139,7 +139,7 @@ make_extend_release(Config) ->
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relx-output")]),
 
-    ?assertMatch({multiple_release_names,foo_test,foo},
+    ?assertMatch({error, {rlx_prv_release, {multiple_release_names,foo_test,foo}}},
                  catch relx:do(undefined, undefined, [], [LibDir1], 3, OutputDir, ConfigFile)),
 
     {ok, State} = relx:do(foo_test, undefined, [], [LibDir1], 3,
