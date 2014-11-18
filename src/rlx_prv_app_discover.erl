@@ -80,9 +80,17 @@ get_lib_dirs(State) ->
         false ->
             LibDirs0;
         true ->
+            Output = erlang:iolist_to_binary(rlx_state:base_output_dir(State)),
+            OutputDir = case ec_file:exists(binary_to_list(Output)) of
+                            true ->
+                                Output;
+                            false ->
+                                []
+                        end,
             lists:flatten([LibDirs0,
                            add_common_project_dirs(State),
-                           add_system_lib_dir(State)])
+                           add_system_lib_dir(State),
+                           OutputDir])
     end.
 
 -spec add_common_project_dirs(rlx_state:t()) -> [file:name()].
