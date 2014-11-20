@@ -737,9 +737,16 @@ make_relup_release(Config) ->
     OutputDir = filename:join([proplists:get_value(data_dir, Config),
                                create_random_name("relx-output")]),
     {ok, _} = relx:do(foo, "0.0.1", [], [LibDir1], 3,
-                             OutputDir, ConfigFile),
+                      OutputDir, ConfigFile),
+
     {ok, _} = relx:do(foo, "0.0.2", [], [LibDir1], 3,
-                         OutputDir, ConfigFile),
+                      OutputDir, ConfigFile),
+
+    %% Goal apps are removed to simulate a users dev environment where the apps
+    %% being used in an appup/relup are likely only under _rel/<release>/lib/
+    ec_file:remove(filename:join(LibDir1, "goal_app_1-0.0.1"), [recursive]),
+    ec_file:remove(filename:join(LibDir1, "goal_app_1-0.0.2"), [recursive]),
+
     {ok, State} = relx:do([{relname, foo},
                            {relvsn, "0.0.3"},
                            {goals, []},
@@ -821,13 +828,13 @@ make_relup_release2(Config) ->
     {ok, _} = relx:do(foo, "0.0.2", [], [LibDir1], 3,
                          OutputDir, ConfigFile),
     {ok, State} = relx:do([{relname, foo},
-                              {relvsn, "0.0.3"},
-                              {upfrom, "0.0.1"},
-                              {goals, []},
-                              {lib_dirs, [LibDir1]},
-                              {log_level, 3},
-                              {output_dir, OutputDir},
-                              {config, ConfigFile}], ["release", "relup"]),
+                           {relvsn, "0.0.3"},
+                           {upfrom, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release", "relup"]),
 
     %% we should have one 'resolved' release and three discovered realized_releases.
     ?assertMatch([{foo, "0.0.1"},
