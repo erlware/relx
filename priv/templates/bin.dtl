@@ -47,6 +47,7 @@ export BINDIR="$ERTS_DIR/bin"
 export EMU="beam"
 export PROGNAME="erl"
 export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
+ERTS_LIB_DIR="$ERTS_DIR/../lib"
 
 cd "$ROOTDIR"
 
@@ -57,7 +58,7 @@ ARGS="$@"
 set -- "$ERL_OPTS"
 [ "$SYS_CONFIG" ] && set -- "$@" -config "$SYS_CONFIG"
 [ "$VM_ARGS" ] && set -- "$@" -args_file "$VM_ARGS"
-set -- "$@" -boot "$REL_DIR/$REL_NAME" "$ARGS"
+set -- "$@" -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" -boot "$REL_DIR/$REL_NAME" "$ARGS"
 
 # Boot the release
 $BINDIR/erlexec $@
