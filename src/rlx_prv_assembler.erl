@@ -147,6 +147,7 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = ec_file:mkdir_p(LibDir),
     IncludeSrc = rlx_state:include_src(State),
+    IncludeErts = rlx_state:get(State, include_erts, true),
     Apps = prepare_applications(State, rlx_release:application_details(Release)),
     Result = lists:filter(fun({error, _}) ->
                                   true;
@@ -154,7 +155,7 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
                                   false
                           end,
                          lists:flatten(ec_plists:map(fun(App) ->
-                                                             copy_app(LibDir, App, IncludeSrc)
+                                                             copy_app(LibDir, App, IncludeSrc, IncludeErts)
                                                      end, Apps))),
     case Result of
         [E | _] ->
@@ -171,7 +172,7 @@ prepare_applications(State, Apps) ->
             Apps
     end.
 
-copy_app(LibDir, App, IncludeSrc) ->
+copy_app(LibDir, App, IncludeSrc, IncludeErts) ->
     AppName = erlang:atom_to_list(rlx_app_info:name(App)),
     AppVsn = rlx_app_info:original_vsn(App),
     AppDir = rlx_app_info:dir(App),
@@ -182,10 +183,23 @@ copy_app(LibDir, App, IncludeSrc) ->
             %% a release dir
             ok;
         true ->
-            copy_app(App, AppDir, TargetDir, IncludeSrc)
+            case IncludeErts of
+                false ->
+                    case is_erts_lib(AppDir) of
+                        true ->
+                            [];
+                        false ->
+                            copy_app_(App, AppDir, TargetDir, IncludeSrc)
+                    end;
+                _ ->
+                    copy_app_(App, AppDir, TargetDir, IncludeSrc)
+            end
     end.
 
-copy_app(App, AppDir, TargetDir, IncludeSrc) ->
+is_erts_lib(Dir) ->
+    lists:prefix(filename:split(list_to_binary(code:lib_dir())), filename:split(Dir)).
+
+copy_app_(App, AppDir, TargetDir, IncludeSrc) ->
     remove_symlink_or_directory(TargetDir),
     case rlx_app_info:link(App) of
         true ->
@@ -443,6 +457,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
 make_boot_script(State, Release, OutputDir, RelDir) ->
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
+               {variables, [{"ERTS_LIB_DIR", code:lib_dir()}]},
                no_module_tests, silent],
     Name = erlang:atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
