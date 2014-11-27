@@ -57,6 +57,8 @@ do(State) ->
 -spec format_error(ErrorDetail::term()) -> iolist().
 format_error(no_goals_specified) ->
     "No goals specified for this release ~n";
+format_error({release_erts_error, Dir}) ->
+    io_lib:format("Unable to find erts in ~s~n", [Dir]);
 format_error({no_release_name, Vsn}) ->
     io_lib:format("A target release version was specified (~s) but no name", [Vsn]);
 format_error({invalid_release_info, Info}) ->
@@ -73,7 +75,10 @@ format_error({release_not_found, {RelName, RelVsn}}) ->
     io_lib:format("No releases exist in the system for ~p:~s!", [RelName, RelVsn]);
 format_error({failed_solve, Error}) ->
     io_lib:format("Failed to solve release:\n ~s",
-                  [rlx_depsolver:format_error({error, Error})]).
+                  [rlx_depsolver:format_error({error, Error})]);
+format_error({release_error, Error}) ->
+    io_lib:format("Failed to resolve release:\n ~p~n", [Error]).
+
 
 %%%===================================================================
 %%% Internal Functions
@@ -182,7 +187,6 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
     end.
 
 set_resolved(State, Release0, Pkgs) ->
-
     case rlx_release:realize(Release0, Pkgs, rlx_state:available_apps(State)) of
         {ok, Release1} ->
             ec_cmd_log:info(rlx_state:log(State),
@@ -193,7 +197,19 @@ set_resolved(State, Release0, Pkgs) ->
                              fun() ->
                                      rlx_release:format(0, Release1)
                              end),
-            {ok, rlx_state:add_realized_release(State, Release1)};
+            case rlx_state:get(State, include_erts, undefined) of
+                IncludeErts when is_atom(IncludeErts) ->
+                    {ok, rlx_state:add_realized_release(State, Release1)};
+                ErtsDir ->
+                    try
+                        [Erts | _] = filelib:wildcard(filename:join(ErtsDir, "erts-*")),
+                        [_, ErtsVsn] = string:tokens(filename:basename(Erts), "-"),
+                        {ok, rlx_state:add_realized_release(State, rlx_release:erts(Release1, ErtsVsn))}
+                    catch
+                        _:_ ->
+                            ?RLX_ERROR({release_erts_error, ErtsDir})
+                    end
+            end;
         {error, E} ->
             ?RLX_ERROR({release_error, E})
     end.
