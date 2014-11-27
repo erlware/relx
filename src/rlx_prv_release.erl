@@ -63,8 +63,8 @@ format_error({invalid_release_info, Info}) ->
     io_lib:format("Target release information is in an invalid format ~p", [Info]);
 format_error({multiple_release_names, RelA, RelB}) ->
     io_lib:format("No default release name was specified and there are multiple "
-                  "releases in the config: ~s, ~s",
-                  [RelA, RelB]);
+                 "releases in the config: ~s, ~s",
+                 [RelA, RelB]);
 format_error(no_releases_in_system) ->
     "No releases have been specified in the system!";
 format_error({no_releases_for, RelName}) ->
@@ -88,9 +88,9 @@ create_dep_graph(State) ->
                         Deps = rlx_app_info:active_deps(App) ++
                             rlx_app_info:library_deps(App),
                         rlx_depsolver:add_package_version(Graph1,
-                                                      AppName,
-                                                      AppVsn,
-                                                      Deps)
+                                                          AppName,
+                                                          AppVsn,
+                                                          Deps)
                 end, Graph0, Apps).
 
 
@@ -154,8 +154,8 @@ release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
 
 solve_release(State0, DepGraph, RelName, RelVsn) ->
     ec_cmd_log:debug(rlx_state:log(State0),
-                  "Solving Release ~p-~s~n",
-                  [RelName, RelVsn]),
+                     "Solving Release ~p-~s~n",
+                     [RelName, RelVsn]),
     try
         Release =
             case get_realized_release(State0, RelName, RelVsn) of
@@ -182,20 +182,21 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
     end.
 
 set_resolved(State, Release0, Pkgs) ->
-   case rlx_release:realize(Release0, Pkgs, rlx_state:available_apps(State)) of
-       {ok, Release1} ->
-           ec_cmd_log:info(rlx_state:log(State),
-                        "Resolved ~p-~s~n",
-                        [rlx_release:name(Release1),
-                         rlx_release:vsn(Release1)]),
-           ec_cmd_log:debug(rlx_state:log(State),
-                         fun() ->
-                                 rlx_release:format(0, Release1)
-                         end),
-           {ok, rlx_state:add_realized_release(State, Release1)};
-       {error, E} ->
-           ?RLX_ERROR({release_error, E})
-   end.
+
+    case rlx_release:realize(Release0, Pkgs, rlx_state:available_apps(State)) of
+        {ok, Release1} ->
+            ec_cmd_log:info(rlx_state:log(State),
+                            "Resolved ~p-~s~n",
+                            [rlx_release:name(Release1),
+                             rlx_release:vsn(Release1)]),
+            ec_cmd_log:debug(rlx_state:log(State),
+                             fun() ->
+                                     rlx_release:format(0, Release1)
+                             end),
+            {ok, rlx_state:add_realized_release(State, Release1)};
+        {error, E} ->
+            ?RLX_ERROR({release_error, E})
+    end.
 
 get_realized_release(State, RelName, RelVsn) ->
     try
