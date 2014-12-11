@@ -7,6 +7,7 @@ RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REL_NAME="{{ rel_name }}"
 REL_VSN="{{ rel_vsn }}"
 ERTS_VSN="{{ erts_vsn }}"
+CODE_LOADING_MODE="${CODE_LOADING_MODE:-embedded}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
@@ -359,7 +360,7 @@ case "$1" in
         # Build an array of arguments to pass to exec later on
         # Build it here because this command will be used for logging.
         set -- "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
-            -boot "$REL_DIR/$BOOTFILE" -mode embedded -config "$CONFIG_PATH" \
+            -boot "$REL_DIR/$BOOTFILE" -mode "$CODE_LOADING_MODE" -config "$CONFIG_PATH" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
             -args_file "$VMARGS_PATH"
 
