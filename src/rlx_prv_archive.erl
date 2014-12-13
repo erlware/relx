@@ -104,10 +104,13 @@ make_tar(State, Release, OutputDir) ->
     end.
 
 update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
+    {RelName, RelVsn} = rlx_state:default_configured_release(State),
+    Release = rlx_state:get_realized_release(State, RelName, RelVsn),
     TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
     file:rename(filename:join(OutputDir, Name++".tar.gz"), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
-    OverlayFiles = overlay_files(rlx_state:get(State, overlay, undefined), OutputDir),
+    OverlayVars = rlx_prv_overlay:generate_overlay_vars(State, Release),
+    OverlayFiles = overlay_files(OverlayVars, rlx_state:get(State, overlay, undefined), OutputDir),
     ok =
         erl_tar:create(TarFile,
                        [{"lib", filename:join(TempDir, "lib")},
@@ -130,10 +133,15 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     ec_file:remove(TempDir, [recursive]),
     {ok, State}.
 
-overlay_files(undefined, _) ->
+overlay_files(_, undefined, _) ->
     [];
-overlay_files(Overlay, OutputDir) ->
-    [{to(O), filename:join(OutputDir, to(O))} || O <- Overlay, filter(O)].
+overlay_files(OverlayVars, Overlay, OutputDir) ->
+    [begin
+         To = to(O),
+         ToTemplateName = rlx_prv_overlay:make_template_name("rlx_template_to_template", To),
+         File = rlx_prv_overlay:render_string(OverlayVars, To, ToTemplateName),
+         {ec_cnv:to_list(File), ec_cnv:to_list(filename:join(OutputDir, File))}
+     end || O <- Overlay, filter(O)].
 
 to({copy, _, To}) ->
     To;

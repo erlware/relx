@@ -28,6 +28,10 @@
          do/1,
          format_error/1]).
 
+-export([generate_overlay_vars/2,
+         make_template_name/2,
+         render_string/3]).
+
 -define(DIRECTORY_RE, ".*(\/|\\\\)$").
 
 -define(ERLYDTL_COMPILE_OPTS, [report_warnings, return_errors, {auto_escape, false}, {out_dir, false}]).
@@ -61,7 +65,12 @@ do(State) ->
     Release = rlx_state:get_realized_release(State, RelName, RelVsn),
     case rlx_release:realized(Release) of
         true ->
-            generate_overlay_vars(State, Release);
+            case generate_overlay_vars(State, Release) of
+                {error, Reason} ->
+                    {error, Reason};
+                OverlayVars ->
+                    do_overlay(State, OverlayVars)
+            end;
         false ->
             ?RLX_ERROR({unresolved_release, RelName, RelVsn})
     end.
@@ -126,20 +135,20 @@ format_errors(_, []) -> [].
 
 
 -spec generate_overlay_vars(rlx_state:t(), rlx_release:t()) ->
-                                   {ok, rlx_state:t()} | relx:error().
+                                   proplists:proplist() | relx:error().
 generate_overlay_vars(State, Release) ->
     StateVars = generate_state_vars(State),
     ReleaseVars = generate_release_vars(Release),
     get_overlay_vars_from_file(State, StateVars ++ ReleaseVars).
 
 -spec get_overlay_vars_from_file(rlx_state:t(), proplists:proplist()) ->
-                                        {ok, rlx_state:t()} | relx:error().
+                                        proplists:proplist() | relx:error().
 get_overlay_vars_from_file(State, OverlayVars) ->
     case rlx_state:get(State, overlay_vars, undefined) of
         undefined ->
-            do_overlay(State, OverlayVars);
+            OverlayVars;
         [] ->
-            do_overlay(State, OverlayVars);
+            OverlayVars;
         [H | _]=FileNames when is_list(H) ->
             read_overlay_vars(State, OverlayVars, FileNames);
         FileName when is_list(FileName) ->
@@ -147,12 +156,12 @@ get_overlay_vars_from_file(State, OverlayVars) ->
     end.
 
 -spec read_overlay_vars(rlx_state:t(), proplists:proplist(), [file:name()]) ->
-                                   {ok, rlx_state:t()} | relx:error().
+                               proplists:proplist() | relx:error().
 read_overlay_vars(State, OverlayVars, FileNames) ->
     Terms = merge_overlay_vars(State, FileNames),
     case render_overlay_vars(OverlayVars, Terms, []) of
         {ok, NewTerms} ->
-            do_overlay(State, OverlayVars ++ NewTerms);
+            OverlayVars ++ NewTerms;
         Error ->
             Error
     end.
@@ -429,6 +438,19 @@ write_template(OverlayVars, FromFile, ToFile) ->
             end;
         Error ->
             Error
+    end.
+
+render_string(OverlayVars, Data, TemplateName) ->
+    case erlydtl:compile(erlang:iolist_to_binary(Data), TemplateName, ?ERLYDTL_COMPILE_OPTS) of
+        {ok, TemplateName} ->
+            case render(TemplateName, OverlayVars) of
+                {ok, IoList} ->
+                    erlang:iolist_to_binary(IoList);
+                {error, Error} ->
+                    ?RLX_ERROR({render_failed, Data, Error})
+            end;
+        {error, Reason, _Warnings} ->
+            ?RLX_ERROR({unable_to_compile_template, Data, Reason})
     end.
 
 -spec file_render_do(proplists:proplist(), iolist(), module(),
