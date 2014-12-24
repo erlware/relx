@@ -368,7 +368,7 @@ case "$1" in
         exec "$@" -- ${1+$ARGS}
         ;;
     *)
-        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|escript}"
+        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|escript}"
         exit 1
         ;;
 esac
