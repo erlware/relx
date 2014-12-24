@@ -26,6 +26,11 @@ find_erts_dir() {
     fi
 }
 
+# Get node pid
+relx_get_pid() {
+    relx_nodetool rpcterms os getpid | sed -e 's/"//g'
+}
+
 # Connect to a remote node
 relx_rem_sh() {
     # Generate a unique id used to allow multiple remsh to the same node
@@ -61,6 +66,7 @@ relx_escript() {
 
     "$ERTS_DIR/bin/escript" "$ROOTDIR/$scriptpath" $@
 }
+
 # Output a start command for the last argument of run_erl
 relx_start_command() {
     printf "exec \"%s\" \"%s\"" "$RELEASE_ROOT_DIR/bin/$REL_NAME" \
@@ -194,22 +200,7 @@ case "$1" in
 
     stop)
         # Wait for the node to completely stop...
-        case $(uname -s) in
-            Linux|Darwin|FreeBSD|DragonFly|NetBSD|OpenBSD)
-                # PID COMMAND
-                PID=$(ps ax -o pid= -o command=|
-                      grep "$RELEASE_ROOT_DIR/.*/[b]eam"|awk '{print $1}')
-                ;;
-            SunOS)
-                # PID COMMAND
-                PID=$(ps -ef -o pid= -o args=|
-                      grep "$RELEASE_ROOT_DIR/.*/[b]eam"|awk '{print $1}')
-                ;;
-            CYGWIN*)
-                # UID PID PPID TTY STIME COMMAND
-                PID=$(ps -efw|grep "$RELEASE_ROOT_DIR/.*/[b]eam"|awk '{print $2}')
-                ;;
-        esac
+        PID="$(relx_get_pid)"
         if ! relx_nodetool "stop"; then
             exit $?
         fi
@@ -231,6 +222,11 @@ case "$1" in
         if ! relx_nodetool "reboot"; then
             exit $?
         fi
+        ;;
+
+    pid)
+        ## Get the VM's pid
+        echo "$(relx_get_pid)"
         ;;
 
     ping)
@@ -372,7 +368,7 @@ case "$1" in
         exec "$@" -- ${1+$ARGS}
         ;;
     *)
-        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|escript}"
+        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|escript}"
         exit 1
         ;;
 esac
