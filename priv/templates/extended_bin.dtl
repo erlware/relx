@@ -28,12 +28,12 @@ find_erts_dir() {
 
 # Get node pid
 relx_get_pid() {
-    if pid="$(relx_nodetool rpcterms os getpid)"
+    if output="$(relx_nodetool rpcterms os getpid)"
     then
-        echo "$pid" | sed -e 's/"//g'
+        echo "$output" | sed -e 's/"//g'
         return 0
     else
-        echo '-1'
+        echo "$output"
         return 1
     fi
 }
