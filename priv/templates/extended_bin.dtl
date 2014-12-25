@@ -28,7 +28,14 @@ find_erts_dir() {
 
 # Get node pid
 relx_get_pid() {
-    relx_nodetool rpcterms os getpid | sed -e 's/"//g'
+    if output="$(relx_nodetool rpcterms os getpid)"
+    then
+        echo "$output" | sed -e 's/"//g'
+        return 0
+    else
+        echo "$output"
+        return 1
+    fi
 }
 
 # Connect to a remote node
@@ -202,7 +209,7 @@ case "$1" in
         # Wait for the node to completely stop...
         PID="$(relx_get_pid)"
         if ! relx_nodetool "stop"; then
-            exit $?
+            exit 1
         fi
         while $(kill -0 "$PID" 2>/dev/null);
         do
@@ -213,42 +220,43 @@ case "$1" in
     restart)
         ## Restart the VM without exiting the process
         if ! relx_nodetool "restart"; then
-            exit $?
+            exit 1
         fi
         ;;
 
     reboot)
         ## Restart the VM completely (uses heart to restart it)
         if ! relx_nodetool "reboot"; then
-            exit $?
+            exit 1
         fi
         ;;
 
     pid)
         ## Get the VM's pid
-        echo "$(relx_get_pid)"
+        if ! relx_get_pid; then
+            exit 1
+        fi
         ;;
 
     ping)
         ## See if the VM is alive
         if ! relx_nodetool "ping"; then
-            exit $?
+            exit 1
         fi
         ;;
 
     escript)
         ## Run an escript under the node's environment
         if ! relx_escript $@; then
-            exit $?
+            exit 1
         fi
         ;;
 
     attach)
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
-            ES="$?"
             echo "Node is not running!"
-            exit $ES
+            exit 1
         fi
 
         shift
@@ -258,9 +266,8 @@ case "$1" in
     remote_console)
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
-            ES="$?"
             echo "Node is not running!"
-            exit $ES
+            exit 1
         fi
 
         shift
@@ -277,9 +284,8 @@ case "$1" in
 
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
-            ES="$?"
             echo "Node is not running!"
-            exit $ES
+            exit 1
         fi
 
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
