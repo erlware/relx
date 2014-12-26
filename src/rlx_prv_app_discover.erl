@@ -55,7 +55,7 @@ init(State) ->
 %% looking for OTP Applications
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State0) ->
-    LibDirs = lists:usort(get_lib_dirs(State0)),
+    LibDirs = get_lib_dirs(State0),
     case rlx_app_discovery:do(State0, LibDirs) of
         {ok, AppMeta} ->
             State1 = rlx_state:available_apps(State0, AppMeta),
@@ -87,10 +87,10 @@ get_lib_dirs(State) ->
                             false ->
                                 []
                         end,
-            lists:flatten([LibDirs0,
-                           add_common_project_dirs(State),
-                           add_system_lib_dir(State),
-                           OutputDir])
+            lists:usort(lists:flatten([LibDirs0,
+                                       add_common_project_dirs(State),
+                                       add_system_lib_dir(State)])) ++ [OutputDir]
+
     end.
 
 -spec add_common_project_dirs(rlx_state:t()) -> [file:name()].
