@@ -6,8 +6,36 @@
 -define(TIMEOUT, 300000).
 -define(INFO(Fmt,Args), io:format(Fmt,Args)).
 
-%% Upgrades, to a new tar.gz release
-main([RelName, NodeName, Cookie, VersionArg]) ->
+%% Unpack or upgrade to a new tar.gz release
+main(["unpack", RelName, NodeName, Cookie, VersionArg]) ->
+    TargetNode = start_distribution(NodeName, Cookie),
+    WhichReleases = which_releases(TargetNode),
+    Version = parse_version(VersionArg),
+    case proplists:get_value(Version, WhichReleases) of
+        undefined ->
+            %% not installed, so unpack tarball:
+            ?INFO("Release ~s not found, attempting to unpack releases/~s/~s.tar.gz~n",[Version,Version,RelName]),
+            ReleasePackage = Version ++ "/" ++ RelName,
+            case rpc:call(TargetNode, release_handler, unpack_release,
+                          [ReleasePackage], ?TIMEOUT) of
+                {ok, Vsn} ->
+                    ?INFO("Unpacked successfully: ~p~n", [Vsn]);
+                {error, UnpackReason} ->
+                    print_existing_versions(TargetNode),
+                    ?INFO("Unpack failed: ~p~n",[UnpackReason]),
+                    erlang:halt(2)
+            end;
+        old ->
+            %% no need to unpack, has been installed previously
+            ?INFO("Release ~s is marked old, switching to it.~n",[Version]);
+        unpacked ->
+            ?INFO("Release ~s is already unpacked, now installing.~n",[Version]);
+        current ->
+            ?INFO("Release ~s is already installed and current. Making permanent.~n",[Version]);
+        permanent ->
+            ?INFO("Release ~s is already installed, and set permanent.~n",[Version])
+    end;
+main(["install", RelName, NodeName, Cookie, VersionArg]) ->
     TargetNode = start_distribution(NodeName, Cookie),
     WhichReleases = which_releases(TargetNode),
     Version = parse_version(VersionArg),
