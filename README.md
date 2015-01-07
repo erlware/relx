@@ -67,7 +67,7 @@ Options
 | Short | Long         | Type    | Default | Description                                                                               |
 |:-----:|:------------:|:-------:|:------:|------------------------------------------------------------------------------------------- |
 | -r    | --root       | string  | ./      | Sets the root of the project |
-| -n    | --name       | string  |         | Name for the release that will be generated |
+| -n    | --relname    | string  |         | Name for the release that will be generated |
 | -v    | --relvsn     | string  |         | Version for the release |
 | -g    | --goal       | string  |         | A goal for the system. These are usually the OTP apps that are part of the release |
 | -u    | --upfrom     | string  |         | The release to upgrade from. Only valid with relup target |
