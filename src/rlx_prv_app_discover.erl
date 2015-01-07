@@ -55,7 +55,7 @@ init(State) ->
 %% looking for OTP Applications
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State0) ->
-    LibDirs = lists:usort(get_lib_dirs(State0)),
+    LibDirs = dedup(get_lib_dirs(State0)),
     case rlx_app_discovery:do(State0, LibDirs) of
         {ok, AppMeta} ->
             State1 = rlx_state:available_apps(State0, AppMeta),
@@ -131,3 +131,9 @@ add_system_lib_dir(State) ->
         SystemLibs ->
             erlang:iolist_to_binary(SystemLibs)
     end.
+
+%% Order matters so this slow dedup needs to be used
+dedup([]) ->
+    [];
+dedup([H|T]) ->
+    [H | [X || X <- dedup(T), X /= H]].
