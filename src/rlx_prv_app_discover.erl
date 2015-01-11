@@ -120,8 +120,8 @@ add_common_project_dirs(State) ->
 -spec add_system_lib_dir(rlx_state:t()) -> [file:name()].
 add_system_lib_dir(State) ->
     ExcludeSystem = rlx_state:get(State, discover_exclude_system, false),
-    case rlx_state:get(State, system_libs, undefined) of
-        undefined ->
+    case rlx_state:get(State, system_libs, true) of
+        Atom when is_atom(Atom) ->
             case ExcludeSystem of
                 true ->
                     [];

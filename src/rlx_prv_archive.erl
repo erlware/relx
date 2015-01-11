@@ -72,7 +72,7 @@ make_tar(State, Release, OutputDir) ->
     Vsn = rlx_release:vsn(Release),
     ErtsVersion = rlx_release:erts(Release),
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
-           {outdir, OutputDir} |
+            {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
                 true ->
                     Prefix = code:root_dir(),
@@ -104,6 +104,8 @@ make_tar(State, Release, OutputDir) ->
     end.
 
 update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
+    IncludeErts = rlx_state:get(State, include_erts, true),
+    SystemLibs = rlx_state:get(State, system_libs, true),
     {RelName, RelVsn} = rlx_state:default_configured_release(State),
     Release = rlx_state:get_realized_release(State, RelName, RelVsn),
     TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
@@ -113,8 +115,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     OverlayFiles = overlay_files(OverlayVars, rlx_state:get(State, overlay, undefined), OutputDir),
     ok =
         erl_tar:create(TarFile,
-                       [{"lib", filename:join(TempDir, "lib")},
-                        {"releases", filename:join(TempDir, "releases")},
+                       [{"releases", filename:join(TempDir, "releases")},
                         {filename:join(["releases", "start_erl.data"]),
                          filename:join([OutputDir, "releases", "start_erl.data"])},
                         {filename:join(["releases", "RELEASES"]),
@@ -122,14 +123,24 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                         {filename:join(["releases", Vsn, "vm.args"]),
                          filename:join([OutputDir, "releases", Vsn, "vm.args"])},
                         {"bin", filename:join([OutputDir, "bin"])} |
-                        case rlx_state:get(State, include_erts, true) of
+                        case IncludeErts of
                             false ->
-                                [];
+                                %% Remove system libs from tarball
+                                case SystemLibs of
+                                    false ->
+                                        Libs = filelib:wildcard("*", filename:join(TempDir, "lib")),
+                                        AllSystemLibs = filelib:wildcard("*", code:lib_dir()),
+                                        [{filename:join("lib", LibDir), filename:join([TempDir, "lib", LibDir])} ||
+                                            LibDir <- lists:subtract(Libs, AllSystemLibs)];
+                                    _ ->
+                                        [{"lib", filename:join(TempDir, "lib")}]
+                                end;
                             _ ->
-                                [{"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
+                                [{"lib", filename:join(TempDir, "lib")},
+                                 {"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
                         end]++OverlayFiles, [compressed]),
     ec_cmd_log:info(rlx_state:log(State),
-                 "tarball ~s successfully created!~n", [TarFile]),
+                    "tarball ~s successfully created!~n", [TarFile]),
     ec_file:remove(TempDir, [recursive]),
     {ok, State}.
 

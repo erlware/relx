@@ -157,7 +157,7 @@ new(Config, CommandLineConfig, Targets)
                       realized_releases=ec_dictionary:new(ec_dict),
                       config_values=ec_dictionary:new(ec_dict)},
     State1 = rlx_state:put(State0, default_libs, true),
-    State2 = rlx_state:put(State1, system_libs, undefined),
+    State2 = rlx_state:put(State1, system_libs, true),
     State3 = rlx_state:put(State2, overlay_vars, []),
 
     create_logic_providers(State3).
