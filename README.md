@@ -73,7 +73,7 @@ Options
 | -u    | --upfrom     | string  |         | The release to upgrade from. Only valid with relup target |
 | -o    | --output-dir | string  | ./      | The output directory for the release |
 | -l    | --lib-dir    | string  |         | Additional dirs to search for OTP apps |
-|       | --system_libs     | string  |  | Path to a Erlang system libs to use |
+|       | --system_libs     | boolean/string  | true | If true include a copy of system libs used to build with, if a path include system libs at that path. If false, do not include system libs |
 | -p    | --path    | string  |         | Additional dirs to add to Erlang code path |
 |       | --default-libs | boolean | true | Whether to use the default system added lib dirs (means you must add them all manually) |
 | -V    | --verbose    | integer | 2       | The verbosity level between 0 and 3 |
