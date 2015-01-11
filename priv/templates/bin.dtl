@@ -17,12 +17,11 @@ find_erts_dir() {
         ROOTDIR="$RELEASE_ROOT_DIR"
     else
         local erl="$(which erl)"
-        code="io:format(\"~s\", [code:root_dir()]), halt()."
-        local erl_root="$("$erl" -noshell -eval "$code")"
+        code="io:format(\"~s\", [code:root_dir()])."
+        local erl_root="$("$erl" -noshell -eval "$code" -s init stop)"
         ERTS_DIR="$erl_root/erts-$ERTS_VSN"
         ROOTDIR="$erl_root"
     fi
-
 }
 
 find_sys_config() {
@@ -48,7 +47,7 @@ export EMU="beam"
 export PROGNAME="erl"
 export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
 ERTS_LIB_DIR="$ERTS_DIR/../lib"
-
+[ -f "$REL_DIR/$REL_NAME.boot" ] && BOOTFILE="$REL_NAME" || BOOTFILE=start
 cd "$ROOTDIR"
 
 # Save extra arguments
@@ -58,7 +57,7 @@ ARGS="$@"
 set -- "$ERL_OPTS"
 [ "$SYS_CONFIG" ] && set -- "$@" -config "$SYS_CONFIG"
 [ "$VM_ARGS" ] && set -- "$@" -args_file "$VM_ARGS"
-set -- "$@" -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" -boot "$REL_DIR/$REL_NAME" "$ARGS"
+set -- "$@" -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" -boot "$REL_DIR/$BOOTFILE" "$ARGS"
 
 # Boot the release
 $BINDIR/erlexec $@
