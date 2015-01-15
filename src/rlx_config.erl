@@ -131,11 +131,6 @@ load_terms({default_libs, DefaultLibs}, {ok, State}) ->
                            default_libs,
                            DefaultLibs),
     {ok, State2};
-load_terms({system_libs, SystemLibs}, {ok, State}) ->
-    State2 = rlx_state:put(State,
-                           system_libs,
-                           SystemLibs),
-    {ok, State2};
 load_terms({lib_dirs, Dirs}, {ok, State}) ->
     State2 =
         rlx_state:add_lib_dirs(State,

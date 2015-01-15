@@ -244,8 +244,16 @@ create(vm_args, Opts) ->
     VmArgs = proplists:get_value(vm_args, Opts, undefined),
     {vm_args, VmArgs};
 create(system_libs, Opts) ->
-    SystemLibs = proplists:get_value(system_libs, Opts, undefined),
-    {system_libs, SystemLibs};
+    case proplists:get_value(system_libs, Opts, true) of
+        SystemLibs when SystemLibs =:= true
+                       ; SystemLibs =:= "true" ->
+            {system_libs, true};
+        SystemLibs when SystemLibs =:= false
+                       ; SystemLibs =:= "false" ->
+            {system_libs, false};
+        SystemLibsDir when is_list(SystemLibsDir) ->
+            {system_libs, SystemLibsDir}
+    end;
 create(upfrom, Opts) ->
     case proplists:get_value(upfrom, Opts, undefined) of
         undefined ->
