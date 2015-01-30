@@ -97,25 +97,50 @@ parent_dir([_H], Acc) ->
 parent_dir([H | T], Acc) ->
     parent_dir(T, [H | Acc]).
 
+-spec config_script_file(file:filename(), rlx_state:t()) -> file:filename().
+config_script_file(ConfigFile, _State) ->
+    ConfigFile ++ ".script".
+
+bs(Vars) ->
+    lists:foldl(fun({K,V}, Bs) ->
+                        erl_eval:add_binding(K, V, Bs)
+                end, erl_eval:new_bindings(), Vars).
+
+-spec apply_config_script(proplists:proplist(), file:filename()) ->
+                                proplists:proplist().
+apply_config_script(ConfigData, ConfigScriptFile) ->
+    {ok, Config} = file:script(ConfigScriptFile, bs([{'CONFIG', ConfigData},
+                                                     {'SCRIPT', ConfigScriptFile}])),
+    Config.
+
 -spec load_config(file:filename() | proplists:proplist(), rlx_state:t()) ->
                          {ok, rlx_state:t()} | relx:error().
 load_config(ConfigFile, State) ->
     {ok, CurrentCwd} = file:get_cwd(),
-    case filelib:is_regular(ConfigFile) of
-        true ->
-            ok = file:set_cwd(filename:dirname(ConfigFile)),
-            Result = case file:consult(ConfigFile) of
-                         {error, Reason} ->
-                             ?RLX_ERROR({consult, ConfigFile, Reason});
-                         {ok, Terms} ->
-                             CliTerms = rlx_state:cli_args(State),
-                             lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, Terms))
-                     end,
-            ok = file:set_cwd(CurrentCwd),
-            Result;
-        false ->
-            CliTerms = rlx_state:cli_args(State),
-            lists:foldl(fun load_terms/2, {ok, State}, merge_configs(CliTerms, ConfigFile))
+    CliTerms = rlx_state:cli_args(State),
+    Config0 = case filelib:is_regular(ConfigFile) of
+                true ->
+                    ok = file:set_cwd(filename:dirname(ConfigFile)),
+                    Result = case file:consult(ConfigFile) of
+                                {error, Reason} ->
+                                    ?RLX_ERROR({consult, ConfigFile, Reason});
+                                {ok, Terms} -> merge_configs(CliTerms, Terms)
+                             end,
+                    ok = file:set_cwd(CurrentCwd),
+                    Result;
+                false -> merge_configs(CliTerms, ConfigFile)
+              end,
+    % we now take the merged config and try to apply a config script to it,
+    % get a new config as a result
+    case Config0 of
+        {error, _} = Error -> Error;
+        _ ->
+            ConfigScriptFile = config_script_file(ConfigFile, State),
+            Config1 = case filelib:is_regular(ConfigScriptFile) of
+                        false -> Config0;
+                        true -> apply_config_script(Config0, ConfigScriptFile)
+                      end,
+            lists:foldl(fun load_terms/2, {ok, State}, Config1)
     end.
 
 -spec load_terms(term(), {ok, rlx_state:t()} | relx:error()) ->
