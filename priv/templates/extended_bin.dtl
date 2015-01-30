@@ -391,8 +391,31 @@ case "$1" in
         # Start the VM
         exec "$@" -- ${1+$ARGS}
         ;;
+    rpc)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        shift
+
+        relx_nodetool rpc $@
+        ;;
+    rpcterms)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        shift
+
+        relx_nodetool rpcterms $@
+        ;;
+
     *)
-        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|escript}"
+        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|escript|rpc|rpcterms}"
         exit 1
         ;;
 esac
