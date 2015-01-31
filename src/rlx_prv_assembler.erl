@@ -203,9 +203,49 @@ copy_app_(App, AppDir, TargetDir, IncludeSrc) ->
     remove_symlink_or_directory(TargetDir),
     case rlx_app_info:link(App) of
         true ->
-            link_directory(AppDir, TargetDir);
+            link_directory(AppDir, TargetDir),
+            rewrite_app_file(App, AppDir);
         false ->
-            copy_directory(AppDir, TargetDir, IncludeSrc)
+            copy_directory(AppDir, TargetDir, IncludeSrc),
+            rewrite_app_file(App, TargetDir)
+    end.
+
+%% If excluded apps exist in this App's applications list we must write a new .app
+rewrite_app_file(App, TargetDir) ->
+    Name = rlx_app_info:name(App),
+    ActiveDeps = rlx_app_info:active_deps(App),
+    IncludedDeps = rlx_app_info:library_deps(App),
+    AppFile = filename:join([TargetDir, "ebin", ec_cnv:to_list(Name) ++ ".app"]),
+
+    {ok, [{application, AppName, AppData}]} = file:consult(AppFile),
+    OldActiveDeps = proplists:get_value(applications, AppData, []),
+    OldIncludedDeps = proplists:get_value(included_applications, AppData, []),
+
+    case {OldActiveDeps, OldIncludedDeps} of
+        {ActiveDeps, IncludedDeps} ->
+            ok;
+        _ ->
+            AppData1 = lists:keyreplace(applications
+                                       ,1
+                                       ,AppData
+                                       ,{applications, ActiveDeps}),
+            AppData2 = lists:keyreplace(included_applications
+                                       ,1
+                                       ,AppData1
+                                       ,{included_applications, IncludedDeps}),
+            Spec = io_lib:format("~p.\n", [{application, AppName, AppData2}]),
+            write_file_if_contents_differ(AppFile, Spec)
+    end.
+
+write_file_if_contents_differ(Filename, Bytes) ->
+    ToWrite = iolist_to_binary(Bytes),
+    case file:read_file(Filename) of
+        {ok, ToWrite} ->
+            ok;
+        {ok,  _} ->
+            file:write_file(Filename, ToWrite);
+        {error,  _} ->
+            file:write_file(Filename, ToWrite)
     end.
 
 remove_symlink_or_directory(TargetDir) ->
