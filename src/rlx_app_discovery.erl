@@ -118,8 +118,10 @@ resolve_app_metadata(State, LibDirs) ->
              end] of
         [] ->
             SkipApps = rlx_state:skip_apps(State),
-            AppMeta1 = [App || {ok, App} <- setup_overrides(State, AppMeta0),
-                               not lists:keymember(rlx_app_info:name(App), 1, SkipApps)],
+            ExcludeApps = rlx_state:exclude_apps(State),
+            AppMeta1 = [rm_exclude_apps(App, ExcludeApps) ||
+                           {ok, App} <- setup_overrides(State, AppMeta0),
+                               not lists:keymember(rlx_app_info:name(App), 1, SkipApps++ExcludeApps)],
             ec_cmd_log:debug(rlx_state:log(State),
                              fun() ->
                                      ["Resolved the following OTP Applications from the system: \n",
@@ -129,6 +131,11 @@ resolve_app_metadata(State, LibDirs) ->
         Errors ->
             ?RLX_ERROR(Errors)
     end.
+%% Apps listed in {exclude_apps, [...]} must be removed from applications lists
+rm_exclude_apps(App, ExcludeApps) ->
+    ActiveApps = lists:subtract(rlx_app_info:active_deps(App), ExcludeApps),
+    LibraryApps = lists:subtract(rlx_app_info:library_deps(App), ExcludeApps),
+    rlx_app_info:library_deps(rlx_app_info:active_deps(App, ActiveApps), LibraryApps).
 
 app_name({warning, _}) ->
     undefined;

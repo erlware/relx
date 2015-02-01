@@ -36,6 +36,8 @@
          overrides/2,
          skip_apps/1,
          skip_apps/2,
+         exclude_apps/1,
+         exclude_apps/2,
          debug_info/1,
          debug_info/2,
          goals/1,
@@ -104,6 +106,7 @@
                   sys_config :: file:filename() | undefined,
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps=[] :: [AppName::atom()],
+                  exclude_apps=[] :: [AppName::atom()],
                   debug_info=keep :: keep | strip,
                   configured_releases :: releases(),
                   realized_releases :: releases(),
@@ -185,6 +188,15 @@ skip_apps(#state_t{skip_apps=Apps}) ->
 -spec skip_apps(t(), [AppName::atom()]) -> t().
 skip_apps(State, SkipApps) ->
     State#state_t{skip_apps=SkipApps}.
+
+-spec exclude_apps(t()) -> [AppName::atom()].
+exclude_apps(#state_t{exclude_apps=Apps}) ->
+    Apps.
+
+%% @doc the application overrides for the system
+-spec exclude_apps(t(), [AppName::atom()]) -> t().
+exclude_apps(State, SkipApps) ->
+    State#state_t{exclude_apps=SkipApps}.
 
 -spec debug_info(t()) -> keep | strip.
 debug_info(#state_t{debug_info=DebugInfo}) ->
