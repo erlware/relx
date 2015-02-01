@@ -40,12 +40,7 @@
 init(State) ->
     State1 = rlx_state:add_provider(State, providers:create([{name, ?PROVIDER},
                                                              {module, ?MODULE},
-                                                             {bare, false},
-                                                             {deps, ?DEPS},
-                                                             {example, "release"},
-                                                             {short_desc, ""},
-                                                             {desc, ""},
-                                                             {opts, []}])),
+                                                             {deps, ?DEPS}])),
     {ok, State1}.
 
 %% @doc recursively dig down into the library directories specified in the state
