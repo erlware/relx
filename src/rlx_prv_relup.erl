@@ -41,12 +41,7 @@
 init(State) ->
     State1 = rlx_state:add_provider(State, providers:create([{name, ?PROVIDER},
                                                              {module, ?MODULE},
-                                                             {bare, false},
-                                                             {deps, ?DEPS},
-                                                             {example, "relup"},
-                                                             {short_desc, "Builds release upgrade for latest and last release."},
-                                                             {desc, ""},
-                                                             {opts, []}])),
+                                                             {deps, ?DEPS}])),
     {ok, State1}.
 
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
