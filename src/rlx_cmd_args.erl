@@ -102,7 +102,7 @@ handle_config(Opts, Targets, CommandLineConfig) ->
             end
     end.
 
--spec convert_targets([string()]) -> {ok, release | relup} | relx:error().
+-spec convert_targets([string()]) -> {ok, [rlx_state:action()]} | relx:error().
 convert_targets(Targets) ->
     convert_targets(Targets, []).
 
@@ -111,7 +111,7 @@ convert_targets(Targets) ->
 convert_targets([], []) ->
     {ok, [release]};
 convert_targets([], Acc) ->
-    {ok, Acc};
+    {ok, lists:reverse(Acc)};
 convert_targets(["release" | T], Acc) ->
     convert_targets(T, [release | Acc]);
 convert_targets(["relup" | T], Acc) ->
