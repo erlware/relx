@@ -123,26 +123,6 @@ fi
 NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
 NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
 
-# User can specify an sname without @hostname
-# This will fail when creating remote shell
-# So here we check for @ and add @hostname if missing
-case $NAME in
-    *@*)
-        # Nothing to do
-        ;;
-    *)
-        # Add @hostname
-        case $NAME_TYPE in
-             -sname)
-                 NAME=$NAME@`hostname -s`
-                 ;;
-             -name)
-                 NAME=$NAME@`hostname -f`
-                 ;;
-        esac
-        ;;
-esac
-
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 # Extract the target cookie
@@ -164,6 +144,26 @@ export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
 ERTS_LIB_DIR="$ERTS_DIR/../lib"
 
 cd "$ROOTDIR"
+
+# User can specify an sname without @hostname
+# This will fail when creating remote shell
+# So here we check for @ and add @hostname if missing
+case $NAME in
+    *@*)
+        # Nothing to do
+        ;;
+    *)
+        # Add @hostname
+        case $NAME_TYPE in
+             -sname)
+                 NAME=$NAME@`hostname -s`
+                 ;;
+             -name)
+                 NAME=$(relx_nodetool "target_node_name")
+                 ;;
+        esac
+        ;;
+esac
 
 # Check the first argument for instructions
 case "$1" in
@@ -255,7 +255,7 @@ case "$1" in
     attach)
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
+            echo "Node $NAME is not running!"
             exit 1
         fi
 
@@ -266,7 +266,7 @@ case "$1" in
     remote_console)
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
+            echo "Node $NAME is not running!"
             exit 1
         fi
 
