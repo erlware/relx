@@ -38,6 +38,11 @@ relx_get_pid() {
     fi
 }
 
+relx_get_longname() {
+    id="longname$(relx_gen_id)-${NAME}"
+    "$BINDIR/erl" -boot start_clean -eval 'io:format("~s~n", [node()])' -noshell -s init stop -name $id | sed -e 's/.*@//g'
+}
+
 # Connect to a remote node
 relx_rem_sh() {
     # Generate a unique id used to allow multiple remsh to the same node
@@ -123,26 +128,6 @@ fi
 NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
 NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
 
-# User can specify an sname without @hostname
-# This will fail when creating remote shell
-# So here we check for @ and add @hostname if missing
-case $NAME in
-    *@*)
-        # Nothing to do
-        ;;
-    *)
-        # Add @hostname
-        case $NAME_TYPE in
-             -sname)
-                 NAME=$NAME@`hostname -s`
-                 ;;
-             -name)
-                 NAME=$NAME@`hostname -f`
-                 ;;
-        esac
-        ;;
-esac
-
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 # Extract the target cookie
@@ -164,6 +149,26 @@ export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
 ERTS_LIB_DIR="$ERTS_DIR/../lib"
 
 cd "$ROOTDIR"
+
+# User can specify an sname without @hostname
+# This will fail when creating remote shell
+# So here we check for @ and add @hostname if missing
+case $NAME in
+    *@*)
+        # Nothing to do
+        ;;
+    *)
+        # Add @hostname
+        case $NAME_TYPE in
+             -sname)
+                 NAME=$NAME@`hostname -s`
+                 ;;
+             -name)
+                 NAME=$NAME@$(relx_get_longname)
+                 ;;
+        esac
+        ;;
+esac
 
 # Check the first argument for instructions
 case "$1" in
