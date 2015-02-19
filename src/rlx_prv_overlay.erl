@@ -161,6 +161,21 @@ read_overlay_vars(State, OverlayVars, FileNames) ->
             Error
     end.
 
+-spec check_overlay_inclusion(rlx_state:t(), string(), proplists:proplist()) ->
+                              proplists:proplist().
+check_overlay_inclusion(State, RelativeRoot, Terms) ->
+    check_overlay_inclusion(State, RelativeRoot, Terms, []).
+
+-spec check_overlay_inclusion(rlx_state:t(), string(), proplists:proplist(), proplists:proplist()) ->
+                              proplists:proplist().
+check_overlay_inclusion(State, RelativeRoot, [File|T], Terms) when is_list(File) ->
+    IncludedTerms = merge_overlay_vars(State, [filename:join(RelativeRoot, File)]),
+    check_overlay_inclusion(State, RelativeRoot, T, Terms ++ IncludedTerms);
+check_overlay_inclusion(State, RelativeRoot, [Tuple|T], Terms) ->
+    check_overlay_inclusion(State, RelativeRoot, T, Terms ++ [Tuple]);
+check_overlay_inclusion(_State, _RelativeRoot, [], Terms) ->
+    Terms.
+
 -spec merge_overlay_vars(rlx_state:t(), [file:name()]) ->
                                 proplists:proplist().
 merge_overlay_vars(State, FileNames) ->
@@ -169,7 +184,11 @@ merge_overlay_vars(State, FileNames) ->
                         RelativePath = filename:join(RelativeRoot, erlang:iolist_to_binary(FileName)),
                         case file:consult(RelativePath) of
                             {ok, Terms} ->
-                                lists:ukeymerge(1, lists:ukeysort(1, Terms), Acc);
+                                % the location of the included overlay files will be relative
+                                %% to the current one being read
+                                OverlayRelativeRoot = filename:dirname(FileName),
+                                NewTerms = check_overlay_inclusion(State, OverlayRelativeRoot, Terms),
+                                lists:ukeymerge(1, lists:ukeysort(1, NewTerms), Acc);
                             {error, Reason} ->
                                 ec_cmd_log:warn(rlx_state:log(State),
                                                 format_error({unable_to_read_varsfile, FileName, Reason})),
