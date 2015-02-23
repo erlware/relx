@@ -156,6 +156,8 @@ to({mkdir, To}) ->
 to({template, _, To}) ->
     To.
 
+filter({_, _, "bin/"++_}) ->
+    false;
 filter({copy, _, _}) ->
     true;
 filter({mkdir, _}) ->
