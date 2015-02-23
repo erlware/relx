@@ -133,7 +133,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                             _ ->
                                 [{"lib", filename:join(TempDir, "lib")},
                                  {"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
-                        end]++OverlayFiles, [compressed]),
+                        end]++OverlayFiles, [dereference,compressed]),
     ec_cmd_log:info(rlx_state:log(State),
                     "tarball ~s successfully created!~n", [TarFile]),
     ec_file:remove(TempDir, [recursive]),
@@ -149,6 +149,8 @@ overlay_files(OverlayVars, Overlay, OutputDir) ->
          {ec_cnv:to_list(File), ec_cnv:to_list(filename:join(OutputDir, File))}
      end || O <- Overlay, filter(O)].
 
+to({link, _, To}) ->
+    To;
 to({copy, _, To}) ->
     To;
 to({mkdir, To}) ->
@@ -158,6 +160,8 @@ to({template, _, To}) ->
 
 filter({_, _, "bin/"++_}) ->
     false;
+filter({link, _, _}) ->
+    true;
 filter({copy, _, _}) ->
     true;
 filter({mkdir, _}) ->
