@@ -27,19 +27,15 @@ Building
 
 To build relx and generate a standalone escript executable:
 
-    $ make
+    $ ./rebar3 escriptize
 
-This creates the executable `relx`.
-
-Note, if using your own `rebar`, it must at least be > version
-2.2.0-20-g6e24cd6. Unfortunately, the 2.2.0 release of rebar is not
-sufficient.
+This creates the executable `_build/default/relx`.
 
 Building on Windows
 -------------------
 
-To build relx on Windows you'll need to have rebar installed and the path to
-the rebar binary added to the `PATH` environment variable. To start the build
+To build relx on Windows you'll need to have rebar3 installed and the path to
+the rebar3 binary added to the `PATH` environment variable. To start the build
 use the `bootstrap` batch file:
 
     c:\> bootstrap
