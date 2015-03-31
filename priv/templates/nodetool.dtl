@@ -11,6 +11,14 @@ main(Args) ->
     %% Extract the args
     {RestArgs, TargetNode} = process_args(Args, [], undefined),
 
+    case RestArgs of
+        ["target_node_name"] ->
+            io:format("~s~n", [TargetNode]),
+            halt(0);
+        _ ->
+            undefined
+    end,
+
     %% See if the node is currently running  -- if it's not, we'll bail
     case {net_kernel:hidden_connect_node(TargetNode), net_adm:ping(TargetNode)} of
         {true, pong} ->
