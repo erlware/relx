@@ -94,4 +94,5 @@ test_template_contents() ->
         "{yahoo2_foo, \"{{yahoo2.foo}}\"}.\n"
         "{foo_dir, \"{{foo_dir}}\"}.\n"
         "{yahoo3, \"{{yahoo3.bar}}\"}.\n"
+        "{yahoo4, \"{{yahoo4.foo}}\"}.\n"
         "{google, \"{{google}}\"}.\n".

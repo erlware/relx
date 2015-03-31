@@ -471,6 +471,7 @@ overlay_release(Config) ->
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     OverlayVars1 = filename:join([LibDir1, "vars1.config"]),
     OverlayVars2 = filename:join([LibDir1, "vars2.config"]),
+    OverlayVars3 = filename:join([LibDir1, "vars3.config"]),
     Template = filename:join([LibDir1, "test_template"]),
     TestDir = "first_test_dir",
     TestFile = "test_file",
@@ -502,7 +503,12 @@ overlay_release(Config) ->
 
     VarsFile2 = filename:join([LibDir1, "vars2.config"]),
     rlx_test_utils:write_config(VarsFile2, [{google, "yahoo"},
-                             {yahoo2, [{foo, "foo"}]}]),
+                             {yahoo2, [{foo, "foo"}]},
+                             OverlayVars3]),
+
+    VarsFile3 = filename:join([LibDir1, "vars3.config"]),
+    rlx_test_utils:write_config(VarsFile3, [{google, "yahoo"},
+                             {yahoo4, [{foo, "{{yahoo}}/{{yahoo2.foo}}4"}]}]),
 
     ok = rlx_util:mkdir_p(TestDirFull),
     ok = file:write_file(TestFileFull, rlx_test_utils:test_template_contents()),
@@ -604,6 +610,8 @@ overlay_release(Config) ->
                  proplists:get_value(foo_dir, TemplateData)),
     ?assertEqual("yahoo/foo",
                  proplists:get_value(yahoo3, TemplateData)),
+    ?assertEqual("yahoo/foo4",
+                 proplists:get_value(yahoo4, TemplateData)),
     ?assertEqual("yahoo",
                  proplists:get_value(google, TemplateData)).
 
