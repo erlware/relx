@@ -347,6 +347,21 @@ do_individual_overlay(State, OverlayVars, {copy, From, To}) ->
                                                   copy_to(State, FromFile, ToFile)
                                           end)
                    end);
+do_individual_overlay(State, OverlayVars, {link, From, To}) ->
+    case rlx_state:dev_mode(State) of
+        false -> 
+            do_individual_overlay(State, OverlayVars, {copy, From, To});
+        true  ->
+            FromTemplateName = make_template_name("rlx_copy_from_template", From),
+            ToTemplateName = make_template_name("rlx_copy_to_template", To),
+            file_render_do(OverlayVars, From, FromTemplateName,
+                           fun(FromFile) ->
+                                   file_render_do(OverlayVars, To, ToTemplateName,
+                                                  fun(ToFile) ->
+                                                          link_to(State, FromFile, ToFile)
+                                                  end)
+                           end)
+    end;
 do_individual_overlay(State, OverlayVars, {template, From, To}) ->
     FromTemplateName = make_template_name("rlx_template_from_template", From),
     ToTemplateName = make_template_name("rlx_template_to_template", To),
@@ -391,6 +406,35 @@ copy_to(State, FromFile0, ToFile0) ->
             ok;
         {error, Err} ->
             ?RLX_ERROR({copy_failed,
+                        FromFile1,
+                        ToFile1, Err})
+    end.
+
+-spec link_to(rlx_state:t(), file:name(), file:name()) -> ok | relx:error().
+link_to(State, FromFile0, ToFile0) ->
+    RelativeRoot = get_relative_root(State),
+    ToFile1 = absolutize(State, filename:join(rlx_state:output_dir(State),
+                                              erlang:iolist_to_binary(ToFile0))),
+
+    FromFile1 = absolutize(State, filename:join(RelativeRoot,
+                                                erlang:iolist_to_binary(FromFile0))),
+    ToFile2 = case is_directory(ToFile0, ToFile1) of
+                  false ->
+                      filelib:ensure_dir(ToFile1),
+                      ToFile1;
+                  true ->
+                      rlx_util:mkdir_p(ToFile1),
+                      erlang:iolist_to_binary(filename:join(ToFile1,
+                                                            filename:basename(FromFile1)))
+              end,
+    case ec_file:is_symlink(ToFile2) of
+        true  -> file:delete(ToFile2);
+        false -> ec_file:remove(ToFile2, [recursive])
+    end,
+    case file:make_symlink(FromFile1, ToFile2) of
+        ok -> ok;
+        {error, Err} ->
+            ?RLX_ERROR({link_failed,
                         FromFile1,
                         ToFile1, Err})
     end.
