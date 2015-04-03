@@ -85,6 +85,7 @@ get_lib_dirs(State) ->
             lists:flatten([LibDirs0,
                            add_common_project_dirs(State),
                            add_system_lib_dir(State),
+                           add_environment_lib_dir(State),
                            OutputDir])
     end.
 
@@ -125,6 +126,13 @@ add_system_lib_dir(State) ->
             end;
         SystemLibs ->
             erlang:iolist_to_binary(SystemLibs)
+    end.
+
+-spec add_environment_lib_dir(rlx_state:t()) -> [binary()].
+add_environment_lib_dir(_State) ->
+    case os:getenv("ERL_LIBS") of
+        false -> [];
+        Libs -> [erlang:iolist_to_binary(L) || L <- string:tokens(Libs, ":")]
     end.
 
 %% Order matters so this slow dedup needs to be used
