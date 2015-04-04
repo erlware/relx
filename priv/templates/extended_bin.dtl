@@ -40,7 +40,7 @@ relx_get_pid() {
 
 relx_get_longname() {
     id="longname$(relx_gen_id)-${NAME}"
-    "$BINDIR/erl" -boot start_clean -eval 'io:format("~s~n", [node()])' -noshell -s init stop -name $id | sed -e 's/.*@//g'
+    "$BINDIR/erl" -boot start_clean -eval 'io:format("~s~n", [node()]), halt()' -noshell -name $id | sed -e 's/.*@//g'
 }
 
 # Connect to a remote node
