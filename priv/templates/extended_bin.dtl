@@ -19,8 +19,8 @@ find_erts_dir() {
         ROOTDIR="$RELEASE_ROOT_DIR"
     else
         local erl="$(which erl)"
-        code="io:format(\"~s\", [code:root_dir()])."
-        local erl_root="$("$erl" -noshell -eval "$code" -s init stop)"
+        code="io:format(\"~s\", [code:root_dir()]), halt()."
+        local erl_root="$("$erl" -noshell -eval "$code")"
         ERTS_DIR="$erl_root/erts-$ERTS_VSN"
         ROOTDIR="$erl_root"
     fi
@@ -40,7 +40,7 @@ relx_get_pid() {
 
 relx_get_longname() {
     id="longname$(relx_gen_id)-${NAME}"
-    "$BINDIR/erl" -boot start_clean -eval 'io:format("~s~n", [node()])' -noshell -s init stop -name $id | sed -e 's/.*@//g'
+    "$BINDIR/erl" -boot start_clean -eval 'io:format("~s~n", [node()]), halt()' -noshell -name $id | sed -e 's/.*@//g'
 }
 
 # Connect to a remote node
@@ -60,7 +60,7 @@ relx_rem_sh() {
 
 # Generate a random id
 relx_gen_id() {
-    od -X /dev/urandom | head -n1 | cut -d ' ' -f2
+    od -X /dev/urandom | head -n1 | awk '{print $2}'
 }
 
 # Control a node
