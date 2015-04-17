@@ -1,8 +1,8 @@
 :: A script to build relx on Windows
-:: Requires rebar
+:: Requires rebar3
 
 :: Get dependencies, compile and escriptize relx
-@cmd /c @rebar -r get-deps compile escriptize
+@cmd /c @rebar3 escriptize
 
 :: Create a shortcut file for running the relx command
 @set relx_cmd=relx.cmd
