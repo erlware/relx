@@ -72,12 +72,14 @@ format_detail({not_a_directory, EbinDir}) ->
 
 -spec discover_dir(process_fun([term()] | term()),
                    file:name(),
-                   directory | file | symlink) ->
+                   directory | file | symlink | undefined) ->
                           [{ok, term()}
                            | {error, Reason::term()}]
                               | []
                               | {ok, term()}
                               | {error, Reason::term()}.
+discover_dir(_ProcessDir, _File, undefined) ->
+    [];
 discover_dir(ProcessDir, File, directory) ->
     case ProcessDir(File, directory) of
         {ok, Result, true} ->
