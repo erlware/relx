@@ -349,7 +349,7 @@ do_individual_overlay(State, OverlayVars, {copy, From, To}) ->
                    end);
 do_individual_overlay(State, OverlayVars, {link, From, To}) ->
     case rlx_state:dev_mode(State) of
-        false -> 
+        false ->
             do_individual_overlay(State, OverlayVars, {copy, From, To});
         true  ->
             FromTemplateName = make_template_name("rlx_copy_from_template", From),
@@ -530,7 +530,7 @@ file_render_do(OverlayVars, Data, TemplateName, NextAction) ->
 -spec make_template_name(string(), term()) -> module().
 make_template_name(Base, Value) ->
     %% Seed so we get different values each time
-    random:seed(erlang:now()),
+    random:seed(os:timestamp()),
     Hash = erlang:phash2(Value),
     Ran = random:uniform(10000000),
     erlang:list_to_atom(Base ++ "_" ++
