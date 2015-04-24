@@ -127,7 +127,7 @@
 -type caller() :: command_line | api.
 -type action() :: release | relup | tar.
 
--opaque t() :: record(state_t).
+-opaque t() :: #state_t{}.
 
 %%============================================================================
 %% API

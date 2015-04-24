@@ -87,7 +87,7 @@
                                                  {app_type(), incl_apps() | void}).
 
 
--opaque t() :: record(release_t).
+-opaque t() :: #release_t{}.
 
 %%============================================================================
 %% API
