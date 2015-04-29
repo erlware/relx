@@ -545,20 +545,20 @@ ensure_not_exist(RelConfPath) ->
     end.
 
 erl_script(ErtsVsn) ->
-    render(erl_script_dtl, [{erts_vsn, ErtsVsn}]).
+    render(erl_script, [{erts_vsn, ErtsVsn}]).
 
 bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
     Template = case OsFamily of
-        unix -> bin_dtl;
-        win32 -> bin_windows_dtl
+        unix -> bin;
+        win32 -> bin_windows
     end,
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
 
 extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
     Template = case OsFamily of
-        unix -> extended_bin_dtl;
-        win32 -> extended_bin_windows_dtl
+        unix -> extended_bin;
+        win32 -> extended_bin_windows
     end,
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
@@ -566,23 +566,25 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
 erl_ini(OutputDir, ErtsVsn) ->
     ErtsDirName = string:concat("erts-", ErtsVsn),
     BinDir = filename:join([OutputDir, ErtsDirName, bin]),
-    render(erl_ini_dtl, [{bin_dir, BinDir}, {output_dir, OutputDir}]).
+    render(erl_ini, [{bin_dir, BinDir}, {output_dir, OutputDir}]).
 
 install_upgrade_escript_contents() ->
-    render(install_upgrade_escript_dtl).
+    render(install_upgrade_escript).
 
 nodetool_contents() ->
-    render(nodetool_dtl).
+    render(nodetool).
 
 sys_config_file() ->
-    render(sys_config_dtl).
+    render(sys_config).
 
 vm_args_file(RelName) ->
-    render(vm_args_dtl, [{rel_name, RelName}]).
+    render(vm_args, [{rel_name, RelName}]).
 
 render(Template) ->
     render(Template, []).
 
 render(Template, Data) ->
-    {ok, Rendered} = Template:render(Data),
-    Rendered.
+    Files = rlx_util:template_files(),
+    Tpl = rlx_util:load_file(Files, escript, atom_to_list(Template)),
+    {ok, Content} = rlx_util:render(Tpl, Data),
+    Content.

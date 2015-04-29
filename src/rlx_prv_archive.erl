@@ -144,8 +144,7 @@ overlay_files(_, undefined, _) ->
 overlay_files(OverlayVars, Overlay, OutputDir) ->
     [begin
          To = to(O),
-         ToTemplateName = rlx_prv_overlay:make_template_name("rlx_template_to_template", To),
-         File = rlx_prv_overlay:render_string(OverlayVars, To, ToTemplateName),
+         File = rlx_prv_overlay:render_string(OverlayVars, To),
          {ec_cnv:to_list(File), ec_cnv:to_list(filename:join(OutputDir, File))}
      end || O <- Overlay, filter(O)].
 

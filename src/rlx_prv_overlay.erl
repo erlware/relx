@@ -29,12 +29,9 @@
          format_error/1]).
 
 -export([generate_overlay_vars/2,
-         make_template_name/2,
-         render_string/3]).
+         render_string/2]).
 
 -define(DIRECTORY_RE, ".*(\/|\\\\)$").
-
--define(ERLYDTL_COMPILE_OPTS, [report_warnings, return_errors, {auto_escape, false}, {out_dir, false}]).
 
 -include("relx.hrl").
 
@@ -64,7 +61,8 @@ do(State) ->
                 {error, Reason} ->
                     {error, Reason};
                 OverlayVars ->
-                    do_overlay(State, OverlayVars)
+                    Files = rlx_util:template_files(),
+                    do_overlay(State, Files, OverlayVars)
             end;
         false ->
             ?RLX_ERROR({unresolved_release, RelName, RelVsn})
@@ -79,6 +77,9 @@ format_error({ec_file_error, AppDir, TargetDir, E}) ->
 format_error({unable_to_read_varsfile, FileName, Reason}) ->
     io_lib:format("Unable to read vars file (~s) for overlay due to: ~p",
                   [FileName, Reason]);
+format_error({read_template, FileName, Reason}) ->
+    io_lib:format("Unable to read template file (~s) for overlay due to: ~s",
+                  [FileName, file:format_error(Reason)]);
 format_error({overlay_failed, Errors}) ->
     [[format_error(rlx_util:error_reason(Error)), "\n"] || Error <- Errors];
 format_error({dir_render_failed, Dir, Error}) ->
@@ -183,8 +184,16 @@ merge_overlay_vars(State, FileNames) ->
     lists:foldl(fun(FileName, Acc) ->
                         RelativePath = filename:join(RelativeRoot, erlang:iolist_to_binary(FileName)),
                         case file:consult(RelativePath) of
+                            %% {ok, [Terms]} ->
+                            %%     lists:ukeymerge(1, lists:ukeysort(1, Terms), Acc);
+                            %%     % the location of the included overlay files will be relative
+                            %%     %% to the current one being read
+                            %%     %% OverlayRelativeRoot = filename:dirname(FileName),
+                            %%     %% NewTerms = check_overlay_inclusion(State, OverlayRelativeRoot, Terms),
+
+                            %%     %% lists:ukeymerge(1, lists:ukeysort(1, NewTerms), Acc);
                             {ok, Terms} ->
-                                % the location of the included overlay files will be relative
+                                %% the location of the included overlay files will be relative
                                 %% to the current one being read
                                 OverlayRelativeRoot = filename:dirname(FileName),
                                 NewTerms = check_overlay_inclusion(State, OverlayRelativeRoot, Terms),
@@ -237,26 +246,7 @@ generate_release_vars(Release) ->
      {release_erts_version, rlx_release:erts(Release)},
      {release_name, rlx_release:name(Release)},
      {rel_vsn, rlx_release:vsn(Release)},
-     {release_version, rlx_release:vsn(Release)},
-     {release_applications, lists:map(fun(App) ->
-                                              rlx_app_info:name(App)
-                                        end, rlx_release:application_details(Release))},
-    {release, [generate_app_vars(App)|| App <- rlx_release:application_details(Release)]},
-     {release_goals,   [if
-                            erlang:is_list(Constraint) ->
-                                Constraint;
-                            true ->
-                                rlx_depsolver:format_constraint(Constraint)
-                        end || Constraint <- rlx_release:goals(Release)]}].
-
--spec generate_app_vars(rlx_app_info:t()) -> AppInfo::tuple().
-generate_app_vars(App) ->
-    {rlx_app_info:name(App),
-     [{version, rlx_app_info:original_vsn(App)},
-      {dir, rlx_app_info:dir(App)},
-      {active_dependencies, rlx_app_info:active_deps(App)},
-      {library_dependencies, rlx_app_info:library_deps(App)},
-      {link, rlx_app_info:link(App)}]}.
+     {release_version, rlx_release:vsn(Release)}].
 
 -spec generate_state_vars(rlx_state:t()) -> proplists:proplist().
 generate_state_vars(State) ->
@@ -288,16 +278,16 @@ generate_state_vars(State) ->
                                erlang:atom_to_list(Name1) ++ "-" ++ Vsn1
                        end}].
 
--spec do_overlay(rlx_state:t(), proplists:proplist()) ->
+-spec do_overlay(rlx_state:t(), list(), proplists:proplist()) ->
                                    {ok, rlx_state:t()} | relx:error().
-do_overlay(State, OverlayVars) ->
+do_overlay(State, Files, OverlayVars) ->
     case rlx_state:get(State, overlay, undefined) of
         undefined ->
             {ok, State};
         Overlays ->
             handle_errors(State,
                           lists:map(fun(Overlay) ->
-                                            do_individual_overlay(State, OverlayVars,
+                                            do_individual_overlay(State, Files, OverlayVars,
                                                                   Overlay)
                                     end, Overlays))
     end.
@@ -313,61 +303,49 @@ handle_errors(State, Result) ->
             {ok, State}
     end.
 
--spec do_individual_overlay(rlx_state:t(), proplists:proplist(),
+-spec do_individual_overlay(rlx_state:t(), list(), proplists:proplist(),
                             OverlayDirective::term()) ->
                                    {ok, rlx_state:t()} | relx:error().
-do_individual_overlay(State, OverlayVars, {mkdir, Dir}) ->
-    ModuleName = make_template_name("rlx_mkdir_template", Dir),
-    case erlydtl:compile(erlang:iolist_to_binary(Dir), ModuleName, ?ERLYDTL_COMPILE_OPTS) of
-        {ok, ModuleName} ->
-            case render(ModuleName, OverlayVars) of
-                {ok, IoList} ->
-                    Absolute = absolutize(State,
-                                          filename:join(rlx_state:output_dir(State),
-                                                        erlang:iolist_to_binary(IoList))),
-                    case rlx_util:mkdir_p(Absolute) of
-                        {error, Error} ->
-                            ?RLX_ERROR({unable_to_make_dir, Absolute, Error});
-                        ok ->
-                            ok
-                    end;
+do_individual_overlay(State, _Files, OverlayVars, {mkdir, Dir}) ->
+    case rlx_util:render(erlang:iolist_to_binary(Dir), OverlayVars) of
+        {ok, IoList} ->
+            Absolute = absolutize(State,
+                                  filename:join(rlx_state:output_dir(State),
+                                                erlang:iolist_to_binary(IoList))),
+            case rlx_util:mkdir_p(Absolute) of
                 {error, Error} ->
-                    ?RLX_ERROR({dir_render_failed, Dir, Error})
+                    ?RLX_ERROR({unable_to_make_dir, Absolute, Error});
+                ok ->
+                    ok
             end;
-        {error, Reason, _Warnings} ->
-            ?RLX_ERROR({unable_to_compile_template, Dir, Reason})
+        {error, Error} ->
+            ?RLX_ERROR({dir_render_failed, Dir, Error})
     end;
-do_individual_overlay(State, OverlayVars, {copy, From, To}) ->
-    FromTemplateName = make_template_name("rlx_copy_from_template", From),
-    ToTemplateName = make_template_name("rlx_copy_to_template", To),
-    file_render_do(OverlayVars, From, FromTemplateName,
+do_individual_overlay(State, _Files, OverlayVars, {copy, From, To}) ->
+    file_render_do(OverlayVars, From,
                    fun(FromFile) ->
-                           file_render_do(OverlayVars, To, ToTemplateName,
+                           file_render_do(OverlayVars, To,
                                           fun(ToFile) ->
                                                   copy_to(State, FromFile, ToFile)
                                           end)
                    end);
-do_individual_overlay(State, OverlayVars, {link, From, To}) ->
+do_individual_overlay(State, Files, OverlayVars, {link, From, To}) ->
     case rlx_state:dev_mode(State) of
         false ->
-            do_individual_overlay(State, OverlayVars, {copy, From, To});
+            do_individual_overlay(State, Files, OverlayVars, {copy, From, To});
         true  ->
-            FromTemplateName = make_template_name("rlx_copy_from_template", From),
-            ToTemplateName = make_template_name("rlx_copy_to_template", To),
-            file_render_do(OverlayVars, From, FromTemplateName,
+            file_render_do(OverlayVars, From,
                            fun(FromFile) ->
-                                   file_render_do(OverlayVars, To, ToTemplateName,
+                                   file_render_do(OverlayVars, To,
                                                   fun(ToFile) ->
                                                           link_to(State, FromFile, ToFile)
                                                   end)
                            end)
     end;
-do_individual_overlay(State, OverlayVars, {template, From, To}) ->
-    FromTemplateName = make_template_name("rlx_template_from_template", From),
-    ToTemplateName = make_template_name("rlx_template_to_template", To),
-    file_render_do(OverlayVars, From, FromTemplateName,
+do_individual_overlay(State, _Files, OverlayVars, {template, From, To}) ->
+    file_render_do(OverlayVars, From,
                    fun(FromFile) ->
-                           file_render_do(OverlayVars, To, ToTemplateName,
+                           file_render_do(OverlayVars, To,
                                           fun(ToFile) ->
                                                   RelativeRoot = get_relative_root(State),
                                                   FromFile0 = absolutize(State,
@@ -465,85 +443,55 @@ is_directory(ToFile0, ToFile1) ->
 -spec render_template(proplists:proplist(), iolist()) ->
                              ok | relx:error().
 render_template(OverlayVars, Data) ->
-    TemplateName = make_template_name("rlx_template_renderer", Data),
-    case erlydtl:compile(Data, TemplateName, ?ERLYDTL_COMPILE_OPTS) of
-        Good when Good =:= ok; Good =:= {ok, TemplateName} ->
-            case render(TemplateName, OverlayVars) of
-                {ok, IoData} ->
-                    {ok, IoData};
-                {error, Reason} ->
-                    ?RLX_ERROR({unable_to_render_template, Data, Reason})
-            end;
-        {error, Reason, _Warnings} ->
-            ?RLX_ERROR({unable_to_compile_template, Data, Reason})
+    case rlx_util:render(Data, OverlayVars) of
+        {ok, IoData} ->
+            {ok, IoData};
+        {error, Reason} ->
+            ?RLX_ERROR({unable_to_render_template, Data, Reason})
     end.
 
 write_template(OverlayVars, FromFile, ToFile) ->
-    case render_template(OverlayVars, FromFile) of
-        {ok, IoData} ->
-            case filelib:ensure_dir(ToFile) of
-                ok ->
-                    case file:write_file(ToFile, IoData) of
+    case file:read_file(FromFile) of
+        {ok, File} ->
+            case render_template(OverlayVars, File) of
+                {ok, IoData} ->
+                    case filelib:ensure_dir(ToFile) of
                         ok ->
-                            {ok, FileInfo} = file:read_file_info(FromFile),
-                            ok = file:write_file_info(ToFile, FileInfo),
-                            ok;
+                            case file:write_file(ToFile, IoData) of
+                                ok ->
+                                    {ok, FileInfo} = file:read_file_info(FromFile),
+                                    ok = file:write_file_info(ToFile, FileInfo),
+                                    ok;
+                                {error, Reason} ->
+                                    ?RLX_ERROR({unable_to_write, ToFile, Reason})
+                            end;
                         {error, Reason} ->
-                            ?RLX_ERROR({unable_to_write, ToFile, Reason})
+                            ?RLX_ERROR({unable_to_enclosing_dir, ToFile, Reason})
                     end;
-                {error, Reason} ->
-                    ?RLX_ERROR({unable_to_enclosing_dir, ToFile, Reason})
+                Error ->
+                    Error
             end;
-        Error ->
-            Error
+        {error, Error} ->
+            ?RLX_ERROR({read_template, Error})
     end.
 
-render_string(OverlayVars, Data, TemplateName) ->
-    case erlydtl:compile(erlang:iolist_to_binary(Data), TemplateName, ?ERLYDTL_COMPILE_OPTS) of
-        {ok, TemplateName} ->
-            case render(TemplateName, OverlayVars) of
-                {ok, IoList} ->
-                    erlang:iolist_to_binary(IoList);
-                {error, Error} ->
-                    ?RLX_ERROR({render_failed, Data, Error})
-            end;
-        {error, Reason, _Warnings} ->
-            ?RLX_ERROR({unable_to_compile_template, Data, Reason})
+render_string(OverlayVars, Data) ->
+    case rlx_util:render(Data, OverlayVars) of
+        {ok, IoList} ->
+            erlang:iolist_to_binary(IoList);
+        {error, Error} ->
+            ?RLX_ERROR({render_failed, Data, Error})
     end.
 
--spec file_render_do(proplists:proplist(), iolist(), module(),
+-spec file_render_do(proplists:proplist(), iolist(),
                      fun((term()) -> {ok, rlx_state:t()} | relx:error())) ->
                             {ok, rlx_state:t()} | relx:error().
-file_render_do(OverlayVars, Data, TemplateName, NextAction) ->
-    case erlydtl:compile(erlang:iolist_to_binary(Data), TemplateName, ?ERLYDTL_COMPILE_OPTS) of
-        {ok, TemplateName} ->
-            case render(TemplateName, OverlayVars) of
-                {ok, IoList} ->
-                    NextAction(IoList);
-                {error, Error} ->
-                    ?RLX_ERROR({render_failed, Data, Error})
-            end;
-        {error, Reason, _Warnings} ->
-            ?RLX_ERROR({unable_to_compile_template, Data, Reason})
-    end.
-
--spec make_template_name(string(), term()) -> module().
-make_template_name(Base, Value) ->
-    %% Seed so we get different values each time
-    random:seed(os:timestamp()),
-    Hash = erlang:phash2(Value),
-    Ran = random:uniform(10000000),
-    erlang:list_to_atom(Base ++ "_" ++
-                            erlang:integer_to_list(Hash) ++
-                            "_" ++ erlang:integer_to_list(Ran)).
-
--spec render(module(), proplists:proplist()) -> {ok, iolist()} | {error, Reason::term()}.
-render(ModuleName, OverlayVars) ->
-    try
-        ModuleName:render(OverlayVars)
-    catch
-        _:Reason ->
-            {error, Reason}
+file_render_do(OverlayVars, File, NextAction) ->
+    case rlx_util:render(File, OverlayVars) of
+        {ok, IoList} ->
+            NextAction(IoList);
+        {error, Error} ->
+            ?RLX_ERROR({render_failed, File, Error})
     end.
 
 absolutize(State, FileName) ->
