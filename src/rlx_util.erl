@@ -32,7 +32,12 @@
          error_reason/1,
          indent/1,
          optional_to_string/1,
-         wildcard_paths/1]).
+         wildcard_paths/1,
+         render/1,
+         render/2,
+         load_file/3,
+         template_files/0,
+         escript_foldl/3]).
 
 -define(ONE_LEVEL_INDENT, "     ").
 %%============================================================================
@@ -145,6 +150,61 @@ wildcard(Path) when is_list(Path) ->
     case filelib:wildcard(Path) of
         []   -> [Path];
         Paths -> Paths
+    end.
+
+render(Template) ->
+    render(Template, []).
+
+render(Template, Data) ->
+    {ok, mustache:render(ec_cnv:to_binary(Template), Data, [{key_type, atom}])}.
+
+load_file(Files, escript, Name) ->
+    {Name, Bin} = lists:keyfind(Name, 1, Files),
+    Bin;
+load_file(_Files, file, Name) ->
+    {ok, Bin} = file:read_file(Name),
+    Bin.
+
+template_files() ->
+    find_priv_templates() ++ escript_files().
+
+find_priv_templates() ->
+    Files = filelib:wildcard(filename:join([code:priv_dir(relx), "templates", "*"])),
+    lists:map(fun(File) ->
+                      {ok, Bin} = file:read_file(File),
+                      {filename:basename(File), Bin}
+              end, Files).
+
+%% Scan the current escript for available files
+escript_files() ->
+    try
+        {ok, Files} = escript_foldl(
+                        fun(Name, _, GetBin, Acc) ->
+                                [{filename:basename(Name), GetBin()} | Acc]
+                        end, [], filename:absname(escript:script_name())),
+        Files
+    catch
+        _:_ ->
+            []
+    end.
+
+escript_foldl(Fun, Acc, File) ->
+    case escript:extract(File, [compile_source]) of
+        {ok, [_Shebang, _Comment, _EmuArgs, Body]} ->
+            case Body of
+                {source, BeamCode} ->
+                    GetInfo = fun() -> file:read_file_info(File) end,
+                    GetBin = fun() -> BeamCode end,
+                    {ok, Fun(".", GetInfo, GetBin, Acc)};
+                {beam, BeamCode} ->
+                    GetInfo = fun() -> file:read_file_info(File) end,
+                    GetBin = fun() -> BeamCode end,
+                    {ok, Fun(".", GetInfo, GetBin, Acc)};
+                {archive, ArchiveBin} ->
+                    zip:foldl(Fun, Acc, {File, ArchiveBin})
+            end;
+        {error, _} = Error ->
+            Error
     end.
 
 %%%===================================================================
