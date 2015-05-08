@@ -8,7 +8,7 @@
   0},
  {<<"mustache">>,
   {git,"https://github.com/soranoba/mustache.git",
-       {ref,"5a15c03e0bcc307dd4165208802b1641dbf88b50"}},
+       {ref,"e5401042c66039eef20ee81abc1537ced1f22bc7"}},
   0},
  {<<"getopt">>,
   {git,"https://github.com/jcomellas/getopt.git",

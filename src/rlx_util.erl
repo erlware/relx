@@ -156,7 +156,7 @@ render(Template) ->
     render(Template, []).
 
 render(Template, Data) ->
-    {ok, mustache:render(ec_cnv:to_binary(Template), Data)}.
+    {ok, mustache:render(ec_cnv:to_binary(Template), Data, [{key_type, atom}])}.
 
 load_file(Files, escript, Name) ->
     {Name, Bin} = lists:keyfind(Name, 1, Files),
