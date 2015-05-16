@@ -164,22 +164,9 @@ load_terms({lib_dirs, Dirs}, {ok, State}) ->
 load_terms({hooks, Hooks}, {ok, State0}) ->
     add_hooks(Hooks, State0);
 load_terms({providers, Providers0}, {ok, State0}) ->
-    Providers1 = gen_providers(Providers0, State0),
-    case Providers1 of
-        {_, E={error, _}} ->
-            E;
-        {Providers3, {ok, State3}} ->
-            {ok, rlx_state:providers(State3, Providers3)}
-    end;
+    gen_providers(Providers0, State0);
 load_terms({add_providers, Providers0}, {ok, State0}) ->
-    Providers1 = gen_providers(Providers0, State0),
-    case Providers1 of
-        {_, E={error, _}} ->
-            E;
-        {Providers3, {ok, State1}} ->
-            ExistingProviders = rlx_state:providers(State1),
-            {ok, rlx_state:providers(State1, ExistingProviders ++ Providers3)}
-    end;
+    gen_providers(Providers0, State0);
 load_terms({skip_apps, SkipApps0}, {ok, State0}) ->
     {ok, rlx_state:skip_apps(State0, SkipApps0)};
 load_terms({exclude_apps, ExcludeApps0}, {ok, State0}) ->
@@ -260,14 +247,13 @@ load_terms(InvalidTerm, _) ->
     ?RLX_ERROR({invalid_term, InvalidTerm}).
 
 -spec gen_providers([module()], rlx_state:t()) ->
-                           {[providers:t()], {ok, rlx_state:t()} | relx:error()}.
+                           {ok, rlx_state:t()} | relx:error().
 gen_providers(Providers, State) ->
-    lists:foldl(fun(ProviderName, {Providers1, {ok, State1}}) ->
-                        {Provider, State2} = providers:new(ProviderName, State1),
-                        {[Provider | Providers1], State2};
+    lists:foldl(fun(ProviderName, {ok, State1}) ->
+                        providers:new(ProviderName, State1);
                    (_, E={_, {error, _}}) ->
                         E
-                end, {[], {ok, State}}, Providers).
+                end, {ok, State}, Providers).
 
 add_hooks(Hooks, State) ->
     {ok, lists:foldl(fun({pre, Target, Hook}, StateAcc) ->
