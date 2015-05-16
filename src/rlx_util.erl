@@ -133,7 +133,12 @@ is_error(_) ->
 optional_to_string(undefined) ->
     "";
 optional_to_string(Value) when is_list(Value) ->
-    Value.
+    case io_lib:printable_list(Value) of
+        true ->
+            Value;
+        false ->
+            ""
+    end.
 
 %% @doc expand wildcards and names in the given paths
 -spec wildcard_paths([file:filename_all()]) -> [string()].
