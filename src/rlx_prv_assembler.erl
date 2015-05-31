@@ -322,24 +322,19 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     {OsFamily, _OsName} = os:type(),
     StartFile = case rlx_state:get(State, extended_start_script, false) of
                     false ->
+                        case rlx_state:get(State, include_nodetool, false) of
+                            true ->
+                                include_nodetool(BinDir);
+                            false ->
+                                ok
+                        end,
                         bin_file_contents(OsFamily, RelName, RelVsn,
                                           rlx_release:erts(Release),
                                           ErlOpts);
                     true ->
                         case rlx_state:get(State, extended_start_script, false) of
                             true ->
-                                Prefix = code:root_dir(),
-                                DstFile = filename:join([BinDir, "start_clean.boot"]),
-                                %% Explicitly remove before cp, since it is 0444 mode
-                                ec_file:remove(DstFile),
-                                ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
-                                                  DstFile),
-                                NodeToolFile = nodetool_contents(),
-                                InstallUpgradeFile = install_upgrade_escript_contents(),
-                                NodeTool = filename:join([BinDir, "nodetool"]),
-                                InstallUpgrade = filename:join([BinDir, "install_upgrade.escript"]),
-                                ok = file:write_file(NodeTool, NodeToolFile),
-                                ok = file:write_file(InstallUpgrade, InstallUpgradeFile);
+                                include_nodetool(BinDir);
                             false ->
                                 ok
                         end,
@@ -369,6 +364,20 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     copy_or_generate_vmargs_file(State, Release, RelDir),
     copy_or_generate_sys_config_file(State, RelDir),
     include_erts(State, Release, OutputDir, RelDir).
+
+include_nodetool(BinDir) ->
+    Prefix = code:root_dir(),
+    DstFile = filename:join([BinDir, "start_clean.boot"]),
+    %% Explicitly remove before cp, since it is 0444 mode
+    ec_file:remove(DstFile),
+    ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
+                      DstFile),
+    NodeToolFile = nodetool_contents(),
+    InstallUpgradeFile = install_upgrade_escript_contents(),
+    NodeTool = filename:join([BinDir, "nodetool"]),
+    InstallUpgrade = filename:join([BinDir, "install_upgrade.escript"]),
+    ok = file:write_file(NodeTool, NodeToolFile),
+    ok = file:write_file(InstallUpgrade, InstallUpgradeFile).
 
 %% @doc generate a start_erl.data file
 -spec generate_start_erl_data_file(rlx_release:t(), file:name()) ->
