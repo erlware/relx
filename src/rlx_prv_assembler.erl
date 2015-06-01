@@ -320,6 +320,14 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     BareRel = filename:join(BinDir, RelName),
     ErlOpts = rlx_state:get(State, erl_opts, ""),
     {OsFamily, _OsName} = os:type(),
+
+    Prefix = code:root_dir(),
+    DstFile = filename:join([BinDir, "start_clean.boot"]),
+    %% Explicitly remove before cp, since it is 0444 mode
+    ec_file:remove(DstFile),
+    ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
+                      DstFile),
+
     StartFile = case rlx_state:get(State, extended_start_script, false) of
                     false ->
                         case rlx_state:get(State, include_nodetool, false) of
@@ -366,12 +374,6 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     include_erts(State, Release, OutputDir, RelDir).
 
 include_nodetool(BinDir) ->
-    Prefix = code:root_dir(),
-    DstFile = filename:join([BinDir, "start_clean.boot"]),
-    %% Explicitly remove before cp, since it is 0444 mode
-    ec_file:remove(DstFile),
-    ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
-                      DstFile),
     NodeToolFile = nodetool_contents(),
     InstallUpgradeFile = install_upgrade_escript_contents(),
     NodeTool = filename:join([BinDir, "nodetool"]),
@@ -476,11 +478,14 @@ include_erts(State, Release, OutputDir, RelDir) ->
                             ok = ec_file:remove(ErlIni),
                             ok = file:write_file(ErlIni, erl_ini(OutputDir, ErtsVersion))
                     end,
+
+                    ok = ec_file:remove(filename:join([OutputDir, "bin", "start_clean.boot"])),
+                    ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
+                                      filename:join([OutputDir, "bin", "start_clean.boot"])),
+
                     case rlx_state:get(State, extended_start_script, false) of
                         true ->
-                            ok = ec_file:remove(filename:join([OutputDir, "bin", "start_clean.boot"])),
-                            ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
-                                              filename:join([OutputDir, "bin", "start_clean.boot"])),
+
                             NodeToolFile = nodetool_contents(),
                             InstallUpgradeFile = install_upgrade_escript_contents(),
                             NodeTool = filename:join([LocalErts, "bin", "nodetool"]),
