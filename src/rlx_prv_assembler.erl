@@ -257,7 +257,7 @@ remove_symlink_or_directory(TargetDir) ->
     end.
 
 link_directory(AppDir, TargetDir) ->
-    case file:make_symlink(AppDir, TargetDir) of
+    case rlx_util:symlink_or_copy(AppDir, TargetDir) of
         {error, Reason} ->
             ?RLX_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
         ok ->
@@ -433,7 +433,7 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
     ensure_not_exist(RelConfPath),
     case rlx_state:dev_mode(State) of
         true ->
-            ok = file:make_symlink(ConfigPath, RelConfPath);
+            ok = rlx_util:symlink_or_copy(ConfigPath, RelConfPath);
         _ ->
             ok = ec_file:copy(ConfigPath, RelConfPath)
     end.

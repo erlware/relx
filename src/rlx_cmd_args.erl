@@ -318,6 +318,8 @@ convert_overrides([Override | Rest], Acc)
     case re:split(Override, ":") of
         [AppName, AppDir] ->
             convert_overrides(Rest, [{rlx_util:to_atom(AppName), AppDir} | Acc]);
+        [AppName, Drive, AppDir] ->
+            convert_overrides(Rest, [{rlx_util:to_atom(AppName), <<Drive/binary, ":", AppDir/binary>>} | Acc]);
         _ ->
              ?RLX_ERROR({failed_to_parse_override, Override})
     end;

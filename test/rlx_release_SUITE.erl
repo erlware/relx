@@ -281,9 +281,15 @@ make_overridden_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({OverrideAppName, OverrideVsn}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
-    {ok, Real} = file:read_link(filename:join([OutputDir, "foo", "lib",
-                                               OverrideApp ++ "-" ++ OverrideVsn])),
-    ?assertMatch(OverrideAppDir, Real).
+    case os:type() of
+        {win32, _} ->
+            filelib:is_file(filename:join([OutputDir, "foo", "lib",
+                                               OverrideApp ++ "-" ++ OverrideVsn]));
+        _ ->
+            {ok, Real} = file:read_link(filename:join([OutputDir, "foo", "lib",
+                                                       OverrideApp ++ "-" ++ OverrideVsn])),
+            ?assertMatch(OverrideAppDir, Real)
+    end.
 
 make_skip_app_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -493,9 +499,15 @@ make_rerun_overridden_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({OverrideAppName, OverrideVsn}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
-    {ok, Real} = file:read_link(filename:join([OutputDir, "foo", "lib",
-                                               OverrideApp ++ "-" ++ OverrideVsn])),
-    ?assertMatch(OverrideAppDir, Real).
+    case os:type() of
+        {win32, _} ->
+            filelib:is_file(filename:join([OutputDir, "foo", "lib",
+                                               OverrideApp ++ "-" ++ OverrideVsn]));
+        _ ->
+            {ok, Real} = file:read_link(filename:join([OutputDir, "foo", "lib",
+                                                       OverrideApp ++ "-" ++ OverrideVsn])),
+            ?assertMatch(OverrideAppDir, Real)
+    end.
 
 overlay_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -845,16 +857,30 @@ make_dev_mode_release(Config) ->
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                           OutputDir, ConfigFile),
     [{{foo, "0.0.1"}, _Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+    
 
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                              "sys.config"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                              "vm.args"]))).
+    case os:type() of
+        {unix, _} ->
+            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                      "sys.config"]))),
+            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                      "vm.args"])));
+        {win32, _} ->
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+            ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                      "sys.config"]))),
+            ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                      "vm.args"])))
+    end.
 
 make_config_script_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
