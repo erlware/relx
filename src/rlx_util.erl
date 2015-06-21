@@ -37,7 +37,8 @@
          render/2,
          load_file/3,
          template_files/0,
-         escript_foldl/3]).
+         escript_foldl/3,
+         symlink_or_copy/2]).
 
 -define(ONE_LEVEL_INDENT, "     ").
 %%============================================================================
@@ -211,6 +212,88 @@ escript_foldl(Fun, Acc, File) ->
         {error, _} = Error ->
             Error
     end.
+
+symlink_or_copy(Source, Target) ->
+    case file:make_symlink(Source, Target) of
+        ok ->
+            ok;
+        {error, eexist} ->
+            ok;
+        {error, _} ->
+            case os:type() of
+                {win32, _} ->
+                    win32_symlink(Source, Target);
+                _ ->
+                    case filelib:is_dir(Target) of
+                        true -> ok;
+                        false ->
+                            cp_r([Source], Target)
+                    end
+            end
+    end.
+
+
+win32_symlink(Source, Target) ->
+    os:cmd("cmd /c mklink /j " ++ Target ++ " " ++ Source),
+    ok.
+
+-spec cp_r(list(string()), file:filename()) -> 'ok'.
+cp_r([], _Dest) ->
+    ok;
+cp_r(Sources, Dest) ->
+    case os:type() of
+        {unix, _} ->
+            ok;
+        {win32, _} ->
+            lists:foreach(fun(Src) -> ok = cp_r_win32(Src,Dest) end, Sources),
+            ok
+    end.
+
+xcopy_win32(Source,Dest)->
+    %% "xcopy \"~s\" \"~s\" /q /y /e 2> nul", Chanegd to robocopy to
+    %% handle long names. May have issues with older windows.
+    os:cmd("robocopy " ++ Source ++ " " ++ Dest ++ " /e /is"),
+    ok.
+
+cp_r_win32({true, SourceDir}, {true, DestDir}) ->
+    %% from directory to directory
+     ok = case file:make_dir(DestDir) of
+             {error, eexist} -> ok;
+             Other -> Other
+         end,
+    ok = xcopy_win32(SourceDir, DestDir);
+cp_r_win32({false, Source} = S,{true, DestDir}) ->
+    %% from file to directory
+    cp_r_win32(S, {false, filename:join(DestDir, filename:basename(Source))});
+cp_r_win32({false, Source},{false, Dest}) ->
+    %% from file to file
+    {ok,_} = file:copy(Source, Dest),
+    ok;
+cp_r_win32({true, SourceDir}, {false, DestDir}) ->
+    case filelib:is_regular(DestDir) of
+        true ->
+            %% From directory to file? This shouldn't happen
+            {error, lists:flatten(
+                      io_lib:format("Cannot copy dir (~p) to file (~p)\n",
+                                    [SourceDir, DestDir]))};
+        false ->
+            %% Specifying a target directory that doesn't currently exist.
+            %% So let's attempt to create this directory
+            case filelib:ensure_dir(filename:join(DestDir, "dummy")) of
+                ok ->
+                    ok = xcopy_win32(SourceDir, DestDir);
+                {error, Reason} ->
+                    {error, lists:flatten(
+                              io_lib:format("Unable to create dir ~p: ~p\n",
+                                            [DestDir, Reason]))}
+            end
+    end;
+cp_r_win32(Source,Dest) ->
+    Dst = {filelib:is_dir(Dest), Dest},
+    lists:foreach(fun(Src) ->
+                          ok = cp_r_win32({filelib:is_dir(Src), Src}, Dst)
+                  end, filelib:wildcard(Source)),
+    ok.
 
 %%%===================================================================
 %%% Test Functions
