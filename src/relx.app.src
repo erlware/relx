@@ -1,6 +1,6 @@
 {application,relx,
              [{description,"Release assembler for Erlang/OTP Releases"},
-              {vsn,"2.1.0"},
+              {vsn,"2.1.1"},
               {modules,[]},
               {registered,[]},
               {applications,[kernel,stdlib,getopt,erlware_commons,bbmustache,
