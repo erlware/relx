@@ -11,30 +11,30 @@ REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
 
 find_erts_dir() {
-    l_erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
-    if [ -d "$l_erts_dir" ]; then
-        ERTS_DIR="$l_erts_dir";
+    __erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
+    if [ -d "$__erts_dir" ]; then
+        ERTS_DIR="$__erts_dir";
         ROOTDIR="$RELEASE_ROOT_DIR"
     else
-        l_erl="$(which erl)"
+        __erl="$(which erl)"
         code="io:format(\"~s\", [code:root_dir()]), halt()."
-        l_erl_root="$("$l_erl" -noshell -eval "$code")"
-        ERTS_DIR="$l_erl_root/erts-$ERTS_VSN"
-        ROOTDIR="$l_erl_root"
+        __erl_root="$("$__erl" -noshell -eval "$code")"
+        ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
+        ROOTDIR="$__erl_root"
     fi
 }
 
 find_sys_config() {
-    l_possible_sys="$REL_DIR/sys.config"
-    if [ -f "$l_possible_sys" ]; then
-        SYS_CONFIG="$l_possible_sys"
+    __possible_sys="$REL_DIR/sys.config"
+    if [ -f "$__possible_sys" ]; then
+        SYS_CONFIG="$__possible_sys"
     fi
 }
 
 find_vm_args() {
-    l_possible_vm_args="$REL_DIR/vm.args"
-    if [ -f "$l_possible_vm_args" ]; then
-        VM_ARGS="$l_possible_vm_args"
+    __possible_vm_args="$REL_DIR/vm.args"
+    if [ -f "$__possible_vm_args" ]; then
+        VM_ARGS="$__possible_vm_args"
     fi
 }
 

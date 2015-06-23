@@ -13,16 +13,16 @@ ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 
 find_erts_dir() {
-    l_erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
-    if [ -d "$l_erts_dir" ]; then
-        ERTS_DIR="$l_erts_dir";
+    __erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
+    if [ -d "$__erts_dir" ]; then
+        ERTS_DIR="$__erts_dir";
         ROOTDIR="$RELEASE_ROOT_DIR"
     else
-        l_erl="$(which erl)"
+        __erl="$(which erl)"
         code="io:format(\"~s\", [code:root_dir()]), halt()."
-        l_erl_root="$("$l_erl" -noshell -eval "$code")"
-        ERTS_DIR="$l_erl_root/erts-$ERTS_VSN"
-        ROOTDIR="$l_erl_root"
+        __erl_root="$("$__erl" -noshell -eval "$code")"
+        ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
+        ROOTDIR="$__erl_root"
     fi
 }
 
