@@ -13,16 +13,16 @@ ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 
 find_erts_dir() {
-    local erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
-    if [ -d "$erts_dir" ]; then
-        ERTS_DIR="$erts_dir";
+    __erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
+    if [ -d "$__erts_dir" ]; then
+        ERTS_DIR="$__erts_dir";
         ROOTDIR="$RELEASE_ROOT_DIR"
     else
-        local erl="$(which erl)"
+        __erl="$(which erl)"
         code="io:format(\"~s\", [code:root_dir()]), halt()."
-        local erl_root="$("$erl" -noshell -eval "$code")"
-        ERTS_DIR="$erl_root/erts-$ERTS_VSN"
-        ROOTDIR="$erl_root"
+        __erl_root="$("$__erl" -noshell -eval "$code")"
+        ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
+        ROOTDIR="$__erl_root"
     fi
 }
 
@@ -216,7 +216,7 @@ case "$1" in
         if ! relx_nodetool "stop"; then
             exit 1
         fi
-        while $(kill -0 "$PID" 2>/dev/null);
+        while $(kill -s 0 "$PID" 2>/dev/null);
         do
             sleep 1
         done
