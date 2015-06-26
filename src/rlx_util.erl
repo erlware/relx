@@ -222,7 +222,9 @@ symlink_or_copy(Source, Target) ->
         {error, _} ->
             case os:type() of
                 {win32, _} ->
-                    win32_symlink(Source, Target);
+                    S = unicode:characters_to_list(Source),
+                    T = unicode:characters_to_list(Target),
+                    win32_symlink(filename:nativename(S), filename:nativename(T));
                 _ ->
                     case filelib:is_dir(Target) of
                         true -> ok;
