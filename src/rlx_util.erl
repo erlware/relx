@@ -195,7 +195,7 @@ escript_files() ->
     end.
 
 escript_foldl(Fun, Acc, File) ->
-    case escript:extract(File, [compile_source]) of
+    case escript:extract(File, []) of
         {ok, [_Shebang, _Comment, _EmuArgs, Body]} ->
             case Body of
                 {source, BeamCode} ->
