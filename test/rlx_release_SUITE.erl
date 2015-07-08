@@ -43,7 +43,9 @@
          make_relup_release2/1,
          make_one_app_top_level_release/1,
          make_dev_mode_release/1,
-         make_config_script_release/1]).
+         make_config_script_release/1,
+         make_release_twice/1,
+         make_release_twice_dev_mode/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -75,7 +77,7 @@ all() ->
      overlay_release, make_goalless_release, make_depfree_release,
      make_invalid_config_release, make_relup_release, make_relup_release2,
      make_one_app_top_level_release, make_dev_mode_release,
-     make_config_script_release].
+     make_config_script_release, make_release_twice, make_release_twice_dev_mode].
 
 add_providers(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -857,7 +859,7 @@ make_dev_mode_release(Config) ->
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                           OutputDir, ConfigFile),
     [{{foo, "0.0.1"}, _Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
-    
+
 
     case os:type() of
         {unix, _} ->
@@ -927,6 +929,109 @@ make_config_script_release(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+make_release_twice(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    [(fun({Name, Vsn}) ->
+              rlx_test_utils:create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+    ||
+        App <-
+            [{rlx_test_utils:create_random_name("lib_app1_"), rlx_test_utils:create_random_vsn()}
+            || _ <- lists:seq(1, 100)]],
+
+    rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
+                          OutputDir, ConfigFile),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
+
+    ec_file:remove(filename:join(LibDir1, "non_goal_1-0.0.1"), [recursive]),
+    ec_file:remove(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]), [recursive]),
+    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.3", [stdlib,kernel], [lib_dep_1]),
+
+    {ok, State1} = relx:do(undefined, undefined, [], [LibDir1], 3,
+                              OutputDir, ConfigFile),
+    [{{foo, "0.0.1"}, Release1}] = ec_dictionary:to_list(rlx_state:realized_releases(State1)),
+    AppSpecs1 = rlx_release:applications(Release1),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs1)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs1)),
+    ?assert(lists:member({non_goal_1, "0.0.3"}, AppSpecs1)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs1)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs1)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs1)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs1)).
+
+make_release_twice_dev_mode(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    [(fun({Name, Vsn}) ->
+              rlx_test_utils:create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
+      end)(App)
+    ||
+        App <-
+            [{rlx_test_utils:create_random_name("lib_app1_"), rlx_test_utils:create_random_vsn()}
+            || _ <- lists:seq(1, 100)]],
+
+    rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]}, {dev_mode, true}]),
+    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
+                          OutputDir, ConfigFile),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
+
+    ec_file:remove(filename:join(LibDir1, "non_goal_1-0.0.1"), [recursive]),
+    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.3", [stdlib,kernel], [lib_dep_1]),
+
+    {ok, State1} = relx:do(undefined, undefined, [], [LibDir1], 3,
+                              OutputDir, ConfigFile),
+    [{{foo, "0.0.1"}, Release1}] = ec_dictionary:to_list(rlx_state:realized_releases(State1)),
+    AppSpecs1 = rlx_release:applications(Release1),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs1)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs1)),
+    ?assert(lists:member({non_goal_1, "0.0.3"}, AppSpecs1)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs1)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs1)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs1)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs1)).
 
 %%%===================================================================
 %%% Helper Functions
