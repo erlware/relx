@@ -299,5 +299,8 @@ parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
 parse_vsn({semver, Prefix}) ->
     {ok, V} = ec_git_vsn:vsn({Prefix}),
     V;
+parse_vsn({cmd, Command}) ->
+    V = os:cmd(Command),
+    V;
 parse_vsn(Vsn) ->
     Vsn.
