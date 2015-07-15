@@ -31,7 +31,7 @@
 -include("relx.hrl").
 
 -define(PROVIDER, release).
--define(DEPS, [overlay]).
+-define(DEPS, [resolve_release]).
 
 %%============================================================================
 %% API
@@ -40,7 +40,8 @@
 init(State) ->
     State1 = rlx_state:add_provider(State, providers:create([{name, ?PROVIDER},
                                                              {module, ?MODULE},
-                                                             {deps, ?DEPS}])),
+                                                             {deps, ?DEPS},
+                                                             {hooks, {[], [overlay]}}])),
     {ok, State1}.
 
 %% @doc recursively dig down into the library directories specified in the state
