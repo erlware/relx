@@ -38,6 +38,7 @@
          application_details/2,
          realized/1,
          metadata/1,
+         start_clean_metadata/1,
          canonical_name/1,
          format/1,
          format/2,
@@ -172,11 +173,24 @@ realized(#release_t{realized=Realized}) ->
 
 -spec metadata(t()) -> term().
 metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=Apps,
-                    realized=Realized}) ->
+                                realized=Realized}) ->
     case Realized of
         true ->
             {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
                   Apps}};
+        false ->
+            ?RLX_ERROR({not_realized, Name, Vsn})
+    end.
+
+-spec start_clean_metadata(t()) -> term().
+start_clean_metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=Apps,
+                    realized=Realized}) ->
+    case Realized of
+        true ->
+            Kernel = lists:keyfind(kernel, 1, Apps),
+            StdLib = lists:keyfind(stdlib, 1, Apps),
+            {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
+                  [Kernel, StdLib]}};
         false ->
             ?RLX_ERROR({not_realized, Name, Vsn})
     end.
