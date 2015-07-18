@@ -350,7 +350,7 @@ case "$1" in
         # Build it here because this command will be used for logging.
         set -- "$BINDIR/erlexec" -boot "$BOOTFILE" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
-            -env ERL_LIBS "$REL_DIR/lib" -config "$RELX_CONFIG_PATH" \
+            -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH"
 
         # Dump environment info for logging purposes

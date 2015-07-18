@@ -107,6 +107,14 @@ format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),
                    file:format_error(Reason)]);
+format_error(start_clean_script_generation_error) ->
+    "Unknown internal release error generating start_clean.boot";
+format_error({start_clean_script_generation_warning, Module, Warnings}) ->
+    ["Warnings generating start_clean.boot \s",
+     rlx_util:indent(2), Module:format_warning(Warnings)];
+format_error({start_clean_script_generation_error, Module, Errors}) ->
+    ["Errors generating start_clean.boot \n",
+     rlx_util:indent(2), Module:format_error(Errors)];
 format_error({strip_release, Reason}) ->
     io_lib:format("Stripping debug info from release beam files failed becuase ~s",
                   [beam_lib:format_error(Reason)]).
@@ -300,13 +308,20 @@ create_release_info(State0, Release0, OutputDir) ->
     RelName = atom_to_list(rlx_release:name(Release0)),
     ReleaseDir = rlx_util:release_output_dir(State0, Release0),
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
+    StartCleanFile = filename:join([ReleaseDir, "start_clean.rel"]),
     ok = ec_file:mkdir_p(ReleaseDir),
     Release1 = rlx_release:relfile(Release0, ReleaseFile),
     State1 = rlx_state:update_realized_release(State0, Release1),
     case rlx_release:metadata(Release1) of
         {ok, Meta} ->
-                ok = ec_file:write_term(ReleaseFile, Meta),
-                write_bin_file(State1, Release1, OutputDir, ReleaseDir);
+            case rlx_release:start_clean_metadata(Release1) of
+                {ok, StartCleanMeta} ->
+                    ok = ec_file:write_term(ReleaseFile, Meta),
+                    ok = ec_file:write_term(StartCleanFile, StartCleanMeta),
+                    write_bin_file(State1, Release1, OutputDir, ReleaseDir);
+                E ->
+                    E
+            end;
         E ->
             E
     end.
@@ -320,13 +335,6 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     BareRel = filename:join(BinDir, RelName),
     ErlOpts = rlx_state:get(State, erl_opts, ""),
     {OsFamily, _OsName} = os:type(),
-
-    Prefix = code:root_dir(),
-    DstFile = filename:join([BinDir, "start_clean.boot"]),
-    %% Explicitly remove before cp, since it is 0444 mode
-    ec_file:remove(DstFile),
-    ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
-                      DstFile),
 
     StartFile = case rlx_state:get(State, extended_start_script, false) of
                     false ->
@@ -479,10 +487,6 @@ include_erts(State, Release, OutputDir, RelDir) ->
                             ok = file:write_file(ErlIni, erl_ini(OutputDir, ErtsVersion))
                     end,
 
-                    ok = ec_file:remove(filename:join([OutputDir, "bin", "start_clean.boot"])),
-                    ok = ec_file:copy(filename:join([Prefix, "bin", "start_clean.boot"]),
-                                      filename:join([OutputDir, "bin", "start_clean.boot"])),
-
                     case rlx_state:get(State, extended_start_script, false) of
                         true ->
 
@@ -518,18 +522,43 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
             ec_cmd_log:info(rlx_state:log(State),
                              "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
-            {ok, State};
+            create_start_clean(RelDir, OutputDir, Options, State);
         error ->
             ?RLX_ERROR({release_script_generation_error, ReleaseFile});
         {ok, _, []} ->
             ec_cmd_log:info(rlx_state:log(State),
                           "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
-            {ok, State};
+            create_start_clean(RelDir, OutputDir, Options, State);
         {ok,Module,Warnings} ->
             ?RLX_ERROR({release_script_generation_warn, Module, Warnings});
         {error,Module,Error} ->
             ?RLX_ERROR({release_script_generation_error, Module, Error})
+    end.
+
+create_start_clean(RelDir, OutputDir, Options, State) ->
+    case rlx_util:make_script(Options,
+                         fun(CorrectedOptions) ->
+                                 systools:make_script("start_clean", CorrectedOptions)
+                         end) of
+        ok ->
+            ok = ec_file:copy(filename:join([RelDir, "start_clean.boot"]),
+                              filename:join([OutputDir, "bin", "start_clean.boot"])),
+            ec_file:remove(filename:join([RelDir, "start_clean.rel"])),
+            ec_file:remove(filename:join([RelDir, "start_clean.script"])),
+            {ok, State};
+        error ->
+            ?RLX_ERROR(start_clean_script_generation_error);
+        {ok, _, []} ->
+            ok = ec_file:copy(filename:join([RelDir, "start_clean.boot"]),
+                              filename:join([OutputDir, "bin", "start_clean.boot"])),
+            ec_file:remove(filename:join([RelDir, "start_clean.rel"])),
+            ec_file:remove(filename:join([RelDir, "start_clean.script"])),
+            {ok, State};
+        {ok,Module,Warnings} ->
+            ?RLX_ERROR({start_clean_script_generation_warn, Module, Warnings});
+        {error,Module,Error} ->
+            ?RLX_ERROR({start_clean_script_generation_error, Module, Error})
     end.
 
 create_RELEASES(OutputDir, ReleaseFile) ->
