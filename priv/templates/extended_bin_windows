@@ -110,7 +110,7 @@
 :find_sys_config
 @set possible_sys=%rel_dir%\sys.config
 @if exist %possible_sys% (
-  set sys_config=-config %possible_sys%
+  set sys_config=-config "%possible_sys%"
 )
 @goto :eof
 
@@ -186,7 +186,7 @@
 
 :: Start a console
 :console
-@start "%rel_name% console" %werl% -boot "%boot_script%" "%sys_config%" ^
+@start "%rel_name% console" %werl% -boot "%boot_script%" %sys_config%  ^
        -args_file "%vm_args%"
 @goto :eof
 
