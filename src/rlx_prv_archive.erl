@@ -67,6 +67,7 @@ make_tar(State, Release, OutputDir) ->
     Vsn = rlx_release:vsn(Release),
     ErtsVersion = rlx_release:erts(Release),
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
+            {dirs, [include]},
             {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
                 true ->
