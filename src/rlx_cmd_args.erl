@@ -33,19 +33,14 @@
                         {ok, {rlx_state:t(), [string()]}} |
                         relx:error().
 args2state(Opts, Targets) ->
-    case convert_targets(Targets) of
-        {ok, AtomizedTargets} ->
-            case run_creates(Opts) of
-                Error = {error, _} ->
-                    Error;
-                {ok, CommandLineConfig} ->
-                    RelName = rlx_util:to_atom(proplists:get_value(relname, Opts, undefined)),
-                    RelVsn = proplists:get_value(relvsn, Opts, undefined),
-                    handle_config(Opts, AtomizedTargets,
-                                 [{default_release, {RelName, RelVsn}} | CommandLineConfig])
-            end;
-        Error ->
-            Error
+    case run_creates(Opts) of
+        Error = {error, _} ->
+            Error;
+        {ok, CommandLineConfig} ->
+            RelName = rlx_util:to_atom(proplists:get_value(relname, Opts, undefined)),
+            RelVsn = proplists:get_value(relvsn, Opts, undefined),
+            handle_config(Opts, convert_targets(Targets),
+                         [{default_release, {RelName, RelVsn}} | CommandLineConfig])
     end.
 
 -spec format_error(Reason::term()) -> iolist().
@@ -80,9 +75,7 @@ format_error({not_directory, Dir}) ->
     io_lib:format("Library directory does not exist: ~s", [Dir]);
 format_error({invalid_log_level, LogLevel}) ->
     io_lib:format("Invalid log level specified -V ~p, log level must be in the"
-                 " range 0..3", [LogLevel]);
-format_error({invalid_target, Target}) ->
-    io_lib:format("Invalid action specified: ~s", [Target]).
+                 " range 0..3", [LogLevel]).
 
 %%%===================================================================
 %%% Internal Functions
@@ -102,24 +95,11 @@ handle_config(Opts, Targets, CommandLineConfig) ->
             end
     end.
 
--spec convert_targets([string()]) -> {ok, [rlx_state:action()]} | relx:error().
+-spec convert_targets([string()]) -> [rlx_state:action()].
+convert_targets([]) ->
+    [release];
 convert_targets(Targets) ->
-    convert_targets(Targets, []).
-
--spec convert_targets([string()], [rlx_state:action()]) ->
-                             {ok, [rlx_state:action()]} | relx:error().
-convert_targets([], []) ->
-    {ok, [release]};
-convert_targets([], Acc) ->
-    {ok, lists:reverse(Acc)};
-convert_targets(["release" | T], Acc) ->
-    convert_targets(T, [release | Acc]);
-convert_targets(["relup" | T], Acc) ->
-    convert_targets(T, [relup | Acc]);
-convert_targets(["tar" | T], Acc) ->
-    convert_targets(T, [tar | Acc]);
-convert_targets([Target | _T], _Acc) ->
-    ?RLX_ERROR({invalid_target, Target}).
+    lists:map(fun list_to_atom/1, Targets).
 
 -spec validate_config(file:filename() | list() | undefined) ->
                              {ok, file:filename() | list() | undefined} | relx:error().

@@ -125,7 +125,7 @@
                                              rlx_release:t()).
 -type cmd_args() :: proplists:proplist().
 -type caller() :: command_line | api.
--type action() :: release | relup | tar.
+-type action() :: atom().
 
 -opaque t() :: #state_t{}.
 
