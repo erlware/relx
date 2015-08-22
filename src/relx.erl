@@ -224,6 +224,8 @@ format_error({opt_parse, {invalid_option, Opt}}) ->
     io_lib:format("invalid option ~s~n", [Opt]);
 format_error({opt_parse, Arg}) ->
     io_lib:format("~p~n", [Arg]);
+format_error({invalid_action, Action}) ->
+    io_lib:format("Invalid action specified: ~p~n", [Action]);
 format_error({error, {relx, Reason}}) ->
     format_error(Reason);
 format_error({error, {Module, Reason}}) ->
@@ -248,26 +250,46 @@ run_relx_process(State) ->
 run_providers(State0) ->
     case rlx_config:do(State0) of
         {ok, State1} ->
-            Actions = rlx_state:actions(State0),
-
+            Actions = rlx_state:actions(State1),
             AllProviders = rlx_state:providers(State1),
-            TargetProviders = lists:flatmap(fun(Target) ->
-                                                    providers:get_target_providers(Target, AllProviders)
-                                            end, Actions),
-            Providers1 = lists:map(fun(P) ->
-                                           providers:get_provider(P, AllProviders)
-                                   end, TargetProviders),
-
-            %% Unique Sort Providers
-            Providers2 = providers:process_deps(Providers1, AllProviders),
-
-            RootDir = rlx_state:root_dir(State1),
-            ok = file:set_cwd(RootDir),
-            Result = lists:foldl(fun run_provider/2, {ok, State1}, Providers2),
-            handle_output(State1, rlx_state:caller(State1), Result);
+            case check_actions_correctness(Actions, AllProviders) of
+                ok ->
+                    run_providers_for_actions(Actions, State1);
+                Err ->
+                    Err
+            end;
         Err ->
             Err
     end.
+
+check_actions_correctness(Actions, Providers) ->
+    lists:foldl(fun(Action, ok) ->
+                        case providers:get_provider(Action, Providers) of
+                            not_found ->
+                                ?RLX_ERROR({invalid_action, Action});
+                            _ ->
+                                ok
+                        end;
+                   (_Action, Error) ->
+                        Error
+                end, ok, Actions).
+
+run_providers_for_actions(Actions, State) ->
+    AllProviders = rlx_state:providers(State),
+    TargetProviders = lists:flatmap(fun(Target) ->
+                                            providers:get_target_providers(Target, AllProviders)
+                                    end, Actions),
+    Providers1 = lists:map(fun(P) ->
+                                   providers:get_provider(P, AllProviders)
+                           end, TargetProviders),
+
+    %% Unique Sort Providers
+    Providers2 = providers:process_deps(Providers1, AllProviders),
+
+    RootDir = rlx_state:root_dir(State),
+    ok = file:set_cwd(RootDir),
+    Result = lists:foldl(fun run_provider/2, {ok, State}, Providers2),
+    handle_output(State, rlx_state:caller(State), Result).
 
 handle_output(State, command_line, E={error, _}) ->
     report_error(State, E),
