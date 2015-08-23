@@ -2,6 +2,7 @@
 :: Requires rebar3
 
 :: Get dependencies, compile and escriptize relx
+@cmd /c @rebar3 update
 @cmd /c @rebar3 escriptize
 
 :: Create a shortcut file for running the relx command
