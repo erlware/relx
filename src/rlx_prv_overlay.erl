@@ -472,7 +472,7 @@ write_template(OverlayVars, FromFile, ToFile) ->
                     Error
             end;
         {error, Error} ->
-            ?RLX_ERROR({read_template, Error})
+            ?RLX_ERROR({read_template, FromFile, Error})
     end.
 
 render_string(OverlayVars, Data) ->
