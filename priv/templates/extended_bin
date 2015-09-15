@@ -2,8 +2,12 @@
 
 set -e
 
-SCRIPT_DIR="$(dirname "$0")"
-RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SCRIPT=$(readlink $0)
+if [ -z $SCRIPT ]; then
+    SCRIPT=$0
+fi;
+SCRIPT_DIR="$(cd `dirname "$SCRIPT"` && pwd -P)"
+RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 REL_NAME="{{ rel_name }}"
 REL_VSN="{{ rel_vsn }}"
 ERTS_VSN="{{ erts_vsn }}"
@@ -89,9 +93,7 @@ relx_start_command() {
 if [ -z "$VMARGS_PATH" ]; then
     if [ -f "$RELEASE_ROOT_DIR/vm.args" ]; then
         VMARGS_PATH="$RELEASE_ROOT_DIR/vm.args"
-        USE_DIR="$RELEASE_ROOT_DIR"
     else
-        USE_DIR="$REL_DIR"
         VMARGS_PATH="$REL_DIR/vm.args"
     fi
 fi
@@ -104,9 +106,10 @@ fi
 # Make sure log directory exists
 mkdir -p "$RUNNER_LOG_DIR"
 
+# Use $CWD/sys.config if exists, otherwise releases/VSN/sys.config
 if [ -z "$RELX_CONFIG_PATH" ]; then
-    if [ -f "$USE_DIR/sys.config" ]; then
-        RELX_CONFIG_PATH="$USE_DIR/sys.config"
+    if [ -f "$RELEASE_ROOT_DIR/sys.config" ]; then
+        RELX_CONFIG_PATH="$RELEASE_ROOT_DIR/sys.config"
     else
         RELX_CONFIG_PATH="$REL_DIR/sys.config"
     fi
