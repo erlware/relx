@@ -221,8 +221,3 @@ get_realized_release(State, RelName, RelVsn) ->
 %%%===================================================================
 %%% Test Functions
 %%%===================================================================
-
--ifndef(NOTEST).
--include_lib("eunit/include/eunit.hrl").
-
--endif.
