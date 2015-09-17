@@ -300,8 +300,3 @@ get_deps(AppDir, AppName, AppVsn, AppDetail) ->
 %%%===================================================================
 %%% Test Functions
 %%%===================================================================
-
--ifndef(NOTEST).
--include_lib("eunit/include/eunit.hrl").
-
--endif.
