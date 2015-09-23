@@ -2,7 +2,7 @@
 
 set -e
 
-SCRIPT=$(readlink $0)
+SCRIPT=$(readlink -f $0)
 if [ -z $SCRIPT ]; then
     SCRIPT=$0
 fi;
