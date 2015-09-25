@@ -54,7 +54,7 @@ main(Args) ->
             end;
         Other ->
             io:format("Other: ~p\n", [Other]),
-            io:format("Usage: nodetool {ping|stop|restart|reboot}\n")
+            io:format("Usage: nodetool {ping|stop|restart|reboot|rpc|rpcterms} [RPC]\n")
     end,
     net_kernel:stop().
 
