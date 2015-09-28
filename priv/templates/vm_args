@@ -1,5 +1,5 @@
 ## Name of the node
--name {{ rel_name }}@127.0.0.1
+-sname {{ rel_name }}
 
 ## Cookie for distributed erlang
 -setcookie {{ rel_name }}
