@@ -121,7 +121,7 @@ if [ $RELX_REPLACE_OS_VARS ]; then
 fi
 
 # Extract the target node name from node.args
-NAME_ARG=$(egrep '^-s?name' "$VMARGS_PATH")
+NAME_ARG=$(egrep '^-s?name' "$VMARGS_PATH" || true)
 if [ -z "$NAME_ARG" ]; then
     echo "vm.args needs to have either -name or -sname parameter."
     exit 1
@@ -134,7 +134,7 @@ NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 # Extract the target cookie
-COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH")"
+COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
 if [ -z "$COOKIE_ARG" ]; then
     echo "vm.args needs to have a -setcookie parameter."
     exit 1
