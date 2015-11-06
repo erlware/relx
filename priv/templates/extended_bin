@@ -297,7 +297,7 @@ case "$1" in
         fi
 
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
-             "install" "$REL_NAME" "$NAME" "$COOKIE" "$2"
+             "install" "$REL_NAME" "$NAME_TYPE" "$NAME" "$COOKIE" "$2"
         ;;
 
     unpack)
@@ -315,7 +315,7 @@ case "$1" in
         fi
 
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
-             "unpack" "$REL_NAME" "$NAME" "$COOKIE" "$2"
+             "unpack" "$REL_NAME" "$NAME_TYPE" "$NAME" "$COOKIE" "$2"
         ;;
 
     console|console_clean|console_boot)
