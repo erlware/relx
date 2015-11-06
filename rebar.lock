@@ -1,4 +1,4 @@
-[{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.0.3">>},0},
+[{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.0.4">>},0},
  {<<"erlware_commons">>,{pkg,<<"erlware_commons">>,<<"0.16.0">>},0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"0.8.2">>},0},
  {<<"providers">>,{pkg,<<"providers">>,<<"1.4.1">>},0}].
