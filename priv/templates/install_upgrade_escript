@@ -7,8 +7,8 @@
 -define(INFO(Fmt,Args), io:format(Fmt,Args)).
 
 %% Unpack or upgrade to a new tar.gz release
-main(["unpack", RelName, NodeName, Cookie, VersionArg]) ->
-    TargetNode = start_distribution(NodeName, Cookie),
+main(["unpack", RelName, NameTypeArg, NodeName, Cookie, VersionArg]) ->
+    TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
     WhichReleases = which_releases(TargetNode),
     Version = parse_version(VersionArg),
     case proplists:get_value(Version, WhichReleases) of
@@ -35,8 +35,8 @@ main(["unpack", RelName, NodeName, Cookie, VersionArg]) ->
         permanent ->
             ?INFO("Release ~s is already installed, and set permanent.~n",[Version])
     end;
-main(["install", RelName, NodeName, Cookie, VersionArg]) ->
-    TargetNode = start_distribution(NodeName, Cookie),
+main(["install", RelName, NameTypeArg, NodeName, Cookie, VersionArg]) ->
+    TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
     WhichReleases = which_releases(TargetNode),
     Version = parse_version(VersionArg),
     case proplists:get_value(Version, WhichReleases) of
@@ -112,9 +112,9 @@ print_existing_versions(TargetNode) ->
             ||  {V,S} <- which_releases(TargetNode) ]),
     ?INFO("Installed versions:~n~s", [VerList]).
 
-start_distribution(NodeName, Cookie) ->
+start_distribution(NodeName, NameTypeArg, Cookie) ->
     MyNode = make_script_node(NodeName),
-    {ok, _Pid} = net_kernel:start([MyNode, longnames]),
+    {ok, _Pid} = net_kernel:start([MyNode, get_name_type(NameTypeArg)]),
     erlang:set_cookie(node(), list_to_atom(Cookie)),
     TargetNode = list_to_atom(NodeName),
     case {net_kernel:connect_node(TargetNode),
@@ -132,3 +132,12 @@ start_distribution(NodeName, Cookie) ->
 make_script_node(Node) ->
     [Name, Host] = string:tokens(Node, "@"),
     list_to_atom(lists:concat([Name, "_upgrader_", os:getpid(), "@", Host])).
+
+%% get name type from arg
+get_name_type(NameTypeArg) ->
+	case NameTypeArg of
+		"-sname" ->
+			shortnames;
+		_ ->
+			longnames
+	end.
