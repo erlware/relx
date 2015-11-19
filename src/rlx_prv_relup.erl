@@ -133,16 +133,16 @@ make_upfrom_script(State, Release, UpFrom) ->
                              systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], CorrectOptions)
                      end) of
         ok ->
-            ec_cmd_log:error(rlx_state:log(State),
+            ec_cmd_log:info(rlx_state:log(State),
                           "relup from ~s to ~s successfully created!",
                           [UpFromRel, CurrentRel]),
             {ok, State};
         error ->
             ?RLX_ERROR({relup_script_generation_error, CurrentRel, UpFromRel});
         {ok, RelUp, _, []} ->
-            ec_cmd_log:error(rlx_state:log(State),
-                          "relup successfully created!"),
             write_relup_file(State, Release, RelUp),
+            ec_cmd_log:info(rlx_state:log(State),
+                            "relup successfully created!"),
             {ok, State};
         {ok,_, Module,Warnings} ->
             ?RLX_ERROR({relup_script_generation_warn, Module, Warnings});
