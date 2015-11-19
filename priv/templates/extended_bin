@@ -59,7 +59,7 @@ relx_rem_sh() {
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
          -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
-         -setcookie "$COOKIE" -kernel net_ticktime $TICKTIME
+         -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
 }
 
 # Generate a random id
