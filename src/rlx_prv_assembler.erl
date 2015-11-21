@@ -89,6 +89,9 @@ format_error({ec_file_error, AppDir, TargetDir, E}) ->
 format_error({config_does_not_exist, Path}) ->
     io_lib:format("The config file specified for this release (~s) does not exist!",
                   [Path]);
+format_error({sys_config_parse_error, ConfigPath, Reason}) ->
+    io_lib:format("The config file (~s) specified for this release could not be opened or parsed: ~s",
+                  [ConfigPath, file:format_error(Reason)]);
 format_error({specified_erts_does_not_exist, ErtsVersion}) ->
     io_lib:format("Specified version of erts (~s) does not exist",
                   [ErtsVersion]);
@@ -379,8 +382,12 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     ReleasesDir = filename:join(OutputDir, "releases"),
     generate_start_erl_data_file(Release, ReleasesDir),
     copy_or_generate_vmargs_file(State, Release, RelDir),
-    copy_or_generate_sys_config_file(State, RelDir),
-    include_erts(State, Release, OutputDir, RelDir).
+    case copy_or_generate_sys_config_file(State, RelDir) of
+        ok ->
+            include_erts(State, Release, OutputDir, RelDir);
+        E ->
+            E
+    end.
 
 include_nodetool(BinDir) ->
     NodeToolFile = nodetool_contents(),
@@ -431,7 +438,13 @@ copy_or_generate_sys_config_file(State, RelDir) ->
                 false ->
                     ?RLX_ERROR({config_does_not_exist, ConfigPath});
                 true ->
-                    copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath)
+                    %% validate sys.config is valid Erlang terms
+                    case file:consult(ConfigPath) of
+                        {ok, _} ->
+                            copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath);
+                        {error, Reason} ->
+                            ?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason})
+                    end
             end
     end.
 
