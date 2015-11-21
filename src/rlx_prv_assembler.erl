@@ -279,8 +279,7 @@ copy_directory(AppDir, TargetDir, IncludeSrc) ->
                   end, ["ebin",
                         "include",
                         "priv",
-                        "README",
-                        "LICENSE" |
+                        "lib" |
                         case IncludeSrc of
                             true ->
                                 ["src",
