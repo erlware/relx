@@ -27,6 +27,8 @@
 -export([do/1,
          format_error/1]).
 
+-export([load_terms/2]).
+
 -include("relx.hrl").
 
 %%%===================================================================
@@ -196,6 +198,39 @@ load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications}, {ok, Sta
         {ok, Release1} ->
             {ok, rlx_state:add_configured_release(State0, Release1)}
         end;
+load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications, Config}, {ok, State0}) ->
+    NewVsn = parse_vsn(Vsn),
+    Release0 = rlx_release:new(RelName, NewVsn),
+    ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn),
+    Applications1 = rlx_release:goals(ExtendRelease),
+    case rlx_release:goals(Release0,
+                          lists:umerge(lists:usort(Applications),
+                                      lists:usort(Applications1))) of
+        E={error, _} ->
+            E;
+        {ok, Release1} ->
+            Release2 = rlx_release:config(Release1, Config),
+            {ok, rlx_state:add_configured_release(State0, Release2)}
+        end;
+load_terms({release, {RelName, Vsn}, {erts, ErtsVsn}, Applications}, {ok, State}) ->
+    NewVsn = parse_vsn(Vsn),
+    Release0 = rlx_release:erts(rlx_release:new(RelName, NewVsn), ErtsVsn),
+    case rlx_release:goals(Release0, Applications) of
+        E={error, _} ->
+            E;
+        {ok, Release1} ->
+            {ok, rlx_state:add_configured_release(State, Release1)}
+    end;
+load_terms({release, {RelName, Vsn}, {erts, ErtsVsn}, Applications, Config}, {ok, State}) ->
+    NewVsn = parse_vsn(Vsn),
+    Release0 = rlx_release:erts(rlx_release:new(RelName, NewVsn), ErtsVsn),
+    case rlx_release:goals(Release0, Applications) of
+        E={error, _} ->
+            E;
+        {ok, Release1} ->
+            Release2 = rlx_release:config(Release1, Config),
+            {ok, rlx_state:add_configured_release(State, Release2)}
+    end;
 load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
     NewVsn = parse_vsn(Vsn),
     Release0 = rlx_release:new(RelName, NewVsn),
@@ -205,30 +240,20 @@ load_terms({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
         {ok, Release1} ->
             {ok, rlx_state:add_configured_release(State0, Release1)}
         end;
-load_terms({release, {RelName, Vsn}, {erts, ErtsVsn},
-            Applications}, {ok, State}) ->
+load_terms({release, {RelName, Vsn}, Applications, Config}, {ok, State0}) ->
     NewVsn = parse_vsn(Vsn),
-    Release0 = rlx_release:erts(rlx_release:new(RelName, NewVsn), ErtsVsn),
+    Release0 = rlx_release:new(RelName, NewVsn),
     case rlx_release:goals(Release0, Applications) of
         E={error, _} ->
             E;
         {ok, Release1} ->
-            {ok, rlx_state:add_configured_release(State, Release1)}
-    end;
+            Release2 = rlx_release:config(Release1, Config),
+            {ok, rlx_state:add_configured_release(State0, Release2)}
+        end;
 load_terms({vm_args, VmArgs}, {ok, State}) ->
-    case rlx_state:vm_args(State) of
-        undefined ->
-            {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
-        _ ->
-            {ok, State}
-    end;
+    {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
 load_terms({sys_config, SysConfig}, {ok, State}) ->
-    case rlx_state:sys_config(State) of
-        undefined ->
-            {ok, rlx_state:sys_config(State, filename:absname(SysConfig))};
-        _ ->
-            {ok, State}
-    end;
+    {ok, rlx_state:sys_config(State, filename:absname(SysConfig))};
 load_terms({root_dir, Root}, {ok, State}) ->
     {ok, rlx_state:root_dir(State, filename:absname(Root))};
 load_terms({output_dir, OutputDir}, {ok, State}) ->
