@@ -70,7 +70,7 @@ main(ApiOptions, Args) ->
              end,
     case Result of
         {error, _} ->
-            report_error(rlx_state:caller(rlx_state:new([], undefined),
+            report_error(rlx_state:caller(rlx_state:new([], [{caller, command_line}], undefined),
                                           command_line),
                          Result);
         _ ->
@@ -327,13 +327,13 @@ usage() ->
 report_error(State, Error) ->
     case Error of
         {error, {relx, {opt_parse, _}}} ->
-            io:format(standard_error, format_error(Error), []),
+            ec_cmd_log:error(rlx_state:log(State), format_error(Error), []),
             usage();
        {error, {rlx_cmd_args, _}} ->
-            io:format(standard_error, format_error(Error), []),
+            ec_cmd_log:error(rlx_state:log(State), format_error(Error), []),
             usage();
         _ ->
-            io:format(standard_error, format_error(Error), [])
+            ec_cmd_log:error(rlx_state:log(State), format_error(Error), [])
     end,
     case rlx_state:caller(State) of
         command_line ->
