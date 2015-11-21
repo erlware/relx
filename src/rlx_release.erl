@@ -40,6 +40,8 @@
          metadata/1,
          start_clean_metadata/1,
          canonical_name/1,
+         config/1,
+         config/2,
          format/1,
          format/2,
          format_error/1]).
@@ -63,7 +65,8 @@
                     annotations = undefined :: annotations(),
                     applications = [] ::  [application_spec()],
                     relfile :: undefined | string(),
-                    app_detail = [] :: [rlx_app_info:t()]}).
+                    app_detail = [] :: [rlx_app_info:t()],
+                    config = []}).
 
 %%============================================================================
 %% types
@@ -200,6 +203,15 @@ start_clean_metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=A
 canonical_name(#release_t{name=Name, vsn=Vsn}) ->
     erlang:binary_to_list(erlang:iolist_to_binary([erlang:atom_to_list(Name), "-",
                                                    Vsn])).
+
+
+-spec config(t(), list()) -> t().
+config(Release, Config) ->
+    Release#release_t{config=Config}.
+
+-spec config(t()) -> list().
+config(#release_t{config=Config}) ->
+    Config.
 
 -spec format(t()) -> iolist().
 format(Release) ->
