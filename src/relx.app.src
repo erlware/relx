@@ -5,7 +5,7 @@
               {registered,[]},
               {applications,[kernel,stdlib,getopt,erlware_commons,bbmustache,
                              providers]},
-              {contributors,["Eric Merritt","Tristan Sloughter",
-                             "Jordan Wilberding"]},
+              {maintainers,["Eric Merritt","Tristan Sloughter",
+                            "Jordan Wilberding"]},
               {licenses,["Apache"]},
               {links,[{"Github","https://github.com/erlware/relx"}]}]}.
