@@ -313,7 +313,7 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
                     MergedValue = lists:umerge([Value, Value2]),
                     merge_configs(CliTerms, lists:keyreplace(Key, 1, ConfigTerms, {Key, MergedValue}));
                 false ->
-                    merge_configs(CliTerms, [{Key, Value} | ConfigTerms])
+                    merge_configs(CliTerms, ConfigTerms++[{Key, Value}])
             end;
         _ ->
             merge_configs(CliTerms, lists:keystore(Key, 1, ConfigTerms, {Key, Value}))
