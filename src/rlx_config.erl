@@ -316,7 +316,7 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
                     merge_configs(CliTerms, ConfigTerms++[{Key, Value}])
             end;
         _ ->
-            merge_configs(CliTerms, lists:keystore(Key, 1, ConfigTerms, {Key, Value}))
+            merge_configs(CliTerms, lists:reverse(lists:keystore(Key, 1, lists:reverse(ConfigTerms), {Key, Value})))
     end.
 
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
