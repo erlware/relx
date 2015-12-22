@@ -2,12 +2,10 @@
 
 set -e
 
-SCRIPT=$(readlink $0 || true)
-if [ -z $SCRIPT ]; then
-    SCRIPT=$0
-fi;
-SCRIPT_DIR="$(cd `dirname "$SCRIPT"` && pwd -P)"
-RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+SCRIPT=$(readlink -f $0 || true)
+[ -z $SCRIPT ] && SCRIPT=$0
+SCRIPT_DIR="${SCRIPT%/*}"
+RELEASE_ROOT_DIR="${SCRIPT_DIR%/*}"
 REL_NAME="{{ rel_name }}"
 REL_VSN="{{ rel_vsn }}"
 ERTS_VSN="{{ erts_vsn }}"
@@ -89,6 +87,17 @@ relx_start_command() {
            "$START_OPTION"
 }
 
+# Replace environment variables
+relx_replace_os_vars() {
+    awk '{
+        while(match($0,/\$\{[^{}]+?\}/)) {
+            s=RSTART; n=RLENGTH;
+            v0=substr($0,0,s-1); v1=substr($0,s,n); v2=substr($0,n+s,length($0)-s-n+1)
+            "echo "v1|getline v; $0=v0 v v2
+        }
+    }1' < "$1" > "$2"
+}
+
 # Use $CWD/vm.args if exists, otherwise releases/VSN/vm.args
 if [ -z "$VMARGS_PATH" ]; then
     if [ -f "$RELEASE_ROOT_DIR/vm.args" ]; then
@@ -99,8 +108,10 @@ if [ -z "$VMARGS_PATH" ]; then
 fi
 
 if [ $RELX_REPLACE_OS_VARS ]; then
-    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < $VMARGS_PATH > $VMARGS_PATH.2.config
-    VMARGS_PATH=$VMARGS_PATH.2.config
+    IN=$VMARGS_PATH
+    OUT=${IN##*/}
+    VMARGS_PATH=${IN%.*}.2.${OUT##*.}
+    relx_replace_os_vars ${IN} ${VMARGS_PATH}
 fi
 
 # Make sure log directory exists
@@ -116,32 +127,34 @@ if [ -z "$RELX_CONFIG_PATH" ]; then
 fi
 
 if [ $RELX_REPLACE_OS_VARS ]; then
-    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < $RELX_CONFIG_PATH > $RELX_CONFIG_PATH.2.config
-    RELX_CONFIG_PATH=$RELX_CONFIG_PATH.2.config
+    IN=$RELX_CONFIG_PATH
+    OUT=${IN##*/}
+    RELX_CONFIG_PATH=${IN%.*}.2.${OUT##*.}
+    relx_replace_os_vars ${IN} ${RELX_CONFIG_PATH}
 fi
 
 # Extract the target node name from node.args
-NAME_ARG=$(egrep '^-s?name' "$VMARGS_PATH" || true)
-if [ -z "$NAME_ARG" ]; then
+NAME_ARG=( $(eval echo $(egrep '^-s?name' "$VMARGS_PATH" || true)) )
+if [ -z "${NAME_ARG[*]}" ]; then
     echo "vm.args needs to have either -name or -sname parameter."
     exit 1
 fi
 
 # Extract the name type and name from the NAME_ARG for REMSH
-NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
-NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
+NAME_TYPE="${NAME_ARG[0]}"
+NAME="${NAME_ARG[1]}"
 
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 # Extract the target cookie
-COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
-if [ -z "$COOKIE_ARG" ]; then
+COOKIE_ARG=( $(eval echo $(grep '^-setcookie' "$VMARGS_PATH" || true)) )
+if [ -z "${COOKIE_ARG[*]}" ]; then
     echo "vm.args needs to have a -setcookie parameter."
     exit 1
 fi
 
 # Extract cookie name from COOKIE_ARG
-COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
+COOKIE="${COOKIE_ARG[1]}"
 
 find_erts_dir
 export ROOTDIR="$RELEASE_ROOT_DIR"
@@ -149,7 +162,7 @@ export BINDIR="$ERTS_DIR/bin"
 export EMU="beam"
 export PROGNAME="erl"
 export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
-ERTS_LIB_DIR="$ERTS_DIR/../lib"
+ERTS_LIB_DIR="${ERTS_DIR%/*}/lib"
 
 cd "$ROOTDIR"
 
