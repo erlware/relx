@@ -45,7 +45,7 @@ all() ->
     [normal_passing_case, lib_expansion_case, lib_fail_case, config_fail_case].
 
 normal_passing_case(Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
+    DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
     Lib1 = filename:join([DataDir, <<"lib1">>]),
     Lib2 = filename:join([DataDir, <<"lib2">>]),
     Outdir = filename:join([DataDir, "outdir"]),
@@ -74,7 +74,7 @@ normal_passing_case(Config) ->
                  rlx_state:goals(State1)).
 
 lib_expansion_case(Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
+    DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
     Lib1 = filename:join(DataDir, <<"lib1">>),
     Lib2 = filename:join(DataDir, <<"lib2">>),
     ok = rlx_util:mkdir_p(Lib1),
@@ -88,7 +88,7 @@ lib_expansion_case(Config) ->
                  rlx_state:lib_dirs(State1)).
 
 lib_fail_case(Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
+    DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
     Lib1 = filename:join([DataDir, "lib1"]),
     Lib2 = filename:join([DataDir, "lib3333"]),
     ok = rlx_util:mkdir_p(Lib1),

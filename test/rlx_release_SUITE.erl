@@ -61,7 +61,7 @@ end_per_suite(_Config) ->
     ok.
 
 init_per_testcase(_, Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
+    DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
     LibDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir1_")]),
     ok = rlx_util:mkdir_p(LibDir1),
     State = rlx_state:new([], [{lib_dirs, [LibDir1]}], [release]),
@@ -102,7 +102,7 @@ add_providers(Config) ->
                    [goal_app_1,
                     goal_app_2]},
                   {add_providers, [rlx_prv_app_discover]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                               OutputDir, ConfigFile),
@@ -141,7 +141,7 @@ make_release(Config) ->
                   {release, {foo, "0.0.2"},
                      [goal_app_1,
                       goal_app_2]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                               OutputDir, ConfigFile),
@@ -172,7 +172,7 @@ make_extend_release(Config) ->
                   {release, {foo_test, "0.0.1", {extend, foo}},
                   [goal_app_2]},
                   {lib_dirs, [filename:join(LibDir1, "*")]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
 
     ?assertMatch({error, {rlx_prv_release, {multiple_release_names,foo_test,foo}}},
@@ -204,7 +204,7 @@ make_invalid_config_release(Config) ->
                        "{release, {foo, \"0.0.1\"},
                          [goal_app_1,
                           goal_app_2,]}"),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {error, {rlx_config,
              {consult, _, _}}} = relx:do(undefined, undefined, [], [LibDir1], 3,
@@ -225,7 +225,7 @@ make_scriptless_release(Config) ->
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                               OutputDir, ConfigFile),
@@ -244,7 +244,7 @@ make_scriptless_release(Config) ->
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 make_overridden_release(Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
+    DataDir = proplists:get_value(priv_dir, Config),
     OverrideDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("override_dir_")]),
     LibDir1 = proplists:get_value(lib1, Config),
 
@@ -267,7 +267,7 @@ make_overridden_release(Config) ->
                    [goal_app_1,
                     erlang:list_to_atom(OverrideApp),
                     goal_app_2]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, Cwd} = file:get_cwd(),
     {ok, State} = relx:do(Cwd, undefined, undefined, [], [LibDir1], 3,
@@ -307,7 +307,7 @@ make_skip_app_release(Config) ->
                  [{release, {foo, "0.0.1"},
                    [goal_app_1]},
                   {skip_apps, [goal_app_2]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, Cwd} = file:get_cwd(),
     {ok, State} = relx:do(Cwd, undefined, undefined, [], [LibDir1], 3,
@@ -336,7 +336,7 @@ make_exclude_app_release(Config) ->
                  [{release, {foo, "0.0.1"},
                    [goal_app_1]},
                   {exclude_apps, [non_goal_1]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, Cwd} = file:get_cwd(),
     {ok, State} = relx:do(Cwd, undefined, undefined, [], [LibDir1], 3,
@@ -351,7 +351,7 @@ make_exclude_app_release(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)).
 
 make_auto_skip_empty_app_release(Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
+    DataDir = proplists:get_value(priv_dir, Config),
     EmptyAppDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("skip_app_dir_")]),
     LibDir1 = proplists:get_value(lib1, Config),
 
@@ -372,7 +372,7 @@ make_auto_skip_empty_app_release(Config) ->
                  [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, Cwd} = file:get_cwd(),
     {ok, State} = relx:do(Cwd, undefined, undefined, [], [LibDir1], 3,
@@ -403,7 +403,7 @@ make_app_type_none_release(Config) ->
                  [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     {goal_app_2, none}]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, Cwd} = file:get_cwd(),
     {ok, State} = relx:do(Cwd, undefined, undefined, [], [LibDir1], 3,
@@ -435,7 +435,7 @@ make_implicit_config_release(Config) ->
                  [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     ok = file:set_cwd(FooRoot),
     {ok, FooRoot} = file:get_cwd(),
@@ -453,7 +453,7 @@ make_implicit_config_release(Config) ->
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 make_rerun_overridden_release(Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
+    DataDir = proplists:get_value(priv_dir, Config),
     OverrideDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("override_dir_")]),
     LibDir1 = proplists:get_value(lib1, Config),
 
@@ -479,7 +479,7 @@ make_rerun_overridden_release(Config) ->
                     erlang:list_to_atom(OverrideApp),
                     goal_app_2]},
                   {overlay_vars, [OverlayVars]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, Cwd} = file:get_cwd(),
     {ok, _} = relx:do(Cwd, undefined, undefined, [], [LibDir1], 3,
@@ -569,7 +569,7 @@ overlay_release(Config) ->
     {ok, FileInfo} = file:read_file_info(TemplateFile),
     ok = file:write_file_info(TemplateFile, FileInfo#file_info{mode=8#00777}),
 
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
 
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
@@ -626,7 +626,7 @@ make_goalless_release(Config) ->
     rlx_test_utils:write_config(ConfigFile,
                  [{release, {foo, "0.0.1"},
                    []}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     ?assertMatch({error,{rlx_prv_release,no_goals_specified}},
                  relx:do(undefined, undefined, [], [LibDir1], 3,
@@ -645,7 +645,7 @@ make_depfree_release(Config) ->
     rlx_test_utils:write_config(ConfigFile,
                  [{release, {foo, "0.0.1"},
                    [goal_app_1]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                              OutputDir, ConfigFile),
@@ -684,7 +684,7 @@ make_relup_release(Config) ->
                    [sasl,
                     {goal_app_1, "0.0.3"},
                     {goal_app_2, "0.0.3"}]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, _} = relx:do(foo, "0.0.1", [], [LibDir1], 3,
                       OutputDir, ConfigFile),
@@ -764,7 +764,7 @@ make_relup_release2(Config) ->
                    [sasl,
                     {goal_app_1, "0.0.3"},
                     {goal_app_2, "0.0.3"}]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, _} = relx:do(foo, "0.0.1", [], [LibDir1], 3,
                              OutputDir, ConfigFile),
@@ -854,7 +854,7 @@ make_dev_mode_release(Config) ->
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                           OutputDir, ConfigFile),
@@ -909,7 +909,7 @@ make_config_script_release(Config) ->
             "    _ -> CONFIG % env var not defined or anything other than true\n"
             "end.\n"),
 
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     ok = file:set_cwd(FooRoot),
     {ok, FooRoot} = file:get_cwd(),
@@ -952,7 +952,7 @@ make_release_twice(Config) ->
                  [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                           OutputDir, ConfigFile),
@@ -1004,7 +1004,7 @@ make_release_twice_dev_mode(Config) ->
                  [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}, {dev_mode, true}]),
-    OutputDir = filename:join([proplists:get_value(data_dir, Config),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
                           OutputDir, ConfigFile),
