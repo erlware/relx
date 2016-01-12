@@ -43,7 +43,7 @@ end_per_suite(_Config) ->
     ok.
 
 init_per_testcase(_, Config) ->
-    DataDir = proplists:get_value(data_dir, Config),
+    DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
     LibDir1 = filename:join([DataDir, create_random_name("lib_dir1_")]),
     LibDir2 = filename:join([DataDir, create_random_name("lib_dir2_")]),
     ok = rlx_util:mkdir_p(LibDir1),
