@@ -144,7 +144,12 @@ goals(#release_t{goals=Goals}) ->
                      {ok, t()}.
 realize(Rel, Pkgs0, World0) ->
     World1 = subset_world(Pkgs0, World0),
-    process_specs(realize_erts(Rel), World1).
+    case rlx_topo:sort_apps(World1) of
+        {ok, Pkgs1} ->
+            process_specs(realize_erts(Rel), Pkgs1);
+        Error={error, _} ->
+            Error
+    end.
 
 %% @doc this gives the application specs for the release. This can only be
 %% populated by the 'realize' call in this module.
@@ -239,6 +244,8 @@ format_goal(Constraint) ->
     rlx_depsolver:format_constraint(Constraint).
 
 -spec format_error(Reason::term()) -> iolist().
+format_error({topo_error, E}) ->
+    rlx_topo:format_error(E);
 format_error({failed_to_parse, Con}) ->
     io_lib:format("Failed to parse constraint ~p", [Con]);
 format_error({invalid_constraint, _, Con}) ->
