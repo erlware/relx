@@ -164,7 +164,7 @@ resolve_override(AppName, FileName0) ->
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
 format_detail({missing_beam_file, Module, BeamFile}) ->
-    io_lib:format("Missing beam file ~p ~p", [Module, BeamFile]);
+    io_lib:format("Missing beam file ~p ~s", [Module, BeamFile]);
 format_detail({error, {invalid_override, AppName, FileName}}) ->
     io_lib:format("Override {~p, ~p} is not a valid OTP App. Perhaps you forgot to build it?",
                   [AppName, FileName]);
