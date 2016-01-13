@@ -85,7 +85,7 @@ get_app_metadata(State, LibDirs) ->
                             {ok, _} = AppMeta ->
                                 [AppMeta|Acc];
                             {warning, W} ->
-                                ec_cmd_log:warn(rlx_state:log(State), format_detail(W)),
+                                ec_cmd_log:debug(rlx_state:log(State), format_detail(W)),
                                 Acc;
                             {error, E} ->
                                 ec_cmd_log:error(rlx_state:log(State), format_detail(E)),
@@ -111,7 +111,7 @@ resolve_app_metadata(State, LibDirs) ->
                  {error, _} ->
                      true;
                  {warning, W} ->
-                     ec_cmd_log:warn(rlx_state:log(State), format_detail(W)),
+                     ec_cmd_log:debug(rlx_state:log(State), format_detail(W)),
                      false;
                  _ ->
                      false
