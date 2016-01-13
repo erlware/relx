@@ -85,7 +85,7 @@ get_app_metadata(State, LibDirs) ->
                             {ok, _} = AppMeta ->
                                 [AppMeta|Acc];
                             {warning, W} ->
-                                ec_cmd_log:warn(rlx_state:log(State), format_detail(W)),
+                                ec_cmd_log:debug(rlx_state:log(State), format_detail(W)),
                                 Acc;
                             {error, E} ->
                                 ec_cmd_log:error(rlx_state:log(State), format_detail(E)),
@@ -111,7 +111,7 @@ resolve_app_metadata(State, LibDirs) ->
                  {error, _} ->
                      true;
                  {warning, W} ->
-                     ec_cmd_log:warn(rlx_state:log(State), format_detail(W)),
+                     ec_cmd_log:debug(rlx_state:log(State), format_detail(W)),
                      false;
                  _ ->
                      false
@@ -164,7 +164,7 @@ resolve_override(AppName, FileName0) ->
 
 -spec format_detail(ErrorDetail::term()) -> iolist().
 format_detail({missing_beam_file, Module, BeamFile}) ->
-    io_lib:format("Missing beam file ~p ~p", [Module, BeamFile]);
+    io_lib:format("Missing beam file ~p ~s", [Module, BeamFile]);
 format_detail({error, {invalid_override, AppName, FileName}}) ->
     io_lib:format("Override {~p, ~p} is not a valid OTP App. Perhaps you forgot to build it?",
                   [AppName, FileName]);
