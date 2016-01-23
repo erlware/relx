@@ -116,8 +116,11 @@ if [ -z "$RELX_CONFIG_PATH" ]; then
 fi
 
 if [ $RELX_REPLACE_OS_VARS ]; then
-    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < $RELX_CONFIG_PATH > $RELX_CONFIG_PATH.2.config
-    RELX_CONFIG_PATH=$RELX_CONFIG_PATH.2.config
+    #Make sure we don't break dev mode by keeping the symbolic link
+    orig_relx_config_path="$RELX_CONFIG_PATH.orig"
+    mv "$RELX_CONFIG_PATH" "$orig_relx_config_path"
+
+    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$orig_relx_config_path" > "$RELX_CONFIG_PATH"
 fi
 
 # Extract the target node name from node.args
