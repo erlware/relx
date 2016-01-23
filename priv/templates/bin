@@ -32,6 +32,11 @@ find_sys_config() {
     __possible_sys="$REL_DIR/sys.config"
     if [ -f "$__possible_sys" ]; then
         SYS_CONFIG="$__possible_sys"
+    else 
+       if [ -L "$__possible_sys".orig ]; then
+          mv "$__possible_sys".orig "$__possible_sys"  
+          SYS_CONFIG="$__possible_sys"
+       fi
     fi
 }
 
@@ -39,6 +44,11 @@ find_vm_args() {
     __possible_vm_args="$REL_DIR/vm.args"
     if [ -f "$__possible_vm_args" ]; then
         VM_ARGS="$__possible_vm_args"
+    else 
+       if [ -L "$__possible_vm_args".orig ]; then
+          mv "$__possible_vm_args".orig "$__possible_vm_args"  
+          VM_ARGS="$__possible_vm_args"
+       fi
     fi
 }
 

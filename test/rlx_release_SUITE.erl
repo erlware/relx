@@ -869,9 +869,9 @@ make_dev_mode_release(Config) ->
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "sys.config"]))),
+                                                      "sys.config.orig"]))),
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "vm.args"])));
+                                                      "vm.args.orig"])));
         {win32, _} ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
