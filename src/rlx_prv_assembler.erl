@@ -277,19 +277,18 @@ link_directory(AppDir, TargetDir) ->
     end.
 
 copy_directory(AppDir, TargetDir, IncludeSrc) ->
-    ec_plists:map(fun(SubDir) ->
-                          copy_dir(AppDir, TargetDir, SubDir)
-                  end, ["ebin",
-                        "include",
-                        "priv",
-                        "lib" |
-                        case IncludeSrc of
-                            true ->
-                                ["src",
-                                 "c_src"];
-                            false ->
-                                []
-                        end]).
+    [copy_dir(AppDir, TargetDir, SubDir)
+    || SubDir <- ["ebin",
+                  "include",
+                  "priv",
+                  "lib" |
+                  case IncludeSrc of
+                      true ->
+                          ["src",
+                           "c_src"];
+                      false ->
+                          []
+                  end]].
 
 copy_dir(AppDir, TargetDir, SubDir) ->
     SubSource = filename:join(AppDir, SubDir),
