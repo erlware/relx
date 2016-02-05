@@ -114,8 +114,8 @@ discover_dir(ProcessDir, File, symlink) ->
 
 discover_real_symlink_dir(ProcessDir, File) ->
     {ok, ActualRealDir} = file:read_link(File),
-    case lists:prefix(iolist_to_list(filename:absname(ActualRealDir)),
-                 iolist_to_list(filename:absname(File))) of
+    case lists:prefix(filename:split(iolist_to_list(filename:absname(ActualRealDir))),
+                 filename:split(iolist_to_list(filename:absname(File)))) of
         true ->
             %% Ignore cycles
             [];
