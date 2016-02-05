@@ -184,12 +184,12 @@ copy_app(LibDir, App, IncludeSrc, IncludeErts) ->
     AppVsn = rlx_app_info:original_vsn(App),
     AppDir = rlx_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
-    if
-        AppDir == TargetDir ->
+    case AppDir == ec_cnv:to_binary(TargetDir) of
+        true ->
             %% No need to do anything here, discover found something already in
             %% a release dir
             ok;
-        true ->
+        false ->
             case IncludeErts of
                 false ->
                     case is_erts_lib(AppDir) of
@@ -223,7 +223,6 @@ rewrite_app_file(App, TargetDir) ->
     ActiveDeps = rlx_app_info:active_deps(App),
     IncludedDeps = rlx_app_info:library_deps(App),
     AppFile = filename:join([TargetDir, "ebin", ec_cnv:to_list(Name) ++ ".app"]),
-
     {ok, [{application, AppName, AppData}]} = file:consult(AppFile),
     OldActiveDeps = proplists:get_value(applications, AppData, []),
     OldIncludedDeps = proplists:get_value(included_applications, AppData, []),
