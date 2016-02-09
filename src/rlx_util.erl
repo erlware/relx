@@ -38,8 +38,10 @@
          load_file/3,
          template_files/0,
          escript_foldl/3,
+         intensity/0,
          symlink_or_copy/2]).
 
+-define(DFLT_INTENSITY,   high).
 -define(ONE_LEVEL_INDENT, "     ").
 %%============================================================================
 %% types
@@ -297,6 +299,15 @@ cp_r_win32(Source,Dest) ->
                   end, filelib:wildcard(Source)),
     ok.
 
+intensity() ->
+    case os:getenv("RELX_COLOR") of
+        "high" ->
+            high;
+        "low" ->
+            low;
+        _ ->
+            ?DFLT_INTENSITY
+    end.
 %%%===================================================================
 %%% Test Functions
 %%%===================================================================

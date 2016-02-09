@@ -146,7 +146,9 @@ new(Config, CommandLineConfig, Targets)
     {ok, Root} = file:get_cwd(),
 
     Caller = proplists:get_value(caller, CommandLineConfig, api),
-    Log = proplists:get_value(log, CommandLineConfig, ec_cmd_log:new(error, Caller)),
+    Log = proplists:get_value(
+            log, CommandLineConfig,
+            ec_cmd_log:new(error, Caller, rlx_util:intensity())),
     State0 = #state_t{log=Log,
                       config_file=Config,
                       cli_args=CommandLineConfig,
