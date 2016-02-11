@@ -137,7 +137,7 @@ create(log_level, Opts) ->
     if
         LogLevel >= 0, LogLevel =< 3 ->
             {log, ec_cmd_log:new(LogLevel, command_line,
-                                 rerlx_util:intensity())};
+                                 rlx_util:intensity())};
         true ->
             throw(?RLX_ERROR({invalid_log_level, LogLevel}))
     end;
