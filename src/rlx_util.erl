@@ -299,15 +299,25 @@ cp_r_win32(Source,Dest) ->
                   end, filelib:wildcard(Source)),
     ok.
 
+%% @doc Returns the color intensity, we first check the application envorinment
+%% if that is not set we check the environment variable RELX_COLOR.
 intensity() ->
-    case os:getenv("RELX_COLOR") of
-        "high" ->
-            high;
-        "low" ->
-            low;
-        _ ->
-            ?DFLT_INTENSITY
+    case application:get_env(relx, color_intensity) of
+        undefined ->
+            R = case os:getenv("RELX_COLOR") of
+                    "high" ->
+                        high;
+                    "low" ->
+                        low;
+                    _ ->
+                        ?DFLT_INTENSITY
+                end,
+            application:set_env(relx, color_intensity, R),
+            R;
+        Mode ->
+            Mode
     end.
+
 %%%===================================================================
 %%% Test Functions
 %%%===================================================================
