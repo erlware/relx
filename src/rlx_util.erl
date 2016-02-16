@@ -314,7 +314,7 @@ intensity() ->
                 end,
             application:set_env(relx, color_intensity, R),
             R;
-        Mode ->
+        {ok, Mode} ->
             Mode
     end.
 
