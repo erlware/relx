@@ -38,8 +38,10 @@
          load_file/3,
          template_files/0,
          escript_foldl/3,
+         intensity/0,
          symlink_or_copy/2]).
 
+-define(DFLT_INTENSITY,   high).
 -define(ONE_LEVEL_INDENT, "     ").
 %%============================================================================
 %% types
@@ -296,6 +298,25 @@ cp_r_win32(Source,Dest) ->
                           ok = cp_r_win32({filelib:is_dir(Src), Src}, Dst)
                   end, filelib:wildcard(Source)),
     ok.
+
+%% @doc Returns the color intensity, we first check the application envorinment
+%% if that is not set we check the environment variable RELX_COLOR.
+intensity() ->
+    case application:get_env(relx, color_intensity) of
+        undefined ->
+            R = case os:getenv("RELX_COLOR") of
+                    "high" ->
+                        high;
+                    "low" ->
+                        low;
+                    _ ->
+                        ?DFLT_INTENSITY
+                end,
+            application:set_env(relx, color_intensity, R),
+            R;
+        {ok, Mode} ->
+            Mode
+    end.
 
 %%%===================================================================
 %%% Test Functions
