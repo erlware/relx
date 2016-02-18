@@ -410,6 +410,8 @@ generate_start_erl_data_file(Release, ReleasesDir) ->
 copy_or_generate_vmargs_file(State, Release, RelDir) ->
     RelVmargsPath = filename:join([RelDir, "vm.args"]),
     case rlx_state:vm_args(State) of
+        false ->
+            ok;
         undefined ->
             RelName = erlang:atom_to_list(rlx_release:name(Release)),
             unless_exists_write_default(RelVmargsPath, vm_args_file(RelName));
@@ -428,6 +430,8 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
 copy_or_generate_sys_config_file(State, RelDir) ->
     RelSysConfPath = filename:join([RelDir, "sys.config"]),
     case rlx_state:sys_config(State) of
+        false ->
+            ok;
         undefined ->
             unless_exists_write_default(RelSysConfPath, sys_config_file());
         ConfigPath ->
