@@ -109,6 +109,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
     OverlayVars = rlx_prv_overlay:generate_overlay_vars(State, Release),
     OverlayFiles = overlay_files(OverlayVars, rlx_state:get(State, overlay, undefined), OutputDir),
+    ConfigFiles = config_files(Vsn, OutputDir),
     ok =
         erl_tar:create(TarFile,
                        [{"releases", filename:join(TempDir, "releases")},
@@ -116,8 +117,6 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                          filename:join([OutputDir, "releases", "start_erl.data"])},
                         {filename:join(["releases", "RELEASES"]),
                          filename:join([OutputDir, "releases", "RELEASES"])},
-                        {filename:join(["releases", Vsn, "vm.args"]),
-                         filename:join([OutputDir, "releases", Vsn, "vm.args"])},
                         {"bin", filename:join([OutputDir, "bin"])} |
                         case IncludeErts of
                             false ->
@@ -134,11 +133,18 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                             _ ->
                                 [{"lib", filename:join(TempDir, "lib")},
                                  {"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
-                        end]++OverlayFiles, [dereference,compressed]),
+                        end]++ConfigFiles++OverlayFiles, [dereference,compressed]),
     ec_cmd_log:info(rlx_state:log(State),
                     "tarball ~s successfully created!~n", [TarFile]),
     ec_file:remove(TempDir, [recursive]),
     {ok, State}.
+
+config_files(Vsn, OutputDir) ->
+    VMArgs = {filename:join(["releases", Vsn, "vm.args"]), filename:join([OutputDir, "releases", Vsn, "vm.args"])},
+    VMArgsOrig = {filename:join(["releases", Vsn, "vm.args.orig"]), filename:join([OutputDir, "releases", Vsn, "vm.args.orig"])},
+    SysConfigOrig = {filename:join(["releases", Vsn, "sys.config.orig"]), filename:join([OutputDir, "releases", Vsn, "sys.config.orig"])},
+    [{NameInArchive, Filename} || {NameInArchive, Filename} <- [VMArgs, VMArgsOrig, SysConfigOrig], filelib:is_file(Filename)].
+
 
 overlay_files(_, undefined, _) ->
     [];
@@ -176,4 +182,3 @@ maybe_src_dirs(State) ->
         false -> [];
         true -> [src]
     end.
-
