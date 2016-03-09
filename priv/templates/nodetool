@@ -129,7 +129,11 @@ consult(Cont, Str, Acc) ->
                     {ok, Term} = erl_parse:parse_term(Tokens),
                     consult([], Remaining, [Term | Acc]);
                 {eof, _Other} ->
-                    lists:reverse(Acc);
+                    case lists:reverse(Acc) of
+                        [] -> [];
+                        [Args | []] when is_list(Args) -> Args;
+                        [SingleArg | [] ] -> [SingleArg]
+                    end;
                 {error, Info, _} ->
                     {error, Info}
             end;
