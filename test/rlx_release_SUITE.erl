@@ -550,6 +550,7 @@ overlay_release(Config) ->
     VarsFile1 = filename:join([LibDir1, "vars1.config"]),
     rlx_test_utils:write_config(VarsFile1, [{yahoo, "yahoo"},
                                             {yahoo2, [{foo, "bar"}]},
+                                            {foo_yahoo, "foo_{{yahoo}}"},
                                             {foo_dir, "foodir"}]),
 
     VarsFile2 = filename:join([LibDir1, "vars2.config"]),
@@ -610,6 +611,8 @@ overlay_release(Config) ->
                  proplists:get_value(release_name, TemplateData)),
     ?assertEqual("yahoo/foo4",
                  proplists:get_value(yahoo4, TemplateData)),
+    ?assertEqual("foo_yahoo",
+                 proplists:get_value(foo_yahoo, TemplateData)),
     ?assertEqual("yahoo",
                  proplists:get_value(google, TemplateData)).
 

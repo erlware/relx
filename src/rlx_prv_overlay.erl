@@ -197,7 +197,9 @@ merge_overlay_vars(State, FileNames) ->
                                 %% to the current one being read
                                 OverlayRelativeRoot = filename:dirname(FileName),
                                 NewTerms = check_overlay_inclusion(State, OverlayRelativeRoot, Terms),
-                                lists:ukeymerge(1, lists:ukeysort(1, NewTerms), Acc);
+                                lists:foldl(fun(NewTerm, A) ->
+                                                lists:keystore(element(1, NewTerm), 1, A, NewTerm)
+                                            end, Acc, NewTerms);
                             {error, Reason} ->
                                 ec_cmd_log:warn(rlx_state:log(State),
                                                 format_error({unable_to_read_varsfile, FileName, Reason})),
