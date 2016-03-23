@@ -42,9 +42,9 @@ relx_get_pid() {
     fi
 }
 
-relx_get_longname() {
+relx_get_nodename() {
     id="longname$(relx_gen_id)-${NAME}"
-    "$BINDIR/erl" -boot start_clean -eval 'io:format("~s~n", [node()]), halt()' -noshell -name $id | sed -e 's/.*@//g'
+    "$BINDIR/erl" -boot start_clean -eval '[Host] = tl(string:tokens(atom_to_list(node()),"@")), io:format("~s~n", [Host]), halt()' -noshell ${NAME_TYPE} $id
 }
 
 # Connect to a remote node
@@ -189,15 +189,7 @@ case $NAME in
         # Nothing to do
         ;;
     *)
-        # Add @hostname
-        case $NAME_TYPE in
-             -sname)
-                 NAME=$NAME@`hostname -s`
-                 ;;
-             -name)
-                 NAME=$NAME@$(relx_get_longname)
-                 ;;
-        esac
+        NAME=$NAME@$(relx_get_nodename)
         ;;
 esac
 
