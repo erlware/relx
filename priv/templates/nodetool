@@ -52,9 +52,38 @@ main(Args) ->
                 Other ->
                     io:format("~p\n", [Other])
             end;
+        ["eval" | ListOfArgs] ->
+            % shells may process args into more than one, and end up stripping
+            % spaces, so this converts all of that to a single string to parse
+            String = binary_to_list(
+                      list_to_binary(
+                        string:join(ListOfArgs," ")
+                      )
+                    ),
+
+            % then just as a convenience to users, if they forgot a trailing
+            % '.' add it for them.
+            Normalized =
+              case lists:reverse(String) of
+                [$. | _] -> String;
+                R -> lists:reverse([$. | R])
+              end,
+
+            % then scan and parse the string
+            {ok, Scanned, _} = erl_scan:string(Normalized),
+            {ok, Parsed } = erl_parse:parse_exprs(Scanned),
+
+            % and evaluate it on the remote node
+            case rpc:call(TargetNode, erl_eval, exprs, [Parsed, [] ]) of
+                {value, Value, _} ->
+                    io:format ("~p\n",[Value]);
+                {badrpc, Reason} ->
+                    io:format("RPC to ~p failed: ~p\n", [TargetNode, Reason]),
+                    halt(1)
+            end;
         Other ->
             io:format("Other: ~p\n", [Other]),
-            io:format("Usage: nodetool {ping|stop|restart|reboot|rpc|rpcterms} [RPC]\n")
+            io:format("Usage: nodetool {ping|stop|restart|reboot|rpc|rpcterms|eval [Terms]} [RPC]\n")
     end,
     net_kernel:stop().
 
