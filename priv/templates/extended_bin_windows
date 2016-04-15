@@ -112,6 +112,13 @@
 @if exist %possible_sys% (
   set sys_config=-config "%possible_sys%"
 )
+@if exist "%possible_sys%.orig" (
+  ren "%possible_sys%.orig" sys.config
+  set sys_config=-config "%possible_sys%"
+)
+@if exist "%rel_dir%\vm.args.orig" (
+  ren "%rel_dir%\vm.args.orig" vm.args
+)
 @goto :eof
 
 :: set boot_script variable
