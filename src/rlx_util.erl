@@ -43,6 +43,8 @@
 
 -define(DFLT_INTENSITY,   high).
 -define(ONE_LEVEL_INDENT, "     ").
+
+-include_lib("kernel/include/file.hrl").
 %%============================================================================
 %% types
 %%============================================================================
@@ -221,21 +223,62 @@ symlink_or_copy(Source, Target) ->
             ok;
         {error, eexist} ->
             ok;
-        {error, _} = Error ->
+        {error, eperm} = Error ->
+            % We get eperm on Windows if we do not have 
+            %   SeCreateSymbolicLinkPrivilege
+            % Try the next alternative
             case os:type() of
                 {win32, _} ->
-                    S = unicode:characters_to_list(Source),
-                    T = unicode:characters_to_list(Target),
-                    win32_symlink(filename:nativename(S), filename:nativename(T));
+                    win32_make_junction_or_copy(Source, Target);
                 _ ->
                     Error
-            end
+            end;
+        {error, _} = Error ->
+            Error
     end.
 
+win32_make_junction_or_copy(Source, Target) ->
+    case filelib:is_dir(Source) of
+        true ->
+            win32_make_junction(Source, Target);
+        _ ->
+            ec_file:copy(Source, Target)
+    end.
 
-win32_symlink(Source, Target) ->
-    os:cmd("cmd /c mklink /j " ++ Target ++ " " ++ Source),
-    ok.
+win32_make_junction(Source, Target) ->
+    % The mklink will fail if the target already exists, check for that first
+    case file:read_link_info(Target) of
+        {error, enoent} ->
+            win32_make_junction_cmd(Source, Target);
+        {ok, #file_info{type = symlink}} ->
+            case file:read_link(Target) of
+                {ok, Source} ->
+                    ok;
+                {ok, _} ->
+                    ok = file:del_dir(Target),
+                    win32_make_junction_cmd(Source, Target);
+                {error, Reason} ->
+                    {error, {readlink, Reason}}
+            end;
+        {ok, #file_info{type = Type}} ->
+            {error, {mklink_cannot_replace_existing, Type, Target}};
+        Error ->
+            Error
+    end.
+
+win32_make_junction_cmd(Source, Target) ->
+    S = unicode:characters_to_list(Source),
+    T = unicode:characters_to_list(Target),
+    Cmd = "cmd /c mklink /j " ++ filename:nativename(T) ++ " " ++ filename:nativename(S),
+    case os:cmd(Cmd) of
+        "Junction created " ++ _ ->
+            ok;
+        [] ->
+            % When mklink fails it prints the error message to stderr which
+            % is not picked up by os:cmd() hence this case switch is for
+            % an empty message
+            {error, make_junction_failed}
+    end.
 
 %% @doc Returns the color intensity, we first check the application envorinment
 %% if that is not set we check the environment variable RELX_COLOR.
