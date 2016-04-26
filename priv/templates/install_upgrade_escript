@@ -9,6 +9,7 @@
          unpack/2,
          upgrade/2,
          downgrade/2,
+         uninstall/2,
          versions/2]).
 
 -define(TIMEOUT, 300000).
@@ -80,6 +81,29 @@ upgrade(DistInfo, Args) ->
 
 downgrade(DistInfo, Args) ->
     install(DistInfo, Args).
+
+uninstall({_RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
+    TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
+    WhichReleases = which_releases(TargetNode),
+    Version = parse_version(VersionArg),
+    case proplists:get_value(Version, WhichReleases) of
+        undefined ->
+            ?INFO("Release ~s is already uninstalled.~n", [Version]);
+        old ->
+            ?INFO("Release ~s is marked old.~n", [Version]),
+            remove_release(TargetNode, Version);
+        unpacked ->
+            ?INFO("Release ~s is marked unpacked.~n", [Version]),
+            remove_release(TargetNode, Version);
+        current ->
+            ?INFO("Uninstall failed: Release ~s is marked current.~n", [Version]),
+            erlang:halt(2);
+        permanent ->
+            ?INFO("Uninstall failed: Release ~s is running.~n", [Version]),
+            erlang:halt(2)
+    end;
+uninstall(_, Args) ->
+    ?INFO("uninstall: unknown args ~p\n", [Args]).
 
 versions({_RelName, NameTypeArg, NodeName, Cookie}, []) ->
     TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
@@ -209,6 +233,16 @@ permafy(TargetNode, RelName, Vsn) ->
               filename:join(["bin", atom_to_list(RelName)])),
     ?INFO("Made release permanent: ~p~n", [Vsn]),
     ok.
+
+remove_release(TargetNode, Vsn) ->
+    case rpc:call(TargetNode, release_handler, remove_release, [Vsn], ?TIMEOUT) of
+        ok ->
+            ?INFO("Uninstalled Release: ~s~n", [Vsn]),
+            ok;
+        {error, Reason} ->
+            ?INFO("ERROR: release_handler:remove_release failed: ~p~n", [Reason]),
+            erlang:halt(3)
+    end.
 
 which_releases(TargetNode) ->
     R = rpc:call(TargetNode, release_handler, which_releases, [], ?TIMEOUT),
