@@ -162,11 +162,9 @@ consult(Cont, Str, Acc) ->
 do_rpc(TargetNode, Module, Function, RpcArgs) ->
     case rpc:call(TargetNode, list_to_atom(Module), list_to_atom(Function),
                   RpcArgs, 60000) of
-        ok ->
-            ok;
         {badrpc, Reason} ->
             io:format("RPC to ~p failed: ~p\n", [TargetNode, Reason]),
             halt(1);
-        _ ->
-            halt(1)
+        Result ->
+            io:format("~p\n", [Result])
     end.
