@@ -3,7 +3,7 @@ otp_release:
   - 17.0
   - R16B03-1
   - R15B03
-script: "./rebar3 update && ./rebar3 ct"
+script: "epmd -daemon && ./rebar3 update && ./rebar3 ct"
 branches:
   only:
     - master
