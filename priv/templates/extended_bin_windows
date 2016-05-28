@@ -142,11 +142,11 @@
 :: Install the release as a Windows service
 :: or install the specified version passed as argument
 :install
+set args=%erl_opts% -setcookie %cookie% ++ -rootdir \"%rootdir%\"
+set start_erl=%erts_dir%\bin\start_erl.exe
+set description=Erlang node %node_name% in %rootdir%
 @if "" == "%2" (
   :: Install the service
-  set args=%erl_opts% -setcookie %cookie% ++ -rootdir \"%rootdir%\"
-  set start_erl=%erts_dir%\bin\start_erl.exe
-  set description=Erlang node %node_name% in %rootdir%
   %erlsrv% add %service_name% %node_type% "%node_name%" -c "%description%" ^
             -w "%rootdir%" -m "%start_erl%" -args "%args%" ^
             -stopaction "init:stop()."
