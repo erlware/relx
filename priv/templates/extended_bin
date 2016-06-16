@@ -165,13 +165,10 @@ PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
 DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
 if [ -z "$COOKIE_ARG" ]; then
-    if [ ! -f "$DEFAULT_COOKIE_FILE" ]; then
-        echo "vm.args needs to have a -setcookie, or $DEFAULT_COOKIE_FILE is required."
-        exit 1
-    elif [ -O "$DEFAULT_COOKIE_FILE" ] && [ $(stat --format=%a $DEFAULT_COOKIE_FILE) -eq 400 ]; then
+    if [ -f "$DEFAULT_COOKIE_FILE" ]; then
         COOKIE="$(cat $DEFAULT_COOKIE_FILE)"
     else
-        echo "$DEFAULT_COOKIE_FILE must be set to octal 400. (read-only by user)"
+        echo "vm.args needs to have a -setcookie, or $DEFAULT_COOKIE_FILE (its permission must be 400) is required."
         exit 1
     fi
 else
