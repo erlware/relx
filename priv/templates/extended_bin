@@ -163,13 +163,18 @@ PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 # Extract the target cookie
 COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
+DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
 if [ -z "$COOKIE_ARG" ]; then
-    echo "vm.args needs to have a -setcookie parameter."
-    exit 1
+    if [ -f "$DEFAULT_COOKIE_FILE" ]; then
+        COOKIE="$(cat $DEFAULT_COOKIE_FILE)"
+    else
+        echo "vm.args needs to have a -setcookie, or $DEFAULT_COOKIE_FILE (its permission must be 400) is required."
+        exit 1
+    fi
+else
+    # Extract cookie name from COOKIE_ARG
+    COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
 fi
-
-# Extract cookie name from COOKIE_ARG
-COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
 
 find_erts_dir
 export ROOTDIR="$RELEASE_ROOT_DIR"
