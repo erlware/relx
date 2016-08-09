@@ -2,6 +2,8 @@
 
 set -e
 
+export RUN_ERL_DISABLE_FLOWCNTRL=true
+
 SCRIPT=$(readlink $0 || true)
 if [ -z $SCRIPT ]; then
     SCRIPT=$0
