@@ -2,6 +2,17 @@
 
 set -e
 
+# http://erlang.org/doc/man/run_erl.html
+# If defined, disables input and output flow control for the pty
+# opend by run_erl. Useful if you want to remove any risk of accidentally
+# blocking the flow control by using Ctrl-S (instead of Ctrl-D to detach),
+# which can result in blocking of the entire Beam process, and in the case
+# of running heart as supervisor even the heart process becomes blocked
+# when writing log message to terminal, leaving the heart process unable
+# to do its work.
+RUN_ERL_DISABLE_FLOWCNTRL=${RUN_ERL_DISABLE_FLOWCNTRL:-true}
+export $RUN_ERL_DISABLE_FLOWCNTRL
+
 SCRIPT=$(readlink $0 || true)
 if [ -z $SCRIPT ]; then
     SCRIPT=$0
