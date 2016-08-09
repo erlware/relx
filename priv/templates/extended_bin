@@ -4,6 +4,10 @@ set -e
 
 export RUN_ERL_DISABLE_FLOWCNTRL=true
 
+if [ "$TERM" = "dumb" -o -z "$TERM" ]; then
+  export TERM=screen
+fi
+
 SCRIPT=$(readlink $0 || true)
 if [ -z $SCRIPT ]; then
     SCRIPT=$0
