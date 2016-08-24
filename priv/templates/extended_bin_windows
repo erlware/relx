@@ -186,7 +186,8 @@ set description=Erlang node %node_name% in %rootdir%
 
 :: Start a console
 :console
-@start "%rel_name% console" %werl% -boot "%boot_script%" %sys_config%  ^
+@set boot=-boot "%boot_script%" -boot_var RELEASE_DIR "%release_root_dir%"
+@start "%rel_name% console" %werl% %boot% %sys_config%  ^
        -args_file "%vm_args%"
 @goto :eof
 
@@ -202,6 +203,7 @@ set description=Erlang node %node_name% in %rootdir%
 
 :: Attach to a running node
 :attach
-@start "%node_name% attach" %werl% -boot "%clean_boot_script%" ^
+@set boot=-boot "%clean_boot_script%" -boot_var RELEASE_DIR "%release_root_dir%"
+@start "%node_name% attach" %werl% %boot% ^
        -remsh %node_name% %node_type% console -setcookie %cookie%
 @goto :eof
