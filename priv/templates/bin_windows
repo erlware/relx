@@ -60,7 +60,7 @@ cd %rootdir%
   set erl=%%i
 )
 @set dir_cmd="%erl%" -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop
-@for /f %%i in ('%%dir_cmd%%') do (
+@for /f "delims=" %%i in ('%%dir_cmd%%') do (
   set erl_root=%%i
 )
 @set erts_dir=%erl_root%\erts-%erts_vsn%
