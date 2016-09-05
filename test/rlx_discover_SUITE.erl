@@ -44,8 +44,8 @@ end_per_suite(_Config) ->
 
 init_per_testcase(_, Config) ->
     DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
-    LibDir1 = filename:join([DataDir, create_random_name("lib_dir1_")]),
-    LibDir2 = filename:join([DataDir, create_random_name("lib_dir2_")]),
+    LibDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir1_")]),
+    LibDir2 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir2_")]),
     ok = rlx_util:mkdir_p(LibDir1),
     ok = rlx_util:mkdir_p(LibDir2),
     State = rlx_state:new([], [{lib_dirs, [LibDir1, LibDir2]}], [release]),
@@ -65,7 +65,8 @@ normal_case(Config) ->
               end)(App)
              ||
                 App <-
-                    [{create_random_name("lib_app1_"), create_random_vsn()}
+                    [{rlx_test_utils:create_random_name("lib_app1_"),
+                      rlx_test_utils:create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
 
     LibDir2 = proplists:get_value(lib2, Config),
@@ -73,7 +74,8 @@ normal_case(Config) ->
                       create_app(LibDir2, Name, Vsn)
               end)(App)
              || App <-
-                    [{create_random_name("lib_app2_"), create_random_vsn()}
+                    [{rlx_test_utils:create_random_name("lib_app2_"),
+                      rlx_test_utils:create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
     State0 = rlx_state:put(proplists:get_value(state, Config),
                             default_libs, false),
@@ -99,7 +101,8 @@ no_beam_case(Config) ->
               end)(App)
              ||
                 App <-
-                    [{create_random_name("lib_app1_"), create_random_vsn()}
+                    [{rlx_test_utils:create_random_name("lib_app1_"),
+                      rlx_test_utils:create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
 
     LibDir2 = proplists:get_value(lib2, Config),
@@ -107,10 +110,11 @@ no_beam_case(Config) ->
                       create_app(LibDir2, Name, Vsn)
               end)(App)
              || App <-
-                    [{create_random_name("lib_app2_"), create_random_vsn()}
+                    [{rlx_test_utils:create_random_name("lib_app2_"),
+                      rlx_test_utils:create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
-    BadName = create_random_name("error_bad"),
-    BadVsn = create_random_vsn(),
+    BadName = rlx_test_utils:create_random_name("error_bad"),
+    BadVsn = rlx_test_utils:create_random_vsn(),
     AppDir = filename:join([LibDir2, BadName]),
     write_app_file(AppDir, BadName, BadVsn),
     State0 = proplists:get_value(state, Config),
@@ -129,7 +133,8 @@ bad_ebin_case(Config) ->
               end)(App)
              ||
                  App <-
-                     [{create_random_name("lib_app1_"), create_random_vsn()}
+                     [{rlx_test_utils:create_random_name("lib_app1_"),
+                       rlx_test_utils:create_random_vsn()}
                       || _ <- lists:seq(1, 100)]],
 
     LibDir2 = proplists:get_value(lib2, Config),
@@ -137,10 +142,11 @@ bad_ebin_case(Config) ->
                       create_app(LibDir2, Name, Vsn)
               end)(App)
              || App <-
-                    [{create_random_name("lib_app2_"), create_random_vsn()}
+                    [{rlx_test_utils:create_random_name("lib_app2_"),
+                      rlx_test_utils:create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
-    BadName = create_random_name("error_bad"),
-    BadVsn = create_random_vsn(),
+    BadName = rlx_test_utils:create_random_name("error_bad"),
+    BadVsn = rlx_test_utils:create_random_vsn(),
     AppDir = filename:join([LibDir2, BadName]),
     Filename = filename:join([AppDir,  <<"ebin">>, BadName ++ ".app"]),
     ok = filelib:ensure_dir(Filename),
@@ -159,7 +165,8 @@ shallow_app_discovery(Config) ->
               end)(App)
              ||
                 App <-
-                    [{create_random_name("lib_app1_"), create_random_vsn()}
+                    [{rlx_test_utils:create_random_name("lib_app1_"),
+                      rlx_test_utils:create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
 
     LibDir2 = proplists:get_value(lib2, Config),
@@ -167,7 +174,8 @@ shallow_app_discovery(Config) ->
                       create_app(LibDir2, Name, Vsn)
               end)(App)
              || App <-
-                    [{create_random_name("lib_app2_"), create_random_vsn()}
+                    [{rlx_test_utils:create_random_name("lib_app2_"),
+                      rlx_test_utils:create_random_vsn()}
                      || _ <- lists:seq(1, 100)]],
     State0 = rlx_state:put(proplists:get_value(state, Config),
                            default_libs, false),
@@ -220,14 +228,3 @@ get_bad_app_metadata(Name, Vsn) ->
       {vsn, \"", Vsn, "\"},
       {modules, [missing],
       {applications, [kernel, stdlib]}]}."].
-
-
-create_random_name(Name) ->
-    random:seed(os:timestamp()),
-    Name ++ erlang:integer_to_list(random:uniform(1000000)).
-
-create_random_vsn() ->
-    random:seed(os:timestamp()),
-    lists:flatten([erlang:integer_to_list(random:uniform(100)),
-                   ".", erlang:integer_to_list(random:uniform(100)),
-                   ".", erlang:integer_to_list(random:uniform(100))]).
