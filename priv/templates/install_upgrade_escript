@@ -2,58 +2,59 @@
 %%! -noshell -noinput
 %% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ft=erlang ts=4 sw=4 et
+%% the following is so we have access to ?MODULE
+-mode(compile).
+
+-export([install/2,
+         unpack/2,
+         upgrade/2,
+         downgrade/2,
+         versions/2]).
 
 -define(TIMEOUT, 300000).
 -define(INFO(Fmt,Args), io:format(Fmt,Args)).
 
-%% Unpack or upgrade to a new tar.gz release
-main(["unpack", RelName, NameTypeArg, NodeName, Cookie, VersionArg]) ->
+main([Command0, DistInfoStr | CommandArgs]) ->
+    %% convert the distribution info arguments string to an erlang term
+    {ok, Tokens, _} = erl_scan:string(DistInfoStr ++ "."),
+    {ok, DistInfo} = erl_parse:parse_term(Tokens),
+    Command = list_to_atom(Command0),
+    %% invoke the command passed as argument
+    erlang:apply(?MODULE, Command, [DistInfo, CommandArgs]);
+main(Args) ->
+    ?INFO("unknown args: ~p\n", [Args]),
+    erlang:halt(1).
+
+unpack({RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
     TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
-    WhichReleases = which_releases(TargetNode),
     Version = parse_version(VersionArg),
-    case proplists:get_value(Version, WhichReleases) of
-        undefined ->
-            %% not installed, so unpack tarball:
-            ?INFO("Release ~s not found, attempting to unpack releases/~s/~s.tar.gz~n",[Version,Version,RelName]),
-            ReleasePackage = Version ++ "/" ++ RelName,
-            case rpc:call(TargetNode, release_handler, unpack_release,
-                          [ReleasePackage], ?TIMEOUT) of
-                {ok, Vsn} ->
-                    ?INFO("Unpacked successfully: ~p~n", [Vsn]);
-                {error, UnpackReason} ->
-                    print_existing_versions(TargetNode),
-                    ?INFO("Unpack failed: ~p~n",[UnpackReason]),
-                    erlang:halt(2)
-            end;
+    case unpack_release(RelName, TargetNode, Version) of
+        {ok, Vsn} ->
+            ?INFO("Unpacked successfully: ~p~n", [Vsn]);
         old ->
             %% no need to unpack, has been installed previously
-            ?INFO("Release ~s is marked old, switching to it.~n",[Version]);
+            ?INFO("Release ~s is marked old.~n",[Version]);
         unpacked ->
-            ?INFO("Release ~s is already unpacked, now installing.~n",[Version]);
+            ?INFO("Release ~s is already unpacked.~n",[Version]);
         current ->
-            ?INFO("Release ~s is already installed and current. Making permanent.~n",[Version]);
+            ?INFO("Release ~s is already installed and current.~n",[Version]);
         permanent ->
-            ?INFO("Release ~s is already installed, and set permanent.~n",[Version])
+            ?INFO("Release ~s is already installed and set permanent.~n",[Version]);
+        {error, Reason} ->
+            ?INFO("Unpack failed: ~p~n",[Reason]),
+            print_existing_versions(TargetNode),
+            erlang:halt(2)
     end;
-main(["install", RelName, NameTypeArg, NodeName, Cookie, VersionArg]) ->
+install(_, Args) ->
+    ?INFO("unpack: unknown args ~p\n", [Args]).
+
+install({RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
     TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
-    WhichReleases = which_releases(TargetNode),
     Version = parse_version(VersionArg),
-    case proplists:get_value(Version, WhichReleases) of
-        undefined ->
-            %% not installed, so unpack tarball:
-            ?INFO("Release ~s not found, attempting to unpack releases/~s/~s.tar.gz~n",[Version,Version,RelName]),
-            ReleasePackage = Version ++ "/" ++ RelName,
-            case rpc:call(TargetNode, release_handler, unpack_release,
-                          [ReleasePackage], ?TIMEOUT) of
-                {ok, Vsn} ->
-                    ?INFO("Unpacked successfully: ~p~n", [Vsn]),
-                    install_and_permafy(TargetNode, RelName, Vsn);
-                {error, UnpackReason} ->
-                    print_existing_versions(TargetNode),
-                    ?INFO("Unpack failed: ~p~n",[UnpackReason]),
-                    erlang:halt(2)
-            end;
+    case unpack_release(RelName, TargetNode, Version) of
+        {ok, Vsn} ->
+            ?INFO("Unpacked successfully: ~p~n", [Vsn]),
+            install_and_permafy(TargetNode, RelName, Vsn);
         old ->
             %% no need to unpack, has been installed previously
             ?INFO("Release ~s is marked old, switching to it.~n",[Version]),
@@ -61,20 +62,114 @@ main(["install", RelName, NameTypeArg, NodeName, Cookie, VersionArg]) ->
         unpacked ->
             ?INFO("Release ~s is already unpacked, now installing.~n",[Version]),
             install_and_permafy(TargetNode, RelName, Version);
-        current -> %% installed and in-use, just needs to be permanent
-            ?INFO("Release ~s is already installed and current. Making permanent.~n",[Version]),
+        current ->
+            ?INFO("Release ~s is already installed and current, making permanent.~n",[Version]),
             permafy(TargetNode, RelName, Version);
         permanent ->
-            ?INFO("Release ~s is already installed, and set permanent.~n",[Version])
+            ?INFO("Release ~s is already installed and set permanent.~n",[Version]);
+        {error, Reason} ->
+            ?INFO("Unpack failed: ~p~n",[Reason]),
+            print_existing_versions(TargetNode),
+            erlang:halt(2)
     end;
-main(_) ->
-    erlang:halt(1).
+install(_, Args) ->
+    ?INFO("install: unknown args ~p\n", [Args]).
+
+upgrade(DistInfo, Args) ->
+    install(DistInfo, Args).
+
+downgrade(DistInfo, Args) ->
+    install(DistInfo, Args).
+
+versions({_RelName, NameTypeArg, NodeName, Cookie}, []) ->
+    TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
+    print_existing_versions(TargetNode).
+
+unpack_release(RelName, TargetNode, Version) ->
+    WhichReleases = which_releases(TargetNode),
+    case proplists:get_value(Version, WhichReleases) of
+        undefined ->
+            %% not installed, so unpack tarball:
+            %% look for a release package with the intended version in the following order:
+            %%      releases/<relname>-<version>.tar.gz
+            %%      releases/<version>/<relname>-<version>.tar.gz
+            %%      releases/<version>/<relname>.tar.gz
+            case find_and_link_release_package(Version, RelName) of
+                {_, undefined} ->
+                    {error, release_package_not_found};
+                {ReleasePackage, ReleasePackageLink} ->
+                    ?INFO("Release ~s not found, attempting to unpack ~s~n",
+                        [Version, ReleasePackage]),
+                    case rpc:call(TargetNode, release_handler, unpack_release,
+                                  [ReleasePackageLink], ?TIMEOUT) of
+                        {ok, Vsn} -> {ok, Vsn};
+                        {error, _} = Error -> Error
+                    end
+            end;
+        Other -> Other
+    end.
+
+%% 1. look for a release package tarball with the provided version in the following order:
+%%      releases/<relname>-<version>.tar.gz
+%%      releases/<version>/<relname>-<version>.tar.gz
+%%      releases/<version>/<relname>.tar.gz
+%% 2. create a symlink from a fixed location (ie. releases/<version>/<relname>.tar.gz)
+%%    to the release package tarball found in 1.
+%% 3. return a tuple with the paths to the release package and
+%%    to the symlink that is to be provided to release handler
+find_and_link_release_package(Version, RelName) ->
+    RelNameStr = atom_to_list(RelName),
+    %% regardless of the location of the release package, we'll
+    %% always give release handler the same path which is the symlink
+    %% the path to the package link is relative to "releases/" because
+    %% that's what release handler is expecting
+    ReleaseHandlerPackageLink = filename:join(Version, RelNameStr),
+    %% this is the symlink name we'll create once
+    %% we've found where the actual release package is located
+    ReleaseLink = filename:join(["releases", Version,
+                                 RelNameStr ++ ".tar.gz"]),
+    case first_value(fun filelib:is_file/1,
+                     [filename:join(["releases",
+                                     RelNameStr ++ "-" ++ Version ++ ".tar.gz"]),
+                      filename:join(["releases", Version,
+                                     RelNameStr ++ "-" ++ Version ++ ".tar.gz"]),
+                      filename:join(["releases", Version,
+                                     RelNameStr ++ ".tar.gz"])]) of
+        no_value ->
+            {undefined, undefined};
+        %% no need to create the link since the release package we
+        %% found is located in the same place as the link would be
+        {ok, Filename} when is_list(Filename) andalso
+                            Filename =:= ReleaseLink ->
+            {Filename, ReleaseHandlerPackageLink};
+        {ok, Filename} when is_list(Filename) ->
+            %% we now have the location of the release package, however
+            %% release handler expects a fixed nomenclature (<relname>.tar.gz)
+            %% so give it just that by creating a symlink to the tarball
+            %% we found.
+            %% make sure that the dir where we're creating the link in exists
+            ok = filelib:ensure_dir(filename:join([filename:dirname(ReleaseLink), "dummy"])),
+            %% create the symlink pointing to the full path name of the
+            %% release package we found
+            ok = file:make_symlink(filename:absname(Filename), ReleaseLink),
+            {Filename, ReleaseHandlerPackageLink}
+    end.
+
+first_value(_Fun, []) -> no_value;
+first_value(Fun, [Value | Rest]) ->
+    case Fun(Value) of
+        false ->
+            first_value(Fun, Rest);
+        true ->
+            {ok, Value}
+    end.
 
 parse_version(V) when is_list(V) ->
     hd(string:tokens(V,"/")).
 
 install_and_permafy(TargetNode, RelName, Vsn) ->
-    case rpc:call(TargetNode, release_handler, check_install_release, [Vsn], ?TIMEOUT) of
+    case rpc:call(TargetNode, release_handler,
+                  check_install_release, [Vsn], ?TIMEOUT) of
         {ok, _OtherVsn, _Desc} ->
             ok;
         {error, Reason} ->
@@ -108,9 +203,10 @@ install_and_permafy(TargetNode, RelName, Vsn) ->
     end.
 
 permafy(TargetNode, RelName, Vsn) ->
-    ok = rpc:call(TargetNode, release_handler, make_permanent, [Vsn], ?TIMEOUT),
-    file:copy(filename:join(["bin", RelName++"-"++Vsn]),
-              filename:join(["bin", RelName])),
+    ok = rpc:call(TargetNode, release_handler,
+                  make_permanent, [Vsn], ?TIMEOUT),
+    file:copy(filename:join(["bin", atom_to_list(RelName)++"-"++Vsn]),
+              filename:join(["bin", atom_to_list(RelName)])),
     ?INFO("Made release permanent: ~p~n", [Vsn]),
     ok.
 
@@ -124,11 +220,10 @@ print_existing_versions(TargetNode) ->
             ||  {V,S} <- which_releases(TargetNode) ]),
     ?INFO("Installed versions:~n~s", [VerList]).
 
-start_distribution(NodeName, NameTypeArg, Cookie) ->
-    MyNode = make_script_node(NodeName),
+start_distribution(TargetNode, NameTypeArg, Cookie) ->
+    MyNode = make_script_node(TargetNode),
     {ok, _Pid} = net_kernel:start([MyNode, get_name_type(NameTypeArg)]),
-    erlang:set_cookie(node(), list_to_atom(Cookie)),
-    TargetNode = list_to_atom(NodeName),
+    erlang:set_cookie(node(), Cookie),
     case {net_kernel:connect_node(TargetNode),
           net_adm:ping(TargetNode)} of
         {true, pong} ->
@@ -142,7 +237,7 @@ start_distribution(NodeName, NameTypeArg, Cookie) ->
     TargetNode.
 
 make_script_node(Node) ->
-    [Name, Host] = string:tokens(Node, "@"),
+    [Name, Host] = string:tokens(atom_to_list(Node), "@"),
     list_to_atom(lists:concat([Name, "_upgrader_", os:getpid(), "@", Host])).
 
 %% get name type from arg
