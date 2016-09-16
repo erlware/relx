@@ -36,7 +36,7 @@
 do(State, LibDirs, AppMeta) ->
     case rlx_state:get(State, disable_rel_discovery, false) of
         true ->
-            ec_cmd_log:debug(rlx_state:log(State), "Disbaled resolving of OTP releases"),
+            ec_cmd_log:debug(rlx_state:log(State), "Disabled resolving of OTP releases"),
             {ok, []};
         false ->
             ec_cmd_log:info(rlx_state:log(State),
