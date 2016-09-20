@@ -45,14 +45,12 @@ get_app_metadata(Name, Vsn, Deps, LibDeps) ->
       {applications, Deps}]}.
 
 create_random_name(Name) ->
-    random:seed(os:timestamp()),
-    Name ++ erlang:integer_to_list(random:uniform(1000000)).
+    Name ++ erlang:integer_to_list(random_uniform(1000000)).
 
 create_random_vsn() ->
-    random:seed(os:timestamp()),
-    lists:flatten([erlang:integer_to_list(random:uniform(100)),
-                   ".", erlang:integer_to_list(random:uniform(100)),
-                   ".", erlang:integer_to_list(random:uniform(100))]).
+    lists:flatten([erlang:integer_to_list(random_uniform(100)),
+                   ".", erlang:integer_to_list(random_uniform(100)),
+                   ".", erlang:integer_to_list(random_uniform(100))]).
 
 write_config(Filename, Values) ->
     ok = filelib:ensure_dir(Filename),
@@ -79,3 +77,12 @@ test_template_contents() ->
         "{foo_dir, \"{{foo_dir}}\"}.\n"
         "{foo_yahoo, \"{{foo_yahoo}}\"}.\n"
         "{google, \"{{google}}\"}.\n".
+
+-ifdef(rand_module).
+random_uniform(N) ->
+    rand:uniform(N).
+-else.
+random_uniform(N) ->
+    random:seed(os:timestamp()),
+    random:uniform(N).
+-endif.
