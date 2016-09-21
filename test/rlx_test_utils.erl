@@ -76,7 +76,9 @@ test_template_contents() ->
         "{yahoo, \"{{yahoo}}\"}.\n"
         "{foo_dir, \"{{foo_dir}}\"}.\n"
         "{foo_yahoo, \"{{foo_yahoo}}\"}.\n"
-        "{google, \"{{google}}\"}.\n".
+        "{google, \"{{google}}\"}.\n"
+        "{prop1, \"{{prop1}}\"}.\n"
+        "{prop2, {{prop2}}}.\n".
 
 -ifdef(rand_module).
 random_uniform(N) ->
