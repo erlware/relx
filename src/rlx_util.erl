@@ -160,11 +160,21 @@ wildcard(Path) when is_list(Path) ->
         Paths -> Paths
     end.
 
+-spec render(binary() | iolist()) ->
+                {ok, binary()} | {error, render_failed}.
 render(Template) ->
     render(Template, []).
 
-render(Template, Data) ->
-    {ok, bbmustache:render(ec_cnv:to_binary(Template), Data, [{key_type, atom}])}.
+-spec render(binary() | iolist(), proplists:proplist()) ->
+                {ok, binary()} | {error, render_failed}.
+render(Template, Data) when is_list(Template) ->
+    render(ec_cnv:to_binary(Template), Data);
+render(Template, Data) when is_binary(Template) ->
+    case catch bbmustache:render(Template, Data,
+                                 [{key_type, atom}]) of
+        Bin when is_binary(Bin) -> {ok, Bin};
+        _ -> {error, render_failed}
+    end.
 
 load_file(Files, escript, Name) ->
     {Name, Bin} = lists:keyfind(Name, 1, Files),
@@ -220,7 +230,7 @@ symlink_or_copy(Source, Target) ->
         ok ->
             ok;
         {error, eexist} ->
-            ok;
+            {error, eexist};
         {error, _} ->
             case os:type() of
                 {win32, _} ->
@@ -242,8 +252,6 @@ win32_symlink(Source, Target) ->
     ok.
 
 -spec cp_r(list(string()), file:filename()) -> 'ok'.
-cp_r([], _Dest) ->
-    ok;
 cp_r(Sources, Dest) ->
     case os:type() of
         {unix, _} ->

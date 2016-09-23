@@ -324,10 +324,10 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
     end.
 
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
-    {ok, V} = ec_git_vsn:vsn([]),
+    {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
     V;
 parse_vsn({semver, _}) ->
-    {ok, V} = ec_git_vsn:vsn([]),
+    {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
     V;
 parse_vsn({cmd, Command}) ->
     V = os:cmd(Command),

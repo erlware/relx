@@ -102,8 +102,8 @@
                   providers=[] :: [providers:t()],
                   available_apps=[] :: [rlx_app_info:t()],
                   default_configured_release :: {rlx_release:name() | undefined, rlx_release:vsn() |undefined} | undefined,
-                  vm_args :: file:filename() | undefined,
-                  sys_config :: file:filename() | undefined,
+                  vm_args :: file:filename() | false | undefined,
+                  sys_config :: file:filename() | false | undefined,
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps=[] :: [AppName::atom()],
                   exclude_apps=[] :: [AppName::atom()],
@@ -262,19 +262,19 @@ cli_args(State, CliArgs) ->
 providers(#state_t{providers=Providers}) ->
     Providers.
 
--spec vm_args(t()) -> file:filename() | undefined.
+-spec vm_args(t()) -> file:filename() | false | undefined.
 vm_args(#state_t{vm_args=VmArgs}) ->
     VmArgs.
 
--spec vm_args(t(), file:filename()) -> t().
+-spec vm_args(t(), undefined | false | file:filename()) -> t().
 vm_args(State, VmArgs) ->
     State#state_t{vm_args=VmArgs}.
 
--spec sys_config(t()) -> file:filename() | undefined.
+-spec sys_config(t()) -> file:filename() | false | undefined.
 sys_config(#state_t{sys_config=SysConfig}) ->
     SysConfig.
 
--spec sys_config(t(), file:filename()) -> t().
+-spec sys_config(t(), false | file:filename()) -> t().
 sys_config(State, SysConfig) ->
     State#state_t{sys_config=SysConfig}.
 

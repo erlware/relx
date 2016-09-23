@@ -442,8 +442,8 @@ is_directory(ToFile0, ToFile1) ->
     end.
 
 
--spec render_template(proplists:proplist(), iolist()) ->
-                             ok | relx:error().
+-spec render_template(proplists:proplist(), binary()) ->
+                             {ok, binary()} | relx:error().
 render_template(OverlayVars, Data) ->
     case rlx_util:render(Data, OverlayVars) of
         {ok, IoData} ->
@@ -452,6 +452,8 @@ render_template(OverlayVars, Data) ->
             ?RLX_ERROR({unable_to_render_template, Data, Reason})
     end.
 
+-spec write_template(proplists:proplist(), file:name(), file:name()) ->
+                            ok | relx:error().
 write_template(OverlayVars, FromFile, ToFile) ->
     case file:read_file(FromFile) of
         {ok, File} ->
@@ -477,10 +479,11 @@ write_template(OverlayVars, FromFile, ToFile) ->
             ?RLX_ERROR({read_template, FromFile, Error})
     end.
 
+-spec render_string(proplists:proplist(), iolist()) ->
+                      binary() | relx:error().
 render_string(OverlayVars, Data) ->
     case rlx_util:render(Data, OverlayVars) of
-        {ok, IoList} ->
-            erlang:iolist_to_binary(IoList);
+        {ok, Bin} -> Bin;
         {error, Error} ->
             ?RLX_ERROR({render_failed, Data, Error})
     end.
