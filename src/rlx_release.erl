@@ -141,7 +141,7 @@ goals(#release_t{goals=Goals}) ->
     Goals.
 
 -spec realize(t(), [{app_name(), app_vsn()}], [rlx_app_info:t()]) ->
-                     {ok, t()} | relx:error().
+                     {ok, t()}.
 realize(Rel, Pkgs0, World0) ->
     World1 = subset_world(Pkgs0, World0),
     process_specs(realize_erts(Rel), World1).

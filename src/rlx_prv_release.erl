@@ -208,9 +208,7 @@ set_resolved(State, Release0, Pkgs) ->
                         _:_ ->
                             ?RLX_ERROR({release_erts_error, ErtsDir})
                     end
-            end;
-        {error, E} ->
-            ?RLX_ERROR({release_error, E})
+            end
     end.
 
 get_realized_release(State, RelName, RelVsn) ->

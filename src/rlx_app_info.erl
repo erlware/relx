@@ -63,7 +63,7 @@
 -record(app_info_t, {name :: atom(),
                      original_vsn :: string(),
                      vsn :: ec_semver:semver(),
-                     dir :: file:name(),
+                     dir :: binary(),
                      link=false :: boolean(),
                      active_deps=[]:: [atom()],
                      library_deps=[] :: [atom()]}).
