@@ -80,6 +80,13 @@ test_template_contents() ->
         "{prop1, \"{{prop1}}\"}.\n"
         "{prop2, {{prop2}}}.\n".
 
+escript_contents() ->
+    "#!/usr/bin/env escript\n"
+    "\n"
+    "main(_Args) ->\n"
+    "io:format(\"~s\n\",\n"
+    "    [os:getenv(\"RELEASE_ROOT_DIR\")]).\n".
+
 -ifdef(rand_module).
 random_uniform(N) ->
     rand:uniform(N).
@@ -88,3 +95,12 @@ random_uniform(N) ->
     random:seed(os:timestamp()),
     random:uniform(N).
 -endif.
+
+list_to_term(String) ->
+    {ok, T, _} = erl_scan:string(String++"."),
+    case erl_parse:parse_term(T) of
+        {ok, Term} ->
+            Term;
+        {error, Error} ->
+            Error
+    end.
