@@ -502,6 +502,14 @@ include_erts(State, Release, OutputDir, RelDir) ->
                             ok = file:write_file(ErlIni, erl_ini(OutputDir, ErtsVersion))
                     end,
 
+                    %% delete erts src if the user requested it not be included
+                    case rlx_state:include_src(State) of
+                        true -> ok;
+                        false ->
+                            SrcDir = filename:join([LocalErts, "src"]),
+                            ok = ec_file:remove(SrcDir, [recursive])
+                    end,
+
                     case rlx_state:get(State, extended_start_script, false) of
                         true ->
 

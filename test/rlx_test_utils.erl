@@ -7,6 +7,7 @@
 create_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
     write_app_file(AppDir, Name, Vsn, Deps, LibDeps),
+    write_src_file(AppDir, Name),
     write_beam_file(AppDir, Name),
     rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
                      Deps, []).
@@ -21,6 +22,11 @@ write_beam_file(Dir, Name) ->
     Beam = filename:join([Dir, "ebin", "not_a_real_beam" ++ Name ++ ".beam"]),
     ok = filelib:ensure_dir(Beam),
     ok = ec_file:write_term(Beam, testing_purposes_only).
+
+write_src_file(Dir, Name) ->
+    Src = filename:join([Dir, "src", "not_a_real_beam" ++ Name ++ ".erl"]),
+    ok = filelib:ensure_dir(Src),
+    ok = ec_file:write_term(Src, testing_purposes_only).
 
 write_appup_file(AppInfo, DownVsn) ->
     Dir = rlx_app_info:dir(AppInfo),
