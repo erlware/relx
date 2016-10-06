@@ -59,7 +59,7 @@
 
 -record(release_t, {name :: atom(),
                     vsn :: ec_semver:any_version(),
-                    erts :: ec_semver:any_version(),
+                    erts :: undefined | ec_semver:any_version(),
                     goals = [] :: [rlx_depsolver:constraint()],
                     realized = false :: boolean(),
                     annotations = undefined :: annotations(),

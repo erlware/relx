@@ -61,9 +61,9 @@
 -include("relx.hrl").
 
 -record(app_info_t, {name :: atom(),
-                     original_vsn :: string(),
-                     vsn :: ec_semver:semver(),
-                     dir :: binary(),
+                     original_vsn :: undefined | string(),
+                     vsn :: undefined | ec_semver:semver(),
+                     dir :: undefined | binary(),
                      link=false :: boolean(),
                      active_deps=[]:: [atom()],
                      library_deps=[] :: [atom()]}).
@@ -83,13 +83,13 @@ new() ->
     {ok, #app_info_t{}}.
 
 %% @doc build a complete version of the app info with all fields set.
--spec new(atom(), string(), file:name(), [atom()], [atom()]) ->
+-spec new(atom(), string(), binary(), [atom()], [atom()]) ->
                  {ok, t()} | relx:error().
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps) ->
     new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, false).
 
 %% @doc build a complete version of the app info with all fields set.
--spec new(atom(), string(), file:name(), [atom()], [atom()], boolean()) ->
+-spec new(atom(), string(), binary(), [atom()], [atom()], boolean()) ->
                  {ok, t()} | relx:error().
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)
   when erlang:is_atom(AppName),
@@ -138,10 +138,10 @@ vsn(AppInfo=#app_info_t{name=AppName}, AppVsn)
             {ok, AppInfo#app_info_t{vsn=ParsedVsn}}
     end.
 
--spec dir(t()) -> file:name().
+-spec dir(t()) -> binary().
 dir(#app_info_t{dir=Dir}) ->
     Dir.
--spec dir(t(), file:name()) -> t().
+-spec dir(t(), binary()) -> t().
 dir(AppInfo=#app_info_t{}, Dir) ->
     AppInfo#app_info_t{dir=Dir}.
 

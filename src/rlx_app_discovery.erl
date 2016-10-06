@@ -290,7 +290,7 @@ get_vsn(AppDir, AppName, AppDetail) ->
             end
     end.
 
--spec get_deps(file:name(), atom(), string(), proplists:proplist()) ->
+-spec get_deps(binary(), atom(), string(), proplists:proplist()) ->
                       {ok, rlx_app_info:t()} | {error, Reason::term()}.
 get_deps(AppDir, AppName, AppVsn, AppDetail) ->
     ActiveApps = proplists:get_value(applications, AppDetail, []),
