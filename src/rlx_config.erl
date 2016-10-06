@@ -265,7 +265,7 @@ load_terms({output_dir, OutputDir}, {ok, State}) ->
 load_terms({overlay_vars, OverlayVars}, {ok, State}) ->
     CurrentOverlayVars = rlx_state:get(State, overlay_vars),
     NewOverlayVars0 = list_of_overlay_vars_files(OverlayVars),
-    NewOverlayVars1 = lists:umerge(lists:usort(NewOverlayVars0), lists:usort(CurrentOverlayVars)),
+    NewOverlayVars1 = CurrentOverlayVars ++ NewOverlayVars0,
     {ok, rlx_state:put(State, overlay_vars, NewOverlayVars1)};
 load_terms({Name, Value}, {ok, State})
   when erlang:is_atom(Name) ->
@@ -310,12 +310,22 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
     case Key of
         X when X =:= lib_dirs
              ; X =:= goals
-             ; X =:= overlay_vars
              ; X =:= overrides ->
             case lists:keyfind(Key, 1, ConfigTerms) of
                 {Key, Value2} ->
                     MergedValue = lists:umerge([Value, Value2]),
                     merge_configs(CliTerms, lists:keyreplace(Key, 1, ConfigTerms, {Key, MergedValue}));
+                false ->
+                    merge_configs(CliTerms, ConfigTerms++[{Key, Value}])
+            end;
+        overlay_vars ->
+            case lists:keyfind(overlay_vars, 1, ConfigTerms) of
+                {_, [H | _] = Vars} when is_list(H) ->
+                    MergedValue = Vars ++ Value,
+                    merge_configs(CliTerms, lists:keyreplace(overlay_vars, 1, ConfigTerms, {Key, MergedValue}));
+                {_, Vars} when is_list(Vars) ->
+                    MergedValue = [Vars | Value],
+                    merge_configs(CliTerms, lists:keyreplace(overlay_vars, 1, ConfigTerms, {Key, MergedValue}));
                 false ->
                     merge_configs(CliTerms, ConfigTerms++[{Key, Value}])
             end;
