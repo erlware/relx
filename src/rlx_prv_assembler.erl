@@ -507,7 +507,11 @@ include_erts(State, Release, OutputDir, RelDir) ->
                         true -> ok;
                         false ->
                             SrcDir = filename:join([LocalErts, "src"]),
-                            ok = ec_file:remove(SrcDir, [recursive])
+                            %% ensure the src folder exists before deletion
+                            case ec_file:exists(SrcDir) of
+                              true -> ok = ec_file:remove(SrcDir, [recursive]);
+                              false -> ok
+                            end
                     end,
 
                     case rlx_state:get(State, extended_start_script, false) of
@@ -567,7 +571,7 @@ make_boot_script_variables(State) ->
     % (dictated by erl.ini [erlang] Rootdir=) and so a boot variable is made
     % pointing to the release directory
     % On non-Windows, $ROOT is set by the ROOTDIR environment variable as the
-    % release directory, so a boot variable is made pointing to the erts 
+    % release directory, so a boot variable is made pointing to the erts
     % directory.
     % NOTE the boot variable can point to either the release/erts root directory
     % or the release/erts lib directory, as long as the usage here matches the
