@@ -28,7 +28,10 @@
          restart/1,
          reboot/1,
          escript/1,
-         remote_console/1]).
+         remote_console/1,
+         replace_os_vars/1,
+         replace_os_vars_dev_mode/1,
+         replace_os_vars_twice/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -54,7 +57,7 @@ init_per_testcase(_, Config) ->
 
 all() ->
     [ping, attach, pid, restart, reboot, escript,
-     remote_console].
+     remote_console, replace_os_vars, replace_os_vars_dev_mode].
 
 ping(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -87,7 +90,7 @@ ping(Config) ->
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
-    {error, 1} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
 
 attach(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -121,7 +124,7 @@ attach(Config) ->
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo attach", "&"])),
     timer:sleep(2000),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
-    {error, 1} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
 
 pid(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -154,7 +157,7 @@ pid(Config) ->
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _Pid} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
-    {error, 1} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
 
 restart(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -191,7 +194,7 @@ restart(Config) ->
     timer:sleep(2000),
     {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
-    {error, 1} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     ?assertEqual(Pid1, Pid2).
 
 reboot(Config) ->
@@ -231,7 +234,7 @@ reboot(Config) ->
     timer:sleep(2000),
     {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
-    {error, 1} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     ?assertNotEqual(Pid1, Pid2).
 
 escript(Config) ->
@@ -307,6 +310,267 @@ remote_console(Config) ->
     ?assertEqual(1, length(Nodes)),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])).
 
+replace_os_vars(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    SysConfig = filename:join([LibDir1, "sys.config"]),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {sys_config, SysConfig},
+                  {vm_args, VmArgs},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    rlx_test_utils:write_config(SysConfig,
+                                [[{goal_app, [{var1, "${VAR1}"}]}]]),
+    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+                          "-setcookie ${COOKIE}\n"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"NODENAME", "node1"},
+                  {"COOKIE", "cookie1"},
+                  {"VAR1", "v1"}]),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
+                      [{"RELX_REPLACE_OS_VARS", "1"},
+                         {"NODENAME", "node1"},
+                         {"COOKIE", "cookie1"}]),
+    {ok, "\"v1\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
+                        [{"RELX_REPLACE_OS_VARS", "1"},
+                         {"NODENAME", "node1"},
+                         {"COOKIE", "cookie1"}]),
+    {ok, "\"node1\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                     "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
+                        [{"RELX_REPLACE_OS_VARS", "1"},
+                         {"NODENAME", "node1"},
+                         {"COOKIE", "cookie1"}]),
+    {ok, "cookie1"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'erlang:get_cookie().'"]),
+                         [{"RELX_REPLACE_OS_VARS", "1"},
+                          {"NODENAME", "node1"},
+                          {"COOKIE", "cookie1"}]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                [{"RELX_REPLACE_OS_VARS", "1"},
+                 {"NODENAME", "node1"},
+                 {"COOKIE", "cookie1"}]),
+
+    %% start the node again but this time with different env variables to replace
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"NODENAME", "node2"},
+                  {"COOKIE", "cookie2"},
+                  {"VAR1", "v2"}]),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
+                      [{"RELX_REPLACE_OS_VARS", "1"},
+                         {"NODENAME", "node2"},
+                         {"COOKIE", "cookie2"}]),
+    {ok, "\"v2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
+                        [{"RELX_REPLACE_OS_VARS", "1"},
+                         {"NODENAME", "node2"},
+                         {"COOKIE", "cookie2"}]),
+    {ok, "\"node2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                     "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
+                          [{"RELX_REPLACE_OS_VARS", "1"},
+                           {"NODENAME", "node2"},
+                           {"COOKIE", "cookie2"}]),
+    {ok, "cookie2"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'erlang:get_cookie().'"]),
+                         [{"RELX_REPLACE_OS_VARS", "1"},
+                          {"NODENAME", "node2"},
+                          {"COOKIE", "cookie2"}]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                         [{"RELX_REPLACE_OS_VARS", "1"},
+                          {"NODENAME", "node2"},
+                          {"COOKIE", "cookie2"}]),
+    ok.
+
+replace_os_vars_twice(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    SysConfig = filename:join([LibDir1, "sys.config"]),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {sys_config, SysConfig},
+                  {vm_args, VmArgs},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    rlx_test_utils:write_config(SysConfig,
+                                [[{goal_app, [{var1, "${VAR1}"}]}]]),
+    ec_file:write(VmArgs, "-sname node\n\n"
+                          "-setcookie cookie\n"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                            {relvsn, "0.0.1"},
+                            {goals, []},
+                            {lib_dirs, [LibDir1]},
+                            {log_level, 3},
+                            {output_dir, OutputDir},
+                            {config, ConfigFile}], ["release"]),
+
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"VAR1", "v1"}]),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
+                      [{"RELX_REPLACE_OS_VARS", "1"}]),
+    {ok, "\"v1\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
+                       [{"RELX_REPLACE_OS_VARS", "1"}]),
+    {ok, "\"node\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                     "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
+                          [{"RELX_REPLACE_OS_VARS", "1"}]),
+    {ok, "cookie"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'erlang:get_cookie().'"]),
+                         [{"RELX_REPLACE_OS_VARS", "1"}]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"}]),
+
+    %% start the node again but this time don't replace env variables
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    {ok, "\"${VAR1}\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"])),
+    {ok, "\"node\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                     "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"])),
+    {ok, "cookie"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'erlang:get_cookie().'"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    ok.
+
+replace_os_vars_dev_mode(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    SysConfig = filename:join([LibDir1, "sys.config"]),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {sys_config, SysConfig},
+                  {vm_args, VmArgs},
+                  {dev_mode, true},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    rlx_test_utils:write_config(SysConfig,
+                                [[{goal_app, [{var1, "${VAR1}"}]}]]),
+    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+                          "-setcookie ${COOKIE}\n"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"NODENAME", "node1"},
+                  {"COOKIE", "cookie1"},
+                  {"VAR1", "v1"}]),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
+                      [{"RELX_REPLACE_OS_VARS", "1"},
+                         {"NODENAME", "node1"},
+                         {"COOKIE", "cookie1"}]),
+    {ok, "\"v1\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
+                        [{"RELX_REPLACE_OS_VARS", "1"},
+                         {"NODENAME", "node1"},
+                         {"COOKIE", "cookie1"}]),
+    {ok, "\"node1\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                     "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
+                          [{"RELX_REPLACE_OS_VARS", "1"},
+                           {"NODENAME", "node1"},
+                           {"COOKIE", "cookie1"}]),
+    {ok, "cookie1"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'erlang:get_cookie().'"]),
+                         [{"RELX_REPLACE_OS_VARS", "1"},
+                          {"NODENAME", "node1"},
+                          {"COOKIE", "cookie1"}]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"NODENAME", "node1"},
+                  {"COOKIE", "cookie1"}]),
+
+    %% start the node again but this time with different env variables to replace
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"NODENAME", "node2"},
+                  {"COOKIE", "cookie2"},
+                  {"VAR1", "v2"}]),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
+                      [{"RELX_REPLACE_OS_VARS", "1"},
+                       {"NODENAME", "node2"},
+                       {"COOKIE", "cookie2"}]),
+    {ok, "\"v2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
+                       [{"RELX_REPLACE_OS_VARS", "1"},
+                        {"NODENAME", "node2"},
+                        {"COOKIE", "cookie2"}]),
+    {ok, "\"node2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                     "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
+                          [{"RELX_REPLACE_OS_VARS", "1"},
+                           {"NODENAME", "node2"},
+                           {"COOKIE", "cookie2"}]),
+    {ok, "cookie2"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'erlang:get_cookie().'"]),
+                        [{"RELX_REPLACE_OS_VARS", "1"},
+                         {"NODENAME", "node2"},
+                         {"COOKIE", "cookie2"}]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                [{"RELX_REPLACE_OS_VARS", "1"},
+                 {"NODENAME", "node2"},
+                 {"COOKIE", "cookie2"}]),
+    ok.
+
 %%%===================================================================
 %%% Helper Functions
 %%%===================================================================
@@ -327,8 +591,8 @@ sh(Command, Env, Dir) ->
     case sh_loop(Port) of
         {ok, Ret} ->
             {ok, Ret};
-        {error, Rc} ->
-            {error, Rc}
+        {error, Rc, Msg} ->
+            {error, Rc, Msg}
     end.
 
 sh_loop(Port) ->
@@ -341,7 +605,7 @@ sh_loop(Port, Acc) ->
         {Port, {exit_status, 0}} ->
             {ok, Acc};
         {Port, {exit_status, Rc}} ->
-            {error, Rc}
+            {error, Rc, Acc}
     end.
 
 get_cwd() ->

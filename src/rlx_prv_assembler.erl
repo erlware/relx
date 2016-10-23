@@ -453,7 +453,7 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
     ensure_not_exist(RelConfPath),
     case rlx_state:dev_mode(State) of
         true ->
-            ok = rlx_util:symlink_or_copy(ConfigPath, RelConfPath ++ ".orig");
+            ok = rlx_util:symlink_or_copy(ConfigPath, RelConfPath);
         _ ->
             ok = ec_file:copy(ConfigPath, RelConfPath)
     end.
