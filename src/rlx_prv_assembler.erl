@@ -349,12 +349,9 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                                           rlx_release:erts(Release),
                                           ErlOpts);
                     true ->
-                        case rlx_state:get(State, extended_start_script, false) of
-                            true ->
-                                include_nodetool(BinDir);
-                            false ->
-                                ok
-                        end,
+                        %% extended start script needs nodetool so it's
+                        %% always included
+                        include_nodetool(BinDir),
                         extended_bin_file_contents(OsFamily, RelName, RelVsn, rlx_release:erts(Release), ErlOpts)
                 end,
     %% We generate the start script by default, unless the user
