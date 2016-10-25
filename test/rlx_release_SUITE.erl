@@ -52,6 +52,7 @@
          make_erts_release/1,
          make_erts_config_release/1,
          make_included_nodetool_release/1,
+         make_not_included_nodetool_release/1,
          make_src_release/1,
          make_excluded_src_release/1]).
 
@@ -87,7 +88,8 @@ all() ->
      make_invalid_config_release, make_relup_release, make_relup_release2,
      make_one_app_top_level_release, make_dev_mode_release,
      make_config_script_release, make_release_twice, make_release_twice_dev_mode,
-     make_erts_release, make_erts_config_release, make_included_nodetool_release,
+     make_erts_release, make_erts_config_release,
+     make_included_nodetool_release, make_not_included_nodetool_release,
      make_src_release, make_excluded_src_release].
 
 add_providers(Config) ->
@@ -1246,6 +1248,36 @@ make_included_nodetool_release(Config) ->
                              OutputDir, ConfigFile),
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assertEqual(ErtsVsn, rlx_release:erts(Release)).
+
+make_not_included_nodetool_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [kernel,stdlib], []),
+    rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [kernel,stdlib], []),
+    rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [kernel,stdlib], []),
+    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [kernel,stdlib], []),
+    rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [kernel,stdlib], []),
+
+    ErtsVsn = erlang:system_info(version),
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
+                   [goal_app_1]},
+                  {extended_start_script, true},
+                  {include_nodetool, false}]),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
+                             OutputDir, ConfigFile),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:applications(Release),
+    %% extended start script needs nodetool to work, so the
+    %% {include_nodetool, false} option is simply ignored
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assertEqual(ErtsVsn, rlx_release:erts(Release)).
