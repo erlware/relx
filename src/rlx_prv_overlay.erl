@@ -461,6 +461,14 @@ write_template(OverlayVars, FromFile, ToFile) ->
                 {ok, IoData} ->
                     case filelib:ensure_dir(ToFile) of
                         ok ->
+                            %% we were asked to render a template
+                            %% onto a symlink, this would cause an overwrite
+                            %% of the original file, so we delete the symlink
+                            %% and go ahead with the template render
+                            case ec_file:is_symlink(ToFile) of
+                                true -> ec_file:remove(ToFile);
+                                false -> ok
+                            end,
                             case file:write_file(ToFile, IoData) of
                                 ok ->
                                     {ok, FileInfo} = file:read_file_info(FromFile),

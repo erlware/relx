@@ -46,6 +46,7 @@
          make_relup_release2/1,
          make_one_app_top_level_release/1,
          make_dev_mode_release/1,
+         make_dev_mode_template_release/1,
          make_config_script_release/1,
          make_release_twice/1,
          make_release_twice_dev_mode/1,
@@ -86,7 +87,7 @@ all() ->
      make_implicit_config_release, make_rerun_overridden_release,
      overlay_release, make_goalless_release, make_depfree_release,
      make_invalid_config_release, make_relup_release, make_relup_release2,
-     make_one_app_top_level_release, make_dev_mode_release,
+     make_one_app_top_level_release, make_dev_mode_release, make_dev_mode_template_release,
      make_config_script_release, make_release_twice, make_release_twice_dev_mode,
      make_erts_release, make_erts_config_release,
      make_included_nodetool_release, make_not_included_nodetool_release,
@@ -1012,9 +1013,9 @@ make_dev_mode_release(Config) ->
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "sys.config.orig"]))),
+                                                      "sys.config"]))),
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "vm.args.orig"])));
+                                                      "vm.args"])));
         {win32, _} ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
@@ -1026,6 +1027,66 @@ make_dev_mode_release(Config) ->
             ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                       "vm.args"])))
     end.
+
+make_dev_mode_template_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1",
+                              [stdlib,kernel,non_goal_1], []),
+    rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1",
+                              [stdlib,kernel], []),
+    rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1",
+                              [stdlib,kernel,goal_app_1,non_goal_2], []),
+    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1",
+                              [stdlib,kernel], [lib_dep_1]),
+    rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1",
+                              [stdlib,kernel], []),
+
+    SysConfig = filename:join([LibDir1, "config", "sys.config"]),
+    SysConfigTerm = [{this_is_a_test, "yup it is"},
+                     {this_is_an_overlay_var, "{{var1}}"}],
+    rlx_test_utils:write_config(SysConfig, SysConfigTerm),
+
+    VmArgs = filename:join([LibDir1, "config", "vm.args"]),
+    ec_file:write(VmArgs, "-sname {{nodename}}"),
+
+    VarsFile1 = filename:join([LibDir1, "config", "vars1.config"]),
+    rlx_test_utils:write_config(VarsFile1, [{var1, "indeed it is"},
+                                            {nodename, "testnode"}]),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{dev_mode, true},
+                  {sys_config, SysConfig},
+                  {vm_args, VmArgs},
+                  {overlay_vars, [VarsFile1]},
+                  {overlay, [
+                    {template, "config/sys.config",
+                               "releases/{{release_version}}/sys.config"},
+                    {template, "config/vm.args",
+                               "releases/{{release_version}}/vm.args"}]},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]}]),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
+                          OutputDir, ConfigFile),
+    [{{foo, "0.0.1"}, _Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+    ?assert(not ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                  "sys.config"]))),
+    ?assert(not ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                  "vm.args"]))),
+    %% ensure that the original sys.config didn't get overwritten
+    ?assertMatch({ok, SysConfigTerm}, file:consult(SysConfig)),
+    %% ensure that the original vm.args didn't get overwritten
+    ?assertMatch({ok, <<"-sname {{nodename}}">>}, ec_file:read(VmArgs)).
 
 make_config_script_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),

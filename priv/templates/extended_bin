@@ -98,28 +98,6 @@ if [ -z "$VMARGS_PATH" ]; then
     fi
 fi
 
-orig_vmargs_path="$VMARGS_PATH.orig"
-if [ $RELX_REPLACE_OS_VARS ]; then
-    #Make sure we don't break dev mode by keeping the symbolic link to 
-    #the user's vm.args
-    if [ ! -L "$orig_vmargs_path" ]; then
-       #we're in copy mode, rename the vm.args file to vm.args.orig
-       mv "$VMARGS_PATH" "$orig_vmargs_path"
-    fi
-
-    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$orig_vmargs_path" > "$VMARGS_PATH"
- else
-    #We don't need to replace env. vars, just rename the
-    #symlink vm.args.orig to vm.args, and keep it as a
-    #symlink.
-    if [ -L "$orig_vmargs_path" ]; then
-       mv "$orig_vmargs_path" "$VMARGS_PATH" 
-    fi
-fi
-
-# Make sure log directory exists
-mkdir -p "$RUNNER_LOG_DIR"
-
 # Use $CWD/sys.config if exists, otherwise releases/VSN/sys.config
 if [ -z "$RELX_CONFIG_PATH" ]; then
     if [ -f "$RELEASE_ROOT_DIR/sys.config" ]; then
@@ -129,24 +107,48 @@ if [ -z "$RELX_CONFIG_PATH" ]; then
     fi
 fi
 
+orig_vmargs_path="$VMARGS_PATH.orig"
+if [ $RELX_REPLACE_OS_VARS ]; then
+    # if there is no vm.args.orig then make a copy of the
+    # the original vm.args
+    if [ ! -f "$orig_vmargs_path" ]; then
+       mv "$VMARGS_PATH" "$orig_vmargs_path"
+    fi
+
+    # apply the environment variable substitution to vm.args.orig
+    # the result is saved to vm.args
+    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$orig_vmargs_path" > "$VMARGS_PATH"
+else
+    # if a vm.args.orig is present this means that
+    # env variable substitution has occurred before
+    # so use the original
+    if [ -f "$orig_vmargs_path" ]; then
+       mv "$orig_vmargs_path" "$VMARGS_PATH"
+    fi
+fi
+
 orig_relx_config_path="$RELX_CONFIG_PATH.orig"
 if [ $RELX_REPLACE_OS_VARS ]; then
-    #Make sure we don't break dev mode by keeping the symbolic link to 
-    #the user's sys.config
-    if [ ! -L "$orig_relx_config_path" ]; then
-       #We're in copy mode, rename sys.config to sys.config.orig
+    # if there is no sys.config.orig then make a copy of the
+    # the original sys.config
+    if [ ! -f "$orig_relx_config_path" ]; then
        mv "$RELX_CONFIG_PATH" "$orig_relx_config_path"
     fi
 
+    # apply the environment variable substitution to sys.config.orig
+    # the result is saved to sys.config
     awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$orig_relx_config_path" > "$RELX_CONFIG_PATH"
- else
-    #We don't need to replace env. vars, just rename the
-    #symlink sys.config.orig to sys.config. Keep it as 
-    #a symlink.
-    if [ -L "$orig_relx_config_path" ]; then
-       mv "$orig_relx_config_path"  "$RELX_CONFIG_PATH"
+else
+    # if a sys.config.orig is present this means that
+    # env variable substitution has occurred before
+    # so use the original
+    if [ -f "$orig_relx_config_path" ]; then
+       mv "$orig_relx_config_path" "$RELX_CONFIG_PATH"
     fi
 fi
+
+# Make sure log directory exists
+mkdir -p "$RUNNER_LOG_DIR"
 
 # Extract the target node name from node.args
 NAME_ARG=$(egrep '^-s?name' "$VMARGS_PATH" || true)
