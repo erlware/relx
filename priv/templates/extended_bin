@@ -89,6 +89,16 @@ relx_start_command() {
            "$START_OPTION"
 }
 
+relx_get_code_paths() {
+    code="{ok, [{release,_,_,Apps}]} = file:consult(\"$REL_DIR/$REL_NAME.rel\"),"\
+"lists:foreach(fun(A) ->"\
+"   io:fwrite(\"$ROOTDIR/lib/~p-~s/ebin \", [element(1, A), element(2, A)]) "\
+"end, Apps),"\
+"halt()."
+
+    "$BINDIR/erl" -noshell -boot start_clean -eval "$code"
+}
+
 # Use $CWD/vm.args if exists, otherwise releases/VSN/vm.args
 if [ -z "$VMARGS_PATH" ]; then
     if [ -f "$RELEASE_ROOT_DIR/vm.args" ]; then
@@ -346,6 +356,7 @@ case "$1" in
         ;;
 
     console|console_clean|console_boot)
+        __code_paths=""
         # .boot file typically just $REL_NAME (ie, the app name)
         # however, for debugging, sometimes start_clean.boot is useful.
         # For e.g. 'setup', one may even want to name another boot script.
@@ -358,6 +369,7 @@ case "$1" in
                 fi
                 ;;
             console_clean)
+                __code_paths=$(relx_get_code_paths)
                 BOOTFILE="$ROOTDIR/bin/start_clean"
                 ;;
             console_boot)
@@ -381,7 +393,8 @@ case "$1" in
         set -- "$BINDIR/erlexec" -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH"
+            -args_file "$VMARGS_PATH" \
+            -pa ${__code_paths}
 
         # Dump environment info for logging purposes
         echo "Exec: $@" -- ${1+$ARGS}
