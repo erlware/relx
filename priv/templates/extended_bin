@@ -142,7 +142,7 @@ if [ $RELX_REPLACE_OS_VARS ]; then
 
     # apply the environment variable substitution to vm.args.orig
     # the result is saved to vm.args
-    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$orig_vmargs_path" > "$VMARGS_PATH"
+    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);if (var in ENVIRON) gsub("[$]{"var"}",ENVIRON[var]); else {printf("Environment variable %s is unset. Exiting.\n", var) | "cat 1>&2"; exit 65};}}1' < "$orig_vmargs_path" > "$VMARGS_PATH"
 else
     # if a vm.args.orig is present this means that
     # env variable substitution has occurred before
@@ -162,7 +162,7 @@ if [ $RELX_REPLACE_OS_VARS ]; then
 
     # apply the environment variable substitution to sys.config.orig
     # the result is saved to sys.config
-    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$orig_relx_config_path" > "$RELX_CONFIG_PATH"
+    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);if (var in ENVIRON) gsub("[$]{"var"}",ENVIRON[var]); else {printf("Environment variable %s is unset. Exiting.\n", var) | "cat 1>&2"; exit 65};}}1' < "$orig_relx_config_path" > "$RELX_CONFIG_PATH"
 else
     # if a sys.config.orig is present this means that
     # env variable substitution has occurred before
