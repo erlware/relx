@@ -23,7 +23,8 @@
          all/0,
          depsolver/1,
          goal/1,
-         app_info/1]).
+         app_info/1,
+         topo/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -38,7 +39,7 @@ end_per_suite(_Config) ->
     ok.
 
 all() ->
-    [depsolver, goal, app_info].
+    [depsolver, goal, app_info, topo].
 
 depsolver(_Config) ->
     ok = eunit:test(rlx_depsolver).
@@ -48,3 +49,6 @@ goal(_Config) ->
 
 app_info(_Config) ->
     ok = eunit:test(rlx_app_info).
+
+topo(_Config) ->
+    ok = eunit:test(rlx_topo).
