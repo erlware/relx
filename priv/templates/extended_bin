@@ -114,63 +114,41 @@ relx_get_code_paths() {
     "$BINDIR/erl" -noshell -boot start_clean -eval "$code"
 }
 
-# Use $CWD/vm.args if exists, otherwise releases/VSN/vm.args
-if [ -z "$VMARGS_PATH" ]; then
-    if [ -f "$RELEASE_ROOT_DIR/vm.args" ]; then
-        VMARGS_PATH="$RELEASE_ROOT_DIR/vm.args"
+check_replace_os_vars() {
+    # Use $CWD/$1 if exists, otherwise releases/VSN/$1
+    IN_FILE_PATH=$2
+    if [ -z "$IN_FILE_PATH" ]; then
+        if [ -f "$RELEASE_ROOT_DIR/$1" ]; then
+            IN_FILE_PATH="$RELEASE_ROOT_DIR/$1"
+        else
+            IN_FILE_PATH="$REL_DIR/$1"
+        fi
+    fi
+
+    OUT_FILE_PATH="$IN_FILE_PATH"
+    ORIG_FILE_PATH="$IN_FILE_PATH.orig"
+    if [ $RELX_REPLACE_OS_VARS ]; then
+        # Create a new file in /tmp
+        OUT_FILE_PATH=$(mktemp /tmp/XXXXXX.$REL_NAME.$1)
+        # If vm.args.orig or sys.config.orig is present then use that
+        if [ -f "$ORIG_FILE_PATH" ]; then
+           IN_FILE_PATH="$ORIG_FILE_PATH"
+        fi
+
+        # apply the environment variable substitution to $IN_FILE_PATH
+        # the result is saved to $OUT_FILE_PATH
+        awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$IN_FILE_PATH" > "$OUT_FILE_PATH"
     else
-        VMARGS_PATH="$REL_DIR/vm.args"
+        # If vm.arg.orig or sys.config.orig is present then use that
+        if [ -f "$ORIG_FILE_PATH" ]; then
+           OUT_FILE_PATH="$ORIG_FILE_PATH"
+        fi
     fi
-fi
+    echo $OUT_FILE_PATH
+}
 
-# Use $CWD/sys.config if exists, otherwise releases/VSN/sys.config
-if [ -z "$RELX_CONFIG_PATH" ]; then
-    if [ -f "$RELEASE_ROOT_DIR/sys.config" ]; then
-        RELX_CONFIG_PATH="$RELEASE_ROOT_DIR/sys.config"
-    else
-        RELX_CONFIG_PATH="$REL_DIR/sys.config"
-    fi
-fi
-
-orig_vmargs_path="$VMARGS_PATH.orig"
-if [ $RELX_REPLACE_OS_VARS ]; then
-    # if there is no vm.args.orig then make a copy of the
-    # the original vm.args
-    if [ ! -f "$orig_vmargs_path" ]; then
-       mv "$VMARGS_PATH" "$orig_vmargs_path"
-    fi
-
-    # apply the environment variable substitution to vm.args.orig
-    # the result is saved to vm.args
-    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$orig_vmargs_path" > "$VMARGS_PATH"
-else
-    # if a vm.args.orig is present this means that
-    # env variable substitution has occurred before
-    # so use the original
-    if [ -f "$orig_vmargs_path" ]; then
-       mv "$orig_vmargs_path" "$VMARGS_PATH"
-    fi
-fi
-
-orig_relx_config_path="$RELX_CONFIG_PATH.orig"
-if [ $RELX_REPLACE_OS_VARS ]; then
-    # if there is no sys.config.orig then make a copy of the
-    # the original sys.config
-    if [ ! -f "$orig_relx_config_path" ]; then
-       mv "$RELX_CONFIG_PATH" "$orig_relx_config_path"
-    fi
-
-    # apply the environment variable substitution to sys.config.orig
-    # the result is saved to sys.config
-    awk '{while(match($0,"[$]{[^}]*}")) {var=substr($0,RSTART+2,RLENGTH -3);gsub("[$]{"var"}",ENVIRON[var])}}1' < "$orig_relx_config_path" > "$RELX_CONFIG_PATH"
-else
-    # if a sys.config.orig is present this means that
-    # env variable substitution has occurred before
-    # so use the original
-    if [ -f "$orig_relx_config_path" ]; then
-       mv "$orig_relx_config_path" "$RELX_CONFIG_PATH"
-    fi
-fi
+VMARGS_PATH=$(check_replace_os_vars vm.args $VMARGS_PATH)
+RELX_CONFIG_PATH=$(check_replace_os_vars sys.config $RELX_CONFIG_PATH)
 
 # Make sure log directory exists
 mkdir -p "$RUNNER_LOG_DIR"
