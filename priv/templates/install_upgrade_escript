@@ -45,7 +45,7 @@ unpack({RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
             print_existing_versions(TargetNode),
             erlang:halt(2)
     end;
-install(_, Args) ->
+unpack(_, Args) ->
     ?INFO("unpack: unknown args ~p\n", [Args]).
 
 install({RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
