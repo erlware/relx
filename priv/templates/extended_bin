@@ -312,13 +312,14 @@ case "$1" in
         relx_rem_sh
         ;;
 
-    upgrade|downgrade|install)
+    upgrade|downgrade|install|unpack)
         if [ -z "$2" ]; then
-            echo "Missing package argument"
-            echo "Usage: $REL_NAME $1 {package base name}"
-            echo "NOTE {package base name} MUST NOT include the .tar.gz suffix"
+            echo "Missing version argument"
+            echo "Usage: $REL_NAME $1 {version}"
             exit 1
         fi
+
+        COMMAND="$1"; shift
 
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
@@ -327,25 +328,20 @@ case "$1" in
         fi
 
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
-             "install" "$REL_NAME" "$NAME_TYPE" "$NAME" "$COOKIE" "$2"
+             "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
         ;;
 
-    unpack)
-        if [ -z "$2" ]; then
-            echo "Missing package argument"
-            echo "Usage: $REL_NAME $1 {package base name}"
-            echo "NOTE {package base name} MUST NOT include the .tar.gz suffix"
-            exit 1
-        fi
-
+    versions)
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
             echo "Node is not running!"
             exit 1
         fi
 
+        COMMAND="$1"; shift
+
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
-             "unpack" "$REL_NAME" "$NAME_TYPE" "$NAME" "$COOKIE" "$2"
+             "versions" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
         ;;
 
     console|console_clean|console_boot)
