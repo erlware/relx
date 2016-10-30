@@ -52,6 +52,9 @@ relx_usage() {
             echo "      releases/<relname>-<version>.tar.gz"
             echo "      releases/<version>/<relname>-<version>.tar.gz"
             echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
             ;;
         uninstall)
             echo "Usage: $REL_NAME uninstall [VERSION]"
@@ -66,15 +69,21 @@ relx_usage() {
             echo "      releases/<relname>-<version>.tar.gz"
             echo "      releases/<version>/<relname>-<version>.tar.gz"
             echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
             ;;
         downgrade)
             echo "Usage: $REL_NAME downgrade [VERSION]"
-            echo "Downgrade the currently running release to VERSION, it assumes"
+            echo "Downgrades the currently running release to VERSION, it assumes"
             echo "that a release package tarball has already been deployed at one"
             echo "of the following locations:"
             echo "      releases/<relname>-<version>.tar.gz"
             echo "      releases/<version>/<relname>-<version>.tar.gz"
             echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
             ;;
         *)
             echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval}"

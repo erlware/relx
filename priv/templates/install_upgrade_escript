@@ -20,15 +20,17 @@ main([Command0, DistInfoStr | CommandArgs]) ->
     {ok, Tokens, _} = erl_scan:string(DistInfoStr ++ "."),
     {ok, DistInfo} = erl_parse:parse_term(Tokens),
     Command = list_to_atom(Command0),
+    %% convert arguments into a proplist
+    Opts = parse_arguments(CommandArgs),
     %% invoke the command passed as argument
-    erlang:apply(?MODULE, Command, [DistInfo, CommandArgs]);
+    erlang:apply(?MODULE, Command, [DistInfo, Opts]);
 main(Args) ->
     ?INFO("unknown args: ~p\n", [Args]),
     erlang:halt(1).
 
-unpack({RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
+unpack({RelName, NameTypeArg, NodeName, Cookie}, Opts) ->
     TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
-    Version = parse_version(VersionArg),
+    Version = proplists:get_value(version, Opts),
     case unpack_release(RelName, TargetNode, Version) of
         {ok, Vsn} ->
             ?INFO("Unpacked successfully: ~p~n", [Vsn]);
@@ -49,23 +51,33 @@ unpack({RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
 unpack(_, Args) ->
     ?INFO("unpack: unknown args ~p\n", [Args]).
 
-install({RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
+install({RelName, NameTypeArg, NodeName, Cookie}, Opts) ->
     TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
-    Version = parse_version(VersionArg),
+    Version = proplists:get_value(version, Opts),
     case unpack_release(RelName, TargetNode, Version) of
         {ok, Vsn} ->
             ?INFO("Unpacked successfully: ~p~n", [Vsn]),
-            install_and_permafy(TargetNode, RelName, Vsn);
+            check_and_install(TargetNode, Vsn),
+            maybe_permafy(TargetNode, RelName, Vsn, Opts);
         old ->
             %% no need to unpack, has been installed previously
             ?INFO("Release ~s is marked old, switching to it.~n",[Version]),
-            install_and_permafy(TargetNode, RelName, Version);
+            check_and_install(TargetNode, Version),
+            maybe_permafy(TargetNode, RelName, Version, Opts);
         unpacked ->
             ?INFO("Release ~s is already unpacked, now installing.~n",[Version]),
-            install_and_permafy(TargetNode, RelName, Version);
+            check_and_install(TargetNode, Version),
+            maybe_permafy(TargetNode, RelName, Version, Opts);
         current ->
-            ?INFO("Release ~s is already installed and current, making permanent.~n",[Version]),
-            permafy(TargetNode, RelName, Version);
+            case proplists:get_value(permanent, Opts, true) of
+                true ->
+                    ?INFO("Release ~s is already installed and current, making permanent.~n",
+                        [Version]),
+                    permafy(TargetNode, RelName, Version);
+                false ->
+                    ?INFO("Release ~s is already installed and current.~n",
+                        [Version])
+            end;
         permanent ->
             ?INFO("Release ~s is already installed and set permanent.~n",[Version]);
         {error, Reason} ->
@@ -82,18 +94,19 @@ upgrade(DistInfo, Args) ->
 downgrade(DistInfo, Args) ->
     install(DistInfo, Args).
 
-uninstall({_RelName, NameTypeArg, NodeName, Cookie}, [VersionArg]) ->
+uninstall({_RelName, NameTypeArg, NodeName, Cookie}, Opts) ->
     TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
     WhichReleases = which_releases(TargetNode),
-    Version = parse_version(VersionArg),
+    Version = proplists:get_value(version, Opts),
     case proplists:get_value(Version, WhichReleases) of
         undefined ->
             ?INFO("Release ~s is already uninstalled.~n", [Version]);
         old ->
-            ?INFO("Release ~s is marked old.~n", [Version]),
+            ?INFO("Release ~s is marked old, uninstalling it.~n", [Version]),
             remove_release(TargetNode, Version);
         unpacked ->
-            ?INFO("Release ~s is marked unpacked.~n", [Version]),
+            ?INFO("Release ~s is marked unpacked, uninstalling it~n",
+                [Version]),
             remove_release(TargetNode, Version);
         current ->
             ?INFO("Uninstall failed: Release ~s is marked current.~n", [Version]),
@@ -108,6 +121,16 @@ uninstall(_, Args) ->
 versions({_RelName, NameTypeArg, NodeName, Cookie}, []) ->
     TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
     print_existing_versions(TargetNode).
+
+parse_arguments(Args) ->
+    parse_arguments(Args, []).
+
+parse_arguments([], Acc) -> Acc;
+parse_arguments(["--no-permanent"|Rest], Acc) ->
+    parse_arguments(Rest, [{permanent, false}] ++ Acc);
+parse_arguments([VersionStr|Rest], Acc) ->
+    Version = parse_version(VersionStr),
+    parse_arguments(Rest, [{version, Version}] ++ Acc).
 
 unpack_release(RelName, TargetNode, Version) ->
     WhichReleases = which_releases(TargetNode),
@@ -191,7 +214,7 @@ first_value(Fun, [Value | Rest]) ->
 parse_version(V) when is_list(V) ->
     hd(string:tokens(V,"/")).
 
-install_and_permafy(TargetNode, RelName, Vsn) ->
+check_and_install(TargetNode, Vsn) ->
     case rpc:call(TargetNode, release_handler,
                   check_install_release, [Vsn], ?TIMEOUT) of
         {ok, _OtherVsn, _Desc} ->
@@ -204,7 +227,6 @@ install_and_permafy(TargetNode, RelName, Vsn) ->
                   [Vsn, [{update_paths, true}]], ?TIMEOUT) of
         {ok, _, _} ->
             ?INFO("Installed Release: ~s~n", [Vsn]),
-            permafy(TargetNode, RelName, Vsn),
             ok;
         {error, {no_such_release, Vsn}} ->
             VerList =
@@ -224,6 +246,13 @@ install_and_permafy(TargetNode, RelName, Vsn) ->
         {error, Reason1} ->
             ?INFO("ERROR: release_handler:install_release failed: ~p~n",[Reason1]),
             erlang:halt(4)
+    end.
+
+maybe_permafy(TargetNode, RelName, Vsn, Opts) ->
+    case proplists:get_value(permanent, Opts, true) of
+        true ->
+            permafy(TargetNode, RelName, Vsn);
+        false -> ok
     end.
 
 permafy(TargetNode, RelName, Vsn) ->
