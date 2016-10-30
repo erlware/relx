@@ -31,6 +31,66 @@ REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 
+relx_usage() {
+    command="$1"
+
+    case "$command" in
+        unpack)
+            echo "Usage: $REL_NAME unpack [VERSION]"
+            echo "Unpacks a release package VERSION, it assumes that this"
+            echo "release package tarball has already been deployed at one"
+            echo "of the following locations:"
+            echo "      releases/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>.tar.gz"
+            ;;
+        install)
+            echo "Usage: $REL_NAME install [VERSION]"
+            echo "Installs a release package VERSION, it assumes that this"
+            echo "release package tarball has already been deployed at one"
+            echo "of the following locations:"
+            echo "      releases/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
+            ;;
+        uninstall)
+            echo "Usage: $REL_NAME uninstall [VERSION]"
+            echo "Uninstalls a release VERSION, it will only accept"
+            echo "versions that are not currently in use"
+            ;;
+        upgrade)
+            echo "Usage: $REL_NAME upgrade [VERSION]"
+            echo "Upgrades the currently running release to VERSION, it assumes"
+            echo "that a release package tarball has already been deployed at one"
+            echo "of the following locations:"
+            echo "      releases/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
+            ;;
+        downgrade)
+            echo "Usage: $REL_NAME downgrade [VERSION]"
+            echo "Downgrades the currently running release to VERSION, it assumes"
+            echo "that a release package tarball has already been deployed at one"
+            echo "of the following locations:"
+            echo "      releases/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>-<version>.tar.gz"
+            echo "      releases/<version>/<relname>.tar.gz"
+            echo ""
+            echo "     --no-permanent   Install release package VERSION but"
+            echo "                      don't make it permanent"
+            ;;
+        *)
+            echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval}"
+            ;;
+    esac
+}
+
 find_erts_dir() {
     __erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
     if [ -d "$__erts_dir" ]; then
@@ -460,8 +520,17 @@ case "$1" in
         shift
         relx_nodetool "eval" $@
         ;;
+    help)
+        if [ -z "$2" ]; then
+            relx_usage
+            exit 1
+        fi
+
+        TOPIC="$2"; shift
+        relx_usage $TOPIC
+        ;;
     *)
-        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval}"
+        relx_usage
         exit 1
         ;;
 esac
