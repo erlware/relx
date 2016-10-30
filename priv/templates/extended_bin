@@ -461,7 +461,7 @@ case "$1" in
         relx_nodetool "eval" $@
         ;;
     *)
-        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|escript|rpc|rpcterms|eval}"
+        echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval}"
         exit 1
         ;;
 esac
