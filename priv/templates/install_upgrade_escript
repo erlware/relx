@@ -79,7 +79,18 @@ install({RelName, NameTypeArg, NodeName, Cookie}, Opts) ->
                         [Version])
             end;
         permanent ->
-            ?INFO("Release ~s is already installed and set permanent.~n",[Version]);
+            %% this release is marked permanent, however it might not the
+            %% one currently running
+            case current_release_version(TargetNode) of
+                Version ->
+                    ?INFO("Release ~s is already installed, running and set permanent.~n",
+                        [Version]);
+                CurrentVersion ->
+                    ?INFO("Release ~s is the currently running version.~n",
+                        [CurrentVersion]),
+                    check_and_install(TargetNode, Version),
+                    maybe_permafy(TargetNode, RelName, Version, Opts)
+            end;
         {error, Reason} ->
             ?INFO("Unpack failed: ~p~n",[Reason]),
             print_existing_versions(TargetNode),
@@ -276,6 +287,16 @@ remove_release(TargetNode, Vsn) ->
 which_releases(TargetNode) ->
     R = rpc:call(TargetNode, release_handler, which_releases, [], ?TIMEOUT),
     [ {V, S} ||  {_,V,_, S} <- R ].
+
+%% the running release version is either the only one marked `current´
+%% or, if none exists, the one marked `permanent`
+current_release_version(TargetNode) ->
+    R = rpc:call(TargetNode, release_handler, which_releases,
+                [], ?TIMEOUT),
+    Versions = [ {S, V} ||  {_,V,_, S} <- R ],
+    %% current version takes priority over the permanent
+    proplists:get_value(current, Versions,
+        proplists:get_value(permanent, Versions)).
 
 print_existing_versions(TargetNode) ->
     VerList = iolist_to_binary([
