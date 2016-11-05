@@ -30,6 +30,14 @@ REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 
+# start/stop/install/upgrade pre/post hooks
+PRE_START_HOOKS="{{ pre_start_hooks }}"
+POST_START_HOOKS="{{ post_start_hooks }}"
+PRE_STOP_HOOKS="{{ pre_stop_hooks }}"
+POST_STOP_HOOKS="{{ post_stop_hooks }}"
+PRE_INSTALL_UPGRADE_HOOKS="{{ pre_install_upgrade_hooks }}"
+POST_INSTALL_UPGRADE_HOOKS="{{ post_install_upgrade_hooks }}"
+
 relx_usage() {
     command="$1"
 
@@ -235,6 +243,23 @@ check_replace_os_vars() {
     echo $OUT_FILE_PATH
 }
 
+relx_run_hooks() {
+    HOOKS=$1
+    for hook in $HOOKS
+    do
+        # the scripts arguments at this point are separated
+        # from each other by | , we now replace these
+        # by empty spaces and give them to the `set`
+        # command in order to be able to extract them
+        # separately
+        set `echo "$hook" | sed -e 's/|/ /g'`
+        HOOK_SCRIPT=$1; shift
+        # all hook locations are expected to be
+        # relative to the start script location
+        [ "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" $@
+    done
+}
+
 VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
 # Extract the target node name from node.args
 NAME_ARG=$(egrep '^-s?name' "$VMARGS_PATH" || true)
@@ -330,11 +355,14 @@ case "$1" in
 
         mkdir -p "$PIPE_DIR"
 
+        relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
                           "$(relx_start_command)"
+        relx_run_hooks "$POST_START_HOOKS"
         ;;
 
     stop)
+        relx_run_hooks "$PRE_STOP_HOOKS"
         # Wait for the node to completely stop...
         PID="$(relx_get_pid)"
         if ! relx_nodetool "stop"; then
@@ -344,6 +372,7 @@ case "$1" in
         do
             sleep 1
         done
+        relx_run_hooks "$POST_STOP_HOOKS"
         ;;
 
     restart)
@@ -418,8 +447,12 @@ case "$1" in
             exit 1
         fi
 
+        relx_run_hooks "$PRE_INSTALL_UPGRADE_HOOKS"
+
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
              "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
+
+        relx_run_hooks "$POST_INSTALL_UPGRADE_HOOKS"
         ;;
 
     versions)
