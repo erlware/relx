@@ -435,8 +435,9 @@ case "$1" in
              "versions" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
         ;;
 
-    console|console_clean|console_boot)
+    console|console_clean|console_boot|foreground)
         __code_paths=""
+        FOREGROUNDOPTIONS=""
         # .boot file typically just $REL_NAME (ie, the app name)
         # however, for debugging, sometimes start_clean.boot is useful.
         # For e.g. 'setup', one may even want to name another boot script.
@@ -447,6 +448,16 @@ case "$1" in
                 else
                   BOOTFILE="$REL_DIR/start"
                 fi
+                ;;
+            foreground)
+                # start up the release in the foreground for use by runit
+                # or other supervision services
+                if [ -f "$REL_DIR/$REL_NAME.boot" ]; then
+                  BOOTFILE="$REL_DIR/$REL_NAME"
+                else
+                  BOOTFILE="$REL_DIR/start"
+                fi
+                FOREGROUNDOPTIONS="-noshell -noinput +Bd"
                 ;;
             console_clean)
                 __code_paths=$(relx_get_code_paths)
@@ -470,7 +481,8 @@ case "$1" in
 
         # Build an array of arguments to pass to exec later on
         # Build it here because this command will be used for logging.
-        set -- "$BINDIR/erlexec" -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
+        set -- "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
+            -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" \
@@ -483,38 +495,6 @@ case "$1" in
         # Log the startup
         echo "$RELEASE_ROOT_DIR"
         logger -t "$REL_NAME[$$]" "Starting up"
-
-        # Start the VM
-        exec "$@" -- ${1+$ARGS}
-        ;;
-
-    foreground)
-        # start up the release in the foreground for use by runit
-        # or other supervision services
-
-        [ -f "$REL_DIR/$REL_NAME.boot" ] && BOOTFILE="$REL_NAME" || BOOTFILE=start
-        FOREGROUNDOPTIONS="-noshell -noinput +Bd"
-
-        # Setup beam-required vars
-        EMU=beam
-        PROGNAME="${0#*/}"
-
-        export EMU
-        export PROGNAME
-
-        # Store passed arguments since they will be erased by `set`
-        ARGS="$@"
-
-        # Build an array of arguments to pass to exec later on
-        # Build it here because this command will be used for logging.
-        set -- "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
-            -boot "$REL_DIR/$BOOTFILE" -mode "$CODE_LOADING_MODE" -config "$RELX_CONFIG_PATH" \
-            -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
-            -args_file "$VMARGS_PATH"
-
-        # Dump environment info for logging purposes
-        echo "Exec: $@" -- ${1+$ARGS}
-        echo "Root: $ROOTDIR"
 
         # Start the VM
         exec "$@" -- ${1+$ARGS}
