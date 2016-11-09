@@ -110,3 +110,7 @@ list_to_term(String) ->
         {error, Error} ->
             Error
     end.
+
+unescape_string(String) ->
+    re:replace(String, "\"", "",
+               [global, {return, list}]).
