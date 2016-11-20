@@ -6,27 +6,26 @@
 
 create_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
-    write_app_file(AppDir, Name, Vsn, Deps, LibDeps),
+    write_app_file(AppDir, Name, Vsn, app_modules(Name), Deps, LibDeps),
     write_src_file(AppDir, Name),
-    write_beam_file(AppDir, Name),
+    compile_src_files(AppDir),
     rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
                      Deps, []).
 
 create_empty_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
-    write_app_file(AppDir, Name, Vsn, Deps, LibDeps),
+    write_app_file(AppDir, Name, Vsn, [], Deps, LibDeps),
     rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
                      Deps, []).
 
-write_beam_file(Dir, Name) ->
-    Beam = filename:join([Dir, "ebin", "not_a_real_beam" ++ Name ++ ".beam"]),
-    ok = filelib:ensure_dir(Beam),
-    ok = ec_file:write_term(Beam, testing_purposes_only).
+app_modules(Name) ->
+    [list_to_atom(M ++ Name) ||
+        M <- ["a_real_beam"]].
 
 write_src_file(Dir, Name) ->
-    Src = filename:join([Dir, "src", "not_a_real_beam" ++ Name ++ ".erl"]),
+    Src = filename:join([Dir, "src", "a_real_beam" ++ Name ++ ".erl"]),
     ok = filelib:ensure_dir(Src),
-    ok = ec_file:write_term(Src, testing_purposes_only).
+    ok = file:write_file(Src, beam_file_contents("a_real_beam"++Name)).
 
 write_appup_file(AppInfo, DownVsn) ->
     Dir = rlx_app_info:dir(AppInfo),
@@ -36,16 +35,27 @@ write_appup_file(AppInfo, DownVsn) ->
     ok = filelib:ensure_dir(Filename),
     ok = ec_file:write_term(Filename, {Vsn, [{DownVsn, []}], [{DownVsn, []}]}).
 
-write_app_file(Dir, Name, Version, Deps, LibDeps) ->
+write_app_file(Dir, Name, Version, Modules, Deps, LibDeps) ->
     Filename = filename:join([Dir, "ebin", Name ++ ".app"]),
     ok = filelib:ensure_dir(Filename),
-    ok = ec_file:write_term(Filename, get_app_metadata(Name, Version, Deps, LibDeps)).
+    ok = ec_file:write_term(Filename, get_app_metadata(Name, Version, Modules,
+                                                       Deps, LibDeps)).
 
-get_app_metadata(Name, Vsn, Deps, LibDeps) ->
+compile_src_files(Dir) ->
+    %% compile all *.erl files in src to ebin
+    SrcDir = filename:join([Dir, "src"]),
+    OutputDir = filename:join([Dir, "ebin"]),
+    lists:foreach(fun(SrcFile) ->
+                          {ok, _} = compile:file(SrcFile, [{outdir, OutputDir},
+                                                           return_errors])
+                  end, ec_file:find(SrcDir, "\\.erl")),
+    ok.
+
+get_app_metadata(Name, Vsn, Modules, Deps, LibDeps) ->
     {application, erlang:list_to_atom(Name),
      [{description, ""},
       {vsn, Vsn},
-      {modules, []},
+      {modules, Modules},
       {included_applications, LibDeps},
       {registered, []},
       {applications, Deps}]}.
@@ -62,6 +72,9 @@ write_config(Filename, Values) ->
     ok = filelib:ensure_dir(Filename),
     ok = ec_file:write(Filename,
                        [io_lib:format("~p.\n", [Val]) || Val <- Values]).
+
+beam_file_contents(Name) ->
+    "-module("++Name++").".
 
 test_template_contents() ->
     "{erts_vsn, \"{{erts_vsn}}\"}.\n"

@@ -82,7 +82,9 @@
          upfrom/1,
          upfrom/2,
          format/1,
-         format/2]).
+         format/2,
+         exclude_modules/1,
+         exclude_modules/2]).
 
 
 -export_type([t/0,
@@ -107,6 +109,7 @@
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps=[] :: [AppName::atom()],
                   exclude_apps=[] :: [AppName::atom()],
+                  exclude_modules=[] :: [{App::atom(), [Module::atom()]}],
                   debug_info=keep :: keep | strip,
                   configured_releases :: releases(),
                   realized_releases :: releases(),
@@ -199,6 +202,15 @@ exclude_apps(#state_t{exclude_apps=Apps}) ->
 -spec exclude_apps(t(), [AppName::atom()]) -> t().
 exclude_apps(State, SkipApps) ->
     State#state_t{exclude_apps=SkipApps}.
+
+-spec exclude_modules(t()) -> [{App::atom(), [Module::atom()]}].
+exclude_modules(#state_t{exclude_modules=Modules}) ->
+    Modules.
+
+%% @doc modules to be excluded from the release 
+-spec exclude_modules(t(), [{App::atom(), [Module::atom()]}]) -> t().
+exclude_modules(State, SkipModules) ->
+    State#state_t{exclude_modules=SkipModules}.
 
 -spec debug_info(t()) -> keep | strip.
 debug_info(#state_t{debug_info=DebugInfo}) ->
