@@ -29,7 +29,6 @@ CODE_LOADING_MODE="${CODE_LOADING_MODE:-embedded}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
-PIPE_NAME="${PIPE_NAME:-$USER}"
 
 relx_usage() {
     command="$1"
@@ -268,7 +267,7 @@ RELX_CONFIG_PATH=$(check_replace_os_vars sys.config $RELX_CONFIG_PATH)
 # Make sure log directory exists
 mkdir -p "$RUNNER_LOG_DIR"
 
-PIPE_DIR="${PIPE_DIR:-/tmp/$PIPE_NAME/$NAME/}"
+PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 # Extract the target cookie
 COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
@@ -329,10 +328,14 @@ case "$1" in
         HEART_COMMAND="$RELEASE_ROOT_DIR/bin/$REL_NAME $CMD"
         export HEART_COMMAND
 
-        mkdir -p "$PIPE_DIR"
+        if mkdir -p "$PIPE_DIR" ; then
 
-        "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
-                          "$(relx_start_command)"
+            "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
+                              "$(relx_start_command)"
+        else
+            echo "create dir $PIPE_DIR failed, aborted"
+            exit 1
+        fi
         ;;
 
     stop)
