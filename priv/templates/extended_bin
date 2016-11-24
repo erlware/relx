@@ -328,10 +328,14 @@ case "$1" in
         HEART_COMMAND="$RELEASE_ROOT_DIR/bin/$REL_NAME $CMD"
         export HEART_COMMAND
 
-        mkdir -p "$PIPE_DIR"
+        if mkdir -p "$PIPE_DIR" ; then
 
-        "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
-                          "$(relx_start_command)"
+            "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
+                              "$(relx_start_command)"
+        else
+            echo "create dir $PIPE_DIR failed, aborted"
+            exit 1
+        fi
         ;;
 
     stop)
