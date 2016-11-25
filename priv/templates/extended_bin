@@ -198,12 +198,13 @@ make_out_file_path() {
 
 # Replace environment variables
 replace_os_vars() {
-    if [ -n "$BASH" ]; then
+    if [ -n "${BASH_VERSION}" ]; then
         awk '{
             while(match($0,/\$[{(][^{}()]+?[})]/)) {
                 s=RSTART; n=RLENGTH;
                 v0=substr($0,0,s-1); v1=substr($0,s,n); v2=substr($0,n+s,length($0)-s-n+1)
-                "echo "v1|getline v; $0=sprintf("%s%s%s", v0, v, v2)
+                vv=sprintf("/bin/bash -c \"/bin/echo %s\"", v1)
+                vv|getline v; $0=sprintf("%s %s%s", v0, v, v2)
             }
         }1' < "$1" > "$2"
     else
