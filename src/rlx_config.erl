@@ -173,6 +173,8 @@ load_terms({skip_apps, SkipApps0}, {ok, State0}) ->
     {ok, rlx_state:skip_apps(State0, SkipApps0)};
 load_terms({exclude_apps, ExcludeApps0}, {ok, State0}) ->
     {ok, rlx_state:exclude_apps(State0, ExcludeApps0)};
+load_terms({exclude_modules, ExcludeModules0}, {ok, State0}) ->
+    {ok, rlx_state:exclude_modules(State0, ExcludeModules0)};
 load_terms({debug_info, DebugInfo}, {ok, State0}) ->
     {ok, rlx_state:debug_info(State0, DebugInfo)};
 load_terms({overrides, Overrides0}, {ok, State0}) ->

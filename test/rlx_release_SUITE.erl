@@ -55,7 +55,8 @@
          make_included_nodetool_release/1,
          make_not_included_nodetool_release/1,
          make_src_release/1,
-         make_excluded_src_release/1]).
+         make_excluded_src_release/1,
+         make_exclude_modules_release/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -91,7 +92,7 @@ all() ->
      make_config_script_release, make_release_twice, make_release_twice_dev_mode,
      make_erts_release, make_erts_config_release,
      make_included_nodetool_release, make_not_included_nodetool_release,
-     make_src_release, make_excluded_src_release].
+     make_src_release, make_excluded_src_release, make_exclude_modules_release].
 
 add_providers(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -1400,6 +1401,46 @@ make_excluded_src_release(Config) ->
     ?assert(not ec_file:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
     ?assert(not ec_file:exists(filename:join([OutputDir, "foo", "lib",
                                               "goal_app_1-0.0.1", "src"]))).
+
+%% Test to ensure that excluded modules don't end up in the release 
+make_exclude_modules_release(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel, non_goal_1], []),
+    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app_1]},
+                  {exclude_modules, [{non_goal_1, [a_real_beamnon_goal_1]}]}]),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, Cwd} = file:get_cwd(),
+    {ok, State} = relx:do(Cwd, undefined, undefined, [], [LibDir1], 3,
+                          OutputDir, [],
+                          ConfigFile),
+    [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    %% ensure that the excluded module beam file didn't get copied
+    ?assert(not ec_file:exists(filename:join([OutputDir, "foo", "lib",
+                                              "non_goal_1-0.0.1", "ebin",
+                                              "a_real_beamnon_goal_1.beam"]))),
+
+    ?assertMatch({ok, [{application,non_goal_1,
+                        [{description,[]},
+                         {vsn,"0.0.1"},
+                         {modules,[]},
+                         {included_applications,[]},
+                         {registered,[]},
+                         {applications,[stdlib,kernel]}]}]},
+                 file:consult(filename:join([OutputDir, "foo", "lib",
+                                             "non_goal_1-0.0.1", "ebin",
+                                             "non_goal_1.app"]))).
+
 
 %%%===================================================================
 %%% Helper Functions
