@@ -32,7 +32,12 @@
          replace_os_vars/1,
          replace_os_vars_custom_location/1,
          replace_os_vars_dev_mode/1,
-         replace_os_vars_twice/1]).
+         replace_os_vars_twice/1,
+         custom_start_script_hooks/1,
+         builtin_wait_for_vm_start_script_hook/1,
+         builtin_pid_start_script_hook/1,
+         builtin_wait_for_process_start_script_hook/1,
+         mixed_custom_and_builtin_start_script_hooks/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -58,9 +63,11 @@ init_per_testcase(_, Config) ->
 
 all() ->
     [ping, attach, pid, restart, reboot, escript,
-     remote_console,
-     replace_os_vars, replace_os_vars_custom_location,
-     replace_os_vars_dev_mode, replace_os_vars_twice].
+     remote_console, replace_os_vars,
+     replace_os_vars_dev_mode, replace_os_vars_twice,
+     custom_start_script_hooks, builtin_wait_for_vm_start_script_hook,
+     builtin_pid_start_script_hook, builtin_wait_for_process_start_script_hook,
+     mixed_custom_and_builtin_start_script_hooks].
 
 ping(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -754,6 +761,239 @@ replace_os_vars_dev_mode(Config) ->
                  {"NODENAME", "node2"},
                  {"COOKIE", "cookie2"}]),
     ok.
+
+custom_start_script_hooks(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_hooks, [
+                        {pre_start, [
+                          {custom, "hooks/pre_start"}
+                        ]},
+                        {post_start, [
+                          {custom, "hooks/post_start"}
+                        ]},
+                        {pre_stop, [
+                          {custom, "hooks/pre_stop"}
+                        ]},
+                        {post_stop, [
+                          {custom, "hooks/post_stop"}
+                        ]}
+                    ]},
+                  {mkdir, "scripts"},
+                  {overlay, [{copy, "./pre_start", "bin/hooks/pre_start"},
+                             {copy, "./post_start", "bin/hooks/post_start"},
+                             {copy, "./pre_stop", "bin/hooks/pre_stop"},
+                             {copy, "./post_stop", "bin/hooks/post_stop"}]}
+                 ]),
+
+    %% write the hook scripts, each of them will write an erlang term to a file
+    %% that will later be consulted
+    ok = file:write_file(filename:join([LibDir1, "./pre_start"]),
+                         "#!/bin/bash\n# $*\necho \\{pre_start, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+    ok = file:write_file(filename:join([LibDir1, "./post_start"]),
+                         "#!/bin/bash\n# $*\necho \\{post_start, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+    ok = file:write_file(filename:join([LibDir1, "./pre_stop"]),
+                         "#!/bin/bash\n# $*\necho \\{pre_stop, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+    ok = file:write_file(filename:join([LibDir1, "./post_stop"]),
+                         "#!/bin/bash\n# $*\necho \\{post_stop, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    %% now start/stop the release to make sure the script hooks are really getting
+    %% executed
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    %% now check that the output file contains the expected format
+    {ok,[{pre_start, foo, _, foo},
+         {post_start, foo, _, foo},
+         {pre_stop, foo, _, foo},
+         {post_stop, foo, _, foo}]} = file:consult(filename:join([OutputDir, "foo", "test"])).
+
+builtin_pid_start_script_hook(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_hooks, [
+                      {post_start, [
+                        {pid, filename:join([OutputDir, "foo.pid"])}
+                      ]}
+                  ]}
+                 ]),
+
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    %% now start/stop the release to make sure the script hooks are really getting
+    %% executed
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    %% check that the pid file really was created
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo.pid"]))),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    ok.
+
+builtin_wait_for_vm_start_script_hook(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_hooks, [
+                        {post_start, [wait_for_vm_start]}
+                    ]}
+                 ]),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    %% now start/stop the release to make sure the script hooks are really getting
+    %% executed
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    % this run doesn't need the sleep because the wait_for_vm_start
+    % start script makes it unnecessary
+    %timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    ok.
+
+builtin_wait_for_process_start_script_hook(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_full_app(LibDir1, "goal_app", "0.0.1",
+                                   [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_hooks, [
+                        {post_start, [wait_for_vm_start,
+                                     {wait_for_process, goal_app_srv_signal}]}
+                    ]}
+                 ]),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    %% now start/stop the release to make sure the script hooks are really getting
+    %% executed
+    %% get the current time, we'll measure how long it took for the node to
+    %% start, it must be at least 3 seconds which is the time it takes the
+    %% goal_app_srv to register the signal
+    T1 = os:timestamp(),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    T2 = timer:now_diff(os:timestamp(), T1),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    ?assert((T2 div 1000) > 3000),
+    ok.
+
+mixed_custom_and_builtin_start_script_hooks(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_full_app(LibDir1, "goal_app", "0.0.1",
+                                   [stdlib,kernel], []),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_hooks, [
+                        {pre_start, [
+                          {custom, "hooks/pre_start"}
+                        ]},
+                        {post_start, [
+                          wait_for_vm_start,
+                          {pid, filename:join([OutputDir, "foo.pid"])},
+                          {wait_for_process, goal_app_srv_signal},
+                          {custom, "hooks/post_start"}
+                        ]},
+                        {pre_stop, [
+                          {custom, "hooks/pre_stop"}
+                        ]},
+                        {post_stop, [
+                          {custom, "hooks/post_stop"}
+                        ]}
+                    ]},
+                  {mkdir, "scripts"},
+                  {overlay, [{copy, "./pre_start", "bin/hooks/pre_start"},
+                             {copy, "./post_start", "bin/hooks/post_start"},
+                             {copy, "./pre_stop", "bin/hooks/pre_stop"},
+                             {copy, "./post_stop", "bin/hooks/post_stop"}]}
+                 ]),
+
+    %% write the hook scripts, each of them will write an erlang term to a file
+    %% that will later be consulted
+    ok = file:write_file(filename:join([LibDir1, "./pre_start"]),
+                         "#!/bin/bash\n# $*\necho \\{pre_start, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+    ok = file:write_file(filename:join([LibDir1, "./post_start"]),
+                         "#!/bin/bash\n# $*\necho \\{post_start, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+    ok = file:write_file(filename:join([LibDir1, "./pre_stop"]),
+                         "#!/bin/bash\n# $*\necho \\{pre_stop, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+    ok = file:write_file(filename:join([LibDir1, "./post_stop"]),
+                         "#!/bin/bash\n# $*\necho \\{post_stop, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    %% now start/stop the release to make sure the script hooks are really getting
+    %% executed
+    %% get the current time, we'll measure how long it took for the node to
+    %% start, it must be at least 3 seconds which is the time it takes the
+    %% goal_app_srv to register the signal
+    T1 = os:timestamp(),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    % this run doesn't need the sleep because the wait_for_vm_start
+    % start script makes it unnecessary
+    T2 = timer:now_diff(os:timestamp(), T1),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    ?assert((T2 div 1000) > 3000),
+    %% check that the pid file really was created
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo.pid"]))),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    %% now check that the output file contains the expected format
+    {ok,[{pre_start, foo, _, foo},
+         {post_start, foo, _, foo},
+         {pre_stop, foo, _, foo},
+         {post_stop, foo, _, foo}]} = file:consult(filename:join([OutputDir, "foo", "test"])).
 
 %%%===================================================================
 %%% Helper Functions

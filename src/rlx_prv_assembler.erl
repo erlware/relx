@@ -352,7 +352,12 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                         %% extended start script needs nodetool so it's
                         %% always included
                         include_nodetool(BinDir),
-                        extended_bin_file_contents(OsFamily, RelName, RelVsn, rlx_release:erts(Release), ErlOpts)
+                        Hooks = expand_hooks(BinDir,
+                                             rlx_state:get(State,
+                                                           extended_start_script_hooks, [])),
+                        extended_bin_file_contents(OsFamily, RelName, RelVsn,
+                                                   rlx_release:erts(Release), ErlOpts,
+                                                   Hooks)
                 end,
     %% We generate the start script by default, unless the user
     %% tells us not too
@@ -382,6 +387,86 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
         E ->
             E
     end.
+
+expand_hooks(_Bindir, []) -> [];
+expand_hooks(BinDir, Hooks) ->
+    expand_hooks(BinDir, Hooks, []).
+
+expand_hooks(_BinDir, [], Acc) -> Acc;
+expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc) ->
+    %% filter and expand hooks to their respective shell scripts
+    Hooks =
+        lists:foldl(
+            fun(Hook, Acc0) ->
+                case validate_hook(Phase, Hook) of
+                    true ->
+                        %% all hooks are relative to the bin dir
+                        HookScriptFilename = filename:join([BinDir,
+                                                            hook_filename(Hook)]),
+                        %% write the hook script file to it's proper location
+                        ok = render_hook(hook_template(Hook), HookScriptFilename),
+                        %% and return the invocation that's to be templated in the
+                        %% extended script
+                        Acc0 ++ [hook_invocation(Hook)];
+                    false ->
+                        rebar_api:info("~p hook is not allowed in the ~p phase, ignoring it",
+                            [Hook, Phase]),
+                        Acc0
+                end
+            end, [], Hooks0),
+    expand_hooks(BinDir, Rest, Acc ++ [{Phase, Hooks}]).
+
+%% the pid script hook is only allowed in the
+%% post_start phase
+%% with args
+validate_hook(post_start, {pid, _}) -> true;
+%% and without args
+validate_hook(post_start, pid) -> true;
+%% same for wait_for_vm_start, wait_for_process script
+validate_hook(post_start, wait_for_vm_start) -> true;
+validate_hook(post_start, {wait_for_process, _}) -> true;
+%% custom hooks are allowed in all phases
+validate_hook(_Phase, {custom, _}) -> true;
+%% deny all others
+validate_hook(_, _) -> false.
+
+hook_filename({custom, CustomScript}) -> CustomScript;
+hook_filename(pid) -> "hooks/builtin/pid";
+hook_filename({pid, _}) -> "hooks/builtin/pid";
+hook_filename(wait_for_vm_start) -> "hooks/builtin/wait_for_vm_start";
+hook_filename({wait_for_process, _}) -> "hooks/builtin/wait_for_process".
+
+hook_invocation({custom, CustomScript}) -> CustomScript;
+%% the pid builtin hook with no arguments writes to pid file
+%% at /var/run/{{ rel_name }}.pid
+hook_invocation(pid) -> string:join(["hooks/builtin/pid",
+                                     "/var/run/$REL_NAME.pid"], "|");
+hook_invocation({pid, PidFile}) -> string:join(["hooks/builtin/pid",
+                                                PidFile], "|");
+hook_invocation(wait_for_vm_start) -> "hooks/builtin/wait_for_vm_start";
+hook_invocation({wait_for_process, Name}) ->
+    %% wait_for_process takes an atom as argument
+    %% which is the process name to wait for
+    string:join(["hooks/builtin/wait_for_process",
+                 atom_to_list(Name)], "|").
+
+hook_template({custom, _}) -> custom;
+hook_template(pid) -> builtin_hook_pid;
+hook_template({pid, _}) -> builtin_hook_pid;
+hook_template(wait_for_vm_start) -> builtin_hook_wait_for_vm_start;
+hook_template({wait_for_process, _}) -> builtin_hook_wait_for_process.
+
+%% custom hooks are not rendered, they should
+%% be copied by the release overlays
+render_hook(custom, _) -> ok;
+render_hook(TemplateName, Script) ->
+    rebar_api:debug("rendering ~p hook to ~p",
+        [TemplateName, Script]),
+    Template = render(TemplateName),
+    ok = filelib:ensure_dir(Script),
+    _ = ec_file:remove(Script),
+    ok = file:write_file(Script, Template),
+    ok = file:change_mode(Script, 8#755).
 
 include_nodetool(BinDir) ->
     NodeToolFile = nodetool_contents(),
@@ -644,13 +729,28 @@ bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
 
-extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
+extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks) ->
     Template = case OsFamily of
         unix -> extended_bin;
         win32 -> extended_bin_windows
     end,
+    %% turn all the hook lists into space separated strings
+    PreStartHooks = string:join(proplists:get_value(pre_start, Hooks, []), " "),
+    PostStartHooks = string:join(proplists:get_value(post_start, Hooks, []), " "),
+    PreStopHooks = string:join(proplists:get_value(pre_stop, Hooks, []), " "),
+    PostStopHooks = string:join(proplists:get_value(post_stop, Hooks, []), " "),
+    PreInstallUpgradeHooks = string:join(proplists:get_value(pre_install_upgrade,
+                                                Hooks, []), " "),
+    PostInstallUpgradeHooks = string:join(proplists:get_value(post_install_upgrade,
+                                                 Hooks, []), " "),
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
-                      {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
+                      {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts},
+                      {pre_start_hooks, PreStartHooks},
+                      {post_start_hooks, PostStartHooks},
+                      {pre_stop_hooks, PreStopHooks},
+                      {post_stop_hooks, PostStopHooks},
+                      {pre_install_upgrade_hooks, PreInstallUpgradeHooks},
+                      {post_install_upgrade_hooks, PostInstallUpgradeHooks}]).
 
 erl_ini(OutputDir, ErtsVsn) ->
     ErtsDirName = string:concat("erts-", ErtsVsn),
