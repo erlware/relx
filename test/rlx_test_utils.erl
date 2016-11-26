@@ -87,16 +87,6 @@ write_full_app_files(Dir, Name, Vsn, Deps, LibDeps) ->
     ok = file:write_file(GenServerFilename, gen_server_contents(Name)),
     ok.
 
-compile_src_files(Dir) ->
-    %% compile all *.erl files in src to ebin
-    SrcDir = filename:join([Dir, "src"]),
-    OutputDir = filename:join([Dir, "ebin"]),
-    lists:foreach(fun(SrcFile) ->
-                    {ok, _} = compile:file(SrcFile, [{outdir, OutputDir},
-                                                     return_errors])
-                  end, ec_file:find(SrcDir, "\\.erl")),
-    ok.
-
 get_full_app_metadata(Name, Vsn, Deps, LibDeps) ->
     {application, erlang:list_to_atom(Name),
     [{description, ""},
