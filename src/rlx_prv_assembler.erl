@@ -392,7 +392,8 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                         include_nodetool(BinDir),
                         Hooks = expand_hooks(BinDir,
                                              rlx_state:get(State,
-                                                           extended_start_script_hooks, [])),
+                                                           extended_start_script_hooks, []),
+                                             State),
                         extended_bin_file_contents(OsFamily, RelName, RelVsn,
                                                    rlx_release:erts(Release), ErlOpts,
                                                    Hooks)
@@ -426,12 +427,12 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
             E
     end.
 
-expand_hooks(_Bindir, []) -> [];
-expand_hooks(BinDir, Hooks) ->
-    expand_hooks(BinDir, Hooks, []).
+expand_hooks(_Bindir, [], _State) -> [];
+expand_hooks(BinDir, Hooks, _State) ->
+    expand_hooks(BinDir, Hooks, [], _State).
 
-expand_hooks(_BinDir, [], Acc) -> Acc;
-expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc) ->
+expand_hooks(_BinDir, [], Acc, _State) -> Acc;
+expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc, State) ->
     %% filter and expand hooks to their respective shell scripts
     Hooks =
         lists:foldl(
@@ -442,17 +443,20 @@ expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc) ->
                         HookScriptFilename = filename:join([BinDir,
                                                             hook_filename(Hook)]),
                         %% write the hook script file to it's proper location
-                        ok = render_hook(hook_template(Hook), HookScriptFilename),
+                        ok = render_hook(hook_template(Hook), HookScriptFilename, State),
                         %% and return the invocation that's to be templated in the
                         %% extended script
                         Acc0 ++ [hook_invocation(Hook)];
                     false ->
-                        rebar_api:info("~p hook is not allowed in the ~p phase, ignoring it",
-                            [Hook, Phase]),
+                        ec_cmd_log:error(
+                            rlx_state:log(State),
+                            io_lib:format("~p hook is not allowed in the ~p phase, ignoring it", [Hook, Phase])
+                        ),
+
                         Acc0
                 end
             end, [], Hooks0),
-    expand_hooks(BinDir, Rest, Acc ++ [{Phase, Hooks}]).
+    expand_hooks(BinDir, Rest, Acc ++ [{Phase, Hooks}], State).
 
 %% the pid script hook is only allowed in the
 %% post_start phase
@@ -496,10 +500,14 @@ hook_template({wait_for_process, _}) -> builtin_hook_wait_for_process.
 
 %% custom hooks are not rendered, they should
 %% be copied by the release overlays
-render_hook(custom, _) -> ok;
-render_hook(TemplateName, Script) ->
-    rebar_api:debug("rendering ~p hook to ~p",
-        [TemplateName, Script]),
+render_hook(custom, _, _) -> ok;
+render_hook(TemplateName, Script, State) ->
+    ec_cmd_log:info(
+        rlx_state:log(State),
+        "rendering ~p hook to ~p~n",
+        [TemplateName, Script]
+    ),
+
     Template = render(TemplateName),
     ok = filelib:ensure_dir(Script),
     _ = ec_file:remove(Script),
