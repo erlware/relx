@@ -260,6 +260,14 @@ relx_run_hooks() {
     done
 }
 
+find_erts_dir
+export ROOTDIR="$RELEASE_ROOT_DIR"
+export BINDIR="$ERTS_DIR/bin"
+export EMU="beam"
+export PROGNAME="erl"
+export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
+ERTS_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
+
 VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
 # Extract the target node name from node.args
 NAME_ARG=$(egrep '^-s?name' "$VMARGS_PATH" || true)
@@ -280,7 +288,7 @@ NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
 # So here we check for @ and add @hostname if missing
 case "${NAME}" in
     *@*) ;;                             # Nothing to do
-    *)   NAME=${NAME}@$(hostname -s);;  # Add @hostname
+    *)   NAME=${NAME}@$(relx_get_nodename);;  # Add @hostname
 esac
 
 # Export the variable so that it's available in the 'eval' calls
@@ -308,14 +316,6 @@ else
     # Extract cookie name from COOKIE_ARG
     COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
 fi
-
-find_erts_dir
-export ROOTDIR="$RELEASE_ROOT_DIR"
-export BINDIR="$ERTS_DIR/bin"
-export EMU="beam"
-export PROGNAME="erl"
-export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
-ERTS_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
 
 cd "$ROOTDIR"
 
