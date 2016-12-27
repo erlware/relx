@@ -24,6 +24,7 @@
          all/0,
          ping/1,
          shortname_ping/1,
+         longname_ping/1,
          attach/1,
          pid/1,
          restart/1,
@@ -63,7 +64,7 @@ init_per_testcase(_, Config) ->
      {state, State1} | Config].
 
 all() ->
-    [ping, shortname_ping, attach, pid, restart, reboot, escript,
+    [ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
      remote_console, replace_os_vars, replace_os_vars_dev_mode, replace_os_vars_twice,
      custom_start_script_hooks, builtin_wait_for_vm_start_script_hook,
      builtin_pid_start_script_hook, builtin_wait_for_process_start_script_hook,
@@ -120,6 +121,45 @@ shortname_ping(Config) ->
                  ]),
     
     ec_file:write(VmArgs, "-sname foo\n\n"
+                          "-setcookie cookie\n"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    %% now start/stop the release to make sure the extended script is working
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    %% a ping should fail after stopping a node
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
+
+longname_ping(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {vm_args, VmArgs},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+    
+    ec_file:write(VmArgs, "-name foo\n\n"
                           "-setcookie cookie\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),

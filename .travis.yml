@@ -1,4 +1,5 @@
 language: erlang
+sudo: required
 otp_release:
   - 19.1
   - 18.3
@@ -12,6 +13,8 @@ script: "./rebar3 update && ./rebar3 ct"
 branches:
   only:
     - master
+addons:
+    hostname: travis.dev 
 notifications:
   email:
     - core@erlware.org
