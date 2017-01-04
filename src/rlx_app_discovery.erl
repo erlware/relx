@@ -293,9 +293,19 @@ get_vsn(AppDir, AppName, AppDetail) ->
 -spec get_deps(binary(), atom(), string(), proplists:proplist()) ->
                       {ok, rlx_app_info:t()} | {error, Reason::term()}.
 get_deps(AppDir, AppName, AppVsn, AppDetail) ->
-    ActiveApps = proplists:get_value(applications, AppDetail, []),
+    %% ensure that at least stdlib and kernel are defined as application deps
+    ActiveApps = ensure_stdlib_kernel(AppName,
+                                      proplists:get_value(applications, AppDetail, [])),
     LibraryApps = proplists:get_value(included_applications, AppDetail, []),
     rlx_app_info:new(AppName, AppVsn, AppDir, ActiveApps, LibraryApps).
+
+-spec ensure_stdlib_kernel(AppName :: atom(),
+                           Apps :: list(atom())) -> list(atom()).
+ensure_stdlib_kernel(kernel, Deps) -> Deps;
+ensure_stdlib_kernel(stdlib, Deps) -> Deps;
+ensure_stdlib_kernel(_AppName, Deps) ->
+    %% ensure that stdlib and kernel are the first deps
+    [kernel, stdlib | Deps -- [stdlib, kernel]].
 
 %%%===================================================================
 %%% Test Functions
