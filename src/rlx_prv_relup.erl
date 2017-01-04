@@ -65,6 +65,15 @@ format_error({relup_script_generation_error,
                {missing_sasl, _}}}) ->
     "Unfortunately, due to requirements in systools, you need to have the sasl application "
         "in both the current release and the release to upgrade from.";
+format_error({relup_script_generation_warn, systools_relup,
+               [{erts_vsn_changed, _},
+                {erts_vsn_changed, _}]}) ->
+    "It has been detected that the ERTS version changed while generating the relup between versions, "
+    "please be aware that an instruction that will automatically restart the VM will be inserted in "
+    "this case";
+format_error({relup_script_generation_warn, Module, Warnings}) ->
+    ["Warnings generating relup \n",
+     rlx_util:indent(2), Module:format_warning(Warnings)];
 format_error({relup_script_generation_error, Module, Errors}) ->
     ["Errors generating relup \n",
      rlx_util:indent(2), Module:format_error(Errors)].
@@ -119,10 +128,20 @@ get_up_release(State, Release, Vsn) ->
 
 make_upfrom_script(State, Release, UpFrom) ->
     OutputDir = rlx_state:output_dir(State),
+    WarningsAsErrors = rlx_state:warnings_as_errors(State),
     Options = [{outdir, OutputDir},
                {path, rlx_util:get_code_paths(Release, OutputDir) ++
                    rlx_util:get_code_paths(UpFrom, OutputDir)},
                silent],
+               %% the following block can be uncommented
+               %% when systools:make_relup/4 returns
+               %% {error,Module,Errors} instead of error
+               %% when taking the warnings_as_errors option
+               %% ++
+               %% case WarningsAsErrors of
+               %%     true -> [warnings_as_errors];
+               %%     false -> []
+              % end,
     CurrentRel = strip_rel(rlx_release:relfile(Release)),
     UpFromRel = strip_rel(rlx_release:relfile(UpFrom)),
     ec_cmd_log:debug(rlx_state:log(State),
@@ -138,14 +157,26 @@ make_upfrom_script(State, Release, UpFrom) ->
                           [UpFromRel, CurrentRel]),
             {ok, State};
         error ->
-            ?RLX_ERROR({relup_script_generation_error, CurrentRel, UpFromRel});
+            ?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel});
         {ok, RelUp, _, []} ->
             write_relup_file(State, Release, RelUp),
             ec_cmd_log:info(rlx_state:log(State),
                             "relup successfully created!"),
             {ok, State};
-        {ok,_, Module,Warnings} ->
-            ?RLX_ERROR({relup_script_generation_warn, Module, Warnings});
+        {ok, RelUp, Module,Warnings} ->
+            case WarningsAsErrors of
+                true ->
+                    %% since we don't pass the warnings_as_errors option
+                    %% the relup file gets generated anyway, we need to delete
+                    %% it
+                    file:delete(filename:join([OutputDir, "relup"])),
+                    ?RLX_ERROR({relup_script_generation_warn, Module, Warnings});
+                false ->
+                    write_relup_file(State, Release, RelUp),
+                    ec_cmd_log:warn(rlx_state:log(State),
+                            format_error({relup_script_generation_warn, Module, Warnings})),
+                    {ok, State}
+            end;
         {error,Module,Errors} ->
             ?RLX_ERROR({relup_script_generation_error, Module, Errors})
     end.
