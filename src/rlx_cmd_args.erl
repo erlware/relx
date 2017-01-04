@@ -282,6 +282,9 @@ create(include_erts, Opts) ->
         Erts when is_list(Erts) ->
             {include_erts, Erts}
     end;
+create(warnings_as_errors, Opts) ->
+    WarningsAsErrors = proplists:get_value(warnings_as_errors, Opts, false),
+    {warnings_as_errors, WarningsAsErrors};
 create(_, _) ->
     [].
 
