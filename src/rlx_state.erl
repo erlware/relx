@@ -84,8 +84,9 @@
          format/1,
          format/2,
          exclude_modules/1,
-         exclude_modules/2]).
-
+         exclude_modules/2,
+         warnings_as_errors/1,
+         warnings_as_errors/2]).
 
 -export_type([t/0,
              releases/0,
@@ -117,7 +118,8 @@
                   include_src=true :: boolean(),
                   upfrom :: string() | binary() | undefined,
                   config_values :: ec_dictionary:dictionary(Key::atom(),
-                                                            Value::term())}).
+                                                            Value::term()),
+                  warnings_as_errors=false :: boolean()}).
 
 %%============================================================================
 %% types
@@ -453,6 +455,14 @@ append_hook(State=#state_t{providers=_Providers}, Target, Hook) ->
 hooks(_State=#state_t{providers=Providers}, Target) ->
     Provider = providers:get_provider(Target, Providers),
     providers:hooks(Provider).
+
+-spec warnings_as_errors(t()) -> boolean().
+warnings_as_errors(#state_t{warnings_as_errors=WarningsAsErrors}) ->
+    WarningsAsErrors.
+
+-spec warnings_as_errors(t(), boolean()) -> t().
+warnings_as_errors(State, WarningsAsErrors) ->
+    State#state_t{warnings_as_errors=WarningsAsErrors}.
 
 %% ===================================================================
 %% Internal functions

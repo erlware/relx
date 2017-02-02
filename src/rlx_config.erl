@@ -269,6 +269,8 @@ load_terms({overlay_vars, OverlayVars}, {ok, State}) ->
     NewOverlayVars0 = list_of_overlay_vars_files(OverlayVars),
     NewOverlayVars1 = CurrentOverlayVars ++ NewOverlayVars0,
     {ok, rlx_state:put(State, overlay_vars, NewOverlayVars1)};
+load_terms({warnings_as_errors, WarningsAsErrors}, {ok, State}) ->
+    {ok, rlx_state:warnings_as_errors(State, WarningsAsErrors)};
 load_terms({Name, Value}, {ok, State})
   when erlang:is_atom(Name) ->
     {ok, rlx_state:put(State, Name, Value)};
