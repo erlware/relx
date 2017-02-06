@@ -17,7 +17,16 @@ if [ "$TERM" = "dumb" -o -z "$TERM" ]; then
   export TERM=screen
 fi
 
-SCRIPT=$(readlink -f $0 || true)
+# OSX does not support readlink '-f' flag, work
+# around that
+case $OSTYPE in 
+    darwin*)
+        SCRIPT=$(readlink $0 || true)
+    ;;
+    *)
+        SCRIPT=$(readlink -f $0 || true)
+    ;;
+esac
 [ -z $SCRIPT ] && SCRIPT=$0
 SCRIPT_DIR="$(cd `dirname "$SCRIPT"` && pwd -P)"
 RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
