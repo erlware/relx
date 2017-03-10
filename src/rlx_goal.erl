@@ -10,8 +10,6 @@
 -define(p_seq,true).
 -define(p_string,true).
 
-
--compile(export_all).
 -spec file(file:name()) -> any().
 file(Filename) -> case file:read_file(Filename) of {ok,Bin} -> parse(Bin); Err -> Err end.
 
