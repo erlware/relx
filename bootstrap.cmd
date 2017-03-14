@@ -3,7 +3,7 @@
 
 :: Get dependencies, compile and escriptize relx
 @cmd /c @rebar3 update
-@cmd /c @rebar3 escriptize
+@cmd /c @rebar3 as escript escriptize
 
 :: Create a shortcut file for running the relx command
 @set relx_cmd=relx.cmd
