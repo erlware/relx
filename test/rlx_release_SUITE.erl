@@ -1436,7 +1436,7 @@ make_exclude_modules_release(Config) ->
                          {modules,[]},
                          {included_applications,[]},
                          {registered,[]},
-                         {applications,[kernel,stdlib]}]}]},
+                         {applications,[stdlib,kernel]}]}]},
                  file:consult(filename:join([OutputDir, "foo", "lib",
                                              "non_goal_1-0.0.1", "ebin",
                                              "non_goal_1.app"]))).
