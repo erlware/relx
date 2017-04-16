@@ -59,7 +59,8 @@ resolve_rel_metadata(State, LibDirs, AppMeta) ->
     ReleaseMeta0 = lists:flatten(rlx_dscv_util:do(fun(LibDir, FileType) ->
                                                           discover_dir(LibDir,
                                                                        AppMeta,
-                                                                       FileType)
+                                                                       FileType,
+                                                                       State)
                                                   end, LibDirs)),
 
         Errors = [case El of
@@ -98,34 +99,40 @@ format_detail({Module,Reason}) ->
     io_lib:format("~s~n", [Module:format_error(Reason)]).
 
 
--spec discover_dir(file:name(), [rlx_app_info:t()], directory | file) ->
+-spec discover_dir(file:name(), [rlx_app_info:t()], directory | file, rlx_state:t()) ->
                           {ok, rlx_release:t()}
                               | {error, Reason::term()}
                               | {noresult, false}.
-discover_dir(_File, _AppMeta, directory) ->
+discover_dir(_File, _AppMeta, directory, _State) ->
     {noresult, true};
-discover_dir(File, AppMeta, file) ->
-    is_valid_release(File, AppMeta).
+discover_dir(File, AppMeta, file, State) ->
+    is_valid_release(File, AppMeta, State).
 
 -spec is_valid_release(file:name(),
-                       [rlx_app_info:t()]) ->
+                       [rlx_app_info:t()],
+                       rlx_state:t()) ->
                               {ok, rlx_release:t()}
                                   | {error, Reason::term()}
                                   | {noresult, false}.
-is_valid_release(File, AppMeta) ->
+is_valid_release(File, AppMeta, State) ->
     case filename:extension(File) of
         <<".rel">>->
-            resolve_release(File, AppMeta);
+            resolve_release(File, AppMeta, State);
         _ ->
            {noresult, false}
     end.
 
-resolve_release(RelFile, AppMeta) ->
+resolve_release(RelFile, AppMeta, State) ->
     case file:consult(RelFile) of
         {ok, [{release, {RelName, RelVsn},
                {erts, ErtsVsn},
                Apps}]} ->
-            build_release(RelFile, RelName, RelVsn, ErtsVsn, Apps, AppMeta);
+            case is_configured_release(RelName, RelVsn, rlx_state:configured_releases(State)) of
+                true ->
+                    {noresult, false};
+                false ->
+                    build_release(RelFile, RelName, RelVsn, ErtsVsn, Apps, AppMeta)
+            end;
         {ok, InvalidRelease} ->
             ?RLX_ERROR({invalid_release_information, InvalidRelease});
         {error, Reason} ->
@@ -161,3 +168,6 @@ find_app(AppName, AppVsn, AppMeta) ->
         error ->
             ?RLX_ERROR({could_not_find, {AppName, AppVsn}})
     end.
+
+is_configured_release(Name, Vsn, Releases) ->
+    ec_dictionary:has_key({list_to_atom(Name), Vsn}, Releases).
