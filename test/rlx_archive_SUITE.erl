@@ -249,6 +249,8 @@ overlay_archive(Config) ->
     TestDirFull = filename:join([LibDir1, TestDir]),
     TestFileFull = filename:join(TestDirFull, TestFile),
     SecondTestDir = "second_test_dir",
+    TestScript = "test_script",
+    TestScript2 = "test_script2",
     rlx_test_utils:write_config(ConfigFile,
                  [{overlay_vars, [OverlayVars1, OverlayVars2]},
                   {overlay, [{mkdir, "{{target_dir}}/fooo"},
@@ -260,9 +262,17 @@ overlay_archive(Config) ->
                               "{{target_dir}}/{{yahoo}}/vars.link.config"},
                              {copy, TestDirFull,
                               "{{target_dir}}/"++SecondTestDir++"/"},
+                             {copy, TestScript,
+                              "{{target_dir}}/"++SecondTestDir++"/"++TestScript},
+                             {chmod, 8#00700,
+                              "{{target_dir}}/"++SecondTestDir++"/"++TestScript},
+                             {copy, TestScript2,
+                              "{{target_dir}}/"++SecondTestDir++"/"++TestScript2},
+                             {chmod, "{{test_script_perm}}",
+                              "{{target_dir}}/"++SecondTestDir++"/"++TestScript2},
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"},
-                            {template, Template,
+                             {template, Template,
                               "bin/{{default_release_name}}-{{default_release_version}}"}]},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
@@ -272,7 +282,8 @@ overlay_archive(Config) ->
     rlx_test_utils:write_config(VarsFile1, [{yahoo, "yahoo"},
                                             {yahoo2, [{foo, "bar"}]},
                                             {foo_yahoo, "foo_{{yahoo}}"},
-                                            {foo_dir, "foodir"}]),
+                                            {foo_dir, "foodir"},
+                                            {test_script_perm,8#00770}]),
 
     VarsFile2 = filename:join([LibDir1, "vars2.config"]),
     rlx_test_utils:write_config(VarsFile2, [{google, "yahoo"},
@@ -282,6 +293,11 @@ overlay_archive(Config) ->
     VarsFile3 = filename:join([LibDir1, "vars3.config"]),
     rlx_test_utils:write_config(VarsFile3, [{google, "yahoo"},
                                             {yahoo4, "{{yahoo}}/{{yahoo2}}4"}]),
+
+    TestScriptFile = filename:join([LibDir1,TestScript]),
+    ok = file:write_file(TestScriptFile, <<"#!/bin/sh\necho \"hello world\"">>),
+    TestScriptFile2 = filename:join([LibDir1,TestScript2]),
+    ok = file:write_file(TestScriptFile2, <<"#!/bin/sh\necho \"hello world 2\"">>),
 
     ok = rlx_util:mkdir_p(TestDirFull),
     ok = file:write_file(TestFileFull, rlx_test_utils:test_template_contents()),
@@ -311,6 +327,19 @@ overlay_archive(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
+
+    % check that the chmod of our file worked
+    ChmodedFile = filename:join([OutputDir,"foo",SecondTestDir,TestScript]),
+    {ok, ChmodedInfo} = file:read_file_info (ChmodedFile),
+    % mode from file_info is a bitmask which might have other bits set, but
+    % if we mask those we care about and check we should get true, see details
+    % here http://stackoverflow.com/questions/13183838/how-to-use-erlang-fileread-file-info-permissions-mode-info
+    ?assert(ChmodedInfo#file_info.mode band 8#00700 =:= 8#00700),
+
+    % check that the templated chmod of our file worked
+    ChmodedFile2 = filename:join([OutputDir,"foo",SecondTestDir,TestScript2]),
+    {ok, ChmodedInfo2} = file:read_file_info (ChmodedFile2),
+    ?assert(ChmodedInfo2#file_info.mode band 8#00770 =:= 8#00770),
 
     TarFile = filename:join([OutputDir, "foo", "foo-0.0.1.tar.gz"]),
     {ok, Files} = erl_tar:table(TarFile, [compressed]),

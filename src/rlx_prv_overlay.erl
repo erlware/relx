@@ -308,6 +308,28 @@ handle_errors(State, Result) ->
 -spec do_individual_overlay(rlx_state:t(), list(), proplists:proplist(),
                             OverlayDirective::term()) ->
                                    {ok, rlx_state:t()} | relx:error().
+do_individual_overlay(State, _Files, OverlayVars, {chmod, Mode, Path}) ->
+    % mode can be specified directly as an integer value, or if it is
+    % not an integer we assume it's a template, which we render and convert
+    % blindly to an integer.  So this will crash with an exception if for
+    % some reason something other than an integer is used
+    NewMode =
+        case is_integer(Mode) of
+            true -> Mode;
+            false -> erlang:list_to_integer(erlang:binary_to_list(render_string (OverlayVars, Mode)))
+        end,
+
+    Root = rlx_state:output_dir(State),
+    file_render_do(OverlayVars, Path,
+                   fun(NewPath) ->
+                            Absolute = absolutize(State,
+                                                  filename:join(Root,erlang:iolist_to_binary (NewPath))),
+                            case file:change_mode(Absolute, NewMode) of
+                                {error, Error} ->
+                                    ?RLX_ERROR({unable_to_chmod, NewMode, NewPath, Error});
+                                ok -> ok
+                            end
+                   end);
 do_individual_overlay(State, _Files, OverlayVars, {mkdir, Dir}) ->
     case rlx_util:render(erlang:iolist_to_binary(Dir), OverlayVars) of
         {ok, IoList} ->
