@@ -2,15 +2,6 @@
 %%! -noshell -noinput
 %% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
 %% ex: ft=erlang ts=4 sw=4 et
-%% the following is so we have access to ?MODULE
--mode(compile).
-
--export([install/2,
-         unpack/2,
-         upgrade/2,
-         downgrade/2,
-         uninstall/2,
-         versions/2]).
 
 -define(TIMEOUT, 300000).
 -define(INFO(Fmt,Args), io:format(Fmt,Args)).
@@ -19,11 +10,18 @@ main([Command0, DistInfoStr | CommandArgs]) ->
     %% convert the distribution info arguments string to an erlang term
     {ok, Tokens, _} = erl_scan:string(DistInfoStr ++ "."),
     {ok, DistInfo} = erl_parse:parse_term(Tokens),
-    Command = list_to_atom(Command0),
     %% convert arguments into a proplist
     Opts = parse_arguments(CommandArgs),
     %% invoke the command passed as argument
-    erlang:apply(?MODULE, Command, [DistInfo, Opts]);
+    F = case Command0 of
+        "install" -> fun(A, B) -> install(A, B) end;
+        "unpack" -> fun(A, B) -> unpack(A, B) end;
+        "upgrade" -> fun(A, B) -> upgrade(A, B) end;
+        "downgrade" -> fun(A, B) -> downgrade(A, B) end;
+        "uninstall" -> fun(A, B) -> uninstall(A, B) end;
+        "versions" -> fun(A, B) -> versions(A, B) end
+    end,
+    F(DistInfo, Opts);
 main(Args) ->
     ?INFO("unknown args: ~p\n", [Args]),
     erlang:halt(1).
