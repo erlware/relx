@@ -15,7 +15,7 @@ matrix:
       otp_release: 18.3
     - os: linux
       sudo: required
-      otp_release: 19.2
+      otp_release: 19.3
     - os: osx
       sudo: required
       language: generic
