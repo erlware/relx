@@ -102,8 +102,12 @@ relx_usage() {
             echo "     --no-permanent   Install release package VERSION but"
             echo "                      don't make it permanent"
             ;;
+        status)
+            echo "Usage: $REL_NAME status"
+            echo "Obtains node status information."
+            ;;
         *)
-            echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval}"
+            echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval|status}"
             ;;
     esac
 }
@@ -584,6 +588,15 @@ case "$1" in
 
         shift
         relx_nodetool "eval" $@
+        ;;
+    status)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" $@
         ;;
     help)
         if [ -z "$2" ]; then

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+echo $(relx_nodetool eval "application:which_applications().")

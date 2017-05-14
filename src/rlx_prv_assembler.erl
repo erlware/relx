@@ -398,7 +398,8 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                         include_nodetool(BinDir),
                         Hooks = expand_hooks(BinDir,
                                              rlx_state:get(State,
-                                                           extended_start_script_hooks, []),
+                                                           extended_start_script_hooks,
+                                                           [{status, [builtin_status]}]),
                                              State),
                         extended_bin_file_contents(OsFamily, RelName, RelVsn,
                                                    rlx_release:erts(Release), ErlOpts,
@@ -475,6 +476,8 @@ validate_hook(post_start, wait_for_vm_start) -> true;
 validate_hook(post_start, {wait_for_process, _}) -> true;
 %% custom hooks are allowed in all phases
 validate_hook(_Phase, {custom, _}) -> true;
+%% as well as status hooks
+validate_hook(status, _) -> true;
 %% deny all others
 validate_hook(_, _) -> false.
 
@@ -482,7 +485,8 @@ hook_filename({custom, CustomScript}) -> CustomScript;
 hook_filename(pid) -> "hooks/builtin/pid";
 hook_filename({pid, _}) -> "hooks/builtin/pid";
 hook_filename(wait_for_vm_start) -> "hooks/builtin/wait_for_vm_start";
-hook_filename({wait_for_process, _}) -> "hooks/builtin/wait_for_process".
+hook_filename({wait_for_process, _}) -> "hooks/builtin/wait_for_process";
+hook_filename(builtin_status) -> "hooks/builtin/status".
 
 hook_invocation({custom, CustomScript}) -> CustomScript;
 %% the pid builtin hook with no arguments writes to pid file
@@ -496,13 +500,15 @@ hook_invocation({wait_for_process, Name}) ->
     %% wait_for_process takes an atom as argument
     %% which is the process name to wait for
     string:join(["hooks/builtin/wait_for_process",
-                 atom_to_list(Name)], "|").
+                 atom_to_list(Name)], "|");
+hook_invocation(builtin_status) -> "hooks/builtin/status".
 
 hook_template({custom, _}) -> custom;
 hook_template(pid) -> builtin_hook_pid;
 hook_template({pid, _}) -> builtin_hook_pid;
 hook_template(wait_for_vm_start) -> builtin_hook_wait_for_vm_start;
-hook_template({wait_for_process, _}) -> builtin_hook_wait_for_process.
+hook_template({wait_for_process, _}) -> builtin_hook_wait_for_process;
+hook_template(builtin_status) -> builtin_hook_status.
 
 %% custom hooks are not rendered, they should
 %% be copied by the release overlays
@@ -795,6 +801,7 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks) -
                                                 Hooks, []), " "),
     PostInstallUpgradeHooks = string:join(proplists:get_value(post_install_upgrade,
                                                  Hooks, []), " "),
+    StatusHook = string:join(proplists:get_value(status, Hooks, []), " "),
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts},
                       {pre_start_hooks, PreStartHooks},
@@ -802,7 +809,8 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks) -
                       {pre_stop_hooks, PreStopHooks},
                       {post_stop_hooks, PostStopHooks},
                       {pre_install_upgrade_hooks, PreInstallUpgradeHooks},
-                      {post_install_upgrade_hooks, PostInstallUpgradeHooks}]).
+                      {post_install_upgrade_hooks, PostInstallUpgradeHooks},
+                      {status_hook, StatusHook}]).
 
 erl_ini(OutputDir, ErtsVsn) ->
     ErtsDirName = string:concat("erts-", ErtsVsn),
