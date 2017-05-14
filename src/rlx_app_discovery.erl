@@ -303,9 +303,10 @@ get_deps(AppDir, AppName, AppVsn, AppDetail) ->
                            Apps :: list(atom())) -> list(atom()).
 ensure_stdlib_kernel(kernel, Deps) -> Deps;
 ensure_stdlib_kernel(stdlib, Deps) -> Deps;
-ensure_stdlib_kernel(_AppName, Deps) ->
-    %% ensure that stdlib and kernel are the first deps
-    [kernel, stdlib | Deps -- [stdlib, kernel]].
+ensure_stdlib_kernel(_AppName, []) ->
+    %% minimum required deps are kernel and stdlib
+    [kernel, stdlib];
+ensure_stdlib_kernel(_AppName, Deps) -> Deps.
 
 %%%===================================================================
 %%% Test Functions
