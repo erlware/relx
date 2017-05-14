@@ -40,12 +40,13 @@ ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 
 # start/stop/install/upgrade pre/post hooks
-PRE_START_HOOKS="{{ pre_start_hooks }}"
-POST_START_HOOKS="{{ post_start_hooks }}"
-PRE_STOP_HOOKS="{{ pre_stop_hooks }}"
-POST_STOP_HOOKS="{{ post_stop_hooks }}"
-PRE_INSTALL_UPGRADE_HOOKS="{{ pre_install_upgrade_hooks }}"
-POST_INSTALL_UPGRADE_HOOKS="{{ post_install_upgrade_hooks }}"
+PRE_START_HOOKS="{{{ pre_start_hooks }}}"
+POST_START_HOOKS="{{{ post_start_hooks }}}"
+PRE_STOP_HOOKS="{{{ pre_stop_hooks }}}"
+POST_STOP_HOOKS="{{{ post_stop_hooks }}}"
+PRE_INSTALL_UPGRADE_HOOKS="{{{ pre_install_upgrade_hooks }}}"
+POST_INSTALL_UPGRADE_HOOKS="{{{ post_install_upgrade_hooks }}}"
+STATUS_HOOK="{{{ status_hook }}}"
 
 relx_usage() {
     command="$1"
