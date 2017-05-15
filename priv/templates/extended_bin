@@ -40,12 +40,13 @@ ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 
 # start/stop/install/upgrade pre/post hooks
-PRE_START_HOOKS="{{ pre_start_hooks }}"
-POST_START_HOOKS="{{ post_start_hooks }}"
-PRE_STOP_HOOKS="{{ pre_stop_hooks }}"
-POST_STOP_HOOKS="{{ post_stop_hooks }}"
-PRE_INSTALL_UPGRADE_HOOKS="{{ pre_install_upgrade_hooks }}"
-POST_INSTALL_UPGRADE_HOOKS="{{ post_install_upgrade_hooks }}"
+PRE_START_HOOKS="{{{ pre_start_hooks }}}"
+POST_START_HOOKS="{{{ post_start_hooks }}}"
+PRE_STOP_HOOKS="{{{ pre_stop_hooks }}}"
+POST_STOP_HOOKS="{{{ post_stop_hooks }}}"
+PRE_INSTALL_UPGRADE_HOOKS="{{{ pre_install_upgrade_hooks }}}"
+POST_INSTALL_UPGRADE_HOOKS="{{{ post_install_upgrade_hooks }}}"
+STATUS_HOOK="{{{ status_hook }}}"
 
 relx_usage() {
     command="$1"
@@ -101,8 +102,12 @@ relx_usage() {
             echo "     --no-permanent   Install release package VERSION but"
             echo "                      don't make it permanent"
             ;;
+        status)
+            echo "Usage: $REL_NAME status"
+            echo "Obtains node status information."
+            ;;
         *)
-            echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval}"
+            echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval|status}"
             ;;
     esac
 }
@@ -583,6 +588,15 @@ case "$1" in
 
         shift
         relx_nodetool "eval" $@
+        ;;
+    status)
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" $@
         ;;
     help)
         if [ -z "$2" ]; then

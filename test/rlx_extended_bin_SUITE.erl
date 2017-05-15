@@ -41,7 +41,8 @@
          builtin_wait_for_vm_start_script_hook/1,
          builtin_pid_start_script_hook/1,
          builtin_wait_for_process_start_script_hook/1,
-         mixed_custom_and_builtin_start_script_hooks/1]).
+         mixed_custom_and_builtin_start_script_hooks/1,
+         builtin_status_script/1, custom_status_script/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -70,7 +71,8 @@ all() ->
      remote_console, replace_os_vars, replace_os_vars_multi_node, replace_os_vars_included_config,
      replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice, custom_start_script_hooks,
      builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
-     builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks].
+     builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks,
+     builtin_status_script, custom_status_script].
 
 ping(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -1317,6 +1319,79 @@ mixed_custom_and_builtin_start_script_hooks(Config) ->
          {post_start, foo, _, foo},
          {pre_stop, foo, _, foo},
          {post_stop, foo, _, foo}]} = file:consult(filename:join([OutputDir, "foo", "test"])).
+
+builtin_status_script(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_full_app(LibDir1, "goal_app", "0.0.1",
+                                   [stdlib,kernel], []),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    %% write the status to a file
+    {ok, StatusStr} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])),
+    ec_file:write(filename:join([OutputDir, "status.txt"]),
+                  StatusStr ++ ".\n"),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    {ok, [Status]} = file:consult(filename:join([OutputDir, "status.txt"])),
+    Apps = lists:map(fun({App, _, _}) -> App end, Status),
+    {ok, [goal_app, kernel, stdlib] = lists:sort(Apps)}.
+
+custom_status_script(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_full_app(LibDir1, "goal_app", "0.0.1",
+                                   [stdlib,kernel], []),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_hooks, [
+                        {status, [
+                          {custom, "hooks/status"}
+                        ]}
+                    ]},
+                  {overlay, [
+                    {copy, "./status", "bin/hooks/status"}]}
+                 ]),
+
+    %% write the hook status script
+    ok = file:write_file(filename:join([LibDir1, "./status"]),
+                         "#!/bin/bash\n# $*\necho \\{status, $REL_NAME, \\'$NAME\\', $COOKIE\\}."),
+
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    %% write the status to a file
+    {ok, StatusStr} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])),
+    ec_file:write(filename:join([OutputDir, "status.txt"]), StatusStr),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    {ok, [Status]} = file:consult(filename:join([OutputDir, "status.txt"])),
+    {ok, {status, foo, _, foo} = Status}.
 
 %%%===================================================================
 %%% Helper Functions
