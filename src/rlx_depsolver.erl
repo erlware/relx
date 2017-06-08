@@ -113,7 +113,7 @@
 %% type
 %%============================================================================
 -ifdef(namespaced_types).
--type dep_graph() :: gb_tree:tree().
+-type dep_graph() :: gb_trees:tree().
 -else.
 -type dep_graph() :: gb_tree().
 -endif.
