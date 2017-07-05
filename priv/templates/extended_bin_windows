@@ -25,7 +25,7 @@
 @for %%A in ("%script_dir%\..") do @(
   set release_root_dir=%%~fA
 )
-@set rel_dir=%release_root_dir%\releases\%rel_vsn%
+@set "rel_dir=%release_root_dir%\releases\%rel_vsn%"
 
 @call :find_erts_dir
 @call :find_sys_config
@@ -79,7 +79,7 @@
 
 :: Find the ERTS dir
 :find_erts_dir
-@set possible_erts_dir=%release_root_dir%\erts-%erts_vsn%
+@set "possible_erts_dir=%release_root_dir%\erts-%erts_vsn%"
 @if exist "%possible_erts_dir%" (
   call :set_erts_dir_from_default
 ) else (
@@ -89,8 +89,8 @@
 
 :: Set the ERTS dir from the passed in erts_vsn
 :set_erts_dir_from_default
-@set erts_dir=%possible_erts_dir%
-@set rootdir=%release_root_dir%
+@set "erts_dir=%possible_erts_dir%"
+@set "rootdir=%release_root_dir%"
 @goto :eof
 
 :: Set the ERTS dir from erl
@@ -102,13 +102,13 @@
 @for /f "delims=" %%i in ('%%dir_cmd%%') do @(
   set erl_root=%%i
 )
-@set erts_dir=%erl_root%\erts-%erts_vsn%
-@set rootdir=%erl_root%
+@set "erts_dir=%erl_root%\erts-%erts_vsn%"
+@set "rootdir=%erl_root%"
 @goto :eof
 
 :: Find the sys.config file
 :find_sys_config
-@set possible_sys=%rel_dir%\sys.config
+@set "possible_sys=%rel_dir%\sys.config"
 @if exist %possible_sys% (
   set sys_config=-config "%possible_sys%"
 )
@@ -117,9 +117,9 @@
 :: set boot_script variable
 :set_boot_script_var
 @if exist "%rel_dir%\%rel_name%.boot" (
-  set boot_script=%rel_dir%\%rel_name%
+  set "boot_script=%rel_dir%\%rel_name%"
 ) else (
-  set boot_script=%rel_dir%\start
+  set "boot_script=%rel_dir%\start"
 )
 @goto :eof
 
