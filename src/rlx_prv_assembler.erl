@@ -399,7 +399,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                         Hooks = expand_hooks(BinDir,
                                              rlx_state:get(State,
                                                            extended_start_script_hooks,
-                                                           [{status, [builtin_status]}]),
+                                                           []),
                                              State),
                         extended_bin_file_contents(OsFamily, RelName, RelVsn,
                                                    rlx_release:erts(Release), ErlOpts,

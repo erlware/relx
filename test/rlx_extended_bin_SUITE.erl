@@ -1344,13 +1344,7 @@ builtin_status_script(Config) ->
     timer:sleep(2000),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the status to a file
-    {ok, StatusStr} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])),
-    ec_file:write(filename:join([OutputDir, "status.txt"]),
-                  StatusStr ++ ".\n"),
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
-    {ok, [Status]} = file:consult(filename:join([OutputDir, "status.txt"])),
-    Apps = lists:map(fun({App, _, _}) -> App end, Status),
-    {ok, [goal_app, kernel, stdlib] = lists:sort(Apps)}.
+    {ok, ""} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])).
 
 custom_status_script(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
