@@ -596,7 +596,7 @@ case "$1" in
             exit 1
         fi
 
-        [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" $@
+        [ ! -z "${STATUS_HOOK}" ] && [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" $@
         ;;
     help)
         if [ -z "$2" ]; then
