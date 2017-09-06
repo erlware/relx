@@ -53,6 +53,19 @@
   set cookie=%%J
 )
 
+:: Collect any additional VM args into erl_opts
+@setlocal EnableDelayedExpansion
+@for /f "usebackq tokens=1-2" %%I in (`findstr /r "^[^#]" "%vm_args%"`) do @(
+  if not "%%I" == "-name" (
+    if not "%%I" == "-sname" (
+      if not "%%I" == "-setcookie" (
+        set erl_opts=!erl_opts! %%I %%J
+      )
+    )
+  )
+)
+@endlocal && set erl_opts=%erl_opts%
+
 :: Write the erl.ini file to set up paths relative to this script
 @call :write_ini
 
