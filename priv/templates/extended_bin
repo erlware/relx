@@ -120,7 +120,7 @@ find_erts_dir() {
     else
         __erl="$(which erl)"
         code="io:format(\"~s\", [code:root_dir()]), halt()."
-        __erl_root="$("$__erl" -noshell -eval "$code")"
+        __erl_root="$("$__erl" -boot no_dot_erlang -noshell -eval "$code")"
         ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
         ROOTDIR="$__erl_root"
     fi
