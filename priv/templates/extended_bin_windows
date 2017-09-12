@@ -66,9 +66,6 @@
 )
 @endlocal && set erl_opts=%erl_opts%
 
-:: Write the erl.ini file to set up paths relative to this script
-@call :write_ini
-
 :: If a start.boot file is not present, copy one from the named .boot file
 @if not exist "%rel_dir%\start.boot" (
   copy "%rel_dir%\%rel_name%.boot" "%rel_dir%\start.boot" >nul
@@ -134,17 +131,6 @@
 ) else (
   set "boot_script=%rel_dir%\start"
 )
-@goto :eof
-
-:: Write the erl.ini file
-:write_ini
-@set erl_ini=%erts_dir%\bin\erl.ini
-@set converted_bindir=%bindir:\=\\%
-@set converted_rootdir=%rootdir:\=\\%
-@echo [erlang] > "%erl_ini%"
-@echo Bindir=%converted_bindir% >> "%erl_ini%"
-@echo Progname=%progname% >> "%erl_ini%"
-@echo Rootdir=%converted_rootdir% >> "%erl_ini%"
 @goto :eof
 
 :: Display usage information
