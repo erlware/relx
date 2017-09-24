@@ -47,6 +47,7 @@ POST_STOP_HOOKS="{{{ post_stop_hooks }}}"
 PRE_INSTALL_UPGRADE_HOOKS="{{{ pre_install_upgrade_hooks }}}"
 POST_INSTALL_UPGRADE_HOOKS="{{{ post_install_upgrade_hooks }}}"
 STATUS_HOOK="{{{ status_hook }}}"
+EXTENSIONS="{{{ extensions }}}"
 
 relx_usage() {
     command="$1"
@@ -107,7 +108,15 @@ relx_usage() {
             echo "Obtains node status information."
             ;;
         *)
-            echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval|status}"
+            # check for extension
+            IS_EXTENSION=$(relx_is_extension $command)
+            if [ "$IS_EXTENSION" = "1" ]; then
+                EXTENSION_SCRIPT=$(relx_get_extension_script $command)
+                relx_run_extension $EXTENSION_SCRIPT help
+            else
+                EXTENSIONS=`echo $EXTENSIONS | sed -e 's/|undefined//g'`
+                echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval|status|$EXTENSIONS}"
+            fi
             ;;
     esac
 }
@@ -283,6 +292,40 @@ relx_run_hooks() {
         # relative to the start script location
         [ "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" $@
     done
+}
+
+relx_is_extension() {
+    EXTENSION=$1
+    case "$EXTENSION" in
+        {{{ extensions }}})
+            echo "1" 
+        ;;
+        *)
+            echo "0" 
+        ;;
+    esac
+}
+
+relx_get_extension_script() {
+    EXTENSION=$1
+    # below are the extensions declarations
+    # of the form:
+    # foo_extension="path/to/foo_script";bar_extension="path/to/bar_script"
+    {{{extension_declarations}}}
+    # get the command extension (eg. foo) and 
+    # obtain the actual script filename that it
+    # refers to (eg. "path/to/foo_script"
+    eval echo "$"${EXTENSION}_extension""
+}
+
+relx_run_extension() {
+    # drop the first argument which is the name of the
+    # extension script
+    EXTENSION_SCRIPT=$1
+    shift
+    # all extension script locations are expected to be
+    # relative to the start script location
+    [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" $@
 }
 
 find_erts_dir
@@ -671,7 +714,15 @@ case "$1" in
         relx_usage $TOPIC
         ;;
     *)
-        relx_usage
+        # check for extension
+        IS_EXTENSION=$(relx_is_extension $1)
+        if [ "$IS_EXTENSION" = "1" ]; then
+            EXTENSION_SCRIPT=$(relx_get_extension_script $1)
+            shift
+            relx_run_extension $EXTENSION_SCRIPT $@
+        else
+            relx_usage
+        fi
         exit 1
         ;;
 esac
