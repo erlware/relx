@@ -120,7 +120,7 @@ find_erts_dir() {
     else
         __erl="$(which erl)"
         code="io:format(\"~s\", [code:root_dir()]), halt()."
-        __erl_root="$("$__erl" -noshell -eval "$code")"
+        __erl_root="$("$__erl" -boot no_dot_erlang -noshell -eval "$code")"
         ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
         ROOTDIR="$__erl_root"
     fi
@@ -325,6 +325,7 @@ RELX_CONFIG_PATH=$(check_replace_os_vars sys.config $RELX_CONFIG_PATH)
 # Make sure log directory exists
 mkdir -p "$RUNNER_LOG_DIR"
 
+test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 # Extract the target cookie
@@ -378,6 +379,7 @@ case "$1" in
         HEART_COMMAND="$RELEASE_ROOT_DIR/bin/$REL_NAME $CMD"
         export HEART_COMMAND
 
+        test -z "$PIPE_BASE_DIR" || mkdir -m 1777 -p "$PIPE_BASE_DIR"
         mkdir -p "$PIPE_DIR"
 
         relx_run_hooks "$PRE_START_HOOKS"
@@ -596,7 +598,7 @@ case "$1" in
             exit 1
         fi
 
-        [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" $@
+        [ ! -z "${STATUS_HOOK}" ] && [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" $@
         ;;
     help)
         if [ -z "$2" ]; then
