@@ -69,12 +69,6 @@
 )
 @endlocal && set erl_opts=%erl_opts%
 
-:: Remove erl.ini to move the erts_dir freely
-@set erl_ini=%erts_dir%\bin\erl.ini
-@if exist "%erl_ini%" (
-  del "%erl_ini%"
-)
-
 :: If a start.boot file is not present, copy one from the named .boot file
 @if not exist "%rel_dir%\start.boot" (
   copy "%rel_dir%\%rel_name%.boot" "%rel_dir%\start.boot" >nul
