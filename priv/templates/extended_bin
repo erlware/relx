@@ -297,11 +297,11 @@ VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
 # Extract the target node name from vm.args or referenced args_files
 NAME_ARG=$(awk 'function find_name(file) {
         while ((getline line<file)>0) {
-                if (line~/^-args_file\s+/) {
-                        gsub(/^-args_file\s+/, "", line)
+                if (line~/^-args_file +/) {
+                        gsub(/^-args_file +/, "", line)
                         find_name(line)
                 }
-                else if (line~/^-s?name\s+/) {
+                else if (line~/^-s?name +/) {
                         print line
                         exit
                 }
