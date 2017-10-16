@@ -294,29 +294,69 @@ export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
 ERTS_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
 
 VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
-# Extract the target node name from vm.args or referenced args_files
-NAME_ARG=$(awk 'function find_name(file) {
+
+# Check vm.args and other files referenced via -args_file parameters for:
+#    - nonexisting -args_files
+#    - circular dependencies of -args_files
+#    - relative paths in -args_file parameters
+#    - multiple/mixed occurences of -name and -sname parameters
+#    - missing -name or -sname parameters
+# If all checks pass, extract the target node name
+set +e
+TMP_NAME_ARG=$(awk 'function check_name(file)
+{
+    if (system("test -f "file)) {
+        print "File \""file"\" not found"
+        exit 1
+    }
     while ((getline line<file)>0) {
         if (line~/^-args_file +/) {
-            gsub(/^-args_file +/, "", line)
-            find_name(line)
+            gsub(/^-args_file +| *$/, "", line)
+            if (!(line~/^\//)) {
+                print "Relative path \""line"\" encountered in "file
+                exit 1
+            }
+            if (line in files) {
+                print "Circular reference to \""line"\" encountered in "file
+                exit 1
+            }
+            files[line]=line
+            check_name(line)
         }
         else if (line~/^-s?name +/) {
-            print line
-            exit
+            if (name!="") {
+                print "\""line"\" found in "file" but specified before as \""name"\""
+                exit 1
+            }
+            name=line
         }
     }
 }
+
+BEGIN {
+    split("", files)
+    name=""
+}
+
 {
-    find_name(FILENAME)
+    check_name(FILENAME)
+    if (name=="") {
+        print "Need to have exactly one of either -name or -sname parameters but none found"
+        exit 1
+    }
+    print name
+    exit 0
 }' "$VMARGS_PATH")
+case $? in
+    0) NAME_ARG="$TMP_NAME_ARG";;
+    *) echo "$TMP_NAME_ARG"
+       exit 1;;
+esac
+unset TMP_NAME_ARG
+set -e
+
 # Perform replacement of variables in ${NAME_ARG}
 NAME_ARG=$(eval echo "${NAME_ARG}")
-
-if [ -z "$NAME_ARG" ]; then
-    echo "vm.args needs to have either -name or -sname parameter."
-    exit 1
-fi
 
 # Extract the name type and name from the NAME_ARG for REMSH
 NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
