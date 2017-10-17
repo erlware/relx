@@ -245,6 +245,7 @@ render_overlay_vars(_OverlayVars, [], Acc) ->
 -spec generate_release_vars(rlx_release:t()) -> proplists:proplist().
 generate_release_vars(Release) ->
     [{erts_vsn, rlx_release:erts(Release)},
+     {erts_dir, code:root_dir()},
      {release_erts_version, rlx_release:erts(Release)},
      {release_name, rlx_release:name(Release)},
      {rel_vsn, rlx_release:vsn(Release)},

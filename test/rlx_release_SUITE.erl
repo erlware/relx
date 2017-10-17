@@ -676,7 +676,8 @@ overlay_release(Config) ->
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"},
                             {template, Template,
-                              "bin/{{default_release_name}}-{{default_release_version}}"}]},
+                              "bin/{{default_release_name}}-{{default_release_version}}"},
+                            {copy, "{{erts_dir}}/bin/erl", "bin/copy.erl"}]},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}]),
@@ -728,6 +729,7 @@ overlay_release(Config) ->
     ?assert(ec_file:exists(filename:join([OutputDir, "foo", "foodir", "vars1.config"]))),
     ?assert(ec_file:exists(filename:join([OutputDir, "foo", "yahoo", "vars1.config"]))),
     ?assert(ec_file:exists(filename:join([OutputDir, "foo", SecondTestDir, TestDir, TestFile]))),
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "bin", "copy.erl"]))),
 
     TemplateData = case file:consult(filename:join([OutputDir, "foo", "test_template_resolved"])) of
                        {ok, Details} ->
