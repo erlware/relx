@@ -22,6 +22,13 @@
          end_per_suite/1,
          init_per_testcase/2,
          all/0,
+         start_sname_in_other_argsfile/1,
+         start_fail_when_no_name/1,
+         start_fail_when_multiple_names/1,
+         start_fail_when_missing_argsfile/1,
+         start_fail_when_nonreadable_argsfile/1,
+         start_fail_when_relative_argsfile/1,
+         start_fail_when_circular_argsfiles/1,
          ping/1,
          shortname_ping/1,
          longname_ping/1,
@@ -67,7 +74,10 @@ init_per_testcase(_, Config) ->
      {state, State1} | Config].
 
 all() ->
-    [ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
+    [start_sname_in_other_argsfile, start_fail_when_no_name, start_fail_when_multiple_names,
+     start_fail_when_missing_argsfile, start_fail_when_nonreadable_argsfile,
+     start_fail_when_relative_argsfile, start_fail_when_circular_argsfiles,
+     ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
      remote_console, replace_os_vars, replace_os_vars_multi_node, replace_os_vars_included_config,
      replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice, custom_start_script_hooks,
      builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
@@ -1386,6 +1396,134 @@ custom_status_script(Config) ->
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {ok, [Status]} = file:consult(filename:join([OutputDir, "status.txt"])),
     {ok, {status, foo, _, foo} = Status}.
+
+start_sname_in_other_argsfile(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+    VmArgs2 = VmArgs ++ ".2",
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {vm_args, VmArgs},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    ec_file:write(VmArgs, "-args_file " ++ VmArgs2 ++ "\n\n"
+                          "-setcookie cookie\n"),
+
+    ec_file:write(VmArgs2, "-sname foo\n"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    %% now start/stop the release to make sure the extended script is working
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    %% a ping should fail after stopping a node
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
+
+start_fail_when_no_name(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+    ec_file:write(VmArgs, "-setcookie cookie\n"),
+    start_fail_with_vmargs(Config, VmArgs, 1).
+
+start_fail_when_multiple_names(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+    ec_file:write(VmArgs, "-name foo\n\n"
+                          "-name bar\n\n"
+                          "-setcookie cookie\n"),
+    start_fail_with_vmargs(Config, VmArgs, 2).
+
+start_fail_when_missing_argsfile(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+    ec_file:write(VmArgs, "-name foo\n\n"
+                          "-args_file " ++ VmArgs ++ ".nonexistent\n\n"
+                          "-setcookie cookie\n"),
+    start_fail_with_vmargs(Config, VmArgs, 3).
+
+start_fail_when_nonreadable_argsfile(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+    VmArgs2 = VmArgs ++ ".nonreadable",
+    ec_file:write(VmArgs, "-name foo\n\n"
+                          "-args_file " ++ VmArgs2 ++ "\n\n"
+                          "-setcookie cookie\n"),
+    ec_file:write(VmArgs2, ""),
+    file:change_mode(VmArgs2, 8#00333),
+    start_fail_with_vmargs(Config, VmArgs, 3).
+
+start_fail_when_relative_argsfile(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+    ec_file:write(VmArgs, "-name foo\n\n"
+                          "-args_file vm.args.relative\n\n"
+                          "-setcookie cookie\n"),
+    start_fail_with_vmargs(Config, VmArgs, 4).
+
+start_fail_when_circular_argsfiles(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+    VmArgs2 = VmArgs ++ ".2",
+    VmArgs3 = VmArgs ++ ".3",
+    ec_file:write(VmArgs, "-name foo\n\n"
+                          "-args_file " ++ VmArgs2 ++ "\n\n"
+                          "-setcookie cookie\n"),
+    ec_file:write(VmArgs2, "-args_file " ++ VmArgs3 ++ "\n"),
+    ec_file:write(VmArgs3, "-args_file " ++ VmArgs2 ++ "\n"),
+    start_fail_with_vmargs(Config, VmArgs, 5).
+
+%%-------------------------------------------------------------------
+%% Helper Function for start_fail_when_* tests
+%%-------------------------------------------------------------------
+start_fail_with_vmargs(Config, VmArgs, ExpectedCode) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {vm_args, VmArgs},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    %% now start/stop the release to make sure the extended script is working
+    {error, ExpectedCode, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])).
 
 %%%===================================================================
 %%% Helper Functions
