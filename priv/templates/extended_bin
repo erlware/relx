@@ -306,27 +306,31 @@ set +e
 TMP_NAME_ARG=$(awk 'function check_name(file)
 {
     if (system("test -f "file)) {
-        print "File \""file"\" not found"
-        exit 1
+        print file" not found"
+        exit 3
+    }
+    if (system("test -r "file)) {
+        print file" not readable"
+        exit 3
     }
     while ((getline line<file)>0) {
         if (line~/^-args_file +/) {
             gsub(/^-args_file +| *$/, "", line)
             if (!(line~/^\//)) {
-                print "Relative path \""line"\" encountered in "file
-                exit 1
+                print "relative path "line" encountered in "file
+                exit 4
             }
             if (line in files) {
-                print "Circular reference to \""line"\" encountered in "file
-                exit 1
+                print "circular reference to "line" encountered in "file
+                exit 5
             }
             files[line]=line
             check_name(line)
         }
         else if (line~/^-s?name +/) {
             if (name!="") {
-                print "\""line"\" found in "file" but specified before as \""name"\""
-                exit 1
+                print "\""line"\" parameter found in "file" but already specified as \""name"\""
+                exit 2
             }
             name=line
         }
@@ -339,20 +343,23 @@ BEGIN {
 }
 
 {
+    files[FILENAME]=FILENAME
     check_name(FILENAME)
     if (name=="") {
-        print "Need to have exactly one of either -name or -sname parameters but none found"
+        print "need to have exactly one of either -name or -sname parameters but none found"
         exit 1
     }
     print name
     exit 0
 }' "$VMARGS_PATH")
-case $? in
+TMP_NAME_ARG_RC=$?
+case $TMP_NAME_ARG_RC in
     0) NAME_ARG="$TMP_NAME_ARG";;
     *) echo "$TMP_NAME_ARG"
-       exit 1;;
+       exit $TMP_NAME_ARG_RC;;
 esac
 unset TMP_NAME_ARG
+unset TMP_NAME_ARG_RC
 set -e
 
 # Perform replacement of variables in ${NAME_ARG}
