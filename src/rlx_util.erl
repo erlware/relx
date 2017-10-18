@@ -41,6 +41,8 @@
          intensity/0,
          symlink_or_copy/2]).
 
+-export([os_type/1]).
+
 -define(DFLT_INTENSITY,   high).
 -define(ONE_LEVEL_INDENT, "     ").
 %%============================================================================
@@ -325,6 +327,31 @@ intensity() ->
         {ok, Mode} ->
             Mode
     end.
+
+os_type(State) ->
+  case include_erts_is_win32(State) of
+    true -> {win32,nt};
+    false -> os:type()
+  end.
+
+include_erts_is_win32(State) ->
+  case rlx_state:get(State, include_erts, true) of
+    true -> false;
+    false -> false;
+    Path -> is_win32_erts(Path,State)
+  end.
+
+is_win32_erts(Path,State) ->
+  case filelib:wildcard(filename:join([Path,"bin","erl.exe"])) of
+    [] -> false;
+    _ ->
+      ec_cmd_log:info(rlx_state:log(State),
+        "Including Erts is win32 ~n", []),
+      true
+  end.
+
+
+
 
 %%%===================================================================
 %%% Test Functions

@@ -379,7 +379,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     VsnRel = filename:join(BinDir, rlx_release:canonical_name(Release)),
     BareRel = filename:join(BinDir, RelName),
     ErlOpts = rlx_state:get(State, erl_opts, ""),
-    {OsFamily, _OsName} = os:type(),
+    {OsFamily, _OsName} = rlx_util:os_type(State),
 
     StartFile = case rlx_state:get(State, extended_start_script, false) of
                     false ->
@@ -623,7 +623,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
             ErtsVersion = rlx_release:erts(Release),
             ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
             LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
-            {OsFamily, _OsName} = os:type(),
+            {OsFamily, _OsName} = rlx_util:os_type(State),
             case ec_file:is_dir(ErtsDir) of
                 false ->
                     ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
