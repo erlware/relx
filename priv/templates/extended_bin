@@ -150,6 +150,7 @@ relx_get_pid() {
 relx_get_nodename() {
     id="longname$(relx_gen_id)-${NAME}"
     "$BINDIR/erl" -boot start_clean \
+        -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
         -eval '[H]=tl(string:tokens(atom_to_list(node()),"@")), io:format("~s~n",[H]), halt()' \
         -noshell ${NAME_TYPE} $id
 }
