@@ -49,7 +49,8 @@
          builtin_pid_start_script_hook/1,
          builtin_wait_for_process_start_script_hook/1,
          mixed_custom_and_builtin_start_script_hooks/1,
-         builtin_status_script/1, custom_status_script/1]).
+         builtin_status_script/1, custom_status_script/1,
+         extension_script/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -82,7 +83,7 @@ all() ->
      replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice, custom_start_script_hooks,
      builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
      builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks,
-     builtin_status_script, custom_status_script].
+     builtin_status_script, custom_status_script, extension_script].
 
 ping(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -1491,6 +1492,47 @@ start_fail_when_circular_argsfiles(Config) ->
     ec_file:write(VmArgs2, "-args_file " ++ VmArgs3 ++ "\n"),
     ec_file:write(VmArgs3, "-args_file " ++ VmArgs2 ++ "\n"),
     start_fail_with_vmargs(Config, VmArgs, 5).
+
+extension_script(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_full_app(LibDir1, "goal_app", "0.0.1",
+                                   [stdlib,kernel], []),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_extensions, [
+                        {bar, "extensions/bar"} 
+                  ]},
+                  {overlay, [
+                    {copy, "./bar", "bin/extensions/bar"}]}
+                 ]),
+
+    %% write the extension script
+    ok = file:write_file(filename:join([LibDir1, "./bar"]),
+                         "#!/bin/bash\n"
+                         "echo \\{bar, $REL_NAME, \\'$NAME\\', $COOKIE\\}.\n"
+                         "exit 0"),
+
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    %% write the extension script output to a file
+    {ok, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
+    ec_file:write(filename:join([OutputDir, "bar.txt"]), Str),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    {ok, [Term]} = file:consult(filename:join([OutputDir, "bar.txt"])),
+    {ok, {bar, foo, _, foo} = Term}.
 
 %%-------------------------------------------------------------------
 %% Helper Function for start_fail_when_* tests

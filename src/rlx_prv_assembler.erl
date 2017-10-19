@@ -401,9 +401,12 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                                                            extended_start_script_hooks,
                                                            []),
                                              State),
+                        Extensions = rlx_state:get(State,
+                                                   extended_start_script_extensions,
+                                                   []),
                         extended_bin_file_contents(OsFamily, RelName, RelVsn,
                                                    rlx_release:erts(Release), ErlOpts,
-                                                   Hooks)
+                                                   Hooks, Extensions)
                 end,
     %% We generate the start script by default, unless the user
     %% tells us not too
@@ -787,7 +790,7 @@ bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
 
-extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks) ->
+extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, Extensions) ->
     Template = case OsFamily of
         unix -> extended_bin;
         win32 -> extended_bin_windows
@@ -802,6 +805,21 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks) -
     PostInstallUpgradeHooks = string:join(proplists:get_value(post_install_upgrade,
                                                  Hooks, []), " "),
     StatusHook = string:join(proplists:get_value(status, Hooks, []), " "),
+    {ExtensionsList1, ExtensionDeclarations1} =
+        lists:foldl(fun({Name, Script},
+                        {ExtensionsList0, ExtensionDeclarations0}) ->
+                            ExtensionDeclaration = atom_to_list(Name) ++
+                                                   "_extension=\"" ++
+                                                   Script ++ "\"",
+                            {ExtensionsList0 ++ [atom_to_list(Name)],
+                             ExtensionDeclarations0 ++ [ExtensionDeclaration]}
+                    end, {[], []}, Extensions),
+    % pipe separated string of extensions, to show on the start script usage
+    % (eg. foo|bar)
+    ExtensionsList = string:join(ExtensionsList1 ++ ["undefined"], "|"),
+    % command separated string of extension script declarations
+    % (eg. foo_extension="path/to/foo_script")
+    ExtensionDeclarations = string:join(ExtensionDeclarations1, ";"),
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts},
                       {pre_start_hooks, PreStartHooks},
@@ -810,7 +828,9 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks) -
                       {post_stop_hooks, PostStopHooks},
                       {pre_install_upgrade_hooks, PreInstallUpgradeHooks},
                       {post_install_upgrade_hooks, PostInstallUpgradeHooks},
-                      {status_hook, StatusHook}]).
+                      {status_hook, StatusHook},
+                      {extensions, ExtensionsList},
+                      {extension_declarations, ExtensionDeclarations}]).
 
 erl_ini(OutputDir, ErtsVsn) ->
     ErtsDirName = string:concat("erts-", ErtsVsn),
