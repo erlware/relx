@@ -226,12 +226,23 @@ make_out_file_path() {
 
 # Replace environment variables
 replace_os_vars() {
-    awk '{
-        while(match($0,"[$]{[^}]*}")) {
-            var=substr($0,RSTART+2,RLENGTH -3)
-            gsub("[$]{"var"}",ENVIRON[var])
-        }
-    }1' < "$1" > "$2"
+    if [ -n "${BASH_VERSION}" ]; then
+        awk '{
+            while(match($0,/\$[{(][^{}()]+?[})]/)) {
+                s=RSTART; n=RLENGTH;
+                v0=substr($0,0,s-1); v1=substr($0,s,n); v2=substr($0,n+s,length($0)-s-n+1)
+                vv=sprintf("/bin/bash -c \"/bin/echo %s\"", v1)
+                vv|getline v; $0=sprintf("%s %s%s", v0, v, v2)
+            }
+        }1' < "$1" > "$2"
+    else
+        awk '{
+            while(match($0,"[$]{[^}]*}")) {
+                var=substr($0,RSTART+2,RLENGTH -3)
+                gsub("[$]{"var"}",ENVIRON[var])
+            }
+        }1' < "$1" > "$2"
+    fi
 }
 
 add_path() {
