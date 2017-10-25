@@ -191,12 +191,6 @@ relx_escript() {
     "$ERTS_DIR/bin/escript" "$ROOTDIR/$scriptpath" $@
 }
 
-# Output a start command for the last argument of run_erl
-relx_start_command() {
-    printf "exec \"%s\" \"%s\"" "$RELEASE_ROOT_DIR/bin/$REL_NAME" \
-           "$START_OPTION"
-}
-
 relx_get_code_paths() {
     code="{ok, [{release,_,_,Apps}]} = file:consult(\"$REL_DIR/$REL_NAME.rel\"),"\
 "lists:foreach(fun(A) ->"\
@@ -454,15 +448,6 @@ cd "$ROOTDIR"
 # Check the first argument for instructions
 case "$1" in
     start|start_boot)
-
-        # Make sure there is not already a node running
-        #RES=`$NODETOOL ping`
-        #if [ "$RES" = "pong" ]; then
-        #    echo "Node is already running!"
-        #    exit 1
-        #fi
-        # Save this for later.
-        CMD=$1
         case "$1" in
             start)
                 shift
@@ -475,14 +460,10 @@ case "$1" in
                 HEART_OPTION="start_boot"
                 ;;
         esac
-        RUN_PARAM="$@"
-
-        # Set arguments for the heart command
-        set -- "$SCRIPT_DIR/$REL_NAME" "$HEART_OPTION"
-        [ "$RUN_PARAM" ] && set -- "$@" "$RUN_PARAM"
+        RUN_PARAM="$(printf "\'%s\' " "$@")"
 
         # Export the HEART_COMMAND
-        HEART_COMMAND="$RELEASE_ROOT_DIR/bin/$REL_NAME $CMD"
+        HEART_COMMAND="$RELEASE_ROOT_DIR/bin/$REL_NAME $HEART_OPTION $RUN_PARAM"
         export HEART_COMMAND
 
         test -z "$PIPE_BASE_DIR" || mkdir -m 1777 -p "$PIPE_BASE_DIR"
@@ -490,7 +471,7 @@ case "$1" in
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
-                          "$(relx_start_command)"
+            "exec $RELEASE_ROOT_DIR/bin/$REL_NAME $START_OPTION $RUN_PARAM"
         relx_run_hooks "$POST_START_HOOKS"
         ;;
 
