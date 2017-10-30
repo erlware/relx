@@ -460,7 +460,7 @@ case "$1" in
                 HEART_OPTION="start_boot"
                 ;;
         esac
-        ARGS="$(printf "\'%s\' " "$@")"
+        ARGS="$(printf "'%s' " "$@")"
 
         # Export the HEART_COMMAND
         HEART_COMMAND="\"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$HEART_OPTION\" $ARGS"
