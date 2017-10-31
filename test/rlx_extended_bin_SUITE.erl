@@ -23,6 +23,7 @@
          init_per_testcase/2,
          all/0,
          start_sname_in_other_argsfile/1,
+         start_preserves_arguments/1,
          start_fail_when_no_name/1,
          start_fail_when_multiple_names/1,
          start_fail_when_missing_argsfile/1,
@@ -75,7 +76,8 @@ init_per_testcase(_, Config) ->
      {state, State1} | Config].
 
 all() ->
-    [start_sname_in_other_argsfile, start_fail_when_no_name, start_fail_when_multiple_names,
+    [start_sname_in_other_argsfile, start_preserves_arguments,
+     start_fail_when_no_name, start_fail_when_multiple_names,
      start_fail_when_missing_argsfile, start_fail_when_nonreadable_argsfile,
      start_fail_when_relative_argsfile, start_fail_when_circular_argsfiles,
      ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
@@ -1436,6 +1438,49 @@ start_sname_in_other_argsfile(Config) ->
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
     timer:sleep(2000),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    %% a ping should fail after stopping a node
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
+
+start_preserves_arguments(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    PrivDir = proplists:get_value(priv_dir, Config),
+    OutputDir = filename:join([PrivDir, rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    %% now start/stop the release to make sure the extended script is working
+    %% and preserving the "tricky" argument that contains a string with a space
+    %% in it
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start -goal_app baz '\"bat zing\"'"])),
+    timer:sleep(2000),
+    BinFile = filename:join([PrivDir, "goal_app.bin"]),
+    Eval = io_lib:format("{ok,Env}=application:get_env(goal_app,baz),file:write_file(\"~s\",term_to_binary(Env)).",
+                         [BinFile]),
+    Cmd = lists:flatten(io_lib:format("foo eval '~s'", [Eval])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", Cmd])),
+    {ok, Bin} = file:read_file(BinFile),
+    "bat zing" = binary_to_term(Bin),
+    file:delete(BinFile),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
