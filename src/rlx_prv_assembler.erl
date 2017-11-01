@@ -111,12 +111,12 @@ format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),
                    file:format_error(Reason)]);
-format_error(start_clean_script_generation_error) ->
+format_error(boot_script_generation_error) ->
     "Unknown internal release error generating start_clean.boot";
-format_error({start_clean_script_generation_warning, Module, Warnings}) ->
+format_error({boot_script_generation_warning, Module, Warnings}) ->
     ["Warnings generating start_clean.boot \s",
      rlx_util:indent(2), Module:format_warning(Warnings)];
-format_error({start_clean_script_generation_error, Module, Errors}) ->
+format_error({boot_script_generation_error, Module, Errors}) ->
     ["Errors generating start_clean.boot \n",
      rlx_util:indent(2), Module:format_error(Errors)];
 format_error({strip_release, Reason}) ->
@@ -354,17 +354,22 @@ create_release_info(State0, Release0, OutputDir) ->
     ReleaseDir = rlx_util:release_output_dir(State0, Release0),
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     StartCleanFile = filename:join([ReleaseDir, "start_clean.rel"]),
+    NoDotErlFile = filename:join([ReleaseDir, "no_dot_erlang.rel"]),
     ok = ec_file:mkdir_p(ReleaseDir),
     Release1 = rlx_release:relfile(Release0, ReleaseFile),
     State1 = rlx_state:update_realized_release(State0, Release1),
     case rlx_release:metadata(Release1) of
         {ok, Meta} ->
-            case rlx_release:start_clean_metadata(Release1) of
-                {ok, StartCleanMeta} ->
+            case {rlx_release:start_clean_metadata(Release1),
+                  rlx_release:no_dot_erlang_metadata(Release1)} of
+                {{ok, StartCleanMeta}, {ok, NoDotErlMeta}} ->
                     ok = ec_file:write_term(ReleaseFile, Meta),
                     ok = ec_file:write_term(StartCleanFile, StartCleanMeta),
+                    ok = ec_file:write_term(NoDotErlFile, NoDotErlMeta),
                     write_bin_file(State1, Release1, OutputDir, ReleaseDir);
-                E ->
+                {{ok, _}, E} ->
+                    E;
+                {_, E} ->
                     E
             end;
         E ->
@@ -692,6 +697,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
             ec_cmd_log:info(rlx_state:log(State),
                              "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
+            create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
         error ->
             ?RLX_ERROR({release_script_generation_error, ReleaseFile});
@@ -699,6 +705,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
             ec_cmd_log:info(rlx_state:log(State),
                           "release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
+            create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
         {ok,Module,Warnings} ->
             ?RLX_ERROR({release_script_generation_warn, Module, Warnings});
@@ -728,29 +735,35 @@ make_boot_script_variables(State) ->
             [{"ERTS_LIB_DIR", code:lib_dir()}]
     end.
 
+create_no_dot_erlang(RelDir, OutputDir, Options, State) ->
+    create_boot_file(RelDir, OutputDir, Options, State, "no_dot_erlang").
+
 create_start_clean(RelDir, OutputDir, Options, State) ->
+    create_boot_file(RelDir, OutputDir, Options, State, "start_clean").
+
+create_boot_file(RelDir, OutputDir, Options, State, Name) ->
     case rlx_util:make_script(Options,
                          fun(CorrectedOptions) ->
-                                 systools:make_script("start_clean", CorrectedOptions)
+                                 systools:make_script(Name, CorrectedOptions)
                          end) of
         ok ->
-            ok = ec_file:copy(filename:join([RelDir, "start_clean.boot"]),
-                              filename:join([OutputDir, "bin", "start_clean.boot"])),
-            ec_file:remove(filename:join([RelDir, "start_clean.rel"])),
-            ec_file:remove(filename:join([RelDir, "start_clean.script"])),
+            ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
+                              filename:join([OutputDir, "bin", Name++".boot"])),
+            ec_file:remove(filename:join([RelDir, Name++".rel"])),
+            ec_file:remove(filename:join([RelDir, Name++".script"])),
             {ok, State};
         error ->
-            ?RLX_ERROR(start_clean_script_generation_error);
+            ?RLX_ERROR(boot_script_generation_error);
         {ok, _, []} ->
-            ok = ec_file:copy(filename:join([RelDir, "start_clean.boot"]),
-                              filename:join([OutputDir, "bin", "start_clean.boot"])),
-            ec_file:remove(filename:join([RelDir, "start_clean.rel"])),
-            ec_file:remove(filename:join([RelDir, "start_clean.script"])),
+            ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
+                              filename:join([OutputDir, "bin", Name++".boot"])),
+            ec_file:remove(filename:join([RelDir, Name++".rel"])),
+            ec_file:remove(filename:join([RelDir, Name++".script"])),
             {ok, State};
         {ok,Module,Warnings} ->
-            ?RLX_ERROR({start_clean_script_generation_warn, Module, Warnings});
+            ?RLX_ERROR({boot_script_generation_warn, Module, Warnings});
         {error,Module,Error} ->
-            ?RLX_ERROR({start_clean_script_generation_error, Module, Error})
+            ?RLX_ERROR({boot_script_generation_error, Module, Error})
     end.
 
 create_RELEASES(OutputDir, ReleaseFile) ->

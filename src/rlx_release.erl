@@ -39,6 +39,7 @@
          realized/1,
          metadata/1,
          start_clean_metadata/1,
+         no_dot_erlang_metadata/1,
          canonical_name/1,
          config/1,
          config/2,
@@ -197,6 +198,12 @@ start_clean_metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=A
         false ->
             ?RLX_ERROR({not_realized, Name, Vsn})
     end.
+
+%% The no_dot_erlang.rel.src file is a literal copy of start_clean.rel.src
+%% in Erlang/OTP itself.
+-spec no_dot_erlang_metadata(t()) -> term().
+no_dot_erlang_metadata(T) ->
+    start_clean_metadata(T).
 
 %% @doc produce the canonical name (<name>-<vsn>) for this release
 -spec canonical_name(t()) -> string().
