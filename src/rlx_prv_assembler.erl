@@ -416,13 +416,13 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
         _ ->
             VsnRelStartFile = case OsFamily of
                 unix -> VsnRel;
-                win32 -> string:concat(VsnRel, ".cmd")
+                win32 -> rlx_string:concat(VsnRel, ".cmd")
             end,
             ok = file:write_file(VsnRelStartFile, StartFile),
             ok = file:change_mode(VsnRelStartFile, 8#777),
             BareRelStartFile = case OsFamily of
                 unix -> BareRel;
-                win32 -> string:concat(BareRel, ".cmd")
+                win32 -> rlx_string:concat(BareRel, ".cmd")
             end,
             ok = file:write_file(BareRelStartFile, StartFile),
             ok = file:change_mode(BareRelStartFile, 8#777)
@@ -494,15 +494,15 @@ hook_filename(builtin_status) -> "hooks/builtin/status".
 hook_invocation({custom, CustomScript}) -> CustomScript;
 %% the pid builtin hook with no arguments writes to pid file
 %% at /var/run/{{ rel_name }}.pid
-hook_invocation(pid) -> string:join(["hooks/builtin/pid",
+hook_invocation(pid) -> rlx_string:join(["hooks/builtin/pid",
                                      "/var/run/$REL_NAME.pid"], "|");
-hook_invocation({pid, PidFile}) -> string:join(["hooks/builtin/pid",
+hook_invocation({pid, PidFile}) -> rlx_string:join(["hooks/builtin/pid",
                                                 PidFile], "|");
 hook_invocation(wait_for_vm_start) -> "hooks/builtin/wait_for_vm_start";
 hook_invocation({wait_for_process, Name}) ->
     %% wait_for_process takes an atom as argument
     %% which is the process name to wait for
-    string:join(["hooks/builtin/wait_for_process",
+    rlx_string:join(["hooks/builtin/wait_for_process",
                  atom_to_list(Name)], "|");
 hook_invocation(builtin_status) -> "hooks/builtin/status".
 
@@ -796,15 +796,15 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, E
         win32 -> extended_bin_windows
     end,
     %% turn all the hook lists into space separated strings
-    PreStartHooks = string:join(proplists:get_value(pre_start, Hooks, []), " "),
-    PostStartHooks = string:join(proplists:get_value(post_start, Hooks, []), " "),
-    PreStopHooks = string:join(proplists:get_value(pre_stop, Hooks, []), " "),
-    PostStopHooks = string:join(proplists:get_value(post_stop, Hooks, []), " "),
-    PreInstallUpgradeHooks = string:join(proplists:get_value(pre_install_upgrade,
+    PreStartHooks = rlx_string:join(proplists:get_value(pre_start, Hooks, []), " "),
+    PostStartHooks = rlx_string:join(proplists:get_value(post_start, Hooks, []), " "),
+    PreStopHooks = rlx_string:join(proplists:get_value(pre_stop, Hooks, []), " "),
+    PostStopHooks = rlx_string:join(proplists:get_value(post_stop, Hooks, []), " "),
+    PreInstallUpgradeHooks = rlx_string:join(proplists:get_value(pre_install_upgrade,
                                                 Hooks, []), " "),
-    PostInstallUpgradeHooks = string:join(proplists:get_value(post_install_upgrade,
+    PostInstallUpgradeHooks = rlx_string:join(proplists:get_value(post_install_upgrade,
                                                  Hooks, []), " "),
-    StatusHook = string:join(proplists:get_value(status, Hooks, []), " "),
+    StatusHook = rlx_string:join(proplists:get_value(status, Hooks, []), " "),
     {ExtensionsList1, ExtensionDeclarations1} =
         lists:foldl(fun({Name, Script},
                         {ExtensionsList0, ExtensionDeclarations0}) ->
@@ -816,10 +816,10 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, E
                     end, {[], []}, Extensions),
     % pipe separated string of extensions, to show on the start script usage
     % (eg. foo|bar)
-    ExtensionsList = string:join(ExtensionsList1 ++ ["undefined"], "|"),
+    ExtensionsList = rlx_string:join(ExtensionsList1 ++ ["undefined"], "|"),
     % command separated string of extension script declarations
     % (eg. foo_extension="path/to/foo_script")
-    ExtensionDeclarations = string:join(ExtensionDeclarations1, ";"),
+    ExtensionDeclarations = rlx_string:join(ExtensionDeclarations1, ";"),
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts},
                       {pre_start_hooks, PreStartHooks},
@@ -833,7 +833,7 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, E
                       {extension_declarations, ExtensionDeclarations}]).
 
 erl_ini(OutputDir, ErtsVsn) ->
-    ErtsDirName = string:concat("erts-", ErtsVsn),
+    ErtsDirName = rlx_string:concat("erts-", ErtsVsn),
     BinDir = filename:join([OutputDir, ErtsDirName, bin]),
     render(erl_ini, [{bin_dir, BinDir}, {output_dir, OutputDir}]).
 
