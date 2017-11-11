@@ -406,7 +406,7 @@ process_line(Device, "\n", Acc) ->
     process_line(Device, io:get_line(Device, ""),
                  Acc);
 process_line(Device, [$\s | Rest], [{Pkg, Vsn, Deps} | Acc]) ->
-    [DepPackage, Type,  DepVsn] = string:tokens(Rest, " \n"),
+    [DepPackage, Type,  DepVsn] = rlx_string:lexemes(Rest, " \n"),
     Dep =
         case Type of
             "=" ->
@@ -417,7 +417,7 @@ process_line(Device, [$\s | Rest], [{Pkg, Vsn, Deps} | Acc]) ->
     process_line(Device, io:get_line(Device, ""),
                  [{Pkg, Vsn, [Dep | Deps]} | Acc]);
 process_line(Device, Pkg, Acc) ->
-    [Package, Vsn] = string:tokens(Pkg, " \n"),
+    [Package, Vsn] = rlx_string:lexemes(Pkg, " \n"),
     process_line(Device, io:get_line(Device, ""),
                  [{Package, Vsn, []} | Acc]).
 
@@ -427,7 +427,7 @@ process_packages(Pkgs) ->
                 end, rlx_depsolver:new_graph(), Pkgs).
 
 get_constraints(ConLine) ->
-    AppVsns = string:tokens(ConLine, " \n"),
+    AppVsns = rlx_string:lexemes(ConLine, " \n"),
     lists:map(fun(AppCon) ->
                       parse_app(AppCon, [])
               end, AppVsns).

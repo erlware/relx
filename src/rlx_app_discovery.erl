@@ -40,7 +40,7 @@ do(State, LibDirs) ->
     ec_cmd_log:info(rlx_state:log(State),
                     fun() ->
                             ["Resolving OTP Applications from directories:\n",
-                             string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
+                             rlx_string:join([[rlx_util:indent(2), LibDir] || LibDir <- LibDirs], "\n")]
                     end),
     resolve_app_metadata(State, LibDirs).
 

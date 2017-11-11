@@ -202,7 +202,7 @@ set_resolved(State, Release0, Pkgs) ->
                 ErtsDir ->
                     try
                         [Erts | _] = filelib:wildcard(filename:join(ErtsDir, "erts-*")),
-                        [_, ErtsVsn] = string:tokens(filename:basename(Erts), "-"),
+                        [_, ErtsVsn] = rlx_string:lexemes(filename:basename(Erts), "-"),
                         {ok, rlx_state:add_realized_release(State, rlx_release:erts(Release1, ErtsVsn))}
                     catch
                         _:_ ->

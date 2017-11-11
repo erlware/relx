@@ -57,7 +57,7 @@ main(Args) ->
             % spaces, so this converts all of that to a single string to parse
             String = binary_to_list(
                       list_to_binary(
-                        string:join(ListOfArgs," ")
+                        join(ListOfArgs," ")
                       )
                     ),
 
@@ -126,16 +126,16 @@ epmd_path() ->
 
 
 nodename(Name) ->
-    case string:tokens(Name, "@") of
+    case re:split(Name, "@", [{return, list}, unicode]) of
         [_Node, _Host] ->
             list_to_atom(Name);
         [Node] ->
-            [_, Host] = string:tokens(atom_to_list(node()), "@"),
+            [_, Host] = re:split(atom_to_list(node()), "@", [{return, list}, unicode]),
             list_to_atom(lists:concat([Node, "@", Host]))
     end.
 
 append_node_suffix(Name, Suffix) ->
-    case string:tokens(Name, "@") of
+    case re:split(Name, "@", [{return, list}, unicode]) of
         [Node, Host] ->
             list_to_atom(lists:concat([Node, Suffix, os:getpid(), "@", Host]));
         [Node] ->
@@ -165,3 +165,13 @@ consult(Cont, Str, Acc) ->
         {more, Cont1} ->
             consult(Cont1, eof, Acc)
     end.
+
+%% string:join/2 copy; string:join/2 is getting obsoleted
+%% and replaced by lists:join/2, but lists:join/2 is too new
+%% for version support (only appeared in 19.0) so it cannot be
+%% used. Instead we just adopt join/2 locally and hope it works
+%% for most unicode use cases anyway.
+join([], Sep) when is_list(Sep) ->
+    [];
+join([H|T], Sep) ->
+    H ++ lists:append([Sep ++ X || X <- T]).
