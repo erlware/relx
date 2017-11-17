@@ -207,7 +207,12 @@ find_and_link_release_package(Version, RelName) ->
             ok = filelib:ensure_dir(filename:join([filename:dirname(ReleaseLink), "dummy"])),
             %% create the symlink pointing to the full path name of the
             %% release package we found
-            ok = file:make_symlink(filename:absname(Filename), ReleaseLink),
+            case file:make_symlink(filename:absname(Filename), ReleaseLink) of
+                ok ->
+                    ok;
+                {error, eperm} -> % windows!
+                    {ok,_} = file:copy(filename:absname(Filename), ReleaseLink)
+            end,
             {Filename, ReleaseHandlerPackageLink}
     end.
 
@@ -311,7 +316,7 @@ start_distribution(TargetNode, NameTypeArg, Cookie) ->
         {true, pong} ->
             ok;
         {_, pang} ->
-            io:format("Node ~p not responding to pings.\n", [TargetNode]),
+            ?INFO("Node ~p not responding to pings.\n", [TargetNode]),
             erlang:halt(1)
     end,
     {ok, Cwd} = file:get_cwd(),
