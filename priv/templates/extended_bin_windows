@@ -48,6 +48,12 @@
   set node_name=%%J
 )
 
+@if "-sname" == "%node_type%" (
+  set hostname="%COMPUTERNAME%"
+) else (
+  set hostname="%COMPUTERNAME%.%USERDNSDOMAIN%
+)
+
 :: Extract cookie from vm.args
 @for /f "usebackq tokens=1-2" %%I in (`findstr /b \-setcookie "%vm_args%"`) do @(
   set cookie=%%J
@@ -160,9 +166,7 @@ set start_erl=%erts_dir%\bin\start_erl.exe
 set description=Erlang node %node_name% in %rootdir%
 @if "" == "%2" (
   :: Install the service
-  %erlsrv% add %service_name% %node_type% "%node_name%" -c "%description%" ^
-            -w "%rootdir%" -m "%start_erl%" -args "%args%" ^
-            -stopaction "init:stop()."
+  %erlsrv% add %service_name% %node_type% "%node_name%" -c "%description%" -w "%rootdir%" -m "%start_erl%" -args "%args%" -stopaction "init:stop()."
 ) else (
   :: relup and reldown
   goto relup
@@ -193,7 +197,7 @@ set description=Erlang node %node_name% in %rootdir%
   set ERRORLEVEL=1
   exit /b %ERRORLEVEL%
 )
-@%escript% "%rootdir%/bin/install_upgrade.escript" "install" "%rel_name%" "%node_name%" "%cookie%" "%2"
+@%escript% "%rootdir%/bin/install_upgrade.escript" "install" "{'%rel_name%', \"%node_type%\", '%node_name%@%hostname%', '%cookie%'}" "%2" "%3"
 @goto :eof
 
 :: Start a console
