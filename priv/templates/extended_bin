@@ -700,6 +700,7 @@ case "$1" in
             EXTENSION_SCRIPT=$(relx_get_extension_script $1)
             shift
             relx_run_extension $EXTENSION_SCRIPT $@
+            # all extension scripts are expected to exit
         else
             relx_usage $1
         fi
