@@ -74,4 +74,4 @@ set -- "$ERL_OPTS"
 set -- "$@" -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" -boot "$REL_DIR/$BOOTFILE" "$ARGS"
 
 # Boot the release
-$BINDIR/erlexec $@
+exec $BINDIR/erlexec $@
