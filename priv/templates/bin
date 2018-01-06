@@ -13,6 +13,7 @@ REL_VSN="{{ rel_vsn }}"
 ERTS_VSN="{{ erts_vsn }}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
+export ESCRIPT_NAME="${ESCRIPT_NAME-$SCRIPT}"
 
 find_erts_dir() {
     __erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
