@@ -173,7 +173,8 @@ render(Template, Data) when is_list(Template) ->
     render(ec_cnv:to_binary(Template), Data);
 render(Template, Data) when is_binary(Template) ->
     case catch bbmustache:render(Template, Data,
-                                 [{key_type, atom}]) of
+                                 [{key_type, atom},
+                                  {escape_fun, fun(X) -> X end}]) of
         Bin when is_binary(Bin) -> {ok, Bin};
         _ -> {error, render_failed}
     end.
