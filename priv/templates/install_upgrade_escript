@@ -6,6 +6,11 @@
 -define(TIMEOUT, 300000).
 -define(INFO(Fmt,Args), io:format(Fmt,Args)).
 
+main(["hotpatch", DistInfoStr | CommandArgs]) ->
+    %% convert the distribution info arguments string to an erlang term
+    {ok, Tokens, _} = erl_scan:string(DistInfoStr ++ "."),
+    {ok, DistInfo} = erl_parse:parse_term(Tokens),
+    hotpatch(DistInfo, CommandArgs);
 main([Command0, DistInfoStr | CommandArgs]) ->
     %% convert the distribution info arguments string to an erlang term
     {ok, Tokens, _} = erl_scan:string(DistInfoStr ++ "."),
@@ -126,6 +131,34 @@ uninstall({_RelName, NameTypeArg, NodeName, Cookie}, Opts) ->
     end;
 uninstall(_, Args) ->
     ?INFO("uninstall: unknown args ~p\n", [Args]).
+
+
+hotpatch({_, NameTypeArg, NodeName, Cookie}, FilesList) ->
+    TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),
+    hotpatch(TargetNode, FilesList);
+
+hotpatch(_, []) ->
+    ok;
+hotpatch(TargetNode, [FileName|Rest]) ->
+    io:format("Loading ~s: ", [FileName]),
+    Module = erlang:list_to_atom(filename:basename(FileName,".beam")),
+    {ok,NewBinary} = file:read_file(FileName),
+    case rpc:call(TargetNode, code, get_object_code, [Module]) of
+        {Module, OldBinary, _} when NewBinary == OldBinary ->
+            %% File exists, and binaries are same.
+            io:format("no change~n", []);
+        {Module, _, ReleaseFilePath} ->
+            %% File exists, overwrite and load into VM.
+            ok = rpc:call(TargetNode, file, write_file, [ReleaseFilePath, NewBinary]),
+            io:format("done~n", []),
+            rpc:call(TargetNode, code, purge, [Module]),
+            {module, Module} = rpc:call(TargetNode, code, load_file, [Module]);
+        _ ->
+            %% File doesn't exist, just load into VM.
+            io:format("file does not exist, just loading binary~n", []),
+            {module, Module} = rpc:call(TargetNode, code, load_binary, [Module, undefined, NewBinary])
+    end,
+    hotpatch(TargetNode, Rest).
 
 versions({_RelName, NameTypeArg, NodeName, Cookie}, []) ->
     TargetNode = start_distribution(NodeName, NameTypeArg, Cookie),

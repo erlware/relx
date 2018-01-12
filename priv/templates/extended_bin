@@ -115,7 +115,7 @@ relx_usage() {
                 relx_run_extension $EXTENSION_SCRIPT help
             else
                 EXTENSIONS=`echo $EXTENSIONS | sed -e 's/|undefined//g'`
-                echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval|status|$EXTENSIONS}"
+                echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|hotpatch|versions|escript|rpc|rpcterms|eval|status|$EXTENSIONS}"
             fi
             ;;
     esac
@@ -566,6 +566,25 @@ case "$1" in
              "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
 
         relx_run_hooks "$POST_INSTALL_UPGRADE_HOOKS"
+        ;;
+
+    hotpatch)
+        if [ -z "$2" ]; then
+            echo "Missing files list"
+            echo "Usage: $REL_NAME $1 {list of files}"
+            exit 1
+        fi
+
+        COMMAND="$1"; shift
+
+        # Make sure a node IS running
+        if ! relx_nodetool "ping" > /dev/null; then
+            echo "Node is not running!"
+            exit 1
+        fi
+
+        exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
+             "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
         ;;
 
     versions)
