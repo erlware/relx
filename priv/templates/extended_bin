@@ -167,7 +167,7 @@ relx_rem_sh() {
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
          -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
-         -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
+         -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME $VM_ARGS
 }
 
 # Generate a random id
@@ -178,6 +178,8 @@ relx_gen_id() {
 # Control a node
 relx_nodetool() {
     command="$1"; shift
+
+    escript_emulator_args $ROOTDIR/bin/nodetool
 
     "$ERTS_DIR/bin/escript" "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
                                 -setcookie "$COOKIE" "$command" $@
@@ -226,6 +228,19 @@ replace_os_vars() {
             gsub("[$]{"var"}",ENVIRON[var])
         }
     }1' < "$1" > "$2"
+}
+
+escript_emulator_args() {
+    if [ -n "${VM_ARGS}" ]; then
+        if grep -q '%%!' $1; then
+            cmd=$(echo sed -i"' '" "'s|%%!.*|%%! ${VM_ARGS}|'" $1)
+            eval "$cmd"
+        else
+            cmd=$(echo sed -i"' '" "'/#!.*/ a \\
+%%! ${VM_ARGS}\n'" $1)
+            eval "$cmd"
+        fi
+    fi
 }
 
 add_path() {
@@ -441,6 +456,8 @@ else
     # Extract cookie name from COOKIE_ARG
     COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
 fi
+
+VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
 
 cd "$ROOTDIR"
 
