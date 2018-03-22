@@ -25,6 +25,7 @@
          start_sname_in_other_argsfile/1,
          start_preserves_arguments/1,
          start_nodetool_with_data_from_argsfile/1,
+         start_upgrade_escript_with_argsfile_data/1,
          start_fail_when_no_name/1,
          start_fail_when_multiple_names/1,
          start_fail_when_missing_argsfile/1,
@@ -80,7 +81,7 @@ init_per_testcase(_, Config) ->
 
 all() ->
     [start_sname_in_other_argsfile, start_preserves_arguments, start_nodetool_with_data_from_argsfile,
-     start_fail_when_no_name, start_fail_when_multiple_names,
+     start_upgrade_escript_with_argsfile_data, start_fail_when_no_name, start_fail_when_multiple_names,
      start_fail_when_missing_argsfile, start_fail_when_nonreadable_argsfile,
      start_fail_when_relative_argsfile, start_fail_when_circular_argsfiles,
      ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
@@ -1526,6 +1527,46 @@ start_nodetool_with_data_from_argsfile(Config) ->
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
     timer:sleep(2000),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    %% a ping should fail after stopping a node
+    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
+
+start_upgrade_escript_with_argsfile_data(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app, sasl]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {vm_args, VmArgs},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    ec_file:write(VmArgs, "-setcookie cookie\n"
+                          "-sname foo\n\n"
+                          "-proto_dist inet_tcp\n\n"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    %% now start/stop the release to make sure the extended script is working
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    {ok, _Ver} = sh(filename:join([OutputDir, "foo", "bin", "foo versions"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
