@@ -40,7 +40,7 @@
          restart/1,
          reboot/1,
          escript/1,
-         remote_console/1,
+         remote_console/1, shortname_remote_console/1,
          replace_os_vars/1,
          replace_os_vars_multi_node/1,
          replace_os_vars_included_config/1,
@@ -85,7 +85,7 @@ all() ->
      start_fail_when_missing_argsfile, start_fail_when_nonreadable_argsfile,
      start_fail_when_relative_argsfile, start_fail_when_circular_argsfiles,
      ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
-     remote_console, replace_os_vars, replace_os_vars_multi_node, replace_os_vars_included_config,
+     remote_console, shortname_remote_console, replace_os_vars, replace_os_vars_multi_node, replace_os_vars_included_config,
      replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice, custom_start_script_hooks,
      builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
      builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks,
@@ -396,6 +396,48 @@ remote_console(Config) ->
                  [{release, {foo, "0.0.1"},
                    [goal_app]},
                   {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    %% now start/stop the release to make sure the extended script is working
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(2000),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo remote_console &"])),
+    timer:sleep(2000),
+    {ok, NodesStr} = sh(filename:join([OutputDir, "foo", "bin", "foo eval 'nodes(connected).'"])),
+    Nodes = rlx_test_utils:list_to_term(NodesStr),
+    ?assertEqual(1, length(Nodes)),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])).
+
+shortname_remote_console(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    VmArgs = filename:join([LibDir1, "vm.args"]),
+
+    ec_file:write(VmArgs, "-sname foo\n\n"
+                          "-setcookie cookie\n"),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {vm_args, VmArgs},
                   {generate_start_script, true},
                   {extended_start_script, true}
                  ]),
