@@ -233,7 +233,9 @@ replace_os_vars() {
 escript_emulator_args() {
     if [ -n "${VM_ARGS}" ]; then
         if grep -q '%%!' $1; then
-            cmd=$(echo sed -i"' '" "'s|%%!.*|%%! ${VM_ARGS}|'" $1)
+            cmd=$(echo sed -i"' '" "'/%%!.*/ s| ${VM_ARGS}||'" $1)
+            eval "$cmd"
+            cmd=$(echo sed -i"' '" "'/%%!.*/ s|$| ${VM_ARGS}|'" $1)
             eval "$cmd"
         else
             cmd=$(echo sed -i"' '" "'/#!.*/ a \\
@@ -579,6 +581,8 @@ case "$1" in
 
         relx_run_hooks "$PRE_INSTALL_UPGRADE_HOOKS"
 
+        escript_emulator_args $ROOTDIR/bin/install_upgrade.escript
+
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
              "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
 
@@ -593,6 +597,8 @@ case "$1" in
         fi
 
         COMMAND="$1"; shift
+ 
+        escript_emulator_args $ROOTDIR/bin/install_upgrade.escript
 
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
              "versions" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
