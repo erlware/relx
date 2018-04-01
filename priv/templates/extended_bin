@@ -233,14 +233,16 @@ replace_os_vars() {
 escript_emulator_args() {
     if [ -n "${VM_ARGS}" ]; then
         if grep -q '%%!' $1; then
-            cmd=$(echo sed -i"' '" "'/%%!.*/ s| ${VM_ARGS}||'" $1)
+            cmd=$(echo sed -i"'.prev'" "'/%%!.*/ s| ${VM_ARGS}||'" $1)
             eval "$cmd"
-            cmd=$(echo sed -i"' '" "'/%%!.*/ s|$| ${VM_ARGS}|'" $1)
+            cmd=$(echo sed -i"'.prev'" "'/%%!.*/ s|$| ${VM_ARGS}|'" $1)
             eval "$cmd"
+            rm ${1}.prev
         else
-            cmd=$(echo sed -i"' '" "'/#!.*/ a \\
+            cmd=$(echo sed -i"'.prev'" "'/#!.*/ a \\
 %%! ${VM_ARGS}\n'" $1)
             eval "$cmd"
+            rm ${1}.prev
         fi
     fi
 }
