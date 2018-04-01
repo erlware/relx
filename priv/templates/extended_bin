@@ -352,6 +352,9 @@ ERTS_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
 
 VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
 
+VMARGS_PATH=$(check_replace_os_vars vm.args $VMARGS_PATH)
+RELX_CONFIG_PATH=$(check_replace_os_vars sys.config $RELX_CONFIG_PATH)
+
 # Check vm.args and other files referenced via -args_file parameters for:
 #    - nonexisting -args_files
 #    - circular dependencies of -args_files
@@ -436,9 +439,6 @@ esac
 
 # Export the variable so that it's available in the 'eval' calls
 export NAME
-
-VMARGS_PATH=$(check_replace_os_vars vm.args $VMARGS_PATH)
-RELX_CONFIG_PATH=$(check_replace_os_vars sys.config $RELX_CONFIG_PATH)
 
 # Make sure log directory exists
 mkdir -p "$RUNNER_LOG_DIR"
