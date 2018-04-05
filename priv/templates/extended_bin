@@ -263,7 +263,7 @@ add_path() {
 check_replace_os_vars() {
     IN_FILE_PATH=$(add_path $1 $2)
     OUT_FILE_PATH="$IN_FILE_PATH"
-    ORIG_FILE_PATH="$IN_FILE_PATH.orig"
+    ORIG_FILE_PATH="$IN_FILE_PATH.src"
     if [ $RELX_REPLACE_OS_VARS ]; then
         # Create a new file in the same location as original
         OUT_FILE_PATH=$(make_out_file_path $IN_FILE_PATH)
