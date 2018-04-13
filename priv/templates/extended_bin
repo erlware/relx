@@ -179,8 +179,6 @@ relx_gen_id() {
 relx_nodetool() {
     command="$1"; shift
 
-    escript_emulator_args $ROOTDIR/bin/nodetool
-
     "$ERTS_DIR/bin/escript" "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
                                 -setcookie "$COOKIE" "$command" $@
 }
@@ -228,23 +226,6 @@ replace_os_vars() {
             gsub("[$]{"var"}",ENVIRON[var])
         }
     }1' < "$1" > "$2"
-}
-
-escript_emulator_args() {
-    if [ -n "${VM_ARGS}" ]; then
-        if grep -q '%%!' $1; then
-            cmd=$(echo sed -i"'.prev'" "'/%%!.*/ s| ${VM_ARGS}||'" $1)
-            eval "$cmd"
-            cmd=$(echo sed -i"'.prev'" "'/%%!.*/ s|$| ${VM_ARGS}|'" $1)
-            eval "$cmd"
-            rm ${1}.prev
-        else
-            cmd=$(echo sed -i"'.prev'" "'/#!.*/ a \\
-%%! ${VM_ARGS}\n'" $1)
-            eval "$cmd"
-            rm ${1}.prev
-        fi
-    fi
 }
 
 add_path() {
@@ -462,6 +443,7 @@ else
 fi
 
 VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
+export ERL_FLAGS="${ERL_FLAGS} ${VM_ARGS}"
 
 cd "$ROOTDIR"
 
@@ -583,8 +565,6 @@ case "$1" in
 
         relx_run_hooks "$PRE_INSTALL_UPGRADE_HOOKS"
 
-        escript_emulator_args $ROOTDIR/bin/install_upgrade.escript
-
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
              "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
 
@@ -600,8 +580,6 @@ case "$1" in
 
         COMMAND="$1"; shift
  
-        escript_emulator_args $ROOTDIR/bin/install_upgrade.escript
-
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
              "versions" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
         ;;
