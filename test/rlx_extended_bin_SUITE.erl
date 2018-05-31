@@ -484,7 +484,9 @@ replace_os_vars(Config) ->
                  ]),
 
     rlx_test_utils:write_config(SysConfig,
-                                [[{goal_app, [{var1, "${VAR1}"}]}]]),
+                                [[{goal_app,
+                                   [{var1, "${VAR1}"},
+                                    {var2, "${VAR2}"}]}]]),
     ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
                           "-setcookie ${COOKIE}\n"),
 
