@@ -461,7 +461,7 @@ else
     COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
 fi
 
-VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
+VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-heart|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
 
 cd "$ROOTDIR"
 
