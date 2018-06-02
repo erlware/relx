@@ -484,8 +484,7 @@ add_constraint(SrcPkg, SrcVsn, PkgsConstraints, PkgConstraint) ->
             {value, {PkgName, Constraints0}} ->
                 Constraints0
         end,
-    [{PkgName, [{PkgConstraint, {SrcPkg, SrcVsn}} | Constraints1]}
-    | lists:keydelete(PkgName, 1, PkgsConstraints)].
+    lists:keydelete(PkgName, 1, PkgsConstraints)++[{PkgName, [{PkgConstraint, {SrcPkg, SrcVsn}} | Constraints1]}].
 
 %% @doc
 %% Extend the currently active constraints correctly for the given constraints.
@@ -625,7 +624,7 @@ pkgs(DepGraph, Visited, Pkg, Constraints, OtherPkgs, PathInd) ->
     F = fun (Vsn) ->
                 Deps = get_dep_constraints(DepGraph, Pkg, Vsn),
                 UConstraints = extend_constraints(Pkg, Vsn, Constraints, Deps),
-                DepPkgs =[dep_pkg(Dep) || Dep <- Deps],
+                DepPkgs = [dep_pkg(Dep) || Dep <- Deps],
                 NewVisited = [{Pkg, Vsn} | Visited],
                 Res = all_pkgs(DepGraph, NewVisited, DepPkgs ++ OtherPkgs, UConstraints, PathInd),
                 Res
