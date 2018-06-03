@@ -384,7 +384,7 @@ parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
         AppName ->
             {ok,
              Release#release_t{annotations=ec_dictionary:add(AppName, NewAnnots, Annots),
-                               goals = [Constraint | Goals]}}
+                               goals = Goals++[Constraint]}}
     end.
 
 -spec parse_constraint(application_constraint()) ->
