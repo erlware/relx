@@ -590,7 +590,7 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
                     ok;
                 _->
                     ec_cmd_log:warn(rlx_state:log(State),
-                                    "Both vm_args_src and vm_args are set, vm_args will be ignored", [])
+                                    "Both vm_args_src and vm_args are set, vm_args will be ignored~n", [])
             end,
 
             case filelib:is_regular(ArgsSrcPath) of
@@ -635,7 +635,7 @@ copy_or_generate_sys_config_file(State, RelDir) ->
                     ok;
                 _->
                     ec_cmd_log:warn(rlx_state:log(State),
-                                    "Both sys_config_src and sys_config are set, sys_config will be ignored", [])
+                                    "Both sys_config_src and sys_config are set, sys_config will be ignored~n", [])
             end,
 
             case filelib:is_regular(ConfigSrcPath) of
