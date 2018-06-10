@@ -256,6 +256,8 @@ load_terms({vm_args, false}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, false)};
 load_terms({vm_args, VmArgs}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
+load_terms({vm_args_src, VmArgs}, {ok, State}) ->
+    {ok, rlx_state:vm_args_src(State, filename:absname(VmArgs))};
 load_terms({sys_config, false}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, false)};
 load_terms({sys_config, SysConfig}, {ok, State}) ->

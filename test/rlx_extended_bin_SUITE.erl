@@ -42,7 +42,7 @@
          escript/1,
          remote_console/1, shortname_remote_console/1,
          replace_os_vars/1,
-         replace_os_vars_sys_config_src/1,
+         replace_os_vars_sys_config_vm_args_src/1,
          replace_os_vars_multi_node/1,
          replace_os_vars_included_config/1,
          replace_os_vars_custom_location/1,
@@ -86,7 +86,7 @@ all() ->
      start_fail_when_missing_argsfile, start_fail_when_nonreadable_argsfile,
      start_fail_when_relative_argsfile, start_fail_when_circular_argsfiles,
      ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
-     remote_console, shortname_remote_console, replace_os_vars, replace_os_vars_sys_config_src, replace_os_vars_multi_node,
+     remote_console, shortname_remote_console, replace_os_vars, replace_os_vars_sys_config_vm_args_src, replace_os_vars_multi_node,
      replace_os_vars_included_config,
      replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice, custom_start_script_hooks,
      builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
@@ -582,21 +582,21 @@ replace_os_vars(Config) ->
     ok.
 
 
-replace_os_vars_sys_config_src(Config) ->
+replace_os_vars_sys_config_vm_args_src(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
 
     rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
 
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     SysConfigSrc = filename:join([LibDir1, "sys.config.src"]),
-    VmArgs = filename:join([LibDir1, "vm.args"]),
+    VmArgs = filename:join([LibDir1, "vm.args.src"]),
 
     rlx_test_utils:write_config(ConfigFile,
                  [{release, {foo, "0.0.1"},
                    [goal_app]},
                   {lib_dirs, [filename:join(LibDir1, "*")]},
                   {sys_config_src, SysConfigSrc},
-                  {vm_args, VmArgs},
+                  {vm_args_src, VmArgs},
                   {generate_start_script, true},
                   {extended_start_script, true}
                  ]),

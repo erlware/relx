@@ -54,6 +54,8 @@
          hooks/2,
          vm_args/1,
          vm_args/2,
+         vm_args_src/1,
+         vm_args_src/2,
          sys_config/1,
          sys_config/2,
          sys_config_src/1,
@@ -108,6 +110,7 @@
                   available_apps=[] :: [rlx_app_info:t()],
                   default_configured_release :: {rlx_release:name() | undefined, rlx_release:vsn() |undefined} | undefined,
                   vm_args :: file:filename() | false | undefined,
+                  vm_args_src :: file:filename() | undefined,
                   sys_config :: file:filename() | false | undefined,
                   sys_config_src :: file:filename() | undefined,
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
@@ -286,6 +289,14 @@ vm_args(#state_t{vm_args=VmArgs}) ->
 -spec vm_args(t(), undefined | false | file:filename()) -> t().
 vm_args(State, VmArgs) ->
     State#state_t{vm_args=VmArgs}.
+
+-spec vm_args_src(t()) -> file:filename() | undefined.
+vm_args_src(#state_t{vm_args_src=VmArgs}) ->
+    VmArgs.
+
+-spec vm_args_src(t(), undefined | file:filename()) -> t().
+vm_args_src(State, VmArgs) ->
+    State#state_t{vm_args_src=VmArgs}.
 
 -spec sys_config(t()) -> file:filename() | false | undefined.
 sys_config(#state_t{sys_config=SysConfig}) ->
