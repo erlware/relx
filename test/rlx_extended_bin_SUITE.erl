@@ -601,8 +601,9 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                   {extended_start_script, true}
                  ]),
 
-    rlx_test_utils:write_config(SysConfigSrc,
-                                [[{goal_app, [{var1, "${VAR1}"}]}]]),
+    %% new with sys.config.src it doesn't have to be valid Erlang
+    %% until after var replacemen at runtime.
+    ec_file:write(SysConfigSrc, "[{goal_app, [{var1, ${VAR1}}]}]."),
     ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
                           "-setcookie ${COOKIE}\n"),
 
@@ -621,13 +622,13 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
-                  {"VAR1", "v1"}]),
+                  {"VAR1", "101"}]),
     timer:sleep(2000),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
                          {"COOKIE", "cookie1"}]),
-    {ok, "\"v1\""} = sh(filename:join([OutputDir, "foo", "bin",
+    {ok, "101"} = sh(filename:join([OutputDir, "foo", "bin",
                                        "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
                         [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -660,13 +661,13 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
-                  {"VAR1", "v2"}]),
+                  {"VAR1", "201"}]),
     timer:sleep(2000),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node2"},
                          {"COOKIE", "cookie2"}]),
-    {ok, "\"v2\""} = sh(filename:join([OutputDir, "foo", "bin",
+    {ok, "201"} = sh(filename:join([OutputDir, "foo", "bin",
                                        "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
                         [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node2"},

@@ -1454,8 +1454,15 @@ make_release_with_sys_config_vm_args_src(Config) ->
     rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
+    %% the .src versions should take precedence and the others are not copied
+    SysConfig = filename:join([LibDir1, "config", "sys.config"]),
+    rlx_test_utils:write_config(SysConfig, [{this_is_a_test, "yup it is"}]),
+
     SysConfigSrc = filename:join([LibDir1, "config", "sys.config.src"]),
     rlx_test_utils:write_config(SysConfigSrc, [{this_is_a_test, "yup it is"}]),
+
+    VmArgs = filename:join([LibDir1, "config", "vm.args"]),
+    ec_file:write(VmArgs, ""),
 
     VmArgsSrc = filename:join([LibDir1, "config", "vm.args.src"]),
     ec_file:write(VmArgsSrc, ""),
@@ -1485,7 +1492,11 @@ make_release_with_sys_config_vm_args_src(Config) ->
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                       "sys.config.src"]))),
             ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "vm.args.src"])));
+                                                      "vm.args.src"]))),
+            ?assert(not ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                          "sys.config"]))),
+            ?assert(not ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                          "sys.config"])));
         {win32, _} ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
@@ -1495,7 +1506,11 @@ make_release_with_sys_config_vm_args_src(Config) ->
             ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                       "sys.config.src"]))),
             ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "vm.args.src"])))
+                                                   "vm.args.src"]))),
+            ?assert(not filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                       "sys.config"]))),
+            ?assert(not filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                       "vm.args"])))
     end.
 
 %%%===================================================================
