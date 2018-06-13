@@ -256,10 +256,14 @@ load_terms({vm_args, false}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, false)};
 load_terms({vm_args, VmArgs}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
+load_terms({vm_args_src, VmArgs}, {ok, State}) ->
+    {ok, rlx_state:vm_args_src(State, filename:absname(VmArgs))};
 load_terms({sys_config, false}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, false)};
 load_terms({sys_config, SysConfig}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, filename:absname(SysConfig))};
+load_terms({sys_config_src, SysConfigSrc}, {ok, State}) ->
+    {ok, rlx_state:sys_config_src(State, filename:absname(SysConfigSrc))};
 load_terms({root_dir, Root}, {ok, State}) ->
     {ok, rlx_state:root_dir(State, filename:absname(Root))};
 load_terms({output_dir, OutputDir}, {ok, State}) ->
