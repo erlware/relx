@@ -49,10 +49,28 @@
   set node_name=%%J
 )
 
-@if "-sname" == "%node_type%" (
-  set hostname="%COMPUTERNAME%"
-) else (
-  set hostname="%COMPUTERNAME%.%USERDNSDOMAIN%
+@for /f "delims=@ tokens=1-2" %%I in ("%node_name%") do @(
+    set node_name=%%I
+    set hostname=%%J
+)
+
+:: if no hostname is set, attempt to pick one from the env
+@if "" == "%hostname%" @(
+    if "-sname" == "%node_type%" (
+        if not "" == "%COMPUTERNAME%" (
+            set "hostname=%COMPUTERNAME%"
+        )
+    ) else (
+        if not "" == "%COMPUTERNAME%" (
+            if not "" == "%USERDNSDOMAIN%" (
+                set "hostname=%COMPUTERNAME%.%USERDNSDOMAIN%"
+            )
+        )
+    )
+)
+:: Add @ to hostname if not empty so that we can just concatenate values safely
+@if not "" == "%hostname%" @(
+    set "hostname=@%hostname%"
 )
 
 :: Extract cookie from vm.args
@@ -199,7 +217,7 @@ set description=Erlang node %node_name% in %rootdir%
   set ERRORLEVEL=1
   exit /b %ERRORLEVEL%
 )
-@%escript% "%rootdir%/bin/install_upgrade.escript" "install" "{'%rel_name%', \"%node_type%\", '%node_name%@%hostname%', '%cookie%'}" "%2" "%3"
+@%escript% "%rootdir%/bin/install_upgrade.escript" "install" "{'%rel_name%', \"%node_type%\", '%node_name%%hostname%', '%cookie%'}" "%2" "%3"
 @goto :eof
 
 :: Start a console
@@ -211,7 +229,7 @@ set description=Erlang node %node_name% in %rootdir%
 
 :: Ping the running node
 :ping
-@%escript% %nodetool% ping %node_type% "%node_name%" -setcookie "%cookie%"
+@%escript% %nodetool% ping %node_type% "%node_name%%hostname%" -setcookie "%cookie%"
 @goto :eof
 
 :: List installed Erlang services
@@ -223,5 +241,5 @@ set description=Erlang node %node_name% in %rootdir%
 :attach
 @set boot=-boot "%clean_boot_script%" -boot_var RELEASE_DIR "%release_root_dir%"
 @start "%node_name% attach" %werl% %boot% ^
-       -remsh %node_name%@%hostname% %node_type% console -setcookie %cookie%
+       -remsh %node_name%%hostname% %node_type% console -setcookie %cookie%
 @goto :eof
