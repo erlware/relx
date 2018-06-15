@@ -38,6 +38,7 @@ CODE_LOADING_MODE="${CODE_LOADING_MODE:-embedded}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
+export ESCRIPT_NAME="${ESCRIPT_NAME-$SCRIPT}"
 
 # start/stop/install/upgrade pre/post hooks
 PRE_START_HOOKS="{{{ pre_start_hooks }}}"
