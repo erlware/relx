@@ -244,8 +244,11 @@ add_path() {
 check_replace_os_vars() {
     IN_FILE_PATH=$(add_path $1 $2)
     OUT_FILE_PATH="$IN_FILE_PATH"
+    SRC_FILE_PATH="$IN_FILE_PATH.src"
     ORIG_FILE_PATH="$IN_FILE_PATH.orig"
-    if [ $RELX_REPLACE_OS_VARS ]; then
+    if [ -f "$SRC_FILE_PATH" ]; then
+        replace_os_vars "$SRC_FILE_PATH" "$OUT_FILE_PATH"
+    elif [ $RELX_REPLACE_OS_VARS ]; then
         # Create a new file in the same location as original
         OUT_FILE_PATH=$(make_out_file_path $IN_FILE_PATH)
         # If vm.args.orig or sys.config.orig is present then use that
@@ -442,7 +445,7 @@ else
     COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
 fi
 
-VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
+VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-heart|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
 export ERL_FLAGS="${ERL_FLAGS} ${VM_ARGS}"
 
 cd "$ROOTDIR"

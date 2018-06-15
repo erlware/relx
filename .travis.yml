@@ -3,12 +3,6 @@ matrix:
   include:
     - os: linux
       sudo: required
-      otp_release: R15B03
-    - os: linux
-      sudo: required
-      otp_release: R16B03-1
-    - os: linux
-      sudo: required
       otp_release: 17.5
     - os: linux
       sudo: required

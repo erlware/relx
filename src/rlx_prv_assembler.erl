@@ -86,8 +86,17 @@ format_error({unresolved_release, RelName, RelVsn}) ->
 format_error({ec_file_error, AppDir, TargetDir, E}) ->
     io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
                   [AppDir, TargetDir, E]);
+format_error({vmargs_does_not_exist, Path}) ->
+    io_lib:format("The vm.args file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({vmargs_src_does_not_exist, Path}) ->
+    io_lib:format("The vm.args.src file specified for this release (~s) does not exist!",
+                  [Path]);
 format_error({config_does_not_exist, Path}) ->
-    io_lib:format("The config file specified for this release (~s) does not exist!",
+    io_lib:format("The sys.config file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({config_src_does_not_exist, Path}) ->
+    io_lib:format("The sys.config.src file specified for this release (~s) does not exist!",
                   [Path]);
 format_error({sys_config_parse_error, ConfigPath, Reason}) ->
     io_lib:format("The config file (~s) specified for this release could not be opened or parsed: ~s",
@@ -557,18 +566,38 @@ generate_start_erl_data_file(Release, ReleasesDir) ->
 
 copy_or_generate_vmargs_file(State, Release, RelDir) ->
     RelVmargsPath = filename:join([RelDir, "vm.args"]),
-    case rlx_state:vm_args(State) of
-        false ->
-            ok;
+    RelVmargsSrcPath = filename:join([RelDir, "vm.args.src"]),
+    case rlx_state:vm_args_src(State) of
         undefined ->
-            RelName = erlang:atom_to_list(rlx_release:name(Release)),
-            unless_exists_write_default(RelVmargsPath, vm_args_file(RelName));
-        ArgsPath ->
-            case filelib:is_regular(ArgsPath) of
+            case rlx_state:vm_args(State) of
                 false ->
-                    ?RLX_ERROR({vmargs_does_not_exist, ArgsPath});
+                    ok;
+                undefined ->
+                    RelName = erlang:atom_to_list(rlx_release:name(Release)),
+                    unless_exists_write_default(RelVmargsPath, vm_args_file(RelName));
+                ArgsPath ->
+                    case filelib:is_regular(ArgsPath) of
+                        false ->
+                            ?RLX_ERROR({vmargs_does_not_exist, ArgsPath});
+                        true ->
+                            copy_or_symlink_config_file(State, ArgsPath, RelVmargsPath)
+                    end
+            end;
+        ArgsSrcPath ->
+            %% print a warning if vm_args is also set
+            case rlx_state:vm_args(State) of
+                undefined ->
+                    ok;
+                _->
+                    ec_cmd_log:warn(rlx_state:log(State),
+                                    "Both vm_args_src and vm_args are set, vm_args will be ignored~n", [])
+            end,
+
+            case filelib:is_regular(ArgsSrcPath) of
+                false ->
+                    ?RLX_ERROR({vmargs_src_does_not_exist, ArgsSrcPath});
                 true ->
-                    copy_or_symlink_config_file(State, ArgsPath, RelVmargsPath)
+                    copy_or_symlink_config_file(State, ArgsSrcPath, RelVmargsSrcPath)
             end
     end.
 
@@ -577,23 +606,43 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
                                               {ok, rlx_state:t()} | relx:error().
 copy_or_generate_sys_config_file(State, RelDir) ->
     RelSysConfPath = filename:join([RelDir, "sys.config"]),
-    case rlx_state:sys_config(State) of
-        false ->
-            ok;
+    RelSysConfSrcPath = filename:join([RelDir, "sys.config.src"]),
+    case rlx_state:sys_config_src(State) of
         undefined ->
-            unless_exists_write_default(RelSysConfPath, sys_config_file());
-        ConfigPath ->
-            case filelib:is_regular(ConfigPath) of
+            case rlx_state:sys_config(State) of
                 false ->
-                    ?RLX_ERROR({config_does_not_exist, ConfigPath});
-                true ->
-                    %% validate sys.config is valid Erlang terms
-                    case file:consult(ConfigPath) of
-                        {ok, _} ->
-                            copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath);
-                        {error, Reason} ->
-                            ?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason})
+                    ok;
+                undefined ->
+                    unless_exists_write_default(RelSysConfPath, sys_config_file());
+                ConfigPath ->
+                    case filelib:is_regular(ConfigPath) of
+                        false ->
+                            ?RLX_ERROR({config_does_not_exist, ConfigPath});
+                        true ->
+                            %% validate sys.config is valid Erlang terms
+                            case file:consult(ConfigPath) of
+                                {ok, _} ->
+                                    copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath);
+                                {error, Reason} ->
+                                    ?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason})
+                            end
                     end
+            end;
+        ConfigSrcPath ->
+            %% print a warning if sys_config is also set
+            case rlx_state:sys_config(State) of
+                P when P =:= false orelse P =:= undefined ->
+                    ok;
+                _->
+                    ec_cmd_log:warn(rlx_state:log(State),
+                                    "Both sys_config_src and sys_config are set, sys_config will be ignored~n", [])
+            end,
+
+            case filelib:is_regular(ConfigSrcPath) of
+                false ->
+                    ?RLX_ERROR({config_src_does_not_exist, ConfigSrcPath});
+                true ->
+                    copy_or_symlink_config_file(State, ConfigSrcPath, RelSysConfSrcPath)
             end
     end.
 

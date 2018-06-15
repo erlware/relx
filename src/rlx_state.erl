@@ -54,8 +54,12 @@
          hooks/2,
          vm_args/1,
          vm_args/2,
+         vm_args_src/1,
+         vm_args_src/2,
          sys_config/1,
          sys_config/2,
+         sys_config_src/1,
+         sys_config_src/2,
          root_dir/1,
          root_dir/2,
          add_configured_release/2,
@@ -106,7 +110,9 @@
                   available_apps=[] :: [rlx_app_info:t()],
                   default_configured_release :: {rlx_release:name() | undefined, rlx_release:vsn() |undefined} | undefined,
                   vm_args :: file:filename() | false | undefined,
+                  vm_args_src :: file:filename() | undefined,
                   sys_config :: file:filename() | false | undefined,
+                  sys_config_src :: file:filename() | undefined,
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
                   skip_apps=[] :: [AppName::atom()],
                   exclude_apps=[] :: [AppName::atom()],
@@ -284,6 +290,14 @@ vm_args(#state_t{vm_args=VmArgs}) ->
 vm_args(State, VmArgs) ->
     State#state_t{vm_args=VmArgs}.
 
+-spec vm_args_src(t()) -> file:filename() | undefined.
+vm_args_src(#state_t{vm_args_src=VmArgs}) ->
+    VmArgs.
+
+-spec vm_args_src(t(), undefined | file:filename()) -> t().
+vm_args_src(State, VmArgs) ->
+    State#state_t{vm_args_src=VmArgs}.
+
 -spec sys_config(t()) -> file:filename() | false | undefined.
 sys_config(#state_t{sys_config=SysConfig}) ->
     SysConfig.
@@ -291,6 +305,14 @@ sys_config(#state_t{sys_config=SysConfig}) ->
 -spec sys_config(t(), false | file:filename()) -> t().
 sys_config(State, SysConfig) ->
     State#state_t{sys_config=SysConfig}.
+
+-spec sys_config_src(t()) -> file:filename() | undefined.
+sys_config_src(#state_t{sys_config_src=SysConfigSrc}) ->
+    SysConfigSrc.
+
+-spec sys_config_src(t(), file:filename() | undefined) -> t().
+sys_config_src(State, SysConfigSrc) ->
+    State#state_t{sys_config_src=SysConfigSrc}.
 
 -spec root_dir(t()) -> file:filename() | undefined.
 root_dir(#state_t{root_dir=RootDir}) ->
