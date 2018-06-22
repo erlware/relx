@@ -344,7 +344,7 @@ copy_dir(State, App, AppDir, TargetDir, SubDir) ->
 
 %% no files are excluded, just copy the whole dir
 copy_dir(SourceDir, TargetDir, []) ->
-     case ec_file:copy(SourceDir, TargetDir, [recursive]) of
+     case ec_file:copy(SourceDir, TargetDir, [recursive, {file_info, [mode, time]}]) of
         {error, E} -> {error, E};
         ok ->
             ok
@@ -355,7 +355,7 @@ copy_dir(SourceDir, TargetDir, ExcludeFiles) ->
     lists:foreach(fun(F) ->
                     ok = ec_file:copy(F,
                                       filename:join([TargetDir,
-                                                     filename:basename(F)]))
+                                                     filename:basename(F)]), [{file_info, [mode, time]}])
                   end, SourceFiles -- ExcludeFiles).
 
 create_release_info(State0, Release0, OutputDir) ->
@@ -655,7 +655,7 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
         true ->
             ok = rlx_util:symlink_or_copy(ConfigPath, RelConfPath);
         _ ->
-            ok = ec_file:copy(ConfigPath, RelConfPath)
+            ok = ec_file:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}])
     end.
 
 %% @doc Optionally add erts directory to release, if defined.
@@ -686,7 +686,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                     ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
                 true ->
                     ok = ec_file:mkdir_p(LocalErts),
-                    ok = ec_file:copy(ErtsDir, LocalErts, [recursive]),
+                    ok = ec_file:copy(ErtsDir, LocalErts, [recursive, {file_info, [mode, time]}]),
                     case OsFamily of
                         unix ->
                             Erl = filename:join([LocalErts, "bin", "erl"]),
@@ -797,7 +797,8 @@ create_boot_file(RelDir, OutputDir, Options, State, Name) ->
                          end) of
         ok ->
             ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
-                              filename:join([OutputDir, "bin", Name++".boot"])),
+                              filename:join([OutputDir, "bin", Name++".boot"]),
+                              [{file_info, [mode, time]}]),
             ec_file:remove(filename:join([RelDir, Name++".rel"])),
             ec_file:remove(filename:join([RelDir, Name++".script"])),
             {ok, State};
@@ -805,7 +806,8 @@ create_boot_file(RelDir, OutputDir, Options, State, Name) ->
             ?RLX_ERROR(boot_script_generation_error);
         {ok, _, []} ->
             ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
-                              filename:join([OutputDir, "bin", Name++".boot"])),
+                              filename:join([OutputDir, "bin", Name++".boot"]),
+                              [{file_info, [mode, time]}]),
             ec_file:remove(filename:join([RelDir, Name++".rel"])),
             ec_file:remove(filename:join([RelDir, Name++".script"])),
             {ok, State};
