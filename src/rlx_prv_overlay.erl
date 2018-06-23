@@ -402,10 +402,8 @@ copy_to(State, FromFile0, ToFile0) ->
                       erlang:iolist_to_binary(filename:join(ToFile1,
                                                             filename:basename(FromFile1)))
               end,
-    case ec_file:copy(FromFile1, ToFile2, [recursive]) of
+    case ec_file:copy(FromFile1, ToFile2, [recursive, {file_info, [mode, time]}]) of
         ok ->
-            {ok, FileInfo} = file:read_file_info(FromFile1),
-            ok = file:write_file_info(ToFile2, FileInfo),
             ok;
         {error, Err} ->
             ?RLX_ERROR({copy_failed,
@@ -494,8 +492,7 @@ write_template(OverlayVars, FromFile, ToFile) ->
                             end,
                             case file:write_file(ToFile, IoData) of
                                 ok ->
-                                    {ok, FileInfo} = file:read_file_info(FromFile),
-                                    ok = file:write_file_info(ToFile, FileInfo),
+                                    ok = ec_file:copy_file_info(ToFile, FromFile, [mode, time]),
                                     ok;
                                 {error, Reason} ->
                                     ?RLX_ERROR({unable_to_write, ToFile, Reason})
