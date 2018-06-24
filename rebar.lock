@@ -1,13 +1,13 @@
 {"1.1.0",
-[{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.0.4">>},0},
- {<<"cf">>,{pkg,<<"cf">>,<<"0.2.2">>},0},
+[{<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.5.0">>},0},
+ {<<"cf">>,{pkg,<<"cf">>,<<"0.3.1">>},0},
  {<<"erlware_commons">>,{pkg,<<"erlware_commons">>,<<"1.2.0">>},0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"1.0.1">>},0},
  {<<"providers">>,{pkg,<<"providers">>,<<"1.7.0">>},0}]}.
 [
 {pkg_hash,[
- {<<"bbmustache">>, <<"7BA94F971C5AFD7B6617918A4BB74705E36CAB36EB84B19B6A1B7EE06427AA38">>},
- {<<"cf">>, <<"7F2913FFF90ABCABD0F489896CFEB0B0674F6C8DF6C10B17A83175448029896C">>},
+ {<<"bbmustache">>, <<"8CFDE0602E90A4057E161BF5288ADE854B4E511E2E8924966A8438730E958381">>},
+ {<<"cf">>, <<"5CB902239476E141EA70A740340233782D363A31EEA8AD37049561542E6CD641">>},
  {<<"erlware_commons">>, <<"2BAB99CF88941145767A502F1209886F1F0D31695EEF21978A30F15E645721E0">>},
  {<<"getopt">>, <<"C73A9FA687B217F2FF79F68A3B637711BB1936E712B521D8CE466B29CBF7808A">>},
  {<<"providers">>, <<"BBF730563914328EC2511D205E6477A94831DB7297DE313B3872A2B26C562EAB">>}]}
