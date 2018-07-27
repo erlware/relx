@@ -669,7 +669,7 @@ overlay_release(Config) ->
                   {overlay, [{mkdir, "{{target_dir}}/fooo"},
                              {copy, OverlayVars1,
                               "{{target_dir}}/{{foo_dir}}/vars1.config"},
-                             {copy, OverlayVars1,
+                             {copy, filename:join([LibDir1, "vars1*.config"]),
                               "{{target_dir}}/{{yahoo}}/"},
                              {link, OverlayVars4,
                               "{{target_dir}}/{{yahoo}}/vars4.config"},

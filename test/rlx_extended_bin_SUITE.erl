@@ -1294,10 +1294,7 @@ custom_start_script_hooks(Config) ->
                         ]}
                     ]},
                   {mkdir, "scripts"},
-                  {overlay, [{copy, "./pre_start", "bin/hooks/pre_start"},
-                             {copy, "./post_start", "bin/hooks/post_start"},
-                             {copy, "./pre_stop", "bin/hooks/pre_stop"},
-                             {copy, "./post_stop", "bin/hooks/post_stop"}]}
+                  {overlay, [{copy, "./{pre,post}_{start,stop}", "bin/hooks/"}]}
                  ]),
 
     %% write the hook scripts, each of them will write an erlang term to a file
