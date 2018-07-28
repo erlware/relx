@@ -381,7 +381,7 @@ wildcard_copy(State, FromFile0, ToFile0, CopyFun, ErrorTag) ->
                   filelib:ensure_dir(ToFile1),
                   CopyFun(FromFile1, ToFile1);
               true ->
-                  Root = absolute_path_from("."),
+                  Root = absolute_path_from(State, "."),
                   FromFiles = if
                       is_list(FromFile0) -> filelib:wildcard(FromFile0, Root);
                       true -> [FromFile1]
