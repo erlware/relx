@@ -381,15 +381,16 @@ wildcard_copy(State, FromFile0, ToFile0, CopyFun, ErrorTag) ->
                   filelib:ensure_dir(ToFile1),
                   CopyFun(FromFile1, ToFile1);
               true ->
+                  Root = absolute_path_from(Root),
                   FromFiles = if
-                      is_list(FromFile1) -> filelib:wildcard(FromFile1);
+                      is_list(FromFile0) -> filelib:wildcard(FromFile0, Root);
                       true -> [FromFile1]
                   end,
                   rlx_util:mkdir_p(ToFile1),
                   lists:foldl(fun
                       (_, {error, _} = Error) -> Error;
                       (FromFile, ok) ->
-                          CopyFun(FromFile, filename:join(ToFile1, filename:basename(FromFile)))
+                          CopyFun(filename:join(Root, FromFile), filename:join(ToFile1, filename:basename(FromFile)))
                   end, ok, FromFiles)
     end,
                   
