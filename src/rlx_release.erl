@@ -30,6 +30,8 @@
          erts/1,
          goals/2,
          goals/1,
+         constraints/1,
+         merge_application_goals/2,
          name/1,
          vsn/1,
          realize/3,
@@ -138,7 +140,11 @@ goals(Release, Goals0) ->
                 {ok, Release}, Goals0).
 
 -spec goals(t()) -> [application_goal()].
-goals(#release_t{goals=Goals}) ->
+goals(#release_t{goals=Goals, annotations=Annots}) ->
+    [application_goal(Goal, Annots) || Goal <- Goals].
+
+-spec constraints(t()) -> [rlx_depsolver:raw_constraint()].
+constraints(#release_t{goals=Goals}) ->
     Goals.
 
 -spec realize(t(), [{app_name(), app_vsn()}], [rlx_app_info:t()]) ->
@@ -364,6 +370,14 @@ parse_goal0({Constraint0, Annots, Incls}, {ok, Release})
         Error  ->
             Error
     end;
+parse_goal0({Constraint0, Incls}, {ok, Release})
+  when erlang:is_list(Incls), Incls == [] orelse is_atom(hd(Incls)) ->
+    case parse_constraint(Constraint0) of
+        {ok, Constraint1} ->
+            parse_goal1(Release, Constraint1, {void, Incls});
+        Error  ->
+            Error
+    end;
 parse_goal0(Constraint0, {ok, Release}) ->
     case parse_constraint(Constraint0) of
         {ok, Constraint1} ->
@@ -400,12 +414,11 @@ parse_constraint(Constraint0)
 parse_constraint(Constraint0)
   when erlang:is_tuple(Constraint0);
        erlang:is_atom(Constraint0) ->
-    Constraint1 = parse_version(Constraint0),
-    case rlx_depsolver:is_valid_constraint(Constraint1) of
+    case rlx_depsolver:is_valid_raw_constraint(Constraint0) of
         false ->
             ?RLX_ERROR({invalid_constraint, 2, Constraint0});
         true ->
-            {ok, Constraint1}
+            {ok, Constraint0}
     end;
 parse_constraint(Constraint) ->
     ?RLX_ERROR({invalid_constraint, 3, Constraint}).
@@ -423,22 +436,44 @@ get_app_name({AppName, _, _, _}) when erlang:is_atom(AppName) ->
 get_app_name(V) ->
     ?RLX_ERROR({invalid_constraint, 4, V}).
 
--spec parse_version(rlx_depsolver:raw_constraint()) ->
-                           rlx_depsolver:constraint().
-parse_version({AppName, Version})
-  when erlang:is_binary(Version);
-       erlang:is_list(Version) ->
-    {AppName, rlx_depsolver:parse_version(Version)};
-parse_version({AppName, Version, Constraint})
-  when erlang:is_binary(Version);
-       erlang:is_list(Version) ->
-    {AppName, rlx_depsolver:parse_version(Version), Constraint};
-parse_version({AppName, Version, Constraint0, Constraint1})
-  when erlang:is_binary(Version);
-       erlang:is_list(Version) ->
-    {AppName, rlx_depsolver:parse_version(Version), Constraint1, Constraint0};
-parse_version(Constraint) ->
-    Constraint.
+-spec get_goal_app_name(application_goal()) -> atom() | relx:error().
+get_goal_app_name({Constraint, Annots})
+  when Annots =:= permanent;
+       Annots =:= transient;
+       Annots =:= temporary;
+       Annots =:= load;
+       Annots =:= none ->
+    get_app_name(Constraint);
+get_goal_app_name({Constraint, Annots, Incls})
+  when (Annots =:= permanent orelse
+            Annots =:= transient orelse
+            Annots =:= temporary orelse
+            Annots =:= load orelse
+            Annots =:= none),
+       erlang:is_list(Incls) ->
+    get_app_name(Constraint);
+get_goal_app_name({Constraint, Incls})
+  when erlang:is_list(Incls), Incls == [] orelse is_atom(hd(Incls)) ->
+    get_app_name(Constraint);
+get_goal_app_name(Constraint) ->
+    get_app_name(Constraint).
+
+-spec application_goal(rlx_depsolver:raw_constraint(), annotations()) -> application_goal().
+application_goal(Constraint, Annots) ->
+    AppName = get_app_name(Constraint),
+    try ec_dictionary:get(AppName, Annots) of
+        {void, void} ->
+            Constraint;
+        {void, Incls} ->
+            {Constraint, Incls};
+        {Type, void} ->
+            {Constraint, Type};
+        {Type, Incls} ->
+            {Constraint, Type, Incls}
+    catch
+        throw:not_found ->
+            Constraint
+    end.
 
 to_atom(RelName)
   when erlang:is_list(RelName) ->
@@ -446,3 +481,15 @@ to_atom(RelName)
 to_atom(Else)
   when erlang:is_atom(Else) ->
     Else.
+
+-spec merge_application_goals([application_goal()], [application_goal()]) -> [application_goal()].
+merge_application_goals(Goals, BaseGoals) ->
+    Goals ++ lists:foldl(fun filter_goal_by_name/2, BaseGoals, Goals).
+
+filter_goal_by_name(AppGoal, GoalList) when is_list(GoalList) ->
+    case get_goal_app_name(AppGoal) of
+        AppName when is_atom(AppName) ->
+            lists:filter(fun(Goal) -> get_goal_app_name(Goal) /= AppName end, GoalList);
+        _Error ->
+            GoalList
+    end.

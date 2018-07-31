@@ -53,7 +53,11 @@ format_error({consult, ConfigFile, Reason}) ->
     io_lib:format("Unable to read file ~s: ~s", [ConfigFile,
                                                  file:format_error(Reason)]);
 format_error({invalid_term, Term}) ->
-    io_lib:format("Invalid term in config file: ~p", [Term]).
+    io_lib:format("Invalid term in config file: ~p", [Term]);
+format_error({failed_to_parse, Goal}) ->
+    io_lib:format("Unable to parse goal ~s", [Goal]);
+format_error({invalid_goal, Goal}) ->
+    io_lib:format("Invalid goal: ~p", [Goal]).
 
 %%%===================================================================
 %%% Internal Functions
@@ -182,7 +186,7 @@ load_terms({overrides, Overrides0}, {ok, State0}) ->
 load_terms({dev_mode, DevMode}, {ok, State0}) ->
     {ok, rlx_state:dev_mode(State0, DevMode)};
 load_terms({goals, Goals}, {ok, State0}) ->
-    {ok, rlx_state:goals(State0, Goals)};
+    parse_goals(Goals, State0);
 load_terms({upfrom, UpFrom}, {ok, State0}) ->
     {ok, rlx_state:upfrom(State0, UpFrom)};
 load_terms({include_src, IncludeSrc}, {ok, State0}) ->
@@ -193,8 +197,7 @@ load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications}, {ok, Sta
     ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn),
     Applications1 = rlx_release:goals(ExtendRelease),
     case rlx_release:goals(Release0,
-                          lists:umerge(lists:usort(Applications),
-                                      lists:usort(Applications1))) of
+                          rlx_release:merge_application_goals(Applications, Applications1)) of
         E={error, _} ->
             E;
         {ok, Release1} ->
@@ -206,8 +209,7 @@ load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications, Config}, 
     ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn),
     Applications1 = rlx_release:goals(ExtendRelease),
     case rlx_release:goals(Release0,
-                          lists:umerge(lists:usort(Applications),
-                                      lists:usort(Applications1))) of
+                          rlx_release:merge_application_goals(Applications, Applications1)) of
         E={error, _} ->
             E;
         {ok, Release1} ->
@@ -298,6 +300,34 @@ add_hooks(Hooks, State) ->
                         ({post, Target, Hook}, StateAcc) ->
                              rlx_state:append_hook(StateAcc, Target, Hook)
                      end, State, Hooks)}.
+
+parse_goals(Goals0, State) ->
+    {Goals, Error} = lists:mapfoldl(fun
+        (Goal, ok) when is_list(Goal); is_binary(Goal) ->
+            case rlx_goal:parse(Goal) of
+                {ok, Constraint} ->
+                    {Constraint, ok};
+                {fail, _} ->
+                    {[], ?RLX_ERROR({failed_to_parse, Goal})}
+            end;
+        (Goal, ok) when is_tuple(Goal); is_atom(Goal) ->
+            case rlx_depsolver:is_valid_raw_constraint(Goal) of
+                true ->
+                    {Goal, ok};
+                false ->
+                    {[], ?RLX_ERROR({invalid_goal, Goal})}
+            end;
+        (_, Err = {error, _}) ->
+            {[], Err};
+        (Goal, _) ->
+            {[], ?RLX_ERROR({invalid_goal, Goal})}
+    end, ok, Goals0),
+    case Error of
+        ok ->
+            {ok, rlx_state:goals(State, Goals)};
+        _ ->
+            Error
+    end.
 
 list_of_overlay_vars_files(undefined) ->
     [];
