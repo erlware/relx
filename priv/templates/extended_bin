@@ -492,6 +492,11 @@ case "$1" in
 
         test -z "$PIPE_BASE_DIR" || mkdir -m 1777 -p "$PIPE_BASE_DIR"
         mkdir -p "$PIPE_DIR"
+        if [ ! -w "$PIPE_DIR" ]
+        then
+            echo "failed to start, user '$USER' does not have write privileges on '$PIPE_DIR', either delete it or run node as a different user"
+            exit 1
+        fi
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
@@ -552,6 +557,12 @@ case "$1" in
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
             echo "Node is not running!"
+            exit 1
+        fi
+
+        if [ ! -w "$PIPE_DIR" ]
+        then
+            echo "failed to attach, user '$USER' does not have sufficient privileges on '$PIPE_DIR', please run node as a different user"
             exit 1
         fi
 
