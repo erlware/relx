@@ -312,6 +312,16 @@ relx_run_hooks() {
     done
 }
 
+relx_disable_hooks() {
+    PRE_START_HOOKS=""
+    POST_START_HOOKS=""
+    PRE_STOP_HOOKS=""
+    POST_STOP_HOOKS=""
+    PRE_INSTALL_UPGRADE_HOOKS=""
+    POST_INSTALL_UPGRADE_HOOKS=""
+    STATUS_HOOK=""
+}
+
 relx_is_extension() {
     EXTENSION=$1
     case "$EXTENSION" in
@@ -345,6 +355,26 @@ relx_run_extension() {
     # relative to the start script location
     [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" $@
 }
+
+# given a list of arguments, identify the internal ones
+#   --relx-disable-hooks
+# and process them accordingly
+process_internal_args() {
+    for arg in $@
+    do
+      shift
+      case "$arg" in
+          --relx-disable-hooks)
+            relx_disable_hooks
+            ;;
+          *)
+            ;;
+      esac
+    done
+}
+
+# process internal arguments
+process_internal_args $@
 
 find_erts_dir
 export ROOTDIR="$RELEASE_ROOT_DIR"
