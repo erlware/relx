@@ -530,7 +530,7 @@ case "$1" in
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
-            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS"
+            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" --relx-disable-hooks $ARGS"
         relx_run_hooks "$POST_START_HOOKS"
         ;;
 
@@ -705,6 +705,7 @@ case "$1" in
         echo "$RELEASE_ROOT_DIR"
         logger -t "$REL_NAME[$$]" "Starting up"
 
+        relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
         exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
@@ -712,6 +713,9 @@ case "$1" in
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" \
             -pa ${__code_paths} -- "$@"
+        # exec will replace the current image and nothing else gets
+        # executed from this point on, this explains the absence
+        # of the pre start hook
         ;;
     rpc)
         # Make sure a node IS running
