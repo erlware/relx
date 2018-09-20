@@ -183,10 +183,10 @@
 :install
 set args=%erl_opts% -setcookie %cookie% ++ -rootdir \"%rootdir%\"
 set start_erl=%erts_dir%\bin\start_erl.exe
-set description=Erlang node %node_name% in %rootdir%
+set description=Erlang node %node_name%%hostname% in %rootdir%
 @if "" == "%2" (
   :: Install the service
-  %erlsrv% add %service_name% %node_type% "%node_name%" -c "%description%" -w "%rootdir%" -m "%start_erl%" -args "%args%" -stopaction "init:stop()."
+  %erlsrv% add %service_name% %node_type% "%node_name%%hostname%" -c "%description%" -w "%rootdir%" -m "%start_erl%" -args "%args%" -stopaction "init:stop()."
 ) else (
   :: relup and reldown
   goto relup
