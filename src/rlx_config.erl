@@ -303,8 +303,9 @@ list_of_overlay_vars_files(undefined) ->
     [];
 list_of_overlay_vars_files([]) ->
     [];
-list_of_overlay_vars_files([H | _]=FileNames) when erlang:is_list(H) ->
-    FileNames;
+list_of_overlay_vars_files([H | _]=Vars) when erlang:is_list(H) ;
+                                              is_tuple(H) ->
+    Vars;
 list_of_overlay_vars_files(FileName) when is_list(FileName) ->
     [FileName].
 
@@ -328,7 +329,8 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
             end;
         overlay_vars ->
             case lists:keyfind(overlay_vars, 1, ConfigTerms) of
-                {_, [H | _] = Vars} when is_list(H) ->
+                {_, [H | _] = Vars} when is_list(H) ;
+                                         is_tuple(H) ->
                     MergedValue = Vars ++ Value,
                     merge_configs(CliTerms, lists:keyreplace(overlay_vars, 1, ConfigTerms, {Key, MergedValue}));
                 {_, Vars} when is_list(Vars) ->
