@@ -49,6 +49,7 @@
          replace_os_vars_dev_mode/1,
          replace_os_vars_twice/1,
          custom_start_script_hooks/1,
+         custom_start_script_hooks_console/1,
          builtin_wait_for_vm_start_script_hook/1,
          builtin_pid_start_script_hook/1,
          builtin_wait_for_process_start_script_hook/1,
@@ -88,7 +89,8 @@ all() ->
      ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
      remote_console, shortname_remote_console, replace_os_vars, replace_os_vars_sys_config_vm_args_src, replace_os_vars_multi_node,
      replace_os_vars_included_config,
-     replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice, custom_start_script_hooks,
+     replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice,
+     custom_start_script_hooks, custom_start_script_hooks_console,
      builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
      builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks,
      builtin_status_script, custom_status_script,
@@ -1358,6 +1360,42 @@ builtin_pid_start_script_hook(Config) ->
     ?assert(ec_file:exists(filename:join([OutputDir, "foo.pid"]))),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     ok.
+
+custom_start_script_hooks_console(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_hooks, [
+                        {pre_start, [
+                          {custom, "hooks/pre_start"}
+                        ]}
+                    ]},
+                  {mkdir, "scripts"},
+                  {overlay, [{copy, "./pre_start", "bin/hooks/pre_start"}]}
+                 ]),
+
+    %% write the hook scripts, each of them will write an erlang term to a file
+    %% that will later be consulted
+    ok = file:write_file(filename:join([LibDir1, "./pre_start"]),
+                         "#!/bin/bash\n# $*\necho \\{pre_start, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    %% now start/stop the release to make sure the script hooks are really getting
+    %% executed
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo console &"])),
+    %% now check that the output file contains the expected format
+    {ok,[{pre_start, foo, _, foo}]} = file:consult(filename:join([OutputDir, "foo", "test"])).
 
 builtin_wait_for_vm_start_script_hook(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),

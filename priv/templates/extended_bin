@@ -312,6 +312,16 @@ relx_run_hooks() {
     done
 }
 
+relx_disable_hooks() {
+    PRE_START_HOOKS=""
+    POST_START_HOOKS=""
+    PRE_STOP_HOOKS=""
+    POST_STOP_HOOKS=""
+    PRE_INSTALL_UPGRADE_HOOKS=""
+    POST_INSTALL_UPGRADE_HOOKS=""
+    STATUS_HOOK=""
+}
+
 relx_is_extension() {
     EXTENSION=$1
     case "$EXTENSION" in
@@ -345,6 +355,26 @@ relx_run_extension() {
     # relative to the start script location
     [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" $@
 }
+
+# given a list of arguments, identify the internal ones
+#   --relx-disable-hooks
+# and process them accordingly
+process_internal_args() {
+    for arg in $@
+    do
+      shift
+      case "$arg" in
+          --relx-disable-hooks)
+            relx_disable_hooks
+            ;;
+          *)
+            ;;
+      esac
+    done
+}
+
+# process internal arguments
+process_internal_args $@
 
 find_erts_dir
 export ROOTDIR="$RELEASE_ROOT_DIR"
@@ -500,7 +530,7 @@ case "$1" in
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
-            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS"
+            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" --relx-disable-hooks $ARGS"
         relx_run_hooks "$POST_START_HOOKS"
         ;;
 
@@ -675,6 +705,7 @@ case "$1" in
         echo "$RELEASE_ROOT_DIR"
         logger -t "$REL_NAME[$$]" "Starting up"
 
+        relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
         exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
@@ -682,6 +713,9 @@ case "$1" in
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" \
             -pa ${__code_paths} -- "$@"
+        # exec will replace the current image and nothing else gets
+        # executed from this point on, this explains the absence
+        # of the pre start hook
         ;;
     rpc)
         # Make sure a node IS running
