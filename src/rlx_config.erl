@@ -339,6 +339,9 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
                 false ->
                     merge_configs(CliTerms, ConfigTerms++[{Key, Value}])
             end;
+        default_release when Value =:= {undefined, undefined} ->
+            %% No release specified in cli. Prevent overwriting default_release in ConfigTerms.
+            merge_configs(CliTerms, lists:keymerge(1, ConfigTerms, [{Key, Value}]));
         _ ->
             merge_configs(CliTerms, lists:reverse(lists:keystore(Key, 1, lists:reverse(ConfigTerms), {Key, Value})))
     end.
