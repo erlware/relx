@@ -180,9 +180,9 @@ relx_gen_id() {
 relx_nodetool() {
     command="$1"; shift
 
-    escript_emulator_args $ROOTDIR/bin/nodetool
+    ESCRIPT_TMP=$(escript_emulator_args_tmp $ROOTDIR/bin/nodetool)
 
-    "$ERTS_DIR/bin/escript" "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
+    "$ERTS_DIR/bin/escript" "$ESCRIPT_TMP" "$NAME_TYPE" "$NAME" \
                                 -setcookie "$COOKIE" "$command" $@
 }
 
@@ -245,6 +245,24 @@ escript_emulator_args() {
             eval "$cmd"
             rm ${1}.prev
         fi
+    fi
+}
+
+escript_emulator_args_tmp() {
+    #
+    # If the user provided $ROOTDIR/tmp directory then don't override
+    # original files of the package but use temporary files instead
+    #
+    local TMP_DIR="$ROOTDIR/tmp";
+
+    if [ -d "$TMP_DIR" ] && [ -w "$TMP_DIR" ]; then
+      local TMP_FILE="$TMP_DIR/$(basename $1)"
+      cp $1 $TMP_FILE
+      escript_emulator_args $TMP_FILE
+      echo $TMP_FILE
+    else
+      escript_emulator_args $1
+      echo $1
     fi
 }
 
@@ -628,9 +646,9 @@ case "$1" in
 
         relx_run_hooks "$PRE_INSTALL_UPGRADE_HOOKS"
 
-        escript_emulator_args $ROOTDIR/bin/install_upgrade.escript
+        ESCRIPT_TMP=$(escript_emulator_args_tmp $ROOTDIR/bin/install_upgrade.escript)
 
-        exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
+        exec "$BINDIR/escript" "$ESCRIPT_TMP" \
              "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
 
         relx_run_hooks "$POST_INSTALL_UPGRADE_HOOKS"
@@ -645,9 +663,9 @@ case "$1" in
 
         COMMAND="$1"; shift
  
-        escript_emulator_args $ROOTDIR/bin/install_upgrade.escript
+        ESCRIPT_TMP=$(escript_emulator_args_tmp $ROOTDIR/bin/install_upgrade.escript)
 
-        exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
+        exec "$BINDIR/escript" "$ESCRIPT_TMP" \
              "versions" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
         ;;
 
