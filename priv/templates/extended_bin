@@ -371,7 +371,7 @@ relx_run_extension() {
     shift
     # all extension script locations are expected to be
     # relative to the start script location
-    [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" $@
+    [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" "$@"
 }
 
 # given a list of arguments, identify the internal ones
@@ -791,7 +791,7 @@ case "$1" in
         if [ "$IS_EXTENSION" = "1" ]; then
             EXTENSION_SCRIPT=$(relx_get_extension_script $1)
             shift
-            relx_run_extension $EXTENSION_SCRIPT $@
+            relx_run_extension $EXTENSION_SCRIPT "$@"
             # all extension scripts are expected to exit
         else
             relx_usage $1
