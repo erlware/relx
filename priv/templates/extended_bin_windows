@@ -42,6 +42,7 @@
 @set escript="%bindir%\escript.exe"
 @set werl="%bindir%\werl.exe"
 @set nodetool="%release_root_dir%\bin\nodetool"
+@set extensions={{ extensions }}
 
 :: Extract node type and name from vm.args
 @for /f "usebackq tokens=1-2" %%I in (`findstr /b "\-name \-sname" "%vm_args%"`) do @(
@@ -99,6 +100,7 @@
   copy "%rel_dir%\%rel_name%.boot" "%rel_dir%\start.boot" >nul
 )
 
+@if "%1"=="help" @goto usage
 @if "%1"=="install" @goto install
 @if "%1"=="uninstall" @goto uninstall
 @if "%1"=="start" @goto start
@@ -112,6 +114,10 @@
 @if "%1"=="attach" @goto attach
 @if "%1"=="remote_console" @goto attach
 @if "%1"=="" @goto usage
+
+@call :is_extension "%1"
+@if "%ERRORLEVEL%"=="0" @goto run_extension
+
 @echo Unknown command: "%1"
 
 @goto :eof
@@ -188,7 +194,63 @@
 
 :: Display usage information
 :usage
-@echo usage: %~n0 ^(install^|uninstall^|start^|stop^|restart^|upgrade^|downgrade^|console^|ping^|list^|attach^|remote_console^)
+@if "%2"=="install" (
+  @echo "Usage: %rel_name% install [VERSION]"
+  @echo "Installs a release package VERSION, it assumes that this"
+  @echo "release package tarball has already been deployed at one"
+  @echo "of the following locations:"
+  @echo "      releases/<relname>-<version>.tar.gz"
+  @echo "      releases/<version>/<relname>-<version>.tar.gz"
+  @echo "      releases/<version>/<relname>.tar.gz"
+  @echo ""
+  @echo "     --no-permanent   Install release package VERSION but"
+  @echo "                      don't make it permanent"
+  @goto :eof
+)
+@if "%2"=="uninstall" (
+  @echo "Usage: %rel_name% uninstall [VERSION]"
+  @echo "Uninstalls a release VERSION, it will only accept"
+  @echo "versions that are not currently in use"
+  @goto :eof
+)
+@if "%2"=="upgrade" (
+  @echo "Usage: %rel_name% upgrade [VERSION]"
+  @echo "Upgrades the currently running release to VERSION, it assumes"
+  @echo "that a release package tarball has already been deployed at one"
+  @echo "of the following locations:"
+  @echo "      releases/<relname>-<version>.tar.gz"
+  @echo "      releases/<version>/<relname>-<version>.tar.gz"
+  @echo "      releases/<version>/<relname>.tar.gz"
+  @echo ""
+  @echo "     --no-permanent   Install release package VERSION but"
+  @echo "                      don't make it permanent"
+  @goto :eof
+)
+@if "%2"=="downgrade" (
+  @echo "Usage: %rel_name% downgrade [VERSION]"
+  @echo "Downgrades the currently running release to VERSION, it assumes"
+  @echo "that a release package tarball has already been deployed at one"
+  @echo "of the following locations:"
+  @echo "      releases/<relname>-<version>.tar.gz"
+  @echo "      releases/<version>/<relname>-<version>.tar.gz"
+  @echo "      releases/<version>/<relname>.tar.gz"
+  @echo ""
+  @echo "     --no-permanent   Install release package VERSION but"
+  @echo "                      don't make it permanent"
+  @goto :eof
+)
+@call :is_extension "%2"
+@if "%ERRORLEVEL%"=="0" (
+  @if exist "%script_dir%\%2.cmd" (
+    call "%script_dir%\%2.cmd" help
+    @goto :eof
+  )
+)
+set commands=install uninstall start stop restart upgrade downgrade console ping list attach remote_console
+if not "%extensions%"=="" (
+  set "commands=%commands% %extensions%"
+)
+@echo Usage: %~n0 ^(%commands: =^|%^)
 @goto :eof
 
 :: Install the release as a Windows service
@@ -256,3 +318,33 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 @start "%node_name% attach" %werl% %boot% ^
        -remsh %node_name%%hostname% %node_type% console -setcookie %cookie%
 @goto :eof
+
+:: Run extension script
+:run_extension
+@if exist "%script_dir%\%1.cmd" (
+  shift
+  call "%script_dir%\%1.cmd" %*
+)
+
+@goto :eof
+
+:: Local Functions
+
+:is_extension
+
+@set ext=%~1
+
+:: Check for entries in the list, not at the ends
+@call set ext_test_1=x%%extensions: %ext% =%%
+
+:: Check for entry at the start of the list
+@call set ext_test_2=x%%extensions:%ext% =%%
+
+:: Check for entry at the end of the list
+@call set ext_test_3=x%%extensions: %ext%=%%
+
+@if not "%ext_test_1%"=="x%extensions%" exit /b 0
+@if not "%ext_test_2%"=="x%extensions%" exit /b 0
+@if not "%ext_test_3%"=="x%extensions%" exit /b 0
+
+@exit /b 1
