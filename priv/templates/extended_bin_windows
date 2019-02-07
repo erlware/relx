@@ -42,7 +42,9 @@
 @set escript="%bindir%\escript.exe"
 @set werl="%bindir%\werl.exe"
 @set nodetool="%release_root_dir%\bin\nodetool"
-@set extensions={{ extensions }}
+@set "extensions0={{ extensions }}"
+@set "extensions1=%extensions0:|= %"
+@set "extensions=%extensions1: undefined=%"
 
 :: Extract node type and name from vm.args
 @for /f "usebackq tokens=1-2" %%I in (`findstr /b "\-name \-sname" "%vm_args%"`) do @(
@@ -241,8 +243,8 @@
 )
 @call :is_extension "%2"
 @if "%ERRORLEVEL%"=="0" (
-  @if exist "%script_dir%\%2.cmd" (
-    call "%script_dir%\%2.cmd" help
+  @if exist "%script_dir%\extensions\%2.cmd" (
+    call "%script_dir%\extensions\%2.cmd" help
     @goto :eof
   )
 )
@@ -321,9 +323,9 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 :: Run extension script
 :run_extension
-@if exist "%script_dir%\%1.cmd" (
+@if exist "%script_dir%\extensions\%1.cmd" (
   shift
-  call "%script_dir%\%1.cmd" %*
+  call "%script_dir%\extensions\%1.cmd" %*
 )
 
 @goto :eof
@@ -332,16 +334,16 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 :is_extension
 
-@set ext=%~1
+@set "ext=%~1"
 
 :: Check for entries in the list, not at the ends
-@call set ext_test_1=x%%extensions: %ext% =%%
+@call set "ext_test_1=x%%extensions: %ext% =%%"
 
 :: Check for entry at the start of the list
-@call set ext_test_2=x%%extensions:%ext% =%%
+@call set "ext_test_2=x%%extensions:%ext% =%%"
 
 :: Check for entry at the end of the list
-@call set ext_test_3=x%%extensions: %ext%=%%
+@call set "ext_test_3=x%%extensions: %ext%=%%"
 
 @if not "%ext_test_1%"=="x%extensions%" exit /b 0
 @if not "%ext_test_2%"=="x%extensions%" exit /b 0
