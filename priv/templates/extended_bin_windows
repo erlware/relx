@@ -148,8 +148,21 @@
 :: Find the sys.config file
 :find_sys_config
 @set "possible_sys=%rel_dir%\sys.config"
-@if exist %possible_sys% (
+@if exist "%possible_sys%" (
   set sys_config=-config "%possible_sys%"
+) else (
+  @if exist "%possible_sys%.orig" (
+    ren "%possible_sys%.orig" sys.config
+    set sys_config=-config "%possible_sys%"
+  )
+)
+
+:: Find the vm.args file
+:find_vm_args
+@if not exist "%m_args%" (
+  @if exist "%m_args%.orig" (
+    ren "%m_args%.orig" vm.args
+  )
 )
 @goto :eof
 
