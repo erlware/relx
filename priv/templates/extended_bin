@@ -550,7 +550,7 @@ case "$1" in
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
-            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" --relx-disable-hooks $ARGS"
+            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS --relx-disable-hooks"
         relx_run_hooks "$POST_START_HOOKS"
         ;;
 
