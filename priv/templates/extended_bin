@@ -124,15 +124,16 @@ relx_usage() {
 
 find_erts_dir() {
     __erts_dir="$RELEASE_ROOT_DIR/erts-$ERTS_VSN"
+    DUMMY_NAME="dummy-$(relx_gen_id)"
     if [ -d "$__erts_dir" ]; then
         ERTS_DIR="$__erts_dir";
         ROOTDIR="$RELEASE_ROOT_DIR"
         # run a dummy distributed erlang node just to ensure that a cookie exists
-        $ERTS_DIR/bin/erl -sname dummy -boot no_dot_erlang -noshell -eval "halt()"
+        $ERTS_DIR/bin/erl -sname ${DUMMY_NAME} -boot no_dot_erlang -noshell -eval "halt()"
     else
         __erl="$(which erl)"
         code="io:format(\"~s\", [code:root_dir()]), halt()."
-        __erl_root="$("$__erl" -sname dummy -boot no_dot_erlang -sasl errlog_type error -noshell -eval "$code")"
+        __erl_root="$("$__erl" -sname ${DUMMY_NAME} -boot no_dot_erlang -sasl errlog_type error -noshell -eval "$code")"
         ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
         ROOTDIR="$__erl_root"
     fi
