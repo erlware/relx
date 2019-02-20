@@ -63,6 +63,8 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kernel/include/file.hrl").
 
+-define(SLEEP_TIME, 2500).
+
 suite() ->
     [{timetrap,{seconds,30}}].
 
@@ -124,7 +126,7 @@ ping(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -163,7 +165,7 @@ shortname_ping(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -202,7 +204,7 @@ longname_ping(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -235,10 +237,10 @@ attach(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo attach", "&"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
 
@@ -269,7 +271,7 @@ pid(Config) ->
 
     %% check for a valid pid
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _Pid} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
@@ -303,11 +305,11 @@ restart(Config) ->
     %% a restart is a gracious operation that does not involve the
     %% death of the VM, so the pid should be the same
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, Pid1} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo restart"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
@@ -341,13 +343,13 @@ reboot(Config) ->
     %% a reboot involves stopping the emulator, it needs to be restarted
     %% though
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, Pid1} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo reboot"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
@@ -383,7 +385,7 @@ escript(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     [ExpectedOutput] = io_lib:format("~s",
                             [filename:join([OutputDir, "foo"])]),
@@ -417,10 +419,10 @@ remote_console(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo remote_console &"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, NodesStr} = sh(filename:join([OutputDir, "foo", "bin", "foo eval 'nodes(connected).'"])),
     Nodes = rlx_test_utils:list_to_term(NodesStr),
     ?assertEqual(1, length(Nodes)),
@@ -459,10 +461,10 @@ shortname_remote_console(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo remote_console &"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, NodesStr} = sh(filename:join([OutputDir, "foo", "bin", "foo eval 'nodes(connected).'"])),
     Nodes = rlx_test_utils:list_to_term(NodesStr),
     ?assertEqual(1, length(Nodes)),
@@ -510,7 +512,7 @@ replace_os_vars(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -549,7 +551,7 @@ replace_os_vars(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node2"},
@@ -625,7 +627,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "101"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -664,7 +666,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "201"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node2"},
@@ -739,7 +741,7 @@ replace_os_vars_multi_node(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"RELX_MULTI_NODE", "1"},
@@ -787,7 +789,7 @@ replace_os_vars_multi_node(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"RELX_MULTI_NODE", "1"},
@@ -883,7 +885,7 @@ replace_os_vars_included_config(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -922,7 +924,7 @@ replace_os_vars_included_config(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node2"},
@@ -997,7 +999,7 @@ replace_os_vars_custom_location(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"RELX_OUT_FILE_PATH", "/tmp"},
@@ -1043,7 +1045,7 @@ replace_os_vars_custom_location(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"RELX_OUT_FILE_PATH", "/tmp"},
@@ -1121,7 +1123,7 @@ replace_os_vars_twice(Config) ->
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"}]),
     {ok, "\"v1\""} = sh(filename:join([OutputDir, "foo", "bin",
@@ -1144,7 +1146,7 @@ replace_os_vars_twice(Config) ->
 
     %% start the node again but this time don't replace env variables
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, "\"${VAR1}\""} = sh(filename:join([OutputDir, "foo", "bin",
                                        "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"])),
@@ -1196,7 +1198,7 @@ replace_os_vars_dev_mode(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -1235,7 +1237,7 @@ replace_os_vars_dev_mode(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"NODENAME", "node2"},
@@ -1320,7 +1322,7 @@ custom_start_script_hooks(Config) ->
     %% now start/stop the release to make sure the script hooks are really getting
     %% executed
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% now check that the output file contains the expected format
     {ok,[{pre_start, foo, _, foo},
@@ -1423,7 +1425,7 @@ builtin_wait_for_vm_start_script_hook(Config) ->
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
     % this run doesn't need the sleep because the wait_for_vm_start
     % start script makes it unnecessary
-    %timer:sleep(2000),
+    %timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     ok.
@@ -1559,7 +1561,7 @@ builtin_status_script(Config) ->
     {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
                            OutputDir, ConfigFile),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the status to a file
     {ok, ""} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])).
@@ -1596,7 +1598,7 @@ custom_status_script(Config) ->
     {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
                            OutputDir, ConfigFile),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the status to a file
     {ok, StatusStr} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])),
@@ -1641,7 +1643,7 @@ start_sname_in_other_argsfile(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -1677,7 +1679,7 @@ start_preserves_arguments(Config) ->
     %% and preserving the "tricky" argument that contains a string with a space
     %% in it
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start -goal_app baz '\"bat zing\"'"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     BinFile = filename:join([PrivDir, "goal_app.bin"]),
     Eval = io_lib:format("{ok,Env}=application:get_env(goal_app,baz),file:write_file(\"~s\",term_to_binary(Env)).",
                          [BinFile]),
@@ -1724,7 +1726,7 @@ start_nodetool_with_data_from_argsfile(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -1764,7 +1766,7 @@ start_upgrade_escript_with_argsfile_data(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, _Ver} = sh(filename:join([OutputDir, "foo", "bin", "foo versions"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -1832,7 +1834,7 @@ extension_script(Config) ->
                                        proplists:get_value(priv_dir, Config),
                                        ExtensionScript),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the extension script output to a file
     {ok, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
