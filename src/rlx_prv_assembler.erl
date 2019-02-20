@@ -433,13 +433,13 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                 win32 -> rlx_string:concat(VsnRel, ".cmd")
             end,
             ok = file:write_file(VsnRelStartFile, StartFile),
-            ok = file:change_mode(VsnRelStartFile, 8#777),
+            ok = file:change_mode(VsnRelStartFile, 8#755),
             BareRelStartFile = case OsFamily of
                 unix -> BareRel;
                 win32 -> rlx_string:concat(BareRel, ".cmd")
             end,
             ok = file:write_file(BareRelStartFile, StartFile),
-            ok = file:change_mode(BareRelStartFile, 8#777)
+            ok = file:change_mode(BareRelStartFile, 8#755)
     end,
     ReleasesDir = filename:join(OutputDir, "releases"),
     generate_start_erl_data_file(Release, ReleasesDir),
