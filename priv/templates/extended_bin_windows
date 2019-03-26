@@ -37,17 +37,18 @@
 @set vm_args=%rel_dir%\vm.args
 @set progname=erl.exe
 @set clean_boot_script=%release_root_dir%\bin\start_clean
-@set erlsrv="%bindir%\erlsrv.exe"
-@set epmd="%bindir%\epmd.exe"
-@set escript="%bindir%\escript.exe"
-@set werl="%bindir%\werl.exe"
-@set nodetool="%release_root_dir%\bin\nodetool"
+@set "erlsrv=%bindir%\erlsrv.exe"
+@set "epmd=%bindir%\epmd.exe"
+@set "escript=%bindir%\escript.exe"
+@set "werl=%bindir%\werl.exe"
+@set "erl=%bindir%\erl.exe"
+@set "nodetool=%release_root_dir%\bin\nodetool"
 @set "extensions0={{ extensions }}"
 @set "extensions1=%extensions0:|= %"
 @set "extensions=%extensions1: undefined=%"
 
 :: Extract node type and name from vm.args
-@for /f "usebackq tokens=1-2" %%I in (`findstr /b "\-name \-sname" "%vm_args%"`) do @(
+@for /f "usebackq tokens=1-2" %%I in ('findstr /b "\-name \-sname" "%vm_args%"') do @(
   set node_type=%%I
   set node_name=%%J
 )
@@ -77,7 +78,7 @@
 )
 
 :: Extract cookie from vm.args
-@for /f "usebackq tokens=1-2" %%I in (`findstr /b \-setcookie "%vm_args%"`) do @(
+@for /f "usebackq tokens=1-2" %%I in ('findstr /b \-setcookie "%vm_args%"') do @(
   set cookie=%%J
 )
 
@@ -86,7 +87,7 @@
 
 :: Collect any additional VM args into erl_opts
 @setlocal EnableDelayedExpansion
-@for /f "usebackq tokens=1-2" %%I in (`findstr /r "^[^#]" "%vm_args%"`) do @(
+@for /f "usebackq tokens=1-2" %%I in ('findstr /r "^[^#]" "%vm_args%"') do @(
   if not "%%I" == "-name" (
     if not "%%I" == "-sname" (
       if not "%%I" == "-setcookie" (
@@ -361,25 +362,20 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 :: Failures are logged, but ignored.
 
 :: Create random dummy node name
-@set /a _rand_nr=%RANDOM%+100000
-@set dummy_name=dummy-%_rand_nr%
+@set /a "_rand_nr=%RANDOM%+100000"
+@set "dummy_name=dummy-%_rand_nr%"
 
-:: Run node, capture exitcode in temporary file and capture output in local var
-@for /f "delims=" %%i in ('"%erl%" -sname %dummy_name% -boot no_dot_erlang -noshell -s init stop 2^>^&1 ^& call echo %%^^ERRORLEVEL%%^>%TMP%\error.level') do @(
+:: Run node and capture output in local var
+@for /f "delims=" %%i in ('%erl% -sname %dummy_name% -boot no_dot_erlang -noshell -eval "halt()."') do @(
   set "dummy_node_output=%%i"
 )
 
-:: Read exit code from temporary file and delete that file
-@for /f "delims=" %%i in (%TMP%\error.level) do (set /a dummy_node_exitcode=%%i)
-@del %TMP%\error.level
-
-:: Print error log in case of a failed command execution
-@if %dummy_node_exitcode% neq 0 @(
-  @echo Creating .erlang.cookie failed: "%dummy_node_output%"
+:: Check for execution error
+@if "%dummy_node_output%" neq "" @(
+  echo Creating .erlang.cookie failed: "%dummy_node_output%"
 )
 
 :: Clear all local variables
 @set "dummy_node_output="
-@set "dummy_node_exitcode="
 
 @exit /b 0
