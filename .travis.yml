@@ -35,6 +35,8 @@ branches:
     - master
 addons:
     hostname: travis.dev 
+    hosts:
+        - travis.dev
 notifications:
   email:
     - core@erlware.org
