@@ -457,9 +457,6 @@ esac
 # Export the variable so that it's available in the 'eval' calls
 export NAME
 
-# Make sure log directory exists
-mkdir -p "$RUNNER_LOG_DIR"
-
 test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
@@ -510,6 +507,9 @@ case "$1" in
             echo "failed to start, user '$USER' does not have write privileges on '$PIPE_DIR', either delete it or run node as a different user"
             exit 1
         fi
+
+        # Make sure log directory exists
+        mkdir -p "$RUNNER_LOG_DIR"
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
