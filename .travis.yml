@@ -27,11 +27,16 @@ before_script:
   - wget https://s3.amazonaws.com/rebar3/rebar3
   - chmod +x rebar3
 script: "./rebar3 update && ./rebar3 ct"
+after_failure:
+  ## Useful for troubleshooting to view test logs
+  - find _build/test/logs/ct_run*/lib*logs/run*/log_private/*-output*/*/log -type f -name "erlang*" -exec ls -1rt "{}" \+ | xargs -I % sh -c 'echo "\n\n%"; cat %'
 branches:
   only:
     - master
 addons:
     hostname: travis.dev 
+    hosts:
+        - travis.dev
 notifications:
   email:
     - core@erlware.org
