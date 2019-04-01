@@ -149,7 +149,7 @@ shortname_ping(Config) ->
                   {extended_start_script, true}
                  ]),
     
-    ec_file:write(VmArgs, "-sname foo\n\n"
+    ec_file:write(VmArgs, "-sname foo@localhost\n\n"
                           "-setcookie cookie\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -436,7 +436,7 @@ shortname_remote_console(Config) ->
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     VmArgs = filename:join([LibDir1, "vm.args"]),
 
-    ec_file:write(VmArgs, "-sname foo\n\n"
+    ec_file:write(VmArgs, "-sname foo@localhost\n\n"
                           "-setcookie cookie\n"),
 
     rlx_test_utils:write_config(ConfigFile,
@@ -493,7 +493,7 @@ replace_os_vars(Config) ->
                                 [[{goal_app,
                                    [{var1, "${VAR1}"},
                                     {var2, "${VAR2}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -608,7 +608,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
     %% new with sys.config.src it doesn't have to be valid Erlang
     %% until after var replacemen at runtime.
     ec_file:write(SysConfigSrc, "[{goal_app, [{var1, ${VAR1}}]}]."),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -721,7 +721,7 @@ replace_os_vars_multi_node(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -866,7 +866,7 @@ replace_os_vars_included_config(Config) ->
                                   },
                                  "releases/0.0.1/config/included.config"]
                                 ]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -979,7 +979,7 @@ replace_os_vars_custom_location(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -1106,7 +1106,7 @@ replace_os_vars_twice(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname node\n\n"
+    ec_file:write(VmArgs, "-sname node@localhost\n\n"
                           "-setcookie cookie\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -1179,7 +1179,7 @@ replace_os_vars_dev_mode(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -1628,7 +1628,7 @@ start_sname_in_other_argsfile(Config) ->
     ec_file:write(VmArgs, "-args_file " ++ VmArgs2 ++ "\n\n"
                           "-setcookie cookie\n"),
 
-    ec_file:write(VmArgs2, "-sname foo\n"),
+    ec_file:write(VmArgs2, "-sname foo@localhost\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
@@ -1710,7 +1710,7 @@ start_nodetool_with_data_from_argsfile(Config) ->
                  ]),
 
     ec_file:write(VmArgs, "-setcookie cookie\n"
-                          "-sname foo\n\n"
+                          "-sname foo@localhost\n\n"
                           "-proto_dist inet_tcp\n\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -1750,7 +1750,7 @@ start_upgrade_escript_with_argsfile_data(Config) ->
                  ]),
 
     ec_file:write(VmArgs, "-setcookie cookie\n"
-                          "-sname foo\n\n"
+                          "-sname foo@localhost\n\n"
                           "-proto_dist inet_tcp\n\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
