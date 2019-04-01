@@ -92,8 +92,16 @@ basic_tar(Config) ->
     {ok, Files} = erl_tar:table(TarFile, [compressed]),
     ?assert(lists:any(fun(X) -> re:run(X, "lib/stdlib-.*/ebin/.*") =/= nomatch end, Files)),
     ?assert(lists:any(fun(X) -> re:run(X, "lib/kernel-.*/ebin/.*") =/= nomatch end, Files)),
-    ?assert(lists:member("releases/0.0.1/vm.args.src", Files)),
-    ?assert(lists:member("releases/0.0.1/sys.config.src", Files)),
+
+    %% only works in otp-21 and above
+    case erlang:system_info(otp_release) of
+        R when R =:= "21" orelse R =:= "22" ->
+            ?assert(lists:member("releases/0.0.1/vm.args.src", Files)),
+            ?assert(lists:member("releases/0.0.1/sys.config.src", Files));
+        _ ->
+            ok
+    end,
+
     ?assert(filelib:is_regular(TarFile)).
 
 exclude_erts(Config) ->
