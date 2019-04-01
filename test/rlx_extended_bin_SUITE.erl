@@ -188,7 +188,7 @@ longname_ping(Config) ->
                   {extended_start_script, true}
                  ]),
     
-    ec_file:write(VmArgs, "-name foo\n\n"
+    ec_file:write(VmArgs, "-name foo@127.0.0.1\n\n"
                           "-setcookie cookie\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),

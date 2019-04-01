@@ -13,5 +13,6 @@ logs
 test/*_data
 _rel/*
 .*
+!.circleci
 erl_crash.dump
 rebar

@@ -1,0 +1,33 @@
+version: 2.1
+orbs:
+  rebar3: tsloughter/rebar3@0.6.3
+
+jobs:
+  ct:
+    parameters:
+      tag:
+        description: The docker tag to use.
+        type: string
+        default: "21.2"
+    executor:
+      name: rebar3/erlang
+      tag: <<parameters.tag>>
+    steps:
+      - checkout
+      - rebar3/ct
+
+workflows:
+  build-test:
+    jobs:
+      - ct:
+          name: "21"
+          tag: "21.2"
+      - ct:
+          name: "20"
+          tag: "20"
+      - ct:
+          name: "19"
+          tag: "19"
+      - ct:
+          name: "18"
+          tag: "18"
