@@ -55,11 +55,19 @@ basic_tar(Config) ->
     rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
+    SysConfigSrc = filename:join([LibDir1, "config", "sys.config.src"]),
+    rlx_test_utils:write_config(SysConfigSrc, [{this_is_a_test, "yup it is"}]),
+
+    VmArgsSrc = filename:join([LibDir1, "config", "vm.args.src"]),
+    ec_file:write(VmArgsSrc, ""),
+
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     rlx_test_utils:write_config(ConfigFile,
                                 [{release, {foo, "0.0.1"},
                                   [goal_app_1,
-                                   goal_app_2]}]),
+                                   goal_app_2]},
+                                 {sys_config_src, SysConfigSrc},
+                                 {vm_args_src, VmArgsSrc}]),
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
     {ok, State} = relx:do([{relname, foo},
@@ -84,6 +92,16 @@ basic_tar(Config) ->
     {ok, Files} = erl_tar:table(TarFile, [compressed]),
     ?assert(lists:any(fun(X) -> re:run(X, "lib/stdlib-.*/ebin/.*") =/= nomatch end, Files)),
     ?assert(lists:any(fun(X) -> re:run(X, "lib/kernel-.*/ebin/.*") =/= nomatch end, Files)),
+
+    %% only works in otp-21 and above
+    case erlang:system_info(otp_release) of
+        R when R =:= "21" orelse R =:= "22" ->
+            ?assert(lists:member("releases/0.0.1/vm.args.src", Files)),
+            ?assert(lists:member("releases/0.0.1/sys.config.src", Files));
+        _ ->
+            ok
+    end,
+
     ?assert(filelib:is_regular(TarFile)).
 
 exclude_erts(Config) ->
