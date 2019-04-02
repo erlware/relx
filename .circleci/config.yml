@@ -15,6 +15,12 @@ jobs:
     steps:
       - checkout
       - rebar3/ct
+      # Delete OTP files which don't need to be stored
+      - run: |
+          find _build/test/logs -type d -and \( -path "*/erts-*" -or -path "*/kernel-*" -or -path  "*/stdlib-*" \) -exec rm -rf '{}' \+ || true
+          find _build/test/logs -type f -name "*.beam" -exec rm -rf '{}' \+ || true
+      - store_artifacts:
+          path: _build/test/logs
 
 workflows:
   build-test:
