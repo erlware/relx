@@ -324,8 +324,9 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 :: Run extension script
 :run_extension
 @if exist "%script_dir%\extensions\%1.cmd" (
-  shift
-  call "%script_dir%\extensions\%1.cmd" %*
+  set _extension_params=%*
+  call set _extension_params=%%_extension_params:*%1=%%
+  call "%script_dir%\extensions\%1.cmd" %%_extension_params%%
 )
 
 @goto :eof
