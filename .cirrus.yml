@@ -1,0 +1,9 @@
+container:
+  image: circleci/erlang:21
+
+check_task:
+  # rebar3_cache:
+  #   folder: _build
+  #   fingerprint_script: cat rebar.lock
+  #   populate_script: rebar compile
+  test_script: rebar3 ct
