@@ -1,11 +1,19 @@
-check_task:
+build_task:
   container:
     image: circleci/erlang:21
   rebar3_cache:
     folder: _build
     fingerprint_script: cat rebar.lock
     populate_script: rebar3 compile --deps_only
-  compile_script: rebar3 compile
+
+test_task:
+  container:
+    image: circleci/erlang:21
+  depends_on:
+    - build
+  rebar3_cache:
+    folder: _build
+    fingerprint_script: cat rebar.lock
   test_script: rebar3 ct
   always:
     junit_artifacts:
