@@ -37,17 +37,18 @@
 @set vm_args=%rel_dir%\vm.args
 @set progname=erl.exe
 @set clean_boot_script=%release_root_dir%\bin\start_clean
-@set erlsrv="%bindir%\erlsrv.exe"
-@set epmd="%bindir%\epmd.exe"
-@set escript="%bindir%\escript.exe"
-@set werl="%bindir%\werl.exe"
-@set nodetool="%release_root_dir%\bin\nodetool"
+@set "erlsrv=%bindir%\erlsrv.exe"
+@set "epmd=%bindir%\epmd.exe"
+@set "escript=%bindir%\escript.exe"
+@set "werl=%bindir%\werl.exe"
+@set "erl=%bindir%\erl.exe"
+@set "nodetool=%release_root_dir%\bin\nodetool"
 @set "extensions0={{ extensions }}"
 @set "extensions1=%extensions0:|= %"
 @set "extensions=%extensions1: undefined=%"
 
 :: Extract node type and name from vm.args
-@for /f "usebackq tokens=1-2" %%I in (`findstr /b "\-name \-sname" "%vm_args%"`) do @(
+@for /f "usebackq tokens=1-2" %%I in ('findstr /b "\-name \-sname" "%vm_args%"') do @(
   set node_type=%%I
   set node_name=%%J
 )
@@ -77,7 +78,7 @@
 )
 
 :: Extract cookie from vm.args
-@for /f "usebackq tokens=1-2" %%I in (`findstr /b \-setcookie "%vm_args%"`) do @(
+@for /f "usebackq tokens=1-2" %%I in ('findstr /b \-setcookie "%vm_args%"') do @(
   set cookie=%%J
 )
 
@@ -86,7 +87,7 @@
 
 :: Collect any additional VM args into erl_opts
 @setlocal EnableDelayedExpansion
-@for /f "usebackq tokens=1-2" %%I in (`findstr /r "^[^#]" "%vm_args%"`) do @(
+@for /f "usebackq tokens=1-2" %%I in ('findstr /r "^[^#]" "%vm_args%"') do @(
   if not "%%I" == "-name" (
     if not "%%I" == "-sname" (
       if not "%%I" == "-setcookie" (
@@ -143,11 +144,10 @@
 :: Set the ERTS dir from erl
 :set_erts_dir_from_erl
 @for /f "delims=" %%i in ('where erl') do @(
-  set erl=%%i
+  set "erl=%%i"
 )
-@set dir_cmd="%erl%" -sname dummy -boot no_dot_erlang -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop
-@for /f "delims=" %%i in ('%%dir_cmd%%') do @(
-  set erl_root=%%i
+@for /f "delims=" %%i in ('"%erl%" -boot no_dot_erlang -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop') do @(
+  set "erl_root=%%i"
 )
 @set "erts_dir=%erl_root%\erts-%erts_vsn%"
 @set "rootdir=%erl_root%"
@@ -164,12 +164,13 @@
     set sys_config=-config "%possible_sys%"
   )
 )
+@goto :eof
 
 :: Find the vm.args file
 :find_vm_args
-@if not exist "%m_args%" (
-  @if exist "%m_args%.orig" (
-    ren "%m_args%.orig" vm.args
+@if not exist "%vm_args%" (
+  @if exist "%vm_args%.orig" (
+    ren "%vm_args%.orig" vm.args
   )
 )
 @goto :eof
@@ -278,6 +279,7 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 :: Start the Windows service
 :start
+@call :ensure_dot_erlang_cookie
 @%erlsrv% start %service_name%
 @goto :eof
 
@@ -299,6 +301,7 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 :: Start a console
 :console
+@call :ensure_dot_erlang_cookie
 @set boot=-boot "%boot_script%" -boot_var RELEASE_DIR "%release_root_dir%"
 @start "%rel_name% console" %werl% %boot% %sys_config%  ^
        -args_file "%vm_args%"
@@ -351,3 +354,28 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 @if not "%ext_test_3%"=="x%extensions%" exit /b 0
 
 @exit /b 1
+
+:ensure_dot_erlang_cookie
+
+:: Run a dummy distributed erlang node just to ensure that %HOMEPATH%\.erlang.cookie exists.
+:: This action is best-effort and could fail because of the way the system is set up.
+:: Failures are logged, but ignored.
+
+:: Create random dummy node name
+@set /a "_rand_nr=%RANDOM%+100000"
+@set "dummy_name=dummy-%_rand_nr%"
+
+:: Run node and capture output in local var
+@for /f "delims=" %%i in ('%erl% -sname %dummy_name% -boot no_dot_erlang -noshell -eval "halt()."') do @(
+  set "dummy_node_output=%%i"
+)
+
+:: Check for execution error
+@if "%dummy_node_output%" neq "" @(
+  echo Creating .erlang.cookie failed: "%dummy_node_output%"
+)
+
+:: Clear all local variables
+@set "dummy_node_output="
+
+@exit /b 0

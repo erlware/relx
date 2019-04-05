@@ -19,7 +19,7 @@ fi
 
 # OSX does not support readlink '-f' flag, work
 # around that
-case $OSTYPE in 
+case $OSTYPE in
     darwin*)
         SCRIPT=$(readlink $0 || true)
     ;;
@@ -127,15 +127,24 @@ find_erts_dir() {
     if [ -d "$__erts_dir" ]; then
         ERTS_DIR="$__erts_dir";
         ROOTDIR="$RELEASE_ROOT_DIR"
-        # run a dummy distributed erlang node just to ensure that a cookie exists
-        $ERTS_DIR/bin/erl -sname dummy -boot no_dot_erlang -noshell -eval "halt()"
     else
         __erl="$(which erl)"
         code="io:format(\"~s\", [code:root_dir()]), halt()."
-        __erl_root="$("$__erl" -sname dummy -boot no_dot_erlang -sasl errlog_type error -noshell -eval "$code")"
+        __erl_root="$("$__erl" -boot no_dot_erlang -sasl errlog_type error -noshell -eval "$code")"
         ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
         ROOTDIR="$__erl_root"
     fi
+}
+
+ensure_dot_erlang_cookie() {
+  # Run a dummy distributed erlang node just to ensure that $HOME/.erlang.cookie exists.
+  # This action is best-effort and could fail because of the way the system is set up.
+  # Failures are logged, but ignored.
+  DUMMY_NAME="dummy-$(relx_gen_id)"
+  if ! output="$($ERTS_DIR/bin/erl -sname ${DUMMY_NAME} -boot no_dot_erlang -noshell -eval "halt()")"
+  then
+    echo "Creating .erlang.cookie failed: ${output}"
+  fi
 }
 
 # Get node pid
@@ -310,10 +319,10 @@ relx_is_extension() {
     EXTENSION=$1
     case "$EXTENSION" in
         {{{ extensions }}})
-            echo "1" 
+            echo "1"
         ;;
         *)
-            echo "0" 
+            echo "0"
         ;;
     esac
 }
@@ -324,7 +333,7 @@ relx_get_extension_script() {
     # of the form:
     # foo_extension="path/to/foo_script";bar_extension="path/to/bar_script"
     {{{extension_declarations}}}
-    # get the command extension (eg. foo) and 
+    # get the command extension (eg. foo) and
     # obtain the actual script filename that it
     # refers to (eg. "path/to/foo_script"
     eval echo "$"${EXTENSION}_extension""
@@ -512,6 +521,8 @@ case "$1" in
         # Make sure log directory exists
         mkdir -p "$RUNNER_LOG_DIR"
 
+        ensure_dot_erlang_cookie
+
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
             "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS --relx-disable-hooks"
@@ -681,6 +692,8 @@ case "$1" in
             -args_file "$VMARGS_PATH" \
             -pa ${__code_paths} -- "$@"
         echo "Root: $ROOTDIR"
+
+        ensure_dot_erlang_cookie
 
         # Log the startup
         echo "$RELEASE_ROOT_DIR"
