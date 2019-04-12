@@ -77,9 +77,18 @@
     set "hostname=@%hostname%"
 )
 
-:: Extract cookie from vm.args
+:: Extract the target cookie
+:: Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
 @for /f "usebackq tokens=1-2" %%I in ('findstr /b \-setcookie "%vm_args%"') do @(
-  set cookie=%%J
+  set "cookie=%%J"
+)
+@set "default_cookie_file=%USERPROFILE%\.erlang.cookie"
+@if "%cookie%" == "" @(
+        if exist "%default_cookie_file%" (
+                set /p cookie=<%default_cookie_file%
+        ) else (
+                echo No cookie is set or found. This limits the scripts functionality, installing, upgrading, rpc and getting a list of versions will not work.
+        )
 )
 
 :: Write the erl.ini file to set up paths relative to this script
