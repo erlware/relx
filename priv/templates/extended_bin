@@ -176,7 +176,7 @@ relx_rem_sh() {
 
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
-         -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+         -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" $MAYBE_DIST_ARGS \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
 }
 
@@ -189,8 +189,16 @@ relx_gen_id() {
 relx_nodetool() {
     command="$1"; shift
 
-    "$ERTS_DIR/bin/escript" "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
-                                -setcookie "$COOKIE" "$command" $@
+    if [ -z "${START_EPMD}" ]; then
+        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS}" "$ERTS_DIR/bin/escript" \
+                 "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
+                 -setcookie "$COOKIE" "$command" $@
+    else
+        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS}" "$ERTS_DIR/bin/escript" \
+                 "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
+                 $START_EPMD -setcookie "$COOKIE" "$command" $@
+    fi
+
 }
 
 # Run an escript in the node's environment
@@ -454,6 +462,21 @@ NAME_ARG=$(eval echo "${NAME_ARG}")
 NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
 NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
 
+# Extract dist arguments
+MAYBE_DIST_ARGS=""
+PROTO_DIST="$(grep '^-proto_dist' "$VMARGS_PATH" || true)"
+if [ "$PROTO_DIST" ]; then
+    MAYBE_DIST_ARGS="${PROTO_DIST}"
+fi
+START_EPMD="$(grep '^-start_epmd' "$VMARGS_PATH" || true)"
+if [ "$START_EPMD" ]; then
+    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} ${START_EPMD}"
+fi
+EPMD_MODULE="$(grep '^-epmd_module' "$VMARGS_PATH" || true)"
+if [ "$EPMD_MODULE" ]; then
+    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} ${EPMD_MODULE}"
+fi
+
 # Extract the target cookie
 # Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
 COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
@@ -482,8 +505,6 @@ export NAME
 
 test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
-
-VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-heart|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
 
 cd "$ROOTDIR"
 
