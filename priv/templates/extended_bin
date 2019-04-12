@@ -483,8 +483,6 @@ export NAME
 test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
-VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-heart|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
-
 cd "$ROOTDIR"
 
 # Check the first argument for instructions
