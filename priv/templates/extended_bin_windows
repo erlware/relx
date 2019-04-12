@@ -77,9 +77,18 @@
     set "hostname=@%hostname%"
 )
 
-:: Extract cookie from vm.args
+:: Extract the target cookie
+:: Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
 @for /f "usebackq tokens=1-2" %%I in ('findstr /b \-setcookie "%vm_args%"') do @(
-  set cookie=%%J
+  set "cookie=%%J"
+)
+@set "default_cookie_file=%USERPROFILE%\.erlang.cookie"
+@if "%cookie%" == "" @(
+        if exist "%default_cookie_file%" (
+                set /p cookie=<%default_cookie_file%
+        ) else (
+                echo No cookie is set or found. This limits the scripts functionality, installing, upgrading, rpc and getting a list of versions will not work.
+        )
 )
 
 :: Write the erl.ini file to set up paths relative to this script
@@ -279,7 +288,6 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 :: Start the Windows service
 :start
-@call :ensure_dot_erlang_cookie
 @%erlsrv% start %service_name%
 @goto :eof
 
@@ -301,7 +309,6 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 :: Start a console
 :console
-@call :ensure_dot_erlang_cookie
 @set boot=-boot "%boot_script%" -boot_var RELEASE_DIR "%release_root_dir%"
 @start "%rel_name% console" %werl% %boot% %sys_config%  ^
        -args_file "%vm_args%"
@@ -355,27 +362,3 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 @exit /b 1
 
-:ensure_dot_erlang_cookie
-
-:: Run a dummy distributed erlang node just to ensure that %HOMEPATH%\.erlang.cookie exists.
-:: This action is best-effort and could fail because of the way the system is set up.
-:: Failures are logged, but ignored.
-
-:: Create random dummy node name
-@set /a "_rand_nr=%RANDOM%+100000"
-@set "dummy_name=dummy-%_rand_nr%"
-
-:: Run node and capture output in local var
-@for /f "delims=" %%i in ('%erl% -sname %dummy_name% -boot no_dot_erlang -noshell -eval "halt()."') do @(
-  set "dummy_node_output=%%i"
-)
-
-:: Check for execution error
-@if "%dummy_node_output%" neq "" @(
-  echo Creating .erlang.cookie failed: "%dummy_node_output%"
-)
-
-:: Clear all local variables
-@set "dummy_node_output="
-
-@exit /b 0

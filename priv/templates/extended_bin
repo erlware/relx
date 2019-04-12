@@ -136,17 +136,6 @@ find_erts_dir() {
     fi
 }
 
-ensure_dot_erlang_cookie() {
-  # Run a dummy distributed erlang node just to ensure that $HOME/.erlang.cookie exists.
-  # This action is best-effort and could fail because of the way the system is set up.
-  # Failures are logged, but ignored.
-  DUMMY_NAME="dummy-$(relx_gen_id)"
-  if ! output="$($ERTS_DIR/bin/erl -sname ${DUMMY_NAME} -boot no_dot_erlang -noshell -eval "halt()")"
-  then
-    echo "Creating .erlang.cookie failed: ${output}"
-  fi
-}
-
 # Get node pid
 relx_get_pid() {
     if output="$(relx_nodetool rpcterms os getpid)"
@@ -161,10 +150,19 @@ relx_get_pid() {
 
 relx_get_nodename() {
     id="longname$(relx_gen_id)-${NAME}"
-    "$BINDIR/erl" -boot start_clean \
-        -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
-        -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
-        -noshell ${NAME_TYPE} $id
+    if [ -z "$COOKIE" ]; then
+        "$BINDIR/erl" -boot start_clean \
+                      -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+                      -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
+                      -noshell ${NAME_TYPE} $id
+    else
+        # running with setcookie prevents a ~/.erlang.cookie from being created
+        "$BINDIR/erl" -boot start_clean \
+                      -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+                      -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
+                      -setcookie ${COOKIE} \
+                      -noshell ${NAME_TYPE} $id
+    fi
 }
 
 # Connect to a remote node
@@ -456,6 +454,21 @@ NAME_ARG=$(eval echo "${NAME_ARG}")
 NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
 NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
 
+# Extract the target cookie
+# Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
+COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
+DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
+if [ -z "$COOKIE_ARG" ]; then
+    if [ -f "$DEFAULT_COOKIE_FILE" ]; then
+        COOKIE="$(cat $DEFAULT_COOKIE_FILE)"
+    else
+        echo "No cookie is set or found. This limits the scripts functionality, installing, upgrading, rpc and getting a list of versions will not work."
+    fi
+else
+    # Extract cookie name from COOKIE_ARG
+    COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
+fi
+
 # User can specify an sname without @hostname
 # This will fail when creating remote shell
 # So here we check for @ and add @hostname if missing
@@ -469,21 +482,6 @@ export NAME
 
 test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
-
-# Extract the target cookie
-COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
-DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
-if [ -z "$COOKIE_ARG" ]; then
-    if [ -f "$DEFAULT_COOKIE_FILE" ]; then
-        COOKIE="$(cat $DEFAULT_COOKIE_FILE)"
-    else
-        echo "vm.args needs to have a -setcookie, or $DEFAULT_COOKIE_FILE (its permission must be 400) is required."
-        exit 1
-    fi
-else
-    # Extract cookie name from COOKIE_ARG
-    COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
-fi
 
 VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-heart|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
 
@@ -520,8 +518,6 @@ case "$1" in
 
         # Make sure log directory exists
         mkdir -p "$RUNNER_LOG_DIR"
-
-        ensure_dot_erlang_cookie
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
@@ -692,8 +688,6 @@ case "$1" in
             -args_file "$VMARGS_PATH" \
             -pa ${__code_paths} -- "$@"
         echo "Root: $ROOTDIR"
-
-        ensure_dot_erlang_cookie
 
         # Log the startup
         echo "$RELEASE_ROOT_DIR"
