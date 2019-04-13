@@ -189,16 +189,22 @@ relx_gen_id() {
 relx_nodetool() {
     command="$1"; shift
 
-    if [ -z "${START_EPMD}" ]; then
-        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS}" "$ERTS_DIR/bin/escript" \
-                 "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
-                 -setcookie "$COOKIE" "$command" $@
-    else
-        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS}" "$ERTS_DIR/bin/escript" \
-                 "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
-                 $START_EPMD -setcookie "$COOKIE" "$command" $@
-    fi
+    # Generate a unique id used to allow multiple nodetool calls to the
+    # same node transparently
+    nodetool_id="maint$(relx_gen_id)-${NAME}"
 
+    if [ -z "${START_EPMD}" ]; then
+        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
+                 "$ERTS_DIR/bin/escript" \
+                 "$ROOTDIR/bin/nodetool" \
+                 "$NAME_TYPE" "$NAME" \
+                 "$command" $@
+    else
+        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
+                 "$ERTS_DIR/bin/escript" \
+                 "$ROOTDIR/bin/nodetool" \
+                 $START_EPMD "$NAME_TYPE" "$NAME" "$command" $@
+    fi
 }
 
 # Run an escript in the node's environment

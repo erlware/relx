@@ -96,15 +96,22 @@ process_args(["-setcookie", Cookie | Rest], Acc, TargetNode, StartEpmd) ->
 process_args(["-start_epmd", StartEpmd | Rest], Acc, TargetNode, _StartEpmd) ->
     process_args(Rest, Acc, TargetNode, list_to_atom(StartEpmd));
 process_args(["-name", TargetName | Rest], Acc, _, StartEpmd) ->
-    ThisNode = append_node_suffix(TargetName, "_maint_"),
-    {ok, _} = net_kernel:start([ThisNode, longnames]),
+    maybe_start_node(TargetName, longnames),
     process_args(Rest, Acc, nodename(TargetName), StartEpmd);
 process_args(["-sname", TargetName | Rest], Acc, _, StartEpmd) ->
-    ThisNode = append_node_suffix(TargetName, "_maint_"),
-    {ok, _} = net_kernel:start([ThisNode, shortnames]),
+    maybe_start_node(TargetName, shortnames),
     process_args(Rest, Acc, nodename(TargetName), StartEpmd);
 process_args([Arg | Rest], Acc, Opts, StartEpmd) ->
     process_args(Rest, [Arg | Acc], Opts, StartEpmd).
+
+maybe_start_node(TargetName, Names) ->
+    case erlang:node() of
+        'nonode@nohost' ->
+            ThisNode = append_node_suffix(TargetName, "_maint_"),
+            {ok, _} = net_kernel:start([ThisNode, Names]);
+        _ ->
+            ok
+    end.
 
 start_epmd(true) ->
     [] = os:cmd("\"" ++ epmd_path() ++ "\" -daemon"),
