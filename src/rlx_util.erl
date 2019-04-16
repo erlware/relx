@@ -235,26 +235,28 @@ symlink_or_copy(Source, Target) ->
             ok;
         {error, eexist} ->
             {error, eexist};
-        {error, eperm} = Error ->
-            % We get eperm on Windows if we do not have 
-            %   SeCreateSymbolicLinkPrivilege
-            % Try the next alternative
-            case os:type() of
-                {win32, _} ->
+        {error, Err} ->
+            case {os:type(), Err} of
+                {{win32, _}, eperm} ->
+                    % We get eperm on Windows if we do not have
+                    %   SeCreateSymbolicLinkPrivilege
+                    % Try the next alternative
                     win32_make_junction_or_copy(Source, Target);
                 _ ->
-                    Error
-            end;
-        {error, _} = Error ->
-            Error
+                    % On other systems we try to copy next
+                    cp_r(Source, Target)
+            end
     end.
+
+cp_r(Source, Target) ->
+    ec_file:copy(Source, Target, [{recursive, true}, {fileinfo, [mode, time, owner, group]}]).
 
 win32_make_junction_or_copy(Source, Target) ->
     case filelib:is_dir(Source) of
         true ->
             win32_make_junction(Source, Target);
         _ ->
-            ec_file:copy(Source, Target)
+            cp_r(Source, Target)
     end.
 
 win32_make_junction(Source, Target) ->
@@ -272,8 +274,9 @@ win32_make_junction(Source, Target) ->
                 {error, Reason} ->
                     {error, {readlink, Reason}}
             end;
-        {ok, #file_info{type = Type}} ->
-            {error, {mklink_cannot_replace_existing, Type, Target}};
+        {ok, #file_info{type = _Type}} ->
+            % Directory already exists, so we overwrite the copy
+            cp_r(Source, Target);
         Error ->
             Error
     end.
@@ -289,7 +292,7 @@ win32_make_junction_cmd(Source, Target) ->
             % When mklink fails it prints the error message to stderr which
             % is not picked up by os:cmd() hence this case switch is for
             % an empty message
-            {error, make_junction_failed}
+            cp_r(Source, Target)
     end.
 
 %% @doc Returns the color intensity, we first check the application envorinment
