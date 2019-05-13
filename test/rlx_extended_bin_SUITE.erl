@@ -1798,7 +1798,7 @@ start_fail_when_nonreadable_argsfile(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
     VmArgs = filename:join([LibDir1, "vm.args"]),
     VmArgs2 = VmArgs ++ ".nonreadable",
-    ec_file:write(VmArgs, "-name foo\n\n"
+    ec_file:write(VmArgs, "-name foo@127.0.0.1\n\n"
                           "-args_file " ++ VmArgs2 ++ "\n\n"
                           "-setcookie cookie\n"),
     ec_file:write(VmArgs2, ""),
