@@ -1,20 +1,12 @@
-build_task:
-  container:
-    image: circleci/erlang:21
-  rebar3_cache:
-    folder: _build
-    fingerprint_script: cat rebar.lock
-    populate_script: rebar3 compile --deps_only
-
 test_task:
   container:
-    image: circleci/erlang:21
-  depends_on:
-    - build
-  rebar3_cache:
-    folder: _build
-    fingerprint_script: cat rebar.lock
-  test_script: rebar3 ct
+    matrix:
+      - image: erlang:21
+      - image: erlang:20
+      - image: erlang:19
+      - image: erlang:18
+  test_script: |
+    rebar3 ct
   always:
     junit_artifacts:
       path: "_build/test/logs/ct_run.*/junit_report.xml"
