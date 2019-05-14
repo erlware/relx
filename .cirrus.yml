@@ -1,4 +1,5 @@
 test_task:
+  use_compute_credits: $CIRRUS_USER_COLLABORATOR == 'true'
   container:
     matrix:
       - image: erlang:21
