@@ -48,7 +48,7 @@
 @set "extensions=%extensions1: undefined=%"
 
 :: Extract node type and name from vm.args
-@for /f "usebackq tokens=1-2" %%I in ('findstr /b "\-name \-sname" "%vm_args%"') do @(
+@for /f "usebackq tokens=1-2" %%I in (`findstr /b "\-name \-sname" "%vm_args%"`) do @(
   set node_type=%%I
   set node_name=%%J
 )
@@ -79,7 +79,7 @@
 
 :: Extract the target cookie
 :: Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
-@for /f "usebackq tokens=1-2" %%I in ('findstr /b \-setcookie "%vm_args%"') do @(
+@for /f "usebackq tokens=1-2" %%I in (`findstr /b \-setcookie "%vm_args%"`) do @(
   set "cookie=%%J"
 )
 @set "default_cookie_file=%USERPROFILE%\.erlang.cookie"
@@ -96,7 +96,7 @@
 
 :: Collect any additional VM args into erl_opts
 @setlocal EnableDelayedExpansion
-@for /f "usebackq tokens=1-2" %%I in ('findstr /r "^[^#]" "%vm_args%"') do @(
+@for /f "usebackq tokens=1-2" %%I in (`findstr /r "^[^#]" "%vm_args%"`) do @(
   if not "%%I" == "-name" (
     if not "%%I" == "-sname" (
       if not "%%I" == "-setcookie" (
