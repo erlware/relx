@@ -57,7 +57,8 @@
          builtin_status_script/1, custom_status_script/1,
          extension_script/1,
          extension_script_exit_code/1,
-         extension_script_fail_when_no_exit/1]).
+         extension_script_fail_when_no_exit/1,
+         console_clean_erts_apps_found/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -98,7 +99,8 @@ all() ->
      builtin_status_script, custom_status_script,
      extension_script,
      extension_script_exit_code,
-     extension_script_fail_when_no_exit].
+     extension_script_fail_when_no_exit,
+     console_clean_erts_apps_found].
 
 ping(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -1867,6 +1869,62 @@ extension_script_fail_when_no_exit(Config) ->
     {error, 1, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
     %% check that the extension script ran
     {ok, "teststring" = Str}.
+
+console_clean_erts_apps_found(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1",
+                              [stdlib, kernel, runtime_tools], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {include_erts, false},
+                  {extended_start_script, true}
+                 ]),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    %% now start/stop the release to make sure the extended script is working
+    Console = spawn_link(fun() ->
+                                 {ok, _} = sh(filename:join([OutputDir, "foo", "bin",
+                                                             "foo console_clean"]))
+                         end),
+    timer:sleep(?SLEEP_TIME),
+    {ok, CodePathsStr} = sh(filename:join([OutputDir, "foo", "bin",
+                                           "foo eval 'code:get_path().'"])),
+    CodePaths = lists:usort(rlx_test_utils:list_to_term(CodePathsStr)),
+
+    %% kernel and runtime_tools must have the same prefix
+    Prefixes = lists:foldl(fun(Path, Acc) ->
+                                   case re:run(Path,
+                                               "(.*)(runtime_tools|kernel)",
+                                               [{capture, all_but_first, list}]
+                                              ) of
+                                       {match, [Prefix, App]} ->
+                                           [{Prefix, list_to_atom(App)} | Acc];
+                                       _ ->
+                                           Acc
+                                   end
+                           end, [], CodePaths),
+    {ErtsPrefix, kernel} = lists:keyfind(kernel, 2, Prefixes),
+    {ErtsPrefix, runtime_tools} = lists:keyfind(runtime_tools, 2, Prefixes),
+
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
+    unlink(Console),
+    exit(Console, shutdown).
+
 
 %%-------------------------------------------------------------------
 %% Helper Function for start_fail_when_* tests

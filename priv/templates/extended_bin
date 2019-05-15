@@ -218,7 +218,15 @@ relx_escript() {
 relx_get_code_paths() {
     code="{ok, [{release,_,_,Apps}]} = file:consult(\"$REL_DIR/$REL_NAME.rel\"),"\
 "lists:foreach(fun(A) ->"\
-"   io:fwrite(\"$ROOTDIR/lib/~p-~s/ebin \", [element(1, A), element(2, A)]) "\
+"   EbinDir = io_lib:format(\"~p-~s/ebin \", [element(1, A), element(2, A)]),"\
+"   RelLibPath = \"$ROOTDIR/lib/\" ++ EbinDir,"\
+"   ErtsLibPath = \"$ERTS_LIB_DIR/\" ++ EbinDir,"\
+"   case filelib:is_dir(RelLibPath) of"\
+"      true ->"\
+"         io:fwrite(RelLibPath);"\
+"      _ ->"\
+"         io:fwrite(ErtsLibPath)"\
+"   end "\
 "end, Apps),"\
 "halt()."
 
