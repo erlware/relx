@@ -346,6 +346,16 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
             merge_configs(CliTerms, lists:reverse(lists:keystore(Key, 1, lists:reverse(ConfigTerms), {Key, Value})))
     end.
 
+parse_vsn(Vsn) when Vsn =:= git ; Vsn =:= "git" ->
+    {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
+    V;
+parse_vsn({git, short}) ->
+    git_ref("--short");
+parse_vsn({git, long}) ->
+    git_ref("");
+parse_vsn({file, File}) ->
+    {ok, Vsn} = file:read_file(File),
+    binary_to_list(rlx_string:trim(Vsn, both, "\n"));
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
     {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
     V;
@@ -357,3 +367,20 @@ parse_vsn({cmd, Command}) ->
     V;
 parse_vsn(Vsn) ->
     Vsn.
+
+git_ref(Arg) ->
+    case os:cmd("git rev-parse " ++ Arg ++ " HEAD") of
+        String ->
+            Vsn = rlx_string:trim(String, both, "\n"),
+            case length(Vsn) =:= 40 orelse length(Vsn) =:= 7 of
+                true ->
+                    Vsn;
+                false ->
+                    %% if the result isn't exactly either 40 or 7 characters then
+                    %% it must have failed
+                    {ok, Dir} = file:get_cwd(),
+                    ec_cmd_log:warn("Getting ref of git repo failed in ~ts. "
+                                    "Falling back to version 0", [Dir]),
+                    {plain, "0"}
+            end
+    end.
