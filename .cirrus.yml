@@ -2,6 +2,7 @@ test_task:
   use_compute_credits: $CIRRUS_USER_COLLABORATOR == 'true'
   container:
     matrix:
+      - image: erlang:22
       - image: erlang:21
       - image: erlang:20
       - image: erlang:19
