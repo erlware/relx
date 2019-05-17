@@ -1,5 +1,4 @@
-[![Build Status](https://travis-ci.org/erlware/relx.png?branch=master)](https://travis-ci.org/erlware/relx)
-[![CircleCI](https://circleci.com/gh/erlware/relx.svg?style=svg)](https://circleci.com/gh/erlware/relx)
+[![Build Status](https://api.cirrus-ci.com/github/erlware/relx.svg)](https://cirrus-ci.com/github/erlware/relx)
 
 Relx
 =======

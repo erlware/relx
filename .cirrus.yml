@@ -1,0 +1,23 @@
+test_task:
+  use_compute_credits: $CIRRUS_USER_COLLABORATOR == 'true'
+  container:
+    matrix:
+      - image: erlang:22
+      - image: erlang:21
+      - image: erlang:20
+      - image: erlang:19
+      - image: erlang:18
+  test_script: |
+    rebar3 ct
+  always:
+    junit_artifacts:
+      path: "_build/test/logs/ct_run.*/junit_report.xml"
+
+osx_check_task:
+  osx_instance:
+    image: mojave-base
+  install_script: brew install erlang
+  test_script: |
+    wget https://s3.amazonaws.com/rebar3/rebar3
+    chmod +x rebar3
+    ./rebar3 ct
