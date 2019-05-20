@@ -105,7 +105,7 @@
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
                   cli_args=[] :: proplists:proplist(),
-                  goals=[] :: [rlx_depsolver:constraint()],
+                  goals=[] :: [rlx_depsolver:raw_constraint()],
                   providers=[] :: [providers:t()],
                   available_apps=[] :: [rlx_app_info:t()],
                   default_configured_release :: {rlx_release:name() | undefined, rlx_release:vsn() |undefined} | undefined,
@@ -254,11 +254,11 @@ lib_dirs(#state_t{lib_dirs=LibDir}) ->
 add_lib_dirs(State=#state_t{lib_dirs=LibDir}, Dirs) ->
     State#state_t{lib_dirs=lists:umerge(lists:sort(LibDir), lists:sort(Dirs))}.
 
--spec goals(t()) -> [rlx_depsolver:constraint()].
+-spec goals(t()) -> [rlx_depsolver:raw_constraint()].
 goals(#state_t{goals=TS}) ->
     TS.
 
--spec goals(t(), [rlx_depsolver:constraint()]) -> t().
+-spec goals(t(), [rlx_depsolver:raw_constraint()]) -> t().
 goals(State, Goals) ->
     State#state_t{goals=Goals}.
 

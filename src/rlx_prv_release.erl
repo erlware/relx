@@ -168,12 +168,14 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
         %% get per release config values and override the State with them
         Config = rlx_release:config(Release),
         {ok, State1} = lists:foldl(fun rlx_config:load_terms/2, {ok, State0}, Config),
-        Goals = rlx_release:goals(Release),
-        case Goals of
+        Goals = rlx_release:constraints(Release),
+        GlobalGoals = rlx_state:goals(State1),
+        MergedGoals = rlx_release:merge_application_goals(Goals, GlobalGoals),
+        case MergedGoals of
             [] ->
                 ?RLX_ERROR(no_goals_specified);
             _ ->
-                case rlx_depsolver:solve(DepGraph, Goals) of
+                case rlx_depsolver:solve(DepGraph, MergedGoals) of
                     {ok, Pkgs} ->
                         set_resolved(State1, Release, Pkgs);
                     {error, Error} ->

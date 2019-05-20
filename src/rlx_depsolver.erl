@@ -88,7 +88,7 @@
          add_package_version/3,
          add_package_version/4,
          parse_version/1,
-         is_valid_constraint/1,
+         is_valid_raw_constraint/1,
          filter_packages/2]).
 
 %% Internally Exported API. This should *not* be used outside of the rlx_depsolver
@@ -132,7 +132,7 @@
 -type raw_constraint() :: pkg_name()
                         | {pkg_name(), raw_vsn()}
                         | {pkg_name(), raw_vsn(), constraint_op()}
-                        | {pkg_name(), raw_vsn(), vsn(), between}.
+                        | {pkg_name(), raw_vsn(), raw_vsn(), between}.
 
 -type constraint() :: pkg_name()
                     | {pkg_name(), vsn()}
@@ -272,39 +272,14 @@ parse_version(Vsn)
   when erlang:is_tuple(Vsn) ; erlang:is_atom(Vsn) ->
     Vsn.
 
-%% @doc check that a specified constraint is a valid constraint.
--spec is_valid_constraint(constraint()) -> boolean().
-is_valid_constraint(Pkg) when is_atom(Pkg) orelse is_binary(Pkg) ->
-    true;
-is_valid_constraint({_Pkg, Vsn}) when is_tuple(Vsn) ->
-    true;
-is_valid_constraint({_Pkg, Vsn, '='}) when is_tuple(Vsn) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, gte}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, '>='}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, lte}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, '<='}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, gt}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, '>'}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, lt}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, '<'}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, pes}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn, '~>'}) ->
-    true;
-is_valid_constraint({_Pkg, _LVsn1, _LVsn2, between}) ->
-    true;
-is_valid_constraint(_InvalidConstraint) ->
-    false.
-
+-spec is_valid_raw_constraint(raw_constraint()) -> true; (any()) -> false.
+is_valid_raw_constraint(RawConstraint) ->
+    try fix_con(RawConstraint)
+    of
+        Constraint -> is_valid_constraint(Constraint)
+    catch
+        error:function_clause -> false
+    end.
 
 %% @doc given a list of package name version pairs, and a list of constraints
 %% return every member of that list that matches all constraints.
@@ -357,9 +332,9 @@ format_version(Version) ->
     rlx_depsolver_culprit:format_version(Version).
 
 %% @doc A formatted constraint tuple
--spec format_constraint(constraint()) -> iolist().
-format_constraint(Constraint) ->
-    rlx_depsolver_culprit:format_constraint(Constraint).
+-spec format_constraint(raw_constraint()) -> iolist().
+format_constraint(RawConstraint) ->
+    rlx_depsolver_culprit:format_constraint(fix_con(RawConstraint)).
 
 %%====================================================================
 %% Internal Functions
@@ -469,6 +444,38 @@ dep_pkg({Pkg, _Vsn1, _Vsn2, _}) ->
     Pkg;
 dep_pkg(Pkg) when is_atom(Pkg) orelse is_binary(Pkg) ->
     Pkg.
+
+-spec is_valid_constraint(constraint()) -> boolean().
+is_valid_constraint(Pkg) when is_atom(Pkg) orelse is_binary(Pkg) ->
+    true;
+is_valid_constraint({_Pkg, Vsn}) when is_tuple(Vsn) ->
+    true;
+is_valid_constraint({_Pkg, Vsn, '='}) when is_tuple(Vsn) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, gte}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, '>='}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, lte}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, '<='}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, gt}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, '>'}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, lt}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, '<'}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, pes}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn, '~>'}) ->
+    true;
+is_valid_constraint({_Pkg, _LVsn1, _LVsn2, between}) ->
+    true;
+is_valid_constraint(_InvalidConstraint) ->
+    false.
 
 -spec add_constraint(pkg_name(), vsn(), [constraint()],constraint()) -> ordered_constraints().
 add_constraint(SrcPkg, SrcVsn, PkgsConstraints, PkgConstraint) ->
