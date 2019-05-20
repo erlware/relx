@@ -17,3 +17,5 @@ _rel/*
 !.cirrus.yml
 erl_crash.dump
 rebar
+TEST-*
+tags
