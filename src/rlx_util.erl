@@ -45,6 +45,8 @@
 
 -define(DFLT_INTENSITY,   high).
 -define(ONE_LEVEL_INDENT, "     ").
+
+-include_lib("kernel/include/file.hrl").
 %%============================================================================
 %% types
 %%============================================================================
@@ -233,81 +235,65 @@ symlink_or_copy(Source, Target) ->
             ok;
         {error, eexist} ->
             {error, eexist};
-        {error, _} ->
-            case os:type() of
-                {win32, _} ->
-                    S = unicode:characters_to_list(Source),
-                    T = unicode:characters_to_list(Target),
-                    win32_symlink(filename:nativename(S), filename:nativename(T));
+        {error, Err} ->
+            case {os:type(), Err} of
+                {{win32, _}, eperm} ->
+                    % We get eperm on Windows if we do not have
+                    %   SeCreateSymbolicLinkPrivilege
+                    % Try the next alternative
+                    win32_make_junction_or_copy(Source, Target);
                 _ ->
-                    case filelib:is_dir(Target) of
-                        true -> ok;
-                        false ->
-                            cp_r([Source], Target)
-                    end
+                    % On other systems we try to copy next
+                    cp_r(Source, Target)
             end
     end.
 
+cp_r(Source, Target) ->
+    ec_file:copy(Source, Target, [{recursive, true}, {fileinfo, [mode, time, owner, group]}]).
 
-win32_symlink(Source, Target) ->
-    os:cmd("cmd /c mklink /j " ++ Target ++ " " ++ Source),
-    ok.
-
--spec cp_r(list(string()), file:filename()) -> 'ok'.
-cp_r(Sources, Dest) ->
-    case os:type() of
-        {unix, _} ->
-            ok;
-        {win32, _} ->
-            lists:foreach(fun(Src) -> ok = cp_r_win32(Src,Dest) end, Sources),
-            ok
-    end.
-
-xcopy_win32(Source,Dest)->
-    %% "xcopy \"~s\" \"~s\" /q /y /e 2> nul", Chanegd to robocopy to
-    %% handle long names. May have issues with older windows.
-    os:cmd("robocopy " ++ Source ++ " " ++ Dest ++ " /e /is"),
-    ok.
-
-cp_r_win32({true, SourceDir}, {true, DestDir}) ->
-    %% from directory to directory
-     ok = case file:make_dir(DestDir) of
-             {error, eexist} -> ok;
-             Other -> Other
-         end,
-    ok = xcopy_win32(SourceDir, DestDir);
-cp_r_win32({false, Source} = S,{true, DestDir}) ->
-    %% from file to directory
-    cp_r_win32(S, {false, filename:join(DestDir, filename:basename(Source))});
-cp_r_win32({false, Source},{false, Dest}) ->
-    %% from file to file
-    {ok,_} = file:copy(Source, Dest),
-    ok;
-cp_r_win32({true, SourceDir}, {false, DestDir}) ->
-    case filelib:is_regular(DestDir) of
+win32_make_junction_or_copy(Source, Target) ->
+    case filelib:is_dir(Source) of
         true ->
-            %% From directory to file? This shouldn't happen
-            {error, lists:flatten(
-                      io_lib:format("Cannot copy dir (~p) to file (~p)\n",
-                                    [SourceDir, DestDir]))};
-        false ->
-            %% Specifying a target directory that doesn't currently exist.
-            %% So let's attempt to create this directory
-            case filelib:ensure_dir(filename:join(DestDir, "dummy")) of
-                ok ->
-                    ok = xcopy_win32(SourceDir, DestDir);
+            win32_make_junction(Source, Target);
+        _ ->
+            cp_r(Source, Target)
+    end.
+
+win32_make_junction(Source, Target) ->
+    % The mklink will fail if the target already exists, check for that first
+    case file:read_link_info(Target) of
+        {error, enoent} ->
+            win32_make_junction_cmd(Source, Target);
+        {ok, #file_info{type = symlink}} ->
+            case file:read_link(Target) of
+                {ok, Source} ->
+                    ok;
+                {ok, _} ->
+                    ok = file:del_dir(Target),
+                    win32_make_junction_cmd(Source, Target);
                 {error, Reason} ->
-                    {error, lists:flatten(
-                              io_lib:format("Unable to create dir ~p: ~p\n",
-                                            [DestDir, Reason]))}
-            end
-    end;
-cp_r_win32(Source,Dest) ->
-    Dst = {filelib:is_dir(Dest), Dest},
-    lists:foreach(fun(Src) ->
-                          ok = cp_r_win32({filelib:is_dir(Src), Src}, Dst)
-                  end, filelib:wildcard(Source)),
-    ok.
+                    {error, {readlink, Reason}}
+            end;
+        {ok, #file_info{type = _Type}} ->
+            % Directory already exists, so we overwrite the copy
+            cp_r(Source, Target);
+        Error ->
+            Error
+    end.
+
+win32_make_junction_cmd(Source, Target) ->
+    S = unicode:characters_to_list(Source),
+    T = unicode:characters_to_list(Target),
+    Cmd = "cmd /c mklink /j " ++ filename:nativename(T) ++ " " ++ filename:nativename(S),
+    case os:cmd(Cmd) of
+        "Junction created " ++ _ ->
+            ok;
+        [] ->
+            % When mklink fails it prints the error message to stderr which
+            % is not picked up by os:cmd() hence this case switch is for
+            % an empty message
+            cp_r(Source, Target)
+    end.
 
 %% @doc Returns the color intensity, we first check the application envorinment
 %% if that is not set we check the environment variable RELX_COLOR.

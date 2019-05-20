@@ -214,7 +214,8 @@ opt_spec_list() ->
      {sys_config, undefined, "sys_config", string, "Path to a file to use for sys.config"},
      {system_libs, undefined, "system_libs", string, "Path to dir of Erlang system libs"},
      {version, undefined, "version", undefined, "Print relx version"},
-     {root_dir, $r, "root", string, "The project root directory"}].
+     {root_dir, $r, "root", string, "The project root directory"},
+     {provider, undefined, "provider", atom, "Specify an additional relx provider"}].
 
 -spec format_error(Reason::term()) -> string().
 format_error({invalid_return_value, Provider, Value}) ->

@@ -19,7 +19,7 @@ fi
 
 # OSX does not support readlink '-f' flag, work
 # around that
-case $OSTYPE in 
+case $OSTYPE in
     darwin*)
         SCRIPT=$(readlink $0 || true)
     ;;
@@ -150,10 +150,19 @@ relx_get_pid() {
 
 relx_get_nodename() {
     id="longname$(relx_gen_id)-${NAME}"
-    "$BINDIR/erl" -boot start_clean \
-        -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
-        -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
-        -noshell ${NAME_TYPE} $id
+    if [ -z "$COOKIE" ]; then
+        "$BINDIR/erl" -boot start_clean \
+                      -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+                      -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
+                      -noshell ${NAME_TYPE} $id
+    else
+        # running with setcookie prevents a ~/.erlang.cookie from being created
+        "$BINDIR/erl" -boot start_clean \
+                      -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+                      -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
+                      -setcookie ${COOKIE} \
+                      -noshell ${NAME_TYPE} $id
+    fi
 }
 
 # Connect to a remote node
@@ -167,8 +176,8 @@ relx_rem_sh() {
 
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
-         -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
-         -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME $VM_ARGS
+         -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" $MAYBE_DIST_ARGS \
+         -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
 }
 
 # Generate a random id
@@ -180,15 +189,27 @@ relx_gen_id() {
 relx_nodetool() {
     command="$1"; shift
 
-    escript_emulator_args $ROOTDIR/bin/nodetool
+    # Generate a unique id used to allow multiple nodetool calls to the
+    # same node transparently
+    nodetool_id="maint$(relx_gen_id)-${NAME}"
 
-    "$ERTS_DIR/bin/escript" "$ROOTDIR/bin/nodetool" "$NAME_TYPE" "$NAME" \
-                                -setcookie "$COOKIE" "$command" $@
+    if [ -z "${START_EPMD}" ]; then
+        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
+                 "$ERTS_DIR/bin/escript" \
+                 "$ROOTDIR/bin/nodetool" \
+                 "$NAME_TYPE" "$NAME" \
+                 "$command" $@
+    else
+        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
+                 "$ERTS_DIR/bin/escript" \
+                 "$ROOTDIR/bin/nodetool" \
+                 $START_EPMD "$NAME_TYPE" "$NAME" "$command" $@
+    fi
 }
 
 # Run an escript in the node's environment
 relx_escript() {
-    shift; scriptpath="$1"; shift
+    scriptpath="$1"; shift
     export RELEASE_ROOT_DIR
 
     "$ERTS_DIR/bin/escript" "$ROOTDIR/$scriptpath" $@
@@ -231,23 +252,6 @@ replace_os_vars() {
     }1' < "$1" > "$2"
 }
 
-escript_emulator_args() {
-    if [ -n "${VM_ARGS}" ]; then
-        if grep -q '%%!' $1; then
-            cmd=$(echo sed -i"'.prev'" "'/%%!.*/ s| ${VM_ARGS}||'" $1)
-            eval "$cmd"
-            cmd=$(echo sed -i"'.prev'" "'/%%!.*/ s|$| ${VM_ARGS}|'" $1)
-            eval "$cmd"
-            rm ${1}.prev
-        else
-            cmd=$(echo sed -i"'.prev'" "'/#!.*/ a \\
-%%! ${VM_ARGS}\n'" $1)
-            eval "$cmd"
-            rm ${1}.prev
-        fi
-    fi
-}
-
 add_path() {
     # Use $CWD/$1 if exists, otherwise releases/VSN/$1
     IN_FILE_PATH=$2
@@ -267,9 +271,9 @@ check_replace_os_vars() {
     SRC_FILE_PATH="$IN_FILE_PATH.src"
     ORIG_FILE_PATH="$IN_FILE_PATH.orig"
     if [ -f "$SRC_FILE_PATH" ]; then
+        OUT_FILE_PATH=$(make_out_file_path $IN_FILE_PATH)
         replace_os_vars "$SRC_FILE_PATH" "$OUT_FILE_PATH"
     elif [ $RELX_REPLACE_OS_VARS ]; then
-        # Create a new file in the same location as original
         OUT_FILE_PATH=$(make_out_file_path $IN_FILE_PATH)
         # If vm.args.orig or sys.config.orig is present then use that
         if [ -f "$ORIG_FILE_PATH" ]; then
@@ -289,7 +293,8 @@ check_replace_os_vars() {
     else
         # If vm.arg.orig or sys.config.orig is present then use that
         if [ -f "$ORIG_FILE_PATH" ]; then
-           cp "$ORIG_FILE_PATH" "$OUT_FILE_PATH"
+            OUT_FILE_PATH=$(make_out_file_path $IN_FILE_PATH)
+            cp "$ORIG_FILE_PATH" "$OUT_FILE_PATH"
         fi
     fi
     echo $OUT_FILE_PATH
@@ -312,14 +317,24 @@ relx_run_hooks() {
     done
 }
 
+relx_disable_hooks() {
+    PRE_START_HOOKS=""
+    POST_START_HOOKS=""
+    PRE_STOP_HOOKS=""
+    POST_STOP_HOOKS=""
+    PRE_INSTALL_UPGRADE_HOOKS=""
+    POST_INSTALL_UPGRADE_HOOKS=""
+    STATUS_HOOK=""
+}
+
 relx_is_extension() {
     EXTENSION=$1
     case "$EXTENSION" in
         {{{ extensions }}})
-            echo "1" 
+            echo "1"
         ;;
         *)
-            echo "0" 
+            echo "0"
         ;;
     esac
 }
@@ -330,7 +345,7 @@ relx_get_extension_script() {
     # of the form:
     # foo_extension="path/to/foo_script";bar_extension="path/to/bar_script"
     {{{extension_declarations}}}
-    # get the command extension (eg. foo) and 
+    # get the command extension (eg. foo) and
     # obtain the actual script filename that it
     # refers to (eg. "path/to/foo_script"
     eval echo "$"${EXTENSION}_extension""
@@ -343,8 +358,28 @@ relx_run_extension() {
     shift
     # all extension script locations are expected to be
     # relative to the start script location
-    [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" $@
+    [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" "$@"
 }
+
+# given a list of arguments, identify the internal ones
+#   --relx-disable-hooks
+# and process them accordingly
+process_internal_args() {
+    for arg in $@
+    do
+      shift
+      case "$arg" in
+          --relx-disable-hooks)
+            relx_disable_hooks
+            ;;
+          *)
+            ;;
+      esac
+    done
+}
+
+# process internal arguments
+process_internal_args $@
 
 find_erts_dir
 export ROOTDIR="$RELEASE_ROOT_DIR"
@@ -433,6 +468,36 @@ NAME_ARG=$(eval echo "${NAME_ARG}")
 NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
 NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
 
+# Extract dist arguments
+MAYBE_DIST_ARGS=""
+PROTO_DIST="$(grep '^-proto_dist' "$VMARGS_PATH" || true)"
+if [ "$PROTO_DIST" ]; then
+    MAYBE_DIST_ARGS="${PROTO_DIST}"
+fi
+START_EPMD="$(grep '^-start_epmd' "$VMARGS_PATH" || true)"
+if [ "$START_EPMD" ]; then
+    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} ${START_EPMD}"
+fi
+EPMD_MODULE="$(grep '^-epmd_module' "$VMARGS_PATH" || true)"
+if [ "$EPMD_MODULE" ]; then
+    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} ${EPMD_MODULE}"
+fi
+
+# Extract the target cookie
+# Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
+COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
+DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
+if [ -z "$COOKIE_ARG" ]; then
+    if [ -f "$DEFAULT_COOKIE_FILE" ]; then
+        COOKIE="$(cat $DEFAULT_COOKIE_FILE)"
+    else
+        echo "No cookie is set or found. This limits the scripts functionality, installing, upgrading, rpc and getting a list of versions will not work."
+    fi
+else
+    # Extract cookie name from COOKIE_ARG
+    COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
+fi
+
 # User can specify an sname without @hostname
 # This will fail when creating remote shell
 # So here we check for @ and add @hostname if missing
@@ -444,28 +509,8 @@ esac
 # Export the variable so that it's available in the 'eval' calls
 export NAME
 
-# Make sure log directory exists
-mkdir -p "$RUNNER_LOG_DIR"
-
 test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
-
-# Extract the target cookie
-COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
-DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
-if [ -z "$COOKIE_ARG" ]; then
-    if [ -f "$DEFAULT_COOKIE_FILE" ]; then
-        COOKIE="$(cat $DEFAULT_COOKIE_FILE)"
-    else
-        echo "vm.args needs to have a -setcookie, or $DEFAULT_COOKIE_FILE (its permission must be 400) is required."
-        exit 1
-    fi
-else
-    # Extract cookie name from COOKIE_ARG
-    COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
-fi
-
-VM_ARGS="$(grep -v -E '^#|^-name|^-sname|^-setcookie|^-heart|^-args_file' "$VMARGS_PATH" | xargs | sed -e 's/ / /g')"
 
 cd "$ROOTDIR"
 
@@ -492,10 +537,18 @@ case "$1" in
 
         test -z "$PIPE_BASE_DIR" || mkdir -m 1777 -p "$PIPE_BASE_DIR"
         mkdir -p "$PIPE_DIR"
+        if [ ! -w "$PIPE_DIR" ]
+        then
+            echo "failed to start, user '$USER' does not have write privileges on '$PIPE_DIR', either delete it or run node as a different user"
+            exit 1
+        fi
+
+        # Make sure log directory exists
+        mkdir -p "$RUNNER_LOG_DIR"
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
-            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS"
+            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS --relx-disable-hooks"
         relx_run_hooks "$POST_START_HOOKS"
         ;;
 
@@ -543,6 +596,7 @@ case "$1" in
 
     escript)
         ## Run an escript under the node's environment
+        shift
         if ! relx_escript $@; then
             exit 1
         fi
@@ -552,6 +606,12 @@ case "$1" in
         # Make sure a node IS running
         if ! relx_nodetool "ping" > /dev/null; then
             echo "Node is not running!"
+            exit 1
+        fi
+
+        if [ ! -w "$PIPE_DIR" ]
+        then
+            echo "failed to attach, user '$USER' does not have sufficient privileges on '$PIPE_DIR', please run node as a different user"
             exit 1
         fi
 
@@ -587,8 +647,6 @@ case "$1" in
 
         relx_run_hooks "$PRE_INSTALL_UPGRADE_HOOKS"
 
-        escript_emulator_args $ROOTDIR/bin/install_upgrade.escript
-
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
              "$COMMAND" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
 
@@ -603,8 +661,6 @@ case "$1" in
         fi
 
         COMMAND="$1"; shift
- 
-        escript_emulator_args $ROOTDIR/bin/install_upgrade.escript
 
         exec "$BINDIR/escript" "$ROOTDIR/bin/install_upgrade.escript" \
              "versions" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
@@ -664,6 +720,7 @@ case "$1" in
         echo "$RELEASE_ROOT_DIR"
         logger -t "$REL_NAME[$$]" "Starting up"
 
+        relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
         exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
@@ -671,6 +728,9 @@ case "$1" in
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" \
             -pa ${__code_paths} -- "$@"
+        # exec will replace the current image and nothing else gets
+        # executed from this point on, this explains the absence
+        # of the pre start hook
         ;;
     rpc)
         # Make sure a node IS running
@@ -728,7 +788,7 @@ case "$1" in
         if [ "$IS_EXTENSION" = "1" ]; then
             EXTENSION_SCRIPT=$(relx_get_extension_script $1)
             shift
-            relx_run_extension $EXTENSION_SCRIPT $@
+            relx_run_extension $EXTENSION_SCRIPT "$@"
             # all extension scripts are expected to exit
         else
             relx_usage $1

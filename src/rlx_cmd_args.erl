@@ -285,6 +285,19 @@ create(include_erts, Opts) ->
 create(warnings_as_errors, Opts) ->
     WarningsAsErrors = proplists:get_value(warnings_as_errors, Opts, false),
     {warnings_as_errors, WarningsAsErrors};
+create(provider, Opts) ->
+    case proplists:get_all_values(provider, Opts) of
+        [] ->
+            [];
+        Providers ->
+            {add_providers, Providers}
+    end;
+create(add_providers, Opts) ->
+    Providers = proplists:get_value(add_providers, Opts, []),
+    {add_providers, Providers};
+create(providers, Opts) ->
+    Providers = proplists:get_value(providers, Opts, []),
+    {providers, Providers};
 create(_, _) ->
     [].
 

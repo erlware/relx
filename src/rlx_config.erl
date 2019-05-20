@@ -333,8 +333,9 @@ list_of_overlay_vars_files(undefined) ->
     [];
 list_of_overlay_vars_files([]) ->
     [];
-list_of_overlay_vars_files([H | _]=FileNames) when erlang:is_list(H) ->
-    FileNames;
+list_of_overlay_vars_files([H | _]=Vars) when erlang:is_list(H) ;
+                                              is_tuple(H) ->
+    Vars;
 list_of_overlay_vars_files(FileName) when is_list(FileName) ->
     [FileName].
 
@@ -358,7 +359,8 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
             end;
         overlay_vars ->
             case lists:keyfind(overlay_vars, 1, ConfigTerms) of
-                {_, [H | _] = Vars} when is_list(H) ->
+                {_, [H | _] = Vars} when is_list(H) ;
+                                         is_tuple(H) ->
                     MergedValue = Vars ++ Value,
                     merge_configs(CliTerms, lists:keyreplace(overlay_vars, 1, ConfigTerms, {Key, MergedValue}));
                 {_, Vars} when is_list(Vars) ->
@@ -367,10 +369,23 @@ merge_configs([{Key, Value} | CliTerms], ConfigTerms) ->
                 false ->
                     merge_configs(CliTerms, ConfigTerms++[{Key, Value}])
             end;
+        default_release when Value =:= {undefined, undefined} ->
+            %% No release specified in cli. Prevent overwriting default_release in ConfigTerms.
+            merge_configs(CliTerms, lists:keymerge(1, ConfigTerms, [{Key, Value}]));
         _ ->
             merge_configs(CliTerms, lists:reverse(lists:keystore(Key, 1, lists:reverse(ConfigTerms), {Key, Value})))
     end.
 
+parse_vsn(Vsn) when Vsn =:= git ; Vsn =:= "git" ->
+    {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
+    V;
+parse_vsn({git, short}) ->
+    git_ref("--short");
+parse_vsn({git, long}) ->
+    git_ref("");
+parse_vsn({file, File}) ->
+    {ok, Vsn} = file:read_file(File),
+    binary_to_list(rlx_string:trim(Vsn, both, "\n"));
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
     {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
     V;
@@ -382,3 +397,20 @@ parse_vsn({cmd, Command}) ->
     V;
 parse_vsn(Vsn) ->
     Vsn.
+
+git_ref(Arg) ->
+    case os:cmd("git rev-parse " ++ Arg ++ " HEAD") of
+        String ->
+            Vsn = rlx_string:trim(String, both, "\n"),
+            case length(Vsn) =:= 40 orelse length(Vsn) =:= 7 of
+                true ->
+                    Vsn;
+                false ->
+                    %% if the result isn't exactly either 40 or 7 characters then
+                    %% it must have failed
+                    {ok, Dir} = file:get_cwd(),
+                    ec_cmd_log:warn("Getting ref of git repo failed in ~ts. "
+                                    "Falling back to version 0", [Dir]),
+                    {plain, "0"}
+            end
+    end.
