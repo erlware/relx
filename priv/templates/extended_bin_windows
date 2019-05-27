@@ -1,3 +1,4 @@
+@echo off
 :: This batch file handles managing an Erlang node as a Windows service.
 ::
 :: Commands provided:
@@ -19,6 +20,9 @@
 @set rel_vsn={{ rel_vsn }}
 @set erts_vsn={{ erts_vsn }}
 @set erl_opts={{ erl_opts }}
+
+:: Make sure `findstr` is accessible
+@set PATH=%PATH%;%SystemRoot%\System32
 
 :: Discover the release root directory from the directory
 :: of this script
