@@ -197,13 +197,22 @@ start_clean_metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=A
                     realized=Realized}) ->
     case Realized of
         true ->
-            Kernel = lists:keyfind(kernel, 1, Apps),
-            StdLib = lists:keyfind(stdlib, 1, Apps),
+            {value, Kernel, Apps1} = lists:keytake(kernel, 1, Apps),
+            {value, StdLib, Apps2} = lists:keytake(stdlib, 1, Apps1),
             {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
-                  [Kernel, StdLib]}};
+                  [Kernel, StdLib | none_type_apps(Apps2)]}};
         false ->
             ?RLX_ERROR({not_realized, Name, Vsn})
     end.
+
+none_type_apps([]) ->
+    [];
+none_type_apps([{Name, Version} | Rest]) ->
+    [{Name, Version, none} | none_type_apps(Rest)];
+none_type_apps([{Name, Version, _} | Rest]) ->
+    [{Name, Version, none} | none_type_apps(Rest)];
+none_type_apps([{Name, Version, _, _} | Rest]) ->
+    [{Name, Version, none} | none_type_apps(Rest)].
 
 %% The no_dot_erlang.rel.src file is a literal copy of start_clean.rel.src
 %% in Erlang/OTP itself.

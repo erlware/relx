@@ -34,7 +34,6 @@ RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 export REL_NAME="{{ rel_name }}"
 REL_VSN="{{ rel_vsn }}"
 ERTS_VSN="{{ erts_vsn }}"
-CODE_LOADING_MODE="${CODE_LOADING_MODE:-embedded}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
@@ -152,12 +151,14 @@ relx_get_nodename() {
     id="longname$(relx_gen_id)-${NAME}"
     if [ -z "$COOKIE" ]; then
         "$BINDIR/erl" -boot start_clean \
+                      -mode interactive \
                       -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
                       -noshell ${NAME_TYPE} $id
     else
         # running with setcookie prevents a ~/.erlang.cookie from being created
         "$BINDIR/erl" -boot start_clean \
+                      -mode interactive \
                       -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
                       -setcookie ${COOKIE} \
@@ -175,7 +176,7 @@ relx_rem_sh() {
     TICKTIME="$(relx_nodetool rpcterms net_kernel get_net_ticktime)"
 
     # Setup remote shell command to control node
-    exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean \
+    exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean -mode interactive \
          -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" $MAYBE_DIST_ARGS \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
 }
@@ -213,16 +214,6 @@ relx_escript() {
     export RELEASE_ROOT_DIR
 
     "$ERTS_DIR/bin/escript" "$ROOTDIR/$scriptpath" $@
-}
-
-relx_get_code_paths() {
-    code="{ok, [{release,_,_,Apps}]} = file:consult(\"$REL_DIR/$REL_NAME.rel\"),"\
-"lists:foreach(fun(A) ->"\
-"   io:fwrite(\"$ROOTDIR/lib/~p-~s/ebin \", [element(1, A), element(2, A)]) "\
-"end, Apps),"\
-"halt()."
-
-    "$BINDIR/erl" -noshell -boot start_clean -eval "$code"
 }
 
 make_out_file_path() {
@@ -691,7 +682,8 @@ case "$1" in
                 FOREGROUNDOPTIONS="-noshell -noinput +Bd"
                 ;;
             console_clean)
-                __code_paths=$(relx_get_code_paths)
+                # if not set by user use interactive mode for console_clean
+                CODE_LOADING_MODE="${CODE_LOADING_MODE:-interactive}"
                 BOOTFILE="$ROOTDIR/bin/start_clean"
                 ;;
             console_boot)
@@ -700,6 +692,10 @@ case "$1" in
                 shift
                 ;;
         esac
+
+        # if not set by user or console_clean use embedded
+        CODE_LOADING_MODE="${CODE_LOADING_MODE:-embedded}"
+
         # Setup beam-required vars
         EMU="beam"
         PROGNAME="${0#*/}"
@@ -712,8 +708,7 @@ case "$1" in
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH" \
-            -pa ${__code_paths} -- "$@"
+            -args_file "$VMARGS_PATH" -- "$@"
         echo "Root: $ROOTDIR"
 
         # Log the startup
@@ -726,8 +721,7 @@ case "$1" in
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH" \
-            -pa ${__code_paths} -- "$@"
+            -args_file "$VMARGS_PATH" -- "$@"
         # exec will replace the current image and nothing else gets
         # executed from this point on, this explains the absence
         # of the pre start hook
