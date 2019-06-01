@@ -504,7 +504,6 @@ render_string(OverlayVars, Data) ->
                      fun((string() | binary()) -> {ok, rlx_state:t()} | relx:error())) ->
                             {ok, rlx_state:t()} | relx:error().
 file_render_do(OverlayVars, File, NextAction) ->
-    io:format("render ~p~n", [File]),
     case rlx_util:render(File, OverlayVars) of
         {ok, Binary} when is_binary(File) ->
             NextAction(Binary);
