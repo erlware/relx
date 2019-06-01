@@ -158,6 +158,8 @@ overlay_files(OverlayVars, Overlay, OutputDir) ->
 
 to({link, _, To}) ->
     To;
+to({copy, From, "."}) ->
+    filename:basename(From);
 to({copy, _, To}) ->
     To;
 to({mkdir, To}) ->
