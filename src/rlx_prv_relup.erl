@@ -130,8 +130,9 @@ make_upfrom_script(State, Release, UpFrom) ->
     OutputDir = rlx_state:output_dir(State),
     WarningsAsErrors = rlx_state:warnings_as_errors(State),
     Options = [{outdir, OutputDir},
-               {path, rlx_util:get_code_paths(Release, OutputDir) ++
-                   rlx_util:get_code_paths(UpFrom, OutputDir)},
+               {path, rlx_util:get_code_paths(Release, OutputDir)
+                      ++ rlx_util:get_code_paths(UpFrom, OutputDir)
+                      ++ lists:map(fun erlang:binary_to_list/1, rlx_state:lib_dirs(State))},
                silent],
                %% the following block can be uncommented
                %% when systools:make_relup/4 returns

@@ -195,6 +195,8 @@ opt_spec_list() ->
       "Print usage"},
      {lib_dir, $l, "lib-dir", string,
       "Additional dir that should be searched for OTP Apps"},
+     {preinstalled_lib_dir, undefined, "preinstalled-lib-dir", string,
+      "Lib dir that should be searched for OTP Apps wich should not be included in the release. Also include as lib_dir"},
      {path, $p, "path", string,
       "Additional dir to add to the code path"},
      {default_libs, undefined, "default-libs",

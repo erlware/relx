@@ -66,7 +66,10 @@ make_tar(State, Release, OutputDir) ->
     Name = atom_to_list(rlx_release:name(Release)),
     Vsn = rlx_release:vsn(Release),
     ErtsVersion = rlx_release:erts(Release),
-    Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
+    Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]
+                    ++ lists:map(fun erlang:binary_to_list/1, rlx_state:lib_dirs(State))},
+            {variables, rlx_util:systool_variables(State)},
+            {var_tar, omit},
             {dirs, [include | maybe_src_dirs(State)]},
             {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
