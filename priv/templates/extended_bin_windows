@@ -100,7 +100,7 @@
 
 :: Collect any additional VM args into erl_opts
 @setlocal EnableDelayedExpansion
-@for /f "usebackq tokens=1-2" %%I in (`findstr /r "^[^#]" "%vm_args%"`) do @(
+@for /f "usebackq tokens=1,*" %%I in (`findstr /r "^[^#]" "%vm_args%"`) do @(
   if not "%%I" == "-name" (
     if not "%%I" == "-sname" (
       if not "%%I" == "-setcookie" (
