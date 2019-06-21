@@ -132,7 +132,13 @@ add_system_lib_dir(State) ->
 add_environment_lib_dir(_State) ->
     case os:getenv("ERL_LIBS") of
         false -> [];
-        Libs -> [erlang:iolist_to_binary(L) || L <- rlx_string:lexemes(Libs, ":")]
+        Libs ->
+            Delim =
+                case os:type() of
+                    {win32,_} -> ";";
+                    _         -> ":"
+                end,
+            [erlang:iolist_to_binary(L) || L <- rlx_string:lexemes(Libs, Delim)]
     end.
 
 %% Order matters so this slow dedup needs to be used
