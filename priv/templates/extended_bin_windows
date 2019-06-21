@@ -41,12 +41,12 @@
 @set vm_args=%rel_dir%\vm.args
 @set progname=erl.exe
 @set clean_boot_script=%release_root_dir%\bin\start_clean
-@set "erlsrv=%bindir%\erlsrv.exe"
-@set "epmd=%bindir%\epmd.exe"
-@set "escript=%bindir%\escript.exe"
-@set "werl=%bindir%\werl.exe"
-@set "erl=%bindir%\erl.exe"
-@set "nodetool=%release_root_dir%\bin\nodetool"
+@set erlsrv="%bindir%\erlsrv.exe"
+@set epmd="%bindir%\epmd.exe"
+@set escript="%bindir%\escript.exe"
+@set werl="%bindir%\werl.exe"
+@set erl="%bindir%\erl.exe"
+@set nodetool="%release_root_dir%\bin\nodetool"
 @set "extensions0={{ extensions }}"
 @set "extensions1=%extensions0:|= %"
 @set "extensions=%extensions1: undefined=%"
@@ -159,7 +159,7 @@
 @for /f "delims=" %%i in ('where erl') do @(
   set "erl=%%i"
 )
-@for /f "delims=" %%i in ('"%erl%" -boot no_dot_erlang -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop') do @(
+@for /f "delims=" %%i in ('%erl% -boot no_dot_erlang -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop') do @(
   set "erl_root=%%i"
 )
 @set "erts_dir=%erl_root%\erts-%erts_vsn%"
@@ -320,7 +320,7 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 :: Ping the running node
 :ping
-@%escript% %nodetool% ping %node_type% "%node_name%%hostname%" -setcookie "%cookie%"
+@%escript% %nodetool% ping %node_type% %node_name%%hostname% -setcookie %cookie%
 @goto :eof
 
 :: List installed Erlang services
