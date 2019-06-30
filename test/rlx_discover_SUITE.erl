@@ -34,7 +34,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 suite() ->
-    [{timetrap,{seconds,120}}].
+    [].
 
 init_per_suite(Config) ->
     Config.
