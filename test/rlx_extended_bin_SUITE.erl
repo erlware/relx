@@ -66,7 +66,7 @@
 -define(SLEEP_TIME, 2500).
 
 suite() ->
-    [{timetrap,{seconds,300}}].
+    [].
 
 init_per_suite(Config) ->
     Config.
