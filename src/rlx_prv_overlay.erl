@@ -82,9 +82,6 @@ format_error({read_template, FileName, Reason}) ->
                   [FileName, file:format_error(Reason)]);
 format_error({overlay_failed, Errors}) ->
     [[format_error(rlx_util:error_reason(Error)), "\n"] || Error <- Errors];
-format_error({dir_render_failed, Dir, Error}) ->
-    io_lib:format("rendering mkdir path failed ~s with ~p",
-                  [Dir, Error]);
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),
@@ -145,7 +142,8 @@ get_overlay_vars_from_file(State, OverlayVars) ->
             OverlayVars;
         [] ->
             OverlayVars;
-        [H | _]=FileNames when is_list(H) ->
+        [H | _]=FileNames when is_list(H) ;
+                               is_tuple(H) ->
             read_overlay_vars(State, OverlayVars, FileNames);
         FileName when is_list(FileName) ->
             read_overlay_vars(State, OverlayVars, [FileName])
@@ -181,30 +179,24 @@ check_overlay_inclusion(_State, _RelativeRoot, [], Terms) ->
                                 proplists:proplist().
 merge_overlay_vars(State, FileNames) ->
     RelativeRoot = get_relative_root(State),
-    lists:foldl(fun(FileName, Acc) ->
-                        RelativePath = filename:join(RelativeRoot, erlang:iolist_to_binary(FileName)),
+    lists:foldl(fun(FileName, Acc) when is_list(FileName) ->
+                        RelativePath = filename:join(RelativeRoot, iolist_to_binary(FileName)),
                         case file:consult(RelativePath) of
-                            %% {ok, [Terms]} ->
-                            %%     lists:ukeymerge(1, lists:ukeysort(1, Terms), Acc);
-                            %%     % the location of the included overlay files will be relative
-                            %%     %% to the current one being read
-                            %%     %% OverlayRelativeRoot = filename:dirname(FileName),
-                            %%     %% NewTerms = check_overlay_inclusion(State, OverlayRelativeRoot, Terms),
-
-                            %%     %% lists:ukeymerge(1, lists:ukeysort(1, NewTerms), Acc);
                             {ok, Terms} ->
                                 %% the location of the included overlay files will be relative
                                 %% to the current one being read
                                 OverlayRelativeRoot = filename:dirname(FileName),
                                 NewTerms = check_overlay_inclusion(State, OverlayRelativeRoot, Terms),
                                 lists:foldl(fun(NewTerm, A) ->
-                                                lists:keystore(element(1, NewTerm), 1, A, NewTerm)
+                                                    lists:keystore(element(1, NewTerm), 1, A, NewTerm)
                                             end, Acc, NewTerms);
                             {error, Reason} ->
                                 ec_cmd_log:warn(rlx_state:log(State),
                                                 format_error({unable_to_read_varsfile, FileName, Reason})),
                                 Acc
-                        end
+                        end;
+                   (Var, Acc) ->
+                        lists:keystore(element(1, Var), 1, Acc, Var)
                 end, [], FileNames).
 
 -spec render_overlay_vars(proplists:proplist(), proplists:proplist(),
@@ -317,14 +309,12 @@ do_individual_overlay(State, _Files, OverlayVars, {chmod, Mode, Path}) ->
     NewMode =
         case is_integer(Mode) of
             true -> Mode;
-            false -> erlang:list_to_integer(erlang:binary_to_list(render_string (OverlayVars, Mode)))
+            false -> erlang:binary_to_integer(render_string (OverlayVars, Mode))
         end,
 
-    Root = rlx_state:output_dir(State),
     file_render_do(OverlayVars, Path,
                    fun(NewPath) ->
-                            Absolute = absolutize(State,
-                                                  filename:join(Root,erlang:iolist_to_binary (NewPath))),
+                            Absolute = absolute_path_to(State, NewPath),
                             case file:change_mode(Absolute, NewMode) of
                                 {error, Error} ->
                                     ?RLX_ERROR({unable_to_chmod, NewMode, NewPath, Error});
@@ -332,20 +322,16 @@ do_individual_overlay(State, _Files, OverlayVars, {chmod, Mode, Path}) ->
                             end
                    end);
 do_individual_overlay(State, _Files, OverlayVars, {mkdir, Dir}) ->
-    case rlx_util:render(erlang:iolist_to_binary(Dir), OverlayVars) of
-        {ok, IoList} ->
-            Absolute = absolutize(State,
-                                  filename:join(rlx_state:output_dir(State),
-                                                erlang:iolist_to_binary(IoList))),
-            case rlx_util:mkdir_p(Absolute) of
-                {error, Error} ->
-                    ?RLX_ERROR({unable_to_make_dir, Absolute, Error});
-                ok ->
-                    ok
-            end;
-        {error, Error} ->
-            ?RLX_ERROR({dir_render_failed, Dir, Error})
-    end;
+    file_render_do(OverlayVars, Dir,
+                   fun(Dir0) ->
+                       Absolute = absolute_path_to(State, Dir0),
+                       case rlx_util:mkdir_p(Absolute) of
+                           {error, Error} ->
+                               ?RLX_ERROR({unable_to_make_dir, Absolute, Error});
+                           ok ->
+                               ok
+                       end
+                   end);
 do_individual_overlay(State, _Files, OverlayVars, {copy, From, To}) ->
     file_render_do(OverlayVars, From,
                    fun(FromFile) ->
@@ -372,73 +358,65 @@ do_individual_overlay(State, _Files, OverlayVars, {template, From, To}) ->
                    fun(FromFile) ->
                            file_render_do(OverlayVars, To,
                                           fun(ToFile) ->
-                                                  RelativeRoot = get_relative_root(State),
-                                                  FromFile0 = absolutize(State,
-                                                                         filename:join(RelativeRoot,
-                                                                                       erlang:iolist_to_binary(FromFile))),
-                                                  FromFile1 = erlang:binary_to_list(FromFile0),
                                                   write_template(OverlayVars,
-                                                                 FromFile1,
-                                                                 absolutize(State,
-                                                                            filename:join(rlx_state:output_dir(State),
-                                                                                          erlang:iolist_to_binary(ToFile))))
+                                                                 absolute_path_from(State, FromFile),
+                                                                 absolute_path_to(State, ToFile))
                                           end)
                    end).
 
--spec copy_to(rlx_state:t(), file:name(), file:name()) -> ok | relx:error().
-copy_to(State, FromFile0, ToFile0) ->
-    RelativeRoot = get_relative_root(State),
-    ToFile1 = absolutize(State, filename:join(rlx_state:output_dir(State),
-                                              erlang:iolist_to_binary(ToFile0))),
+-spec wildcard_copy(rlx_state:t(), file:filename_all(), file:filename_all(),
+      fun((file:filename_all(), file:filename_all()) -> ok | {error, term()}),
+      ErrorTag :: atom()) -> ok | relx:error().
+wildcard_copy(State, FromFile0, ToFile0, CopyFun, ErrorTag) ->
+    FromFile1 = absolute_path_from(State, FromFile0),
+    ToFile1 = absolute_path_to(State, ToFile0),
 
-    FromFile1 = absolutize(State, filename:join(RelativeRoot,
-                                                erlang:iolist_to_binary(FromFile0))),
-    ToFile2 = case is_directory(ToFile0, ToFile1) of
-                  false ->
-                      filelib:ensure_dir(ToFile1),
-                      ToFile1;
-                  true ->
-                      rlx_util:mkdir_p(ToFile1),
-                      erlang:iolist_to_binary(filename:join(ToFile1,
-                                                            filename:basename(FromFile1)))
-              end,
-    case ec_file:copy(FromFile1, ToFile2, [recursive, {file_info, [mode, time]}]) of
+    Res = case is_directory(ToFile0, ToFile1) of
+              false ->
+                  filelib:ensure_dir(ToFile1),
+                  CopyFun(FromFile1, ToFile1);
+              true ->
+                  Root = absolute_path_from(State, "."),
+                  FromFiles = if
+                      is_list(FromFile0) -> filelib:wildcard(FromFile0, Root);
+                      true -> [FromFile1]
+                  end,
+                  rlx_util:mkdir_p(ToFile1),
+                  lists:foldl(fun
+                      (_, {error, _} = Error) -> Error;
+                      (FromFile, ok) ->
+                          CopyFun(filename:join(Root, FromFile), filename:join(ToFile1, filename:basename(FromFile)))
+                  end, ok, FromFiles)
+    end,
+                  
+    case Res of
         ok ->
             ok;
         {error, Err} ->
-            ?RLX_ERROR({copy_failed,
+            ?RLX_ERROR({ErrorTag,
                         FromFile1,
                         ToFile1, Err})
     end.
+
+
+-spec copy_to(rlx_state:t(), file:name(), file:name()) -> ok | relx:error().
+copy_to(State, FromFile0, ToFile0) ->
+    wildcard_copy(State, FromFile0, ToFile0,
+                  fun(FromPath, ToPath) -> ec_file:copy(FromPath, ToPath, [recursive, {file_info, [mode, time]}]) end,
+                  copy_failed).
 
 -spec link_to(rlx_state:t(), file:name(), file:name()) -> ok | relx:error().
 link_to(State, FromFile0, ToFile0) ->
-    RelativeRoot = get_relative_root(State),
-    ToFile1 = absolutize(State, filename:join(rlx_state:output_dir(State),
-                                              erlang:iolist_to_binary(ToFile0))),
+    wildcard_copy(State, FromFile0, ToFile0,
+                  fun make_link/2,
+                  link_failed).
 
-    FromFile1 = absolutize(State, filename:join(RelativeRoot,
-                                                erlang:iolist_to_binary(FromFile0))),
-    ToFile2 = case is_directory(ToFile0, ToFile1) of
-                  false ->
-                      filelib:ensure_dir(ToFile1),
-                      ToFile1;
-                  true ->
-                      rlx_util:mkdir_p(ToFile1),
-                      erlang:iolist_to_binary(filename:join(ToFile1,
-                                                            filename:basename(FromFile1)))
-              end,
-    case ec_file:is_symlink(ToFile2) of
-        true  -> file:delete(ToFile2);
-        false -> ec_file:remove(ToFile2, [recursive])
+make_link(FromFile, ToFile) ->
+    case ec_file:is_symlink(ToFile) of
+        true -> file:delete(ToFile);
+        false -> ec_file:remove(ToFile, [recursive])
     end,
-    case file:make_symlink(FromFile1, ToFile2) of
-        ok -> ok;
-        {error, Err} ->
-            ?RLX_ERROR({link_failed,
-                        FromFile1,
-                        ToFile1, Err})
-    end.
+    file:make_symlink(FromFile, ToFile).
 
 get_relative_root(State) ->
     case rlx_state:config_file(State) of
@@ -452,6 +430,12 @@ get_relative_root(State) ->
                     rlx_state:root_dir(State)
             end
     end.
+
+absolute_path_from(State, Path) ->
+    absolutize(State, filename:join(get_relative_root(State), Path)).
+
+absolute_path_to(State, Path) ->
+    absolutize(State, filename:join(rlx_state:output_dir(State), Path)).
 
 -spec is_directory(file:name(), file:name()) -> boolean().
 is_directory(ToFile0, ToFile1) ->
@@ -517,16 +501,17 @@ render_string(OverlayVars, Data) ->
     end.
 
 -spec file_render_do(proplists:proplist(), iolist(),
-                     fun((term()) -> {ok, rlx_state:t()} | relx:error())) ->
+                     fun((string() | binary()) -> {ok, rlx_state:t()} | relx:error())) ->
                             {ok, rlx_state:t()} | relx:error().
 file_render_do(OverlayVars, File, NextAction) ->
     case rlx_util:render(File, OverlayVars) of
-        {ok, IoList} ->
-            NextAction(IoList);
+        {ok, Binary} when is_binary(File) ->
+            NextAction(Binary);
+        {ok, Binary} when is_list(File) ->
+            NextAction(binary_to_list(Binary));
         {error, Error} ->
             ?RLX_ERROR({render_failed, File, Error})
     end.
 
 absolutize(State, FileName) ->
-    filename:absname(filename:join(rlx_state:root_dir(State),
-                                   erlang:iolist_to_binary(FileName))).
+    filename:absname(filename:join(rlx_state:root_dir(State), FileName)).

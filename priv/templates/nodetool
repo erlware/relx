@@ -8,9 +8,10 @@
 %% -------------------------------------------------------------------
 
 main(Args) ->
-    ok = start_epmd(),
     %% Extract the args
-    {RestArgs, TargetNode} = process_args(Args, [], undefined),
+    {RestArgs, TargetNode, StartEpmd} = process_args(Args, [], undefined, true),
+
+    ok = start_epmd(StartEpmd),
 
     %% See if the node is currently running  -- if it's not, we'll bail
     case {net_kernel:hidden_connect_node(TargetNode), net_adm:ping(TargetNode)} of
@@ -87,25 +88,35 @@ main(Args) ->
     end,
     net_kernel:stop().
 
-process_args([], Acc, TargetNode) ->
-    {lists:reverse(Acc), TargetNode};
-process_args(["-setcookie", Cookie | Rest], Acc, TargetNode) ->
+process_args([], Acc, TargetNode, StartEpmd) ->
+    {lists:reverse(Acc), TargetNode, StartEpmd};
+process_args(["-setcookie", Cookie | Rest], Acc, TargetNode, StartEpmd) ->
     erlang:set_cookie(node(), list_to_atom(Cookie)),
-    process_args(Rest, Acc, TargetNode);
-process_args(["-name", TargetName | Rest], Acc, _) ->
-    ThisNode = append_node_suffix(TargetName, "_maint_"),
-    {ok, _} = net_kernel:start([ThisNode, longnames]),
-    process_args(Rest, Acc, nodename(TargetName));
-process_args(["-sname", TargetName | Rest], Acc, _) ->
-    ThisNode = append_node_suffix(TargetName, "_maint_"),
-    {ok, _} = net_kernel:start([ThisNode, shortnames]),
-    process_args(Rest, Acc, nodename(TargetName));
-process_args([Arg | Rest], Acc, Opts) ->
-    process_args(Rest, [Arg | Acc], Opts).
+    process_args(Rest, Acc, TargetNode, StartEpmd);
+process_args(["-start_epmd", StartEpmd | Rest], Acc, TargetNode, _StartEpmd) ->
+    process_args(Rest, Acc, TargetNode, list_to_atom(StartEpmd));
+process_args(["-name", TargetName | Rest], Acc, _, StartEpmd) ->
+    maybe_start_node(TargetName, longnames),
+    process_args(Rest, Acc, nodename(TargetName), StartEpmd);
+process_args(["-sname", TargetName | Rest], Acc, _, StartEpmd) ->
+    maybe_start_node(TargetName, shortnames),
+    process_args(Rest, Acc, nodename(TargetName), StartEpmd);
+process_args([Arg | Rest], Acc, Opts, StartEpmd) ->
+    process_args(Rest, [Arg | Acc], Opts, StartEpmd).
 
+maybe_start_node(TargetName, Names) ->
+    case erlang:node() of
+        'nonode@nohost' ->
+            ThisNode = append_node_suffix(TargetName, "_maint_"),
+            {ok, _} = net_kernel:start([ThisNode, Names]);
+        _ ->
+            ok
+    end.
 
-start_epmd() ->
+start_epmd(true) ->
     [] = os:cmd("\"" ++ epmd_path() ++ "\" -daemon"),
+    ok;
+start_epmd(_) ->
     ok.
 
 epmd_path() ->

@@ -27,13 +27,14 @@
          lib_expansion_case/1,
          lib_fail_case/1,
          spec_parse_fail_case/1,
-         config_fail_case/1]).
+         config_fail_case/1,
+         provider_case/1]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 suite() ->
-    [{timetrap,{seconds,30}}].
+    [{timetrap,{seconds,120}}].
 
 init_per_suite(Config) ->
     Config.
@@ -42,7 +43,7 @@ end_per_suite(_Config) ->
     ok.
 
 all() ->
-    [normal_passing_case, lib_expansion_case, lib_fail_case, config_fail_case].
+    [normal_passing_case, lib_expansion_case, lib_fail_case, config_fail_case, provider_case].
 
 normal_passing_case(Config) ->
     DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
@@ -111,3 +112,12 @@ config_fail_case(_Config) ->
     {ok, {Opts, Targets}} = getopt:parse(relx:opt_spec_list(), CmdLine),
     ?assertMatch({error, {_, {invalid_config_file, ConfigFile}}},
                  rlx_cmd_args:args2state(Opts, Targets)).
+
+provider_case(_Config) ->
+    CmdLine = ["--provider", "relx_provider_1",
+               "--provider", "relx_provider_2"],
+    {ok, {Opts, Targets}} = getopt:parse(relx:opt_spec_list(), CmdLine),
+    {ok, State} = rlx_cmd_args:args2state(Opts, Targets),
+    ?assertEqual(
+       [relx_provider_1, relx_provider_2],
+       proplists:get_value(add_providers, rlx_state:cli_args(State))).

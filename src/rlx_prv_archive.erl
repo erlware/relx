@@ -141,9 +141,10 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
 
 config_files(Vsn, OutputDir) ->
     VMArgs = {filename:join(["releases", Vsn, "vm.args"]), filename:join([OutputDir, "releases", Vsn, "vm.args"])},
+    VMArgsSrc = {filename:join(["releases", Vsn, "vm.args.src"]), filename:join([OutputDir, "releases", Vsn, "vm.args.src"])},
     VMArgsOrig = {filename:join(["releases", Vsn, "vm.args.orig"]), filename:join([OutputDir, "releases", Vsn, "vm.args.orig"])},
     SysConfigOrig = {filename:join(["releases", Vsn, "sys.config.orig"]), filename:join([OutputDir, "releases", Vsn, "sys.config.orig"])},
-    [{NameInArchive, Filename} || {NameInArchive, Filename} <- [VMArgs, VMArgsOrig, SysConfigOrig], filelib:is_file(Filename)].
+    [{NameInArchive, Filename} || {NameInArchive, Filename} <- [VMArgsSrc, VMArgs, VMArgsOrig, SysConfigOrig], filelib:is_file(Filename)].
 
 
 overlay_files(_, undefined, _) ->
@@ -157,6 +158,8 @@ overlay_files(OverlayVars, Overlay, OutputDir) ->
 
 to({link, _, To}) ->
     To;
+to({copy, From, "."}) ->
+    filename:basename(From);
 to({copy, _, To}) ->
     To;
 to({mkdir, To}) ->

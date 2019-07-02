@@ -49,6 +49,7 @@
          replace_os_vars_dev_mode/1,
          replace_os_vars_twice/1,
          custom_start_script_hooks/1,
+         custom_start_script_hooks_console/1,
          builtin_wait_for_vm_start_script_hook/1,
          builtin_pid_start_script_hook/1,
          builtin_wait_for_process_start_script_hook/1,
@@ -62,8 +63,10 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kernel/include/file.hrl").
 
+-define(SLEEP_TIME, 2500).
+
 suite() ->
-    [{timetrap,{seconds,30}}].
+    [{timetrap,{seconds,300}}].
 
 init_per_suite(Config) ->
     Config.
@@ -83,12 +86,13 @@ init_per_testcase(_, Config) ->
 all() ->
     [start_sname_in_other_argsfile, start_preserves_arguments, start_nodetool_with_data_from_argsfile,
      start_upgrade_escript_with_argsfile_data, start_fail_when_no_name, start_fail_when_multiple_names,
-     start_fail_when_missing_argsfile, start_fail_when_nonreadable_argsfile,
+     start_fail_when_missing_argsfile, %% start_fail_when_nonreadable_argsfile,
      start_fail_when_relative_argsfile, start_fail_when_circular_argsfiles,
      ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
      remote_console, shortname_remote_console, replace_os_vars, replace_os_vars_sys_config_vm_args_src, replace_os_vars_multi_node,
      replace_os_vars_included_config,
-     replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice, custom_start_script_hooks,
+     replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice,
+     custom_start_script_hooks, custom_start_script_hooks_console,
      builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
      builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks,
      builtin_status_script, custom_status_script,
@@ -122,7 +126,7 @@ ping(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -145,7 +149,7 @@ shortname_ping(Config) ->
                   {extended_start_script, true}
                  ]),
     
-    ec_file:write(VmArgs, "-sname foo\n\n"
+    ec_file:write(VmArgs, "-sname foo@localhost\n\n"
                           "-setcookie cookie\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -161,7 +165,7 @@ shortname_ping(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -184,7 +188,7 @@ longname_ping(Config) ->
                   {extended_start_script, true}
                  ]),
     
-    ec_file:write(VmArgs, "-name foo\n\n"
+    ec_file:write(VmArgs, "-name foo@127.0.0.1\n\n"
                           "-setcookie cookie\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -200,7 +204,7 @@ longname_ping(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -233,10 +237,10 @@ attach(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo attach", "&"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
 
@@ -267,7 +271,7 @@ pid(Config) ->
 
     %% check for a valid pid
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _Pid} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
@@ -301,11 +305,11 @@ restart(Config) ->
     %% a restart is a gracious operation that does not involve the
     %% death of the VM, so the pid should be the same
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, Pid1} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo restart"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
@@ -339,13 +343,13 @@ reboot(Config) ->
     %% a reboot involves stopping the emulator, it needs to be restarted
     %% though
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, Pid1} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo reboot"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
@@ -381,7 +385,7 @@ escript(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     [ExpectedOutput] = io_lib:format("~s",
                             [filename:join([OutputDir, "foo"])]),
@@ -415,10 +419,10 @@ remote_console(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo remote_console &"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, NodesStr} = sh(filename:join([OutputDir, "foo", "bin", "foo eval 'nodes(connected).'"])),
     Nodes = rlx_test_utils:list_to_term(NodesStr),
     ?assertEqual(1, length(Nodes)),
@@ -432,7 +436,7 @@ shortname_remote_console(Config) ->
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     VmArgs = filename:join([LibDir1, "vm.args"]),
 
-    ec_file:write(VmArgs, "-sname foo\n\n"
+    ec_file:write(VmArgs, "-sname foo@localhost\n\n"
                           "-setcookie cookie\n"),
 
     rlx_test_utils:write_config(ConfigFile,
@@ -457,10 +461,10 @@ shortname_remote_console(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo remote_console &"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, NodesStr} = sh(filename:join([OutputDir, "foo", "bin", "foo eval 'nodes(connected).'"])),
     Nodes = rlx_test_utils:list_to_term(NodesStr),
     ?assertEqual(1, length(Nodes)),
@@ -489,7 +493,7 @@ replace_os_vars(Config) ->
                                 [[{goal_app,
                                    [{var1, "${VAR1}"},
                                     {var2, "${VAR2}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -508,7 +512,7 @@ replace_os_vars(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -547,7 +551,7 @@ replace_os_vars(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node2"},
@@ -604,7 +608,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
     %% new with sys.config.src it doesn't have to be valid Erlang
     %% until after var replacemen at runtime.
     ec_file:write(SysConfigSrc, "[{goal_app, [{var1, ${VAR1}}]}]."),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -623,7 +627,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "101"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -662,7 +666,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "201"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node2"},
@@ -717,7 +721,7 @@ replace_os_vars_multi_node(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -737,7 +741,7 @@ replace_os_vars_multi_node(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"RELX_MULTI_NODE", "1"},
@@ -785,7 +789,7 @@ replace_os_vars_multi_node(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"RELX_MULTI_NODE", "1"},
@@ -862,7 +866,7 @@ replace_os_vars_included_config(Config) ->
                                   },
                                  "releases/0.0.1/config/included.config"]
                                 ]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -881,7 +885,7 @@ replace_os_vars_included_config(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -920,7 +924,7 @@ replace_os_vars_included_config(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node2"},
@@ -975,7 +979,7 @@ replace_os_vars_custom_location(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -995,7 +999,7 @@ replace_os_vars_custom_location(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"RELX_OUT_FILE_PATH", "/tmp"},
@@ -1041,7 +1045,7 @@ replace_os_vars_custom_location(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"RELX_OUT_FILE_PATH", "/tmp"},
@@ -1102,7 +1106,7 @@ replace_os_vars_twice(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname node\n\n"
+    ec_file:write(VmArgs, "-sname node@localhost\n\n"
                           "-setcookie cookie\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -1119,7 +1123,7 @@ replace_os_vars_twice(Config) ->
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"}]),
     {ok, "\"v1\""} = sh(filename:join([OutputDir, "foo", "bin",
@@ -1142,7 +1146,7 @@ replace_os_vars_twice(Config) ->
 
     %% start the node again but this time don't replace env variables
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, "\"${VAR1}\""} = sh(filename:join([OutputDir, "foo", "bin",
                                        "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"])),
@@ -1175,7 +1179,7 @@ replace_os_vars_dev_mode(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}\n\n"
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -1194,7 +1198,7 @@ replace_os_vars_dev_mode(Config) ->
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
                   {"VAR1", "v1"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                          {"NODENAME", "node1"},
@@ -1233,7 +1237,7 @@ replace_os_vars_dev_mode(Config) ->
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
                   {"VAR1", "v2"}]),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
                       [{"RELX_REPLACE_OS_VARS", "1"},
                        {"NODENAME", "node2"},
@@ -1294,10 +1298,7 @@ custom_start_script_hooks(Config) ->
                         ]}
                     ]},
                   {mkdir, "scripts"},
-                  {overlay, [{copy, "./pre_start", "bin/hooks/pre_start"},
-                             {copy, "./post_start", "bin/hooks/post_start"},
-                             {copy, "./pre_stop", "bin/hooks/pre_stop"},
-                             {copy, "./post_stop", "bin/hooks/post_stop"}]}
+                  {overlay, [{copy, "./{pre,post}_{start,stop}", "bin/hooks/"}]}
                  ]),
 
     %% write the hook scripts, each of them will write an erlang term to a file
@@ -1318,7 +1319,7 @@ custom_start_script_hooks(Config) ->
     %% now start/stop the release to make sure the script hooks are really getting
     %% executed
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% now check that the output file contains the expected format
     {ok,[{pre_start, foo, _, foo},
@@ -1359,6 +1360,42 @@ builtin_pid_start_script_hook(Config) ->
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     ok.
 
+custom_start_script_hooks_console(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {extended_start_script_hooks, [
+                        {pre_start, [
+                          {custom, "hooks/pre_start"}
+                        ]}
+                    ]},
+                  {mkdir, "scripts"},
+                  {overlay, [{copy, "./pre_start", "bin/hooks/pre_start"}]}
+                 ]),
+
+    %% write the hook scripts, each of them will write an erlang term to a file
+    %% that will later be consulted
+    ok = file:write_file(filename:join([LibDir1, "./pre_start"]),
+                         "#!/bin/bash\n# $*\necho \\{pre_start, $REL_NAME, \\'$NAME\\', $COOKIE\\}. >> test"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+    {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
+                           OutputDir, ConfigFile),
+    %% now start/stop the release to make sure the script hooks are really getting
+    %% executed
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo console &"])),
+    %% now check that the output file contains the expected format
+    {ok,[{pre_start, foo, _, foo}]} = file:consult(filename:join([OutputDir, "foo", "test"])).
+
 builtin_wait_for_vm_start_script_hook(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
 
@@ -1385,7 +1422,7 @@ builtin_wait_for_vm_start_script_hook(Config) ->
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
     % this run doesn't need the sleep because the wait_for_vm_start
     % start script makes it unnecessary
-    %timer:sleep(2000),
+    %timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     ok.
@@ -1521,7 +1558,7 @@ builtin_status_script(Config) ->
     {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
                            OutputDir, ConfigFile),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the status to a file
     {ok, ""} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])).
@@ -1558,7 +1595,7 @@ custom_status_script(Config) ->
     {ok, _State} = relx:do(foo, undefined, [], [LibDir1], 3,
                            OutputDir, ConfigFile),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the status to a file
     {ok, StatusStr} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])),
@@ -1588,7 +1625,7 @@ start_sname_in_other_argsfile(Config) ->
     ec_file:write(VmArgs, "-args_file " ++ VmArgs2 ++ "\n\n"
                           "-setcookie cookie\n"),
 
-    ec_file:write(VmArgs2, "-sname foo\n"),
+    ec_file:write(VmArgs2, "-sname foo@localhost\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
@@ -1603,7 +1640,7 @@ start_sname_in_other_argsfile(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -1639,7 +1676,7 @@ start_preserves_arguments(Config) ->
     %% and preserving the "tricky" argument that contains a string with a space
     %% in it
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start -goal_app baz '\"bat zing\"'"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     BinFile = filename:join([PrivDir, "goal_app.bin"]),
     Eval = io_lib:format("{ok,Env}=application:get_env(goal_app,baz),file:write_file(\"~s\",term_to_binary(Env)).",
                          [BinFile]),
@@ -1670,7 +1707,7 @@ start_nodetool_with_data_from_argsfile(Config) ->
                  ]),
 
     ec_file:write(VmArgs, "-setcookie cookie\n"
-                          "-sname foo\n\n"
+                          "-sname foo@localhost\n\n"
                           "-proto_dist inet_tcp\n\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -1686,7 +1723,7 @@ start_nodetool_with_data_from_argsfile(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -1710,7 +1747,7 @@ start_upgrade_escript_with_argsfile_data(Config) ->
                  ]),
 
     ec_file:write(VmArgs, "-setcookie cookie\n"
-                          "-sname foo\n\n"
+                          "-sname foo@localhost\n\n"
                           "-proto_dist inet_tcp\n\n"),
 
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
@@ -1726,7 +1763,7 @@ start_upgrade_escript_with_argsfile_data(Config) ->
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, _Ver} = sh(filename:join([OutputDir, "foo", "bin", "foo versions"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
@@ -1758,7 +1795,7 @@ start_fail_when_nonreadable_argsfile(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
     VmArgs = filename:join([LibDir1, "vm.args"]),
     VmArgs2 = VmArgs ++ ".nonreadable",
-    ec_file:write(VmArgs, "-name foo\n\n"
+    ec_file:write(VmArgs, "-name foo@127.0.0.1\n\n"
                           "-args_file " ++ VmArgs2 ++ "\n\n"
                           "-setcookie cookie\n"),
     ec_file:write(VmArgs2, ""),
@@ -1794,7 +1831,7 @@ extension_script(Config) ->
                                        proplists:get_value(priv_dir, Config),
                                        ExtensionScript),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(2000),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the extension script output to a file
     {ok, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
