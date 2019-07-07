@@ -316,6 +316,21 @@ relx_disable_hooks() {
     PRE_INSTALL_UPGRADE_HOOKS=""
     POST_INSTALL_UPGRADE_HOOKS=""
     STATUS_HOOK=""
+
+    RELX_HOOKS_DISABLED=1
+}
+
+relx_enable_hooks() {
+    [ ${RELX_HOOKS_DISABLED:-0} -ne 0 ] && return
+    # Strip file extension, and add ".d" suffix
+    HOOKS_DIR=${SCRIPT%%.*}.d
+    [ -z $PRE_START_HOOKS             ] && for f in "$HOOKS_DIR"/pre-start-* ;    do [ -f "$f" ] && . "$f"; done
+    [ -z $POST_START_HOOKS            ] && for f in "$HOOKS_DIR"/post-start-* ;   do [ -f "$f" ] && . "$f"; done
+    [ -z $PRE_STOP_HOOKS              ] && for f in "$HOOKS_DIR"/pre-stop-* ;     do [ -f "$f" ] && . "$f"; done
+    [ -z $POST_STOP_HOOKS             ] && for f in "$HOOKS_DIR"/post-stop-* ;    do [ -f "$f" ] && . "$f"; done
+    [ -z $PRE_INSTALL_UPGRADE_HOOKS   ] && for f in "$HOOKS_DIR"/pre-install-* ;  do [ -f "$f" ] && . "$f"; done
+    [ -z $POST_INSTALL_UPGRADE_HOOKS  ] && for f in "$HOOKS_DIR"/post-install-* ; do [ -f "$f" ] && . "$f"; done
+    return 0
 }
 
 relx_is_extension() {
@@ -504,6 +519,10 @@ test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 cd "$ROOTDIR"
+
+# Source hooks if there is no override and they are not disabled by
+# --relx-disable-hooks
+relx_enable_hooks
 
 # Check the first argument for instructions
 case "$1" in
