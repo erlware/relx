@@ -39,6 +39,8 @@ ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 export ESCRIPT_NAME="${ESCRIPT_NAME-$SCRIPT}"
 
+[ "$OS" = "Windows_NT" ] && IS_WINDOWS=1 || IS_WINDOWS=0
+
 # start/stop/install/upgrade pre/post hooks
 PRE_START_HOOKS="{{{ pre_start_hooks }}}"
 POST_START_HOOKS="{{{ post_start_hooks }}}"
@@ -373,17 +375,31 @@ process_internal_args() {
 process_internal_args $@
 
 find_erts_dir
-export ROOTDIR="$RELEASE_ROOT_DIR"
+
 export BINDIR="$ERTS_DIR/bin"
 export EMU="beam"
 export PROGNAME="erl"
 export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
-ERTS_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
+
+# Make variables available to templates
+if [ $IS_WINDOWS -eq 1 ]; then
+    export ROOTDIR=$(cygpath -m "$RELEASE_ROOT_DIR")
+    export REL_DIR=$(cygpath -m "$REL_DIR")
+    ERTS_LIB_DIR="$(cygpath -m $(dirname "$ERTS_DIR")/lib)"
+else
+    export ROOTDIR="$RELEASE_ROOT_DIR"
+    export REL_DIR
+    ERTS_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
+fi
 
 VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
-
 VMARGS_PATH=$(check_replace_os_vars vm.args $VMARGS_PATH)
 RELX_CONFIG_PATH=$(check_replace_os_vars sys.config $RELX_CONFIG_PATH)
+
+if [ $IS_WINDOWS -eq 1 ]; then
+    RELX_CONFIG_PATH="$(cygpath -m "$RELX_CONFIG_PATH")"
+    VMARGS_PATH="$(cygpath -m "$VMARGS_PATH")"
+fi
 
 # Check vm.args and other files referenced via -args_file parameters for:
 #    - nonexisting -args_files
@@ -504,6 +520,14 @@ test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
 
 cd "$ROOTDIR"
+
+maybe_run_bg() {
+  if [ ${RUN_DETACHED:-0} -gt 0 ]; then
+    "$@" &
+  else
+    exec "$@"
+  fi
+}
 
 # Check the first argument for instructions
 case "$1" in
@@ -657,14 +681,14 @@ case "$1" in
              "versions" "{'$REL_NAME', \"$NAME_TYPE\", '$NAME', '$COOKIE'}" "$@"
         ;;
 
-    console|console_clean|console_boot|foreground)
+    console|wconsole|console_clean|wconsole_clean|console_boot|foreground)
         __code_paths=""
         FOREGROUNDOPTIONS=""
         # .boot file typically just $REL_NAME (ie, the app name)
         # however, for debugging, sometimes start_clean.boot is useful.
         # For e.g. 'setup', one may even want to name another boot script.
         case "$1" in
-            console)
+            *console)
                 if [ -f "$REL_DIR/$REL_NAME.boot" ]; then
                   BOOTFILE="$REL_DIR/$REL_NAME"
                 else
@@ -681,7 +705,7 @@ case "$1" in
                 fi
                 FOREGROUNDOPTIONS="-noshell -noinput +Bd"
                 ;;
-            console_clean)
+            *console_clean)
                 # if not set by user use interactive mode for console_clean
                 CODE_LOADING_MODE="${CODE_LOADING_MODE:-interactive}"
                 BOOTFILE="$ROOTDIR/bin/start_clean"
@@ -703,12 +727,21 @@ case "$1" in
         export EMU
         export PROGNAME
 
+        [ $IS_WINDOWS -eq 1 ] && BOOTFILE="$(cygpath -m "$BOOTFILE")"
+
+        case $1 in
+            w*) ERL_PREFIX="w"; RUN_DETACHED=1;;
+        esac
+
+        [ $IS_WINDOWS -eq 1 ] && EXE="${ERL_PREFIX}erl.exe" || EXE="erlexec"
+
         # Dump environment info for logging purposes
-        echo "Exec: $BINDIR/erlexec" $FOREGROUNDOPTIONS \
+        echo "Exec: $BINDIR/$EXE" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+            -boot_var RELEASE_DIR "$ROOTDIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH" -- "$@"
+            -args_file "$VMARGS_PATH" $ERL_ARGS -- "$@"
         echo "Root: $ROOTDIR"
 
         # Log the startup
@@ -717,11 +750,12 @@ case "$1" in
 
         relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
-        exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
+        maybe_run_bg "$BINDIR/$EXE" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+            -boot_var RELEASE_DIR "$ROOTDIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH" -- "$@"
+            -args_file "$VMARGS_PATH" $ERL_ARGS -- "$@"
         # exec will replace the current image and nothing else gets
         # executed from this point on, this explains the absence
         # of the pre start hook
