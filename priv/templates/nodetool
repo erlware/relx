@@ -22,20 +22,32 @@ main(Args) ->
             halt(1)
     end,
 
+    Timeout =
+        case os:get_env("NODETOOL_TIMEOUT") of
+            false ->
+                60000;
+            StrVal ->
+                try
+                    list_to_integer(StrVal)
+                catch _:_ ->
+                        60000
+                end
+        end,
+
     case RestArgs of
         ["ping"] ->
             %% If we got this far, the node already responsed to a ping, so just dump
             %% a "pong"
             io:format("pong\n");
         ["stop"] ->
-            io:format("~p\n", [rpc:call(TargetNode, init, stop, [], 60000)]);
+            io:format("~p\n", [rpc:call(TargetNode, init, stop, [], Timeout)]);
         ["restart"] ->
-            io:format("~p\n", [rpc:call(TargetNode, init, restart, [], 60000)]);
+            io:format("~p\n", [rpc:call(TargetNode, init, restart, [], Timeout)]);
         ["reboot"] ->
-            io:format("~p\n", [rpc:call(TargetNode, init, reboot, [], 60000)]);
+            io:format("~p\n", [rpc:call(TargetNode, init, reboot, [], Timeout)]);
         ["rpc", Module, Function | RpcArgs] ->
             case rpc:call(TargetNode, list_to_atom(Module), list_to_atom(Function),
-                          [RpcArgs], 60000) of
+                          [RpcArgs], Timeout) of
                 ok ->
                     ok;
                 {badrpc, Reason} ->
@@ -46,7 +58,7 @@ main(Args) ->
             end;
         ["rpcterms", Module, Function | ArgsAsString] ->
             case rpc:call(TargetNode, list_to_atom(Module), list_to_atom(Function),
-                          consult(lists:flatten(ArgsAsString)), 60000) of
+                          consult(lists:flatten(ArgsAsString)), Timeout) of
                 {badrpc, Reason} ->
                     io:format("RPC to ~p failed: ~p\n", [TargetNode, Reason]),
                     halt(1);
