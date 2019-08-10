@@ -23,7 +23,7 @@ main(Args) ->
     end,
 
     Timeout =
-        case os:get_env("NODETOOL_TIMEOUT") of
+        case os:getenv("NODETOOL_TIMEOUT") of
             false ->
                 60000;
             StrVal ->
