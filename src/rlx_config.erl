@@ -191,31 +191,20 @@ load_terms({upfrom, UpFrom}, {ok, State0}) ->
     {ok, rlx_state:upfrom(State0, UpFrom)};
 load_terms({include_src, IncludeSrc}, {ok, State0}) ->
     {ok, rlx_state:include_src(State0, IncludeSrc)};
+load_terms({release, {RelName, Vsn, {extend, {RelName2, Vsn2}}}, Applications}, {ok, State0}) ->
+    NewVsn = parse_vsn(Vsn),
+    NewVsn2 = parse_vsn(Vsn2),
+    add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, State0);
 load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications}, {ok, State0}) ->
     NewVsn = parse_vsn(Vsn),
-    Release0 = rlx_release:new(RelName, NewVsn),
-    ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn),
-    Applications1 = rlx_release:goals(ExtendRelease),
-    case rlx_release:goals(Release0,
-                          rlx_release:merge_application_goals(Applications, Applications1)) of
-        E={error, _} ->
-            E;
-        {ok, Release1} ->
-            {ok, rlx_state:add_configured_release(State0, Release1)}
-        end;
+    add_extended_release(RelName, NewVsn, RelName2, NewVsn, Applications, State0);
+load_terms({release, {RelName, Vsn, {extend, {RelName2, Vsn2}}}, Applications, Config}, {ok, State0}) ->
+    NewVsn = parse_vsn(Vsn),
+    NewVsn2 = parse_vsn(Vsn2),
+    add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, Config, State0);
 load_terms({release, {RelName, Vsn, {extend, RelName2}}, Applications, Config}, {ok, State0}) ->
     NewVsn = parse_vsn(Vsn),
-    Release0 = rlx_release:new(RelName, NewVsn),
-    ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn),
-    Applications1 = rlx_release:goals(ExtendRelease),
-    case rlx_release:goals(Release0,
-                          rlx_release:merge_application_goals(Applications, Applications1)) of
-        E={error, _} ->
-            E;
-        {ok, Release1} ->
-            Release2 = rlx_release:config(Release1, Config),
-            {ok, rlx_state:add_configured_release(State0, Release2)}
-        end;
+    add_extended_release(RelName, NewVsn, RelName2, NewVsn, Applications, Config, State0);
 load_terms({release, {RelName, Vsn}, {erts, ErtsVsn}, Applications}, {ok, State}) ->
     NewVsn = parse_vsn(Vsn),
     Release0 = rlx_release:erts(rlx_release:new(RelName, NewVsn), ErtsVsn),
@@ -413,4 +402,29 @@ git_ref(Arg) ->
                                     "Falling back to version 0", [Dir]),
                     {plain, "0"}
             end
+    end.
+
+add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, State0) ->
+    Release0 = rlx_release:new(RelName, NewVsn),
+    ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn2),
+    Applications1 = rlx_release:goals(ExtendRelease),
+    case rlx_release:goals(Release0,
+                          rlx_release:merge_application_goals(Applications, Applications1)) of
+        E={error, _} ->
+            E;
+        {ok, Release1} ->
+            {ok, rlx_state:add_configured_release(State0, Release1)}
+    end.
+
+add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, Config, State0) ->
+    Release0 = rlx_release:new(RelName, NewVsn),
+    ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn2),
+    Applications1 = rlx_release:goals(ExtendRelease),
+    case rlx_release:goals(Release0,
+                          rlx_release:merge_application_goals(Applications, Applications1)) of
+        E={error, _} ->
+            E;
+        {ok, Release1} ->
+            Release2 = rlx_release:config(Release1, Config),
+            {ok, rlx_state:add_configured_release(State0, Release2)}
     end.
