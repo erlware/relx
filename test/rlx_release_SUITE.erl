@@ -31,6 +31,7 @@
          make_release/1,
          make_config_release/1,
          make_extend_release/1,
+         make_extend_release_versioned/1,
          make_extend_config_release/1,
          make_scriptless_release/1,
          make_overridden_release/1,
@@ -67,7 +68,7 @@
 -include_lib("kernel/include/file.hrl").
 
 suite() ->
-    [{timetrap,{seconds,120}}].
+    [].
 
 init_per_suite(Config) ->
     Config.
@@ -87,6 +88,7 @@ init_per_testcase(_, Config) ->
 all() ->
     [providers, providers_via_api_options, add_providers, add_providers_via_api_options,
      make_release, make_config_release, make_extend_release, make_extend_config_release,
+     make_extend_release_versioned,
      make_scriptless_release, make_overridden_release, make_auto_skip_empty_app_release,
      make_skip_app_release, make_exclude_app_release, make_app_type_none_release,
      make_implicit_config_release, make_rerun_overridden_release, overlay_release,
@@ -371,6 +373,41 @@ make_extend_release(Config) ->
     {ok, State} = relx:do(foo_test, undefined, [], [LibDir1], 3,
                               OutputDir, ConfigFile),
     [{{foo_test, "0.0.1"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:applications(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+make_extend_release_versioned(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.2"},
+                   [goal_app_1,
+                    goal_app_2]},
+                  {release, {foo_test, "0.0.3", {extend, {foo, "0.0.2"}}},
+                  [goal_app_2]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]}]),
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    ?assertMatch({error, {rlx_prv_release, {multiple_release_names,foo,foo_test}}},
+                 catch relx:do(undefined, undefined, [], [LibDir1], 3, OutputDir, ConfigFile)),
+
+    {ok, State} = relx:do(foo_test, undefined, [], [LibDir1], 3,
+                              OutputDir, ConfigFile),
+    [{{foo_test, "0.0.3"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
