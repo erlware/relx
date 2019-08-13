@@ -818,14 +818,18 @@ overlay_release(Config) ->
                     goal_app_2]}]),
 
     VarsFile1 = filename:join([LibDir1, "vars1.config"]),
+    %% tpl_var is defined in vars1, but redifined in vars2 using template.
     rlx_test_utils:write_config(VarsFile1, [{yahoo, "yahoo"},
                                             {yahoo2, [{foo, "bar"}]},
                                             {foo_yahoo, "foo_{{yahoo}}"},
-                                            {foo_dir, "foodir"}]),
+                                            {foo_dir, "foodir"},
+                                            {tpl_var, "defined in vars1"}]),
 
     VarsFile2 = filename:join([LibDir1, "vars2.config"]),
     rlx_test_utils:write_config(VarsFile2, [{google, "yahoo"},
                                             {yahoo2, "foo"},
+                                            {tpl_arg, "a template value"},
+                                            {tpl_var, "Redefined in vars2 with {{tpl_arg}}"},
                                             OverlayVars3]),
 
     VarsFile3 = filename:join([LibDir1, "vars3.config"]),
@@ -894,7 +898,11 @@ overlay_release(Config) ->
     ?assertEqual("val1",
                  proplists:get_value(prop1, TemplateData)),
     ?assertEqual(2,
-                 proplists:get_value(prop2, TemplateData)).
+                 proplists:get_value(prop2, TemplateData)),
+    %% This should be rendered correctly based on VarsFile2 file, regardless
+    %% of tpl_var defined in VarsFile1 or not.
+    ?assertEqual("Redefined in vars2 with a template value",
+                 proplists:get_value(tpl_var, TemplateData)).
 
 make_goalless_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),

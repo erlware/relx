@@ -185,7 +185,8 @@ test_template_contents() ->
         "{foo_yahoo, \"{{foo_yahoo}}\"}.\n"
         "{google, \"{{google}}\"}.\n"
         "{prop1, \"{{prop1}}\"}.\n"
-        "{prop2, {{prop2}}}.\n".
+        "{prop2, {{prop2}}}.\n"
+        "{tpl_var, \"{{tpl_var}}\"}.\n".
 
 escript_contents() ->
     "#!/usr/bin/env escript\n"
