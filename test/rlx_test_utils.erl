@@ -186,7 +186,8 @@ test_template_contents() ->
         "{google, \"{{google}}\"}.\n"
         "{prop1, \"{{prop1}}\"}.\n"
         "{prop2, {{prop2}}}.\n"
-        "{tpl_var, \"{{tpl_var}}\"}.\n".
+        "{tpl_var, \"{{tpl_var}}\"}.\n"
+        "{profile_string_value, \"{{profile_string_value}}\"}.\n".
 
 escript_contents() ->
     "#!/usr/bin/env escript\n"

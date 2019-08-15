@@ -273,7 +273,8 @@ generate_state_vars(State) ->
                                erlang:atom_to_list(Name1);
                            {Name1, Vsn1} ->
                                erlang:atom_to_list(Name1) ++ "-" ++ Vsn1
-                       end}].
+                       end}
+     | rlx_state:api_caller_overlays(State)].
 
 -spec do_overlay(rlx_state:t(), list(), proplists:proplist()) ->
                                    {ok, rlx_state:t()} | relx:error().
