@@ -187,7 +187,7 @@ test_template_contents() ->
         "{prop1, \"{{prop1}}\"}.\n"
         "{prop2, {{prop2}}}.\n"
         "{tpl_var, \"{{tpl_var}}\"}.\n"
-        "{profile_string_value, \"{{profile_string_value}}\"}.\n".
+        "{api_caller_var, \"{{api_caller_var}}\"}.\n".
 
 escript_contents() ->
     "#!/usr/bin/env escript\n"
