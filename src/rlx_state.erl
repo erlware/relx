@@ -105,7 +105,7 @@
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
-                  api_caller_overlays=[] :: [{atom(),string()}],
+                  api_caller_overlays=[] :: [{atom(),term()}],
                   cli_args=[] :: proplists:proplist(),
                   goals=[] :: [rlx_depsolver:raw_constraint()],
                   providers=[] :: [providers:t()],
@@ -274,7 +274,7 @@ config_file(#state_t{config_file=ConfigFiles}) ->
 config_file(State, ConfigFiles) ->
     State#state_t{config_file=ConfigFiles}.
 
--spec api_caller_overlays(t()) -> [{atom(),string()}].
+-spec api_caller_overlays(t()) -> [{atom(),term()}].
 api_caller_overlays(#state_t{api_caller_overlays = ApiCallerOverlays}) ->
     ApiCallerOverlays.
 
