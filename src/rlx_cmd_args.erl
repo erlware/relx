@@ -298,6 +298,9 @@ create(add_providers, Opts) ->
 create(providers, Opts) ->
     Providers = proplists:get_value(providers, Opts, []),
     {providers, Providers};
+create(api_caller_overlays, Opts) ->
+    ApiCallerOverlays = proplists:get_value(api_caller_overlays, Opts, []),
+    {api_caller_overlays, ApiCallerOverlays};
 create(_, _) ->
     [].
 

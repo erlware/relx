@@ -818,12 +818,14 @@ overlay_release(Config) ->
                     goal_app_2]}]),
 
     VarsFile1 = filename:join([LibDir1, "vars1.config"]),
-    %% tpl_var is defined in vars1, but redifined in vars2 using template.
+    %% `tpl_var' is defined in vars1, but redifined in vars2 using template.
+    %% `api_caller_var' is to be injected as an API caller overlay var.
     rlx_test_utils:write_config(VarsFile1, [{yahoo, "yahoo"},
                                             {yahoo2, [{foo, "bar"}]},
                                             {foo_yahoo, "foo_{{yahoo}}"},
                                             {foo_dir, "foodir"},
-                                            {tpl_var, "defined in vars1"}]),
+                                            {tpl_var, "defined in vars1"},
+                                            {api_caller_var, "{{api_caller_var}}"}]),
 
     VarsFile2 = filename:join([LibDir1, "vars2.config"]),
     rlx_test_utils:write_config(VarsFile2, [{google, "yahoo"},
@@ -851,8 +853,25 @@ overlay_release(Config) ->
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
 
-    {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
-                              OutputDir, ConfigFile),
+    ApiCallerVarValue = "api-caller-var",
+    ApiCallerReleaseNameValue = "release-var-conflict",
+    ApiCallerConfigFileValue = "state-var-conflict",
+    ApiCallerYahooValue = "overlays-file-conflict",
+    ApiCallerOverlays =
+        [{api_caller_var, ApiCallerVarValue},
+         {release_name, ApiCallerReleaseNameValue},
+         {config_file, ApiCallerConfigFileValue},
+         {yahoo, ApiCallerYahooValue}],
+
+    {ok, State} = relx:do([{relname, undefined},
+                           {relvsn, undefined},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile},
+                           {api_caller_overlays, ApiCallerOverlays}],
+                          ["release"]),
 
     [{{foo, "0.0.1"}, Release}] = ec_dictionary:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
@@ -889,6 +908,8 @@ overlay_release(Config) ->
                  proplists:get_value(release_version, TemplateData)),
     ?assertEqual(foo,
                  proplists:get_value(release_name, TemplateData)),
+    ?assertMatch(ConfigFile,
+                 proplists:get_value(config_file, TemplateData)),
     ?assertEqual("yahoo/foo4",
                  proplists:get_value(yahoo4, TemplateData)),
     ?assertEqual("foo_yahoo",
@@ -902,7 +923,19 @@ overlay_release(Config) ->
     %% This should be rendered correctly based on VarsFile2 file, regardless
     %% of tpl_var defined in VarsFile1 or not.
     ?assertEqual("Redefined in vars2 with a template value",
-                 proplists:get_value(tpl_var, TemplateData)).
+                 proplists:get_value(tpl_var, TemplateData)),
+
+    ?assertEqual(ApiCallerVarValue,
+                 proplists:get_value(api_caller_var, TemplateData)),
+    % The following complements a few of the assertions above
+    % by ensuring that the values of the overwritten API caller
+    % overlays were distinct from their internal values.
+    ?assertNotEqual(ApiCallerReleaseNameValue,
+                    proplists:get_value(release_name, TemplateData)),
+    ?assertNotEqual(ApiCallerConfigFileValue,
+                    proplists:get_value(config_file, TemplateData)),
+    ?assertNotEqual(ApiCallerYahooValue,
+                    proplists:get_value(yahoo, TemplateData)).
 
 make_goalless_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),

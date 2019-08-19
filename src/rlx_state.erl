@@ -44,6 +44,7 @@
          goals/2,
          config_file/1,
          config_file/2,
+         api_caller_overlays/1,
          cli_args/1,
          cli_args/2,
          providers/1,
@@ -104,6 +105,7 @@
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
+                  api_caller_overlays=[] :: [{atom(),term()}],
                   cli_args=[] :: proplists:proplist(),
                   goals=[] :: [rlx_depsolver:raw_constraint()],
                   providers=[] :: [providers:t()],
@@ -160,8 +162,10 @@ new(Config, CommandLineConfig, Targets)
     Log = proplists:get_value(
             log, CommandLineConfig,
             ec_cmd_log:new(error, Caller, rlx_util:intensity())),
+    ApiCallerOverlays = proplists:get_value(api_caller_overlays, CommandLineConfig, []),
     State0 = #state_t{log=Log,
                       config_file=Config,
+                      api_caller_overlays=ApiCallerOverlays,
                       cli_args=CommandLineConfig,
                       actions=Targets,
                       caller=Caller,
@@ -269,6 +273,10 @@ config_file(#state_t{config_file=ConfigFiles}) ->
 -spec config_file(t(), file:filename() | proplists:proplist() | undefined) -> t().
 config_file(State, ConfigFiles) ->
     State#state_t{config_file=ConfigFiles}.
+
+-spec api_caller_overlays(t()) -> [{atom(),term()}].
+api_caller_overlays(#state_t{api_caller_overlays = ApiCallerOverlays}) ->
+    ApiCallerOverlays.
 
 -spec cli_args(t()) -> proplists:proplist().
 cli_args(#state_t{cli_args=CliArgs}) ->
