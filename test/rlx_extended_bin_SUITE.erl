@@ -40,6 +40,7 @@
          restart/1,
          reboot/1,
          escript/1,
+         os_var_timeouts/1,
          remote_console/1, shortname_remote_console/1,
          replace_os_vars/1,
          replace_os_vars_sys_config_vm_args_src/1,
@@ -391,6 +392,48 @@ escript(Config) ->
                             [filename:join([OutputDir, "foo"])]),
     {ok, Output} = sh(filename:join([OutputDir, "foo", "bin", "foo escript script.erl"])),
     ?assertEqual(ExpectedOutput, Output).
+
+os_var_timeouts(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {generate_start_script, true},
+                  {extended_start_script, true}
+                 ]),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    ok = ec_file:write(filename:join([OutputDir, "foo", "script.erl"]),
+                       [rlx_test_utils:escript_contents()]),
+
+    %% now start/stop the release to make sure the extended script is working
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    timer:sleep(?SLEEP_TIME),
+    ?assertEqual({ok, "ok"}, sh(filename:join([OutputDir, "foo", "bin",
+                                               "foo rpcterms timer sleep 2000."]))),
+    ?assertEqual({ok, "ok"}, sh(filename:join([OutputDir, "foo", "bin",
+                                               "foo rpcterms  timer sleep 2000."]),
+                                [{"NODETOOL_TIMEOUT", "5asdnkajef"}])),
+    {error,1,"RPC to " ++ _Rest} = sh(filename:join([OutputDir, "foo", "bin",
+                                                    "foo rpcterms timer sleep 2000."]),
+                                     [{"NODETOOL_TIMEOUT", "500"}]).
+
+
 
 remote_console(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
