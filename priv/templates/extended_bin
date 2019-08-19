@@ -154,6 +154,7 @@ relx_get_nodename() {
                       -mode interactive \
                       -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
+                      ${START_EPMD} \
                       -noshell ${NAME_TYPE} $id
     else
         # running with setcookie prevents a ~/.erlang.cookie from being created
@@ -162,6 +163,7 @@ relx_get_nodename() {
                       -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
                       -setcookie ${COOKIE} \
+                      ${START_EPMD} \
                       -noshell ${NAME_TYPE} $id
     fi
 }
