@@ -85,21 +85,26 @@ init_per_testcase(_, Config) ->
      {state, State1} | Config].
 
 all() ->
-    [start_sname_in_other_argsfile, start_preserves_arguments, start_nodetool_with_data_from_argsfile,
-     start_upgrade_escript_with_argsfile_data, start_fail_when_no_name, start_fail_when_multiple_names,
-     start_fail_when_missing_argsfile, %% start_fail_when_nonreadable_argsfile,
-     start_fail_when_relative_argsfile, start_fail_when_circular_argsfiles,
-     ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
-     remote_console, shortname_remote_console, replace_os_vars, replace_os_vars_sys_config_vm_args_src, replace_os_vars_multi_node,
-     replace_os_vars_included_config,
-     replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice,
-     custom_start_script_hooks, custom_start_script_hooks_console,
-     builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
-     builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks,
-     builtin_status_script, custom_status_script,
-     extension_script,
-     extension_script_exit_code,
-     extension_script_fail_when_no_exit].
+    case erlang:system_info(otp_release) of
+        "22" ->
+            [start_sname_in_other_argsfile, start_preserves_arguments, start_nodetool_with_data_from_argsfile,
+             start_upgrade_escript_with_argsfile_data, start_fail_when_no_name, start_fail_when_multiple_names,
+             start_fail_when_missing_argsfile, %% start_fail_when_nonreadable_argsfile,
+             start_fail_when_relative_argsfile, start_fail_when_circular_argsfiles,
+             ping, shortname_ping, longname_ping, attach, pid, restart, reboot, escript,
+             remote_console, shortname_remote_console, replace_os_vars, replace_os_vars_sys_config_vm_args_src, replace_os_vars_multi_node,
+             replace_os_vars_included_config,
+             replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice,
+             custom_start_script_hooks, custom_start_script_hooks_console,
+             builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
+             builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks,
+             builtin_status_script, custom_status_script,
+             extension_script,
+             extension_script_exit_code,
+             extension_script_fail_when_no_exit];
+        _ ->
+            []
+    end.
 
 ping(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
