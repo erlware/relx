@@ -1,18 +1,3 @@
-test_task:
-  use_compute_credits: true
-  container:
-    matrix:
-      - image: erlang:22
-      - image: erlang:21
-      - image: erlang:20
-      - image: erlang:19
-      - image: erlang:18
-  test_script: |
-    rebar3 eunit && rebar3 ct
-  always:
-    junit_artifacts:
-      path: "_build/test/logs/ct_run.*/junit_report.xml"
-
 osx_check_task:
   osx_instance:
     image: mojave-base
