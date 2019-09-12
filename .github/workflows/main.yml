@@ -5,11 +5,16 @@ on: [push]
 jobs:
 
   build:
+    name: Test on OTP ${{ matrix.otp_version }} and ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
 
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        otp_version: [22]
+        os: [ubuntu-latest]
 
     container:
-      image: erlang:22.0.7
+      image: erlang:${{ matrix.otp_version }}
 
     steps:
     - uses: actions/checkout@v1
