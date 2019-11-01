@@ -378,6 +378,12 @@ process_internal_args() {
     done
 }
 
+ENV_PATH=$(add_path env)
+
+if [ -f "$ENV_PATH" ]; then
+    eval $(cat $ENV_PATH)
+fi
+
 # process internal arguments
 process_internal_args $@
 

@@ -86,6 +86,9 @@ format_error({unresolved_release, RelName, RelVsn}) ->
 format_error({ec_file_error, AppDir, TargetDir, E}) ->
     io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
                   [AppDir, TargetDir, E]);
+format_error({envfile_does_not_exist, Path}) ->
+    io_lib:format("The env file specified for this release (~s) does not exist!",
+                  [Path]);
 format_error({vmargs_does_not_exist, Path}) ->
     io_lib:format("The vm.args file specified for this release (~s) does not exist!",
                   [Path]);
@@ -443,6 +446,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     end,
     ReleasesDir = filename:join(OutputDir, "releases"),
     generate_start_erl_data_file(Release, ReleasesDir),
+    copy_env_file(State, RelDir),
     copy_or_generate_vmargs_file(State, Release, RelDir),
     case copy_or_generate_sys_config_file(State, RelDir) of
         ok ->
@@ -559,6 +563,24 @@ generate_start_erl_data_file(Release, ReleasesDir) ->
     ReleaseVersion = rlx_release:vsn(Release),
     Data = ErtsVersion ++ " " ++ ReleaseVersion,
     ok = file:write_file(filename:join(ReleasesDir, "start_erl.data"), Data).
+
+%% @doc copy env file to releases/VSN/env
+-spec copy_env_file(rlx_state:t(), file:name()) ->
+                    ok | {ok, rlx_state:t()} | relx:error().
+
+copy_env_file(State, RelDir) ->
+    RelEnvfilePath = filename:join([RelDir, "env"]),
+    case rlx_state:env_file(State) of
+        undefined ->
+            ok;
+        EnvPath ->
+            case filelib:is_regular(EnvPath) of
+                false ->
+                    ?RLX_ERROR({envfile_does_not_exist, EnvPath});
+                true ->
+                    copy_or_symlink_config_file(State, EnvPath, RelEnvfilePath)
+            end
+    end.
 
 %% @doc copy vm.args or generate one to releases/VSN/vm.args
 -spec copy_or_generate_vmargs_file(rlx_state:t(), rlx_release:t(), file:name()) ->
