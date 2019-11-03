@@ -50,6 +50,7 @@
          replace_os_vars_dev_mode/1,
          replace_os_vars_twice/1,
          replace_os_vars_default_env/1,
+         replace_os_vars_default_run_env/1,
          custom_start_script_hooks/1,
          custom_start_script_hooks_console/1,
          builtin_wait_for_vm_start_script_hook/1,
@@ -96,7 +97,7 @@ all() ->
              remote_console, shortname_remote_console, replace_os_vars, replace_os_vars_sys_config_vm_args_src, replace_os_vars_multi_node,
              replace_os_vars_included_config,
              replace_os_vars_custom_location, replace_os_vars_dev_mode, replace_os_vars_twice,
-             replace_os_vars_default_env,
+             replace_os_vars_default_env, replace_os_vars_default_run_env,
              custom_start_script_hooks, custom_start_script_hooks_console,
              builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
              builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks,
@@ -1490,6 +1491,161 @@ replace_os_vars_default_env(Config) ->
                 [{"RELX_REPLACE_OS_VARS", "1"},
                  {"NODENAME", "node1"},
                  {"COOKIE", "cookie1"}]),
+    ok.
+
+replace_os_vars_default_run_env(Config) ->
+    LibDir1 = proplists:get_value(lib1, Config),
+
+    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+
+    ConfigFile = filename:join([LibDir1, "relx.config"]),
+    SysConfigSrc = filename:join([LibDir1, "sys.config.src"]),
+    VmArgs = filename:join([LibDir1, "vm.args.src"]),
+    EnvFile = filename:join([LibDir1, "env"]),
+
+    rlx_test_utils:write_config(ConfigFile,
+                 [{release, {foo, "0.0.1"},
+                   [goal_app]},
+                  {lib_dirs, [filename:join(LibDir1, "*")]},
+                  {sys_config_src, SysConfigSrc},
+                  {vm_args_src, VmArgs},
+                  {generate_start_script, true},
+                  {extended_start_script, true},
+                  {env_file, EnvFile}
+                 ]),
+
+    %% new with sys.config.src it doesn't have to be valid Erlang
+    %% until after var replacemen at runtime.
+    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
+                          "-setcookie ${COOKIE}\n"),
+
+    ec_file:write(SysConfigSrc,"[{goal_app, [{var1, ${VAR1}},
+                                             {var2, \"${VAR2}\"},
+                                             {var3, \"${VAR3}\"},
+                                             {var4, \"${VAR4}\"},
+                                             {var5, \"${VAR5}\"},
+                                             {var6, \"${VAR6}\"},
+                                             {var7, \"${VAR7}\"}
+                                             ]}]."),
+
+    ec_file:write(EnvFile, "export NODENAME=\"${NODENAME:-node1}\"\n"
+                           "export COOKIE=\"${COOKIE:-cookie1}\"\n"
+                           "export VAR1=\"${VAR1:-222}\"\n"
+                           "export VAR2=\"${VAR2:-201:-test2}\"\n"
+                           "export VAR3=\"${VAR3:-VA:-test3}\"\n"
+                           "export VAR4=\"${VAR4:-VAR4:-test4}\"\n"
+                           "export VAR5=\"${VAR5:-test5}\"\n"
+                           "export VAR6=\"${VAR6:-test6:-6}\"\n"
+                           "export VAR7=\"${VAR7:-test7:-7:-7}\"\n"),
+
+    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
+                               rlx_test_utils:create_random_name("relx-output")]),
+
+    {ok, _State} = relx:do([{relname, foo},
+                           {relvsn, "0.0.1"},
+                           {goals, []},
+                           {lib_dirs, [LibDir1]},
+                           {log_level, 3},
+                           {output_dir, OutputDir},
+                           {config, ConfigFile}], ["release"]),
+
+    RunEnv1 = [{"RELX_REPLACE_OS_VARS", "1"}],
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                 RunEnv1),
+    timer:sleep(?SLEEP_TIME),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
+                 RunEnv1),
+
+    {ok, "222"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
+                        RunEnv1),
+    {ok, "\"201:-test2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var2), V.'"]),
+                        RunEnv1),
+    {ok, "\"VA:-test3\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var3), V.'"]),
+                        RunEnv1),
+    {ok, "\"VAR4:-test4\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var4), V.'"]),
+                        RunEnv1),
+    {ok, "\"test5\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var5), V.'"]),
+                        RunEnv1),
+    {ok, "\"test6:-6\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var6), V.'"]),
+                        RunEnv1),
+    {ok, "\"test7:-7:-7\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var7), V.'"]),
+                        RunEnv1),
+    {ok, "\"node1\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                     "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
+                        RunEnv1),
+    {ok, "cookie1"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'erlang:get_cookie().'"]),
+                         RunEnv1),
+    {ok, _Node1} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'atom_to_list(node()).'"]),
+                         RunEnv1),
+    %% check that the replaced files have been created in the right place
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                          "sys.config"]))),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                RunEnv1),
+
+    timer:sleep(?SLEEP_TIME),
+
+    %% start the node again but this time with overriding all default env values
+    RunEnv2 = [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"NODENAME", "node1-2"},
+                  {"COOKIE", "cookie-2"},
+                  {"VAR1", "2222"},
+                  {"VAR2", "201:-test2-2"},
+                  {"VAR3", "VA:-test3-2"},
+                  {"VAR4", "VAR4:-test4-2"},
+                  {"VAR5", "test5-2"},
+                  {"VAR6", "test6:-6-2"},
+                  {"VAR7", "test7:-7:-7-2"}],
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                 RunEnv2),
+    timer:sleep(?SLEEP_TIME),
+    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
+                 RunEnv2),
+
+    {ok, "2222"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var1), V.'"]),
+                        RunEnv2),
+    {ok, "\"201:-test2-2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var2), V.'"]),
+                        RunEnv2),
+    {ok, "\"VA:-test3-2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var3), V.'"]),
+                        RunEnv2),
+    {ok, "\"VAR4:-test4-2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var4), V.'"]),
+                        RunEnv2),
+    {ok, "\"test5-2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var5), V.'"]),
+                        RunEnv2),
+    {ok, "\"test6:-6-2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var6), V.'"]),
+                        RunEnv2),
+    {ok, "\"test7:-7:-7-2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval '{ok, V} = application:get_env(goal_app, var7), V.'"]),
+                        RunEnv2),
+    {ok, "\"node1-2\""} = sh(filename:join([OutputDir, "foo", "bin",
+                                     "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
+                        RunEnv2),
+    {ok, "'cookie-2'"} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'erlang:get_cookie().'"]),
+                         RunEnv2),
+    {ok, _Node2} = sh(filename:join([OutputDir, "foo", "bin",
+                                       "foo eval 'atom_to_list(node()).'"]),
+                         RunEnv2),
+    %% check that the replaced files have been created in the right place
+    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                          "sys.config"]))),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                RunEnv2),
     ok.
 
 custom_start_script_hooks(Config) ->
