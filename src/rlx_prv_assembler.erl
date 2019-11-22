@@ -394,7 +394,11 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     BareRel = filename:join(BinDir, RelName),
     ErlOpts = rlx_state:get(State, erl_opts, ""),
     {OsFamily, _OsName} = rlx_util:os_type(State),
-
+    ScriptType = case rlx_state:get(State, start_script_type, undefined) of
+                     undefined -> OsFamily;
+                     unix      -> unix;
+                     win32     -> win32
+                 end,
     StartFile = case rlx_state:get(State, extended_start_script, false) of
                     false ->
                         case rlx_state:get(State, include_nodetool, false) of
@@ -403,7 +407,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                             false ->
                                 ok
                         end,
-                        bin_file_contents(OsFamily, RelName, RelVsn,
+                        bin_file_contents(ScriptType, RelName, RelVsn,
                                           rlx_release:erts(Release),
                                           ErlOpts);
                     true ->
@@ -418,7 +422,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                         Extensions = rlx_state:get(State,
                                                    extended_start_script_extensions,
                                                    []),
-                        extended_bin_file_contents(OsFamily, RelName, RelVsn,
+                        extended_bin_file_contents(ScriptType, RelName, RelVsn,
                                                    rlx_release:erts(Release), ErlOpts,
                                                    Hooks, Extensions)
                 end,
@@ -428,13 +432,13 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
         false ->
             ok;
         _ ->
-            VsnRelStartFile = case OsFamily of
+            VsnRelStartFile = case ScriptType of
                 unix -> VsnRel;
                 win32 -> rlx_string:concat(VsnRel, ".cmd")
             end,
             ok = file:write_file(VsnRelStartFile, StartFile),
             ok = file:change_mode(VsnRelStartFile, 8#755),
-            BareRelStartFile = case OsFamily of
+            BareRelStartFile = case ScriptType of
                 unix -> BareRel;
                 win32 -> rlx_string:concat(BareRel, ".cmd")
             end,
