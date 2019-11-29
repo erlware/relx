@@ -202,6 +202,19 @@ create(lib_dirs, Opts) ->
             LibDirs = [rlx_util:to_binary(Dir) || Dir <- ExpDirs],
             {lib_dirs, LibDirs}
     end;
+create(preinstalled_lib_dir, Opts) ->
+    Dirs = proplists:get_value(preinstalled_lib_dir, Opts, []),
+    ExpDirs = rlx_util:wildcard_paths(Dirs),
+    case check_lib_dirs(ExpDirs) of
+        Error = {error, _} ->
+            throw(Error);
+        ok ->
+            case ExpDirs of
+                [] -> {preinstalled_lib_dir, undefined};
+                [Dir] -> {preinstalled_lib_dir, Dir};
+                _ -> throw(?RLX_ERROR({max_one_preinstalled_lib_dir, ExpDirs}))
+            end
+    end;
 create(root_dir, Opts) ->
     Dir = proplists:get_value(root_dir, Opts, undefined),
     case Dir of

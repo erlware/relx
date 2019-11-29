@@ -39,7 +39,8 @@
          template_files/0,
          escript_foldl/3,
          intensity/0,
-         symlink_or_copy/2]).
+         symlink_or_copy/2,
+         systool_variables/1]).
 
 -export([os_type/1]).
 
@@ -247,6 +248,13 @@ symlink_or_copy(Source, Target) ->
                     cp_r(Source, Target)
             end
     end.
+
+-spec systool_variables(rlx_state:t()) -> [{string(), string()}].
+systool_variables(State) ->
+    case rlx_state:get(State, preinstalled_lib_dir, undefined) of
+        undefined -> [];
+        PreinstalledLibDir -> [{"PREINSTALLED_LIB_DIR", PreinstalledLibDir}]
+    end,
 
 cp_r(Source, Target) ->
     ec_file:copy(Source, Target, [{recursive, true}, {fileinfo, [mode, time, owner, group]}]).

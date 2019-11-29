@@ -166,16 +166,25 @@ copy_app_directories_to_output(State, Release, OutputDir) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = ec_file:mkdir_p(LibDir),
     IncludeSrc = rlx_state:include_src(State),
-    IncludeErts = rlx_state:get(State, include_erts, true),
+    PreinstalledLibDir = case rlx_state:get(State, preinstalled_lib_dir, undefined) of
+        undefined -> [];
+        Dir -> [Dir]
+    end,
+    DoNotCopyFromDirs = case rlx_state:get(State, include_erts, true) of
+        false -> [code:lib_dir() | PreinstalledLibDir];
+        true -> PreinstalledLibDir
+    end,
     Apps = prepare_applications(State, rlx_release:application_details(Release)),
-    Result = lists:filter(fun({error, _}) ->
-                                  true;
-                             (_) ->
-                                  false
-                          end,
-                         lists:flatten(ec_plists:map(fun(App) ->
-                                                             copy_app(State, LibDir, App, IncludeSrc, IncludeErts)
-                                                     end, Apps))),
+    Result = lists:filter(
+        fun({error, _}) ->
+                true;
+            (_) ->
+                false
+            end,
+            lists:flatten(
+                ec_plists:map(fun(App) ->
+                    copy_app(State, LibDir, App, IncludeSrc, DoNotCopyFromDirs)
+            end, Apps))),
     case Result of
         [E | _] ->
             E;
@@ -191,7 +200,7 @@ prepare_applications(State, Apps) ->
             Apps
     end.
 
-copy_app(State, LibDir, App, IncludeSrc, IncludeErts) ->
+copy_app(State, LibDir, App, IncludeSrc, DoNotCopyFromDirs) ->
     AppName = erlang:atom_to_list(rlx_app_info:name(App)),
     AppVsn = rlx_app_info:original_vsn(App),
     AppDir = rlx_app_info:dir(App),
@@ -202,21 +211,21 @@ copy_app(State, LibDir, App, IncludeSrc, IncludeErts) ->
             %% a release dir
             ok;
         false ->
-            case IncludeErts of
+            case do_not_copy_from_dir(DoNotCopyFromDirs, AppDir) of
                 false ->
-                    case is_erts_lib(AppDir) of
-                        true ->
-                            [];
-                        false ->
-                            copy_app_(State, App, AppDir, TargetDir, IncludeSrc)
-                    end;
-                _ ->
-                    copy_app_(State, App, AppDir, TargetDir, IncludeSrc)
+                    copy_app_(State, App, AppDir, TargetDir, IncludeSrc);
+                true ->
+                    []
             end
     end.
 
-is_erts_lib(Dir) ->
-    lists:prefix(filename:split(list_to_binary(code:lib_dir())), filename:split(Dir)).
+do_not_copy_from_dir(DoNotCopyFromDirs, AppDir) ->
+    lists:any(
+        fun(DoNotCopyFromDir) ->
+            lists:prefix(filename:split(list_to_binary(DoNotCopyFromDir)),
+                         filename:split(AppDir))
+        end,
+        DoNotCopyFromDirs).
 
 copy_app_(State, App, AppDir, TargetDir, IncludeSrc) ->
     remove_symlink_or_directory(TargetDir),
@@ -732,7 +741,10 @@ include_erts(State, Release, OutputDir, RelDir) ->
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) ->
                               {ok, rlx_state:t()} | relx:error().
 make_boot_script(State, Release, OutputDir, RelDir) ->
-    Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
+    Options = [{path, [RelDir
+                       | rlx_util:get_code_paths(Release, OutputDir)]
+                       ++ lists:map(fun erlang:binary_to_list/1,
+                                    rlx_state:lib_dirs(State))},
                {outdir, RelDir},
                {variables, make_boot_script_variables(State)},
                no_module_tests, silent],
@@ -777,11 +789,13 @@ make_boot_script_variables(State) ->
     % usage used in the start up scripts
     case {os:type(), rlx_state:get(State, include_erts, true)} of
         {{win32, _}, false} ->
-            [{"RELEASE_DIR", rlx_state:output_dir(State)}];
+            [{"RELEASE_DIR", rlx_state:output_dir(State)}
+             | rlx_util:systool_variables(State)];
         {{win32, _}, true} ->
-            [];
+            rlx_util:systool_variables(State);
         _ ->
-            [{"ERTS_LIB_DIR", code:lib_dir()}]
+            [{"ERTS_LIB_DIR", code:lib_dir()}
+            | rlx_util:systool_variables(State)]
     end.
 
 create_no_dot_erlang(RelDir, OutputDir, Options, State) ->
