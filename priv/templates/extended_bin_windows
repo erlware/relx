@@ -159,7 +159,8 @@
 @for /f "delims=" %%i in ('where erl') do @(
   set "erl=%%i"
 )
-@for /f "delims=" %%i in ('%erl% -boot no_dot_erlang -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop') do @(
+@set dir_cmd="%erl%" -boot no_dot_erlang -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop
+@for /f "delims=" %%i in ('%%dir_cmd%%') do @(
   set "erl_root=%%i"
 )
 @set "erts_dir=%erl_root%\erts-%erts_vsn%"
