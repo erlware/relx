@@ -154,7 +154,7 @@ find_app(AppName, AppVsn, AppMeta) ->
                                NAppName = rlx_app_info:name(App),
                                NAppVsn = rlx_app_info:vsn(App),
                                AppName == NAppName andalso
-                                   AppVsn == NAppVsn
+                                   lists:flatten(ec_semver:format(AppVsn)) == NAppVsn
                        end, AppMeta) of
         {ok, Head} ->
             Head;

@@ -40,10 +40,8 @@
          new/5,
          name/1,
          name/2,
-         original_vsn/1,
          vsn/1,
          vsn/2,
-         vsn_as_string/1,
          dir/1,
          dir/2,
          active_deps/1,
@@ -56,134 +54,100 @@
          format/2,
          format/1]).
 
--export_type([t/0]).
-
 -include("relx.hrl").
-
--record(app_info_t, {name :: atom(),
-                     original_vsn :: undefined | string(),
-                     vsn :: undefined | ec_semver:semver(),
-                     dir :: undefined | binary(),
-                     link=false :: boolean(),
-                     active_deps=[]:: [atom()],
-                     library_deps=[] :: [atom()]}).
-
-%%============================================================================
-%% types
-%%============================================================================
--opaque t() :: #app_info_t{}.
 
 %%============================================================================
 %% API
 %% ============================================================================
 %% @doc Build a new, empty, app info value. This is not of a lot of use and you
 %% probably wont be doing this much.
--spec new() -> {ok, t()}.
+-spec new() -> {ok, rlx_app:t()}.
 new() ->
-    {ok, #app_info_t{}}.
+    {ok, rlx_app:new()}.
 
 %% @doc build a complete version of the app info with all fields set.
 -spec new(atom(), string(), binary(), [atom()], [atom()]) ->
-                 {ok, t()} | relx:error().
+                 {ok, rlx_app:t()} | relx:error().
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps) ->
     new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, false).
 
 %% @doc build a complete version of the app info with all fields set.
 -spec new(atom(), string(), binary(), [atom()], [atom()], boolean()) ->
-                 {ok, t()} | relx:error().
+                 {ok, rlx_app:t()} | relx:error().
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)
   when erlang:is_atom(AppName),
        erlang:is_list(ActiveDeps),
        erlang:is_list(LibraryDeps) ->
-    case parse_version(Vsn) of
-        {fail, _} ->
-            ?RLX_ERROR({vsn_parse, AppName});
-        ParsedVsn ->
-            {ok, #app_info_t{name=AppName, original_vsn=Vsn,
-                             vsn=ParsedVsn,
-                             dir=Dir,
-                             active_deps=ActiveDeps,
-                             library_deps=LibraryDeps,
-                             link=Link}}
-    end.
+    {ok, rlx_app:new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)}.
 
--spec name(t()) -> atom().
-name(#app_info_t{name=Name}) ->
+-spec name(rlx_app:t()) -> atom().
+name(#{name := Name}) ->
     Name.
 
--spec name(t(), atom()) -> t().
-name(AppInfo=#app_info_t{}, AppName)
+-spec name(rlx_app:t(), atom()) -> rlx_app:t().
+name(AppInfo, AppName)
   when erlang:is_atom(AppName) ->
-    AppInfo#app_info_t{name=AppName}.
+    AppInfo#{name => AppName}.
 
--spec vsn(t()) -> ec_semver:semver().
-vsn(#app_info_t{vsn=Vsn}) ->
+-spec vsn(rlx_app:t()) -> ec_semver:semver().
+vsn(#{vsn := Vsn}) ->
     Vsn.
 
--spec original_vsn(t()) -> string().
-original_vsn(#app_info_t{original_vsn=Vsn}) ->
-    Vsn.
+-spec vsn(rlx_app:t(), string()) -> {ok, rlx_app:t()} | relx:error().
+vsn(AppInfo, Vsn)
+  when erlang:is_list(Vsn) ->
+    {ok, AppInfo#{vsn => Vsn}}.
 
--spec vsn_as_string(t()) -> string().
-vsn_as_string(#app_info_t{vsn=Vsn}) ->
-    erlang:binary_to_list(erlang:iolist_to_binary(ec_semver:format(Vsn))).
-
--spec vsn(t(), string()) -> {ok, t()} | relx:error().
-vsn(AppInfo=#app_info_t{name=AppName}, AppVsn)
-  when erlang:is_list(AppVsn) ->
-    case parse_version(AppVsn) of
-        {fail, _} ->
-            ?RLX_ERROR({vsn_parse, AppName});
-        ParsedVsn ->
-            {ok, AppInfo#app_info_t{vsn=ParsedVsn}}
-    end.
-
--spec dir(t()) -> binary().
-dir(#app_info_t{dir=Dir}) ->
+-spec dir(rlx_app:t()) -> binary().
+dir(#{dir := Dir}) ->
     Dir.
--spec dir(t(), binary()) -> t().
-dir(AppInfo=#app_info_t{}, Dir) ->
-    AppInfo#app_info_t{dir=Dir}.
 
--spec active_deps(t()) -> [atom()].
-active_deps(#app_info_t{active_deps=Deps}) ->
+-spec dir(rlx_app:t(), binary()) -> rlx_app:t().
+dir(AppInfo, Dir) ->
+    AppInfo#{dir => Dir}.
+
+-spec active_deps(rlx_app:t()) -> [atom()].
+active_deps(#{applications := Deps}) ->
     Deps.
--spec active_deps(t(), [atom()]) -> t().
-active_deps(AppInfo=#app_info_t{}, ActiveDeps)
+
+-spec active_deps(rlx_app:t(), [atom()]) -> rlx_app:t().
+active_deps(AppInfo, ActiveDeps)
   when erlang:is_list(ActiveDeps) ->
-    AppInfo#app_info_t{active_deps=ActiveDeps}.
+    AppInfo#{applications => ActiveDeps}.
 
--spec library_deps(t()) -> [atom()].
-library_deps(#app_info_t{library_deps=Deps}) ->
+-spec library_deps(rlx_app:t()) -> [atom()].
+library_deps(#{included_applications := Deps}) ->
     Deps.
 
--spec library_deps(t(), [atom()]) -> t().
-library_deps(AppInfo=#app_info_t{}, LibraryDeps)
+-spec library_deps(rlx_app:t(), [atom()]) -> rlx_app:t().
+library_deps(AppInfo, LibraryDeps)
   when erlang:is_list(LibraryDeps) ->
-    AppInfo#app_info_t{library_deps=LibraryDeps}.
+    AppInfo#{included_applications => LibraryDeps}.
 
--spec link(t()) -> boolean().
-link(#app_info_t{link=Link}) ->
+-spec link(rlx_app:t()) -> boolean().
+link(#{link := Link}) ->
     Link.
 
--spec link(t(), boolean()) -> t().
+-spec link(rlx_app:t(), boolean()) -> rlx_app:t().
 link(AppInfo, NewLink) ->
-    AppInfo#app_info_t{link=NewLink}.
+    AppInfo#{link => NewLink}.
 
 -spec format_error(Reason::term()) -> iolist().
-format_error({vsn_parse, AppName}) ->
-    io_lib:format("Error parsing version for ~p",
-                  [AppName]).
+format_error(Error) ->
+    io_lib:format("~p", [Error]).
 
--spec format(t()) -> iolist().
+-spec format(rlx_app:t()) -> iolist().
 format(AppInfo) ->
     format(0, AppInfo).
 
--spec format(non_neg_integer(), t()) -> iolist().
-format(Indent, #app_info_t{name=Name, vsn=Vsn, dir=Dir,
-                           active_deps=Deps, library_deps=LibDeps,
-                           link=Link}) ->
-    [rlx_util:indent(Indent), erlang:atom_to_list(Name), "-", ec_semver:format(Vsn),
+-spec format(non_neg_integer(), rlx_app:t()) -> iolist().
+format(Indent, #{name := Name,
+                 vsn := Vsn,
+                 dir := Dir,
+                 applications := Deps,
+                 included_applications := LibDeps,
+                 link := Link}) ->
+    [rlx_util:indent(Indent), erlang:atom_to_list(Name), "-", Vsn,
      ": ", Dir, "\n",
      rlx_util:indent(Indent + 1), "Symlink: ", erlang:atom_to_list(Link), "\n",
      rlx_util:indent(Indent + 1), "Active Dependencies:\n",
@@ -191,11 +155,3 @@ format(Indent, #app_info_t{name=Name, vsn=Vsn, dir=Dir,
      rlx_util:indent(Indent + 1), "Library Dependencies:\n",
      [[rlx_util:indent(Indent + 2), erlang:atom_to_list(LibDep), ",\n"] || LibDep <- LibDeps]].
 
-%%%===================================================================
-%%% Internal Functions
-%%%===================================================================
-parse_version(Vsn)
-  when erlang:is_list(Vsn) ->
-    ec_semver:parse(Vsn);
-parse_version(Vsn = {_, {_, _}}) ->
-    Vsn.

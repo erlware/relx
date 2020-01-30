@@ -193,7 +193,7 @@ prepare_applications(State, Apps) ->
 
 copy_app(State, LibDir, App, IncludeSrc, IncludeErts) ->
     AppName = erlang:atom_to_list(rlx_app_info:name(App)),
-    AppVsn = rlx_app_info:original_vsn(App),
+    AppVsn = rlx_app_info:vsn(App),
     AppDir = rlx_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
     case AppDir == ec_cnv:to_binary(TargetDir) of
@@ -738,10 +738,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
                no_module_tests, silent],
     Name = erlang:atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
-    case rlx_util:make_script(Options,
-                    fun(CorrectedOptions) ->
-                            systools:make_script(Name, CorrectedOptions)
-                    end) of
+    case systools:make_script(Name, [no_warn_sasl | Options]) of
         ok ->
             ec_cmd_log:info(rlx_state:log(State),
                              "release successfully created!"),
@@ -791,10 +788,7 @@ create_start_clean(RelDir, OutputDir, Options, State) ->
     create_boot_file(RelDir, OutputDir, Options, State, "start_clean").
 
 create_boot_file(RelDir, OutputDir, Options, State, Name) ->
-    case rlx_util:make_script(Options,
-                         fun(CorrectedOptions) ->
-                                 systools:make_script(Name, CorrectedOptions)
-                         end) of
+    case systools:make_script(Name, [no_warn_sasl | Options]) of
         ok ->
             ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
                               filename:join([OutputDir, "bin", Name++".boot"]),
