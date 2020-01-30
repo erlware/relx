@@ -90,8 +90,7 @@
                           | {application_constraint(), app_type() | incl_apps()}
                           | {application_constraint(), app_type(), incl_apps() | void}.
 
--type annotations() ::  ec_dictionary:dictionary(app_name(),
-                                                 {app_type(), incl_apps() | void}).
+-type annotations() ::  #{app_name() => {app_type(), incl_apps() | void}}.
 
 
 -opaque t() :: #release_t{}.
@@ -103,7 +102,7 @@
 new(ReleaseName, ReleaseVsn, Relfile) ->
     #release_t{name=to_atom(ReleaseName), vsn=ReleaseVsn,
                relfile = Relfile,
-               annotations=ec_dictionary:new(ec_dict)}.
+               annotations=#{}}.
 
 -spec new(atom(), string()) -> t().
 new(ReleaseName, ReleaseVsn) ->
@@ -312,17 +311,17 @@ create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
         end,
     BaseAnnots =
         try
-            case ec_dictionary:get(AppName, Annots) of
+            case maps:get(AppName, Annots) of
                 {void, Incld} ->
                     {TypeAnnot, Incld};
                 Else ->
                     Else
             end
         catch
-            throw:not_found ->
+            error:{badkey, _} ->
                 {TypeAnnot, void}
         end,
-    Vsn = rlx_app_info:original_vsn(App),
+    Vsn = rlx_app_info:vsn(App),
     case BaseAnnots of
         {void, void} ->
             {AppName, Vsn};
@@ -343,7 +342,7 @@ get_app_info({PkgName, PkgVsn}, World) ->
     {ok, WorldEl} =
         ec_lists:find(fun(El) ->
                               rlx_app_info:name(El) =:= PkgName andalso
-                                  rlx_app_info:vsn(El) =:= PkgVsn
+                                  rlx_app_info:vsn(El) =:= lists:flatten(ec_semver:format(PkgVsn))
                       end, World),
     WorldEl.
 
@@ -399,7 +398,7 @@ parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
             E1;
         AppName ->
             {ok,
-             Release#release_t{annotations=ec_dictionary:add(AppName, NewAnnots, Annots),
+             Release#release_t{annotations=Annots#{AppName => NewAnnots},
                                goals = Goals++[Constraint]}}
     end.
 
@@ -463,7 +462,7 @@ get_goal_app_name(Constraint) ->
 -spec application_goal(rlx_depsolver:raw_constraint(), annotations()) -> application_goal().
 application_goal(Constraint, Annots) ->
     AppName = get_app_name(Constraint),
-    try ec_dictionary:get(AppName, Annots) of
+    try maps:get(AppName, Annots) of
         {void, void} ->
             Constraint;
         {void, Incls} ->
@@ -473,7 +472,7 @@ application_goal(Constraint, Annots) ->
         {Type, Incls} ->
             {Constraint, Type, Incls}
     catch
-        throw:not_found ->
+        error:{badkey, _} ->
             Constraint
     end.
 
