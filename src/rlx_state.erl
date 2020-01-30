@@ -110,7 +110,8 @@
                   goals=[] :: [rlx_depsolver:raw_constraint()],
                   providers=[] :: [providers:t()],
                   available_apps=[] :: [rlx_app_info:t()],
-                  default_configured_release :: {rlx_release:name() | undefined, rlx_release:vsn() |undefined} | undefined,
+                  default_configured_release :: {rlx_release:name() | undefined,
+                                                 rlx_release:vsn() |undefined} | undefined,
                   vm_args :: file:filename() | false | undefined,
                   vm_args_src :: file:filename() | undefined,
                   sys_config :: file:filename() | false | undefined,
@@ -125,17 +126,14 @@
                   dev_mode=false :: boolean(),
                   include_src=true :: boolean(),
                   upfrom :: string() | binary() | undefined,
-                  config_values :: ec_dictionary:dictionary(Key::atom(),
-                                                            Value::term()),
+                  config_values :: #{atom() => term()},
                   warnings_as_errors=false :: boolean()}).
 
 %%============================================================================
 %% types
 %%============================================================================
 
--type releases() :: ec_dictionary:dictionary({rlx_release:name(),
-                                              rlx_release:vsn()},
-                                             rlx_release:t()).
+-type releases() :: #{{rlx_release:name(), rlx_release:vsn()} => rlx_release:t()}.
 -type cmd_args() :: proplists:proplist().
 -type caller() :: command_line | api.
 -type action() :: atom().
@@ -173,9 +171,9 @@ new(Config, CommandLineConfig, Targets)
                       output_dir=filename:join(Root, "_rel"),
                       providers=[],
                       default_configured_release=undefined,
-                      configured_releases=ec_dictionary:new(ec_dict),
-                      realized_releases=ec_dictionary:new(ec_dict),
-                      config_values=ec_dictionary:new(ec_dict)},
+                      configured_releases=#{},
+                      realized_releases=#{},
+                      config_values=#{}},
     State1 = rlx_state:put(State0, default_libs, true),
     State2 = rlx_state:put(State1, system_libs, true),
     State3 = rlx_state:put(State2, overlay_vars, []),
@@ -340,14 +338,12 @@ add_provider(M=#state_t{providers=Providers}, Provider) ->
 
 -spec add_configured_release(t(), rlx_release:t()) -> t().
 add_configured_release(M=#state_t{configured_releases=Releases}, Release) ->
-    M#state_t{configured_releases=ec_dictionary:add({rlx_release:name(Release),
-                                          rlx_release:vsn(Release)},
-                                         Release,
-                                         Releases)}.
+    M#state_t{configured_releases=Releases#{{rlx_release:name(Release),
+                                             rlx_release:vsn(Release)} => Release}}.
 
 -spec get_configured_release(t(), rlx_release:name(), rlx_release:vsn()) -> rlx_release:t().
 get_configured_release(#state_t{configured_releases=Releases}, Name, Vsn) ->
-    ec_dictionary:get({Name, Vsn}, Releases).
+    maps:get({Name, Vsn}, Releases).
 
 -spec configured_releases(t()) -> releases().
 configured_releases(#state_t{configured_releases=Releases}) ->
@@ -363,21 +359,18 @@ realized_releases(State, Releases) ->
 
 -spec add_realized_release(t(), rlx_release:t()) -> t().
 add_realized_release(State = #state_t{realized_releases=Releases}, Release) ->
-    NewReleases = ec_dictionary:add({rlx_release:name(Release), rlx_release:vsn(Release)},
-                                    Release, Releases),
+    NewReleases = Releases#{{rlx_release:name(Release), rlx_release:vsn(Release)} => Release},
     State#state_t{realized_releases=NewReleases}.
 
 -spec get_realized_release(t(), rlx_release:name(), rlx_release:vsn()) -> rlx_release:t().
 get_realized_release(#state_t{realized_releases=Releases}, Name, Vsn) ->
-    ec_dictionary:get({Name, Vsn}, Releases).
+    maps:get({Name, Vsn}, Releases).
 
 -spec update_realized_release(t(), rlx_release:t()) ->
      t().
 update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
-    M#state_t{realized_releases=ec_dictionary:add({rlx_release:name(Release),
-                                                   rlx_release:vsn(Release)},
-                                                  Release,
-                                                  Releases)}.
+    M#state_t{realized_releases=Releases#{{rlx_release:name(Release),
+                                           rlx_release:vsn(Release)} => Release}}.
 
 -spec default_configured_release(t()) -> {rlx_release:name() | undefined,
                                          rlx_release:vsn() | undefined} | default.
@@ -399,22 +392,17 @@ available_apps(M, NewApps) ->
 -spec get(t(), atom()) -> term().
 get(#state_t{config_values=Config}, Key)
   when erlang:is_atom(Key) ->
-    ec_dictionary:get(Key, Config).
+    maps:get(Key, Config).
 
 -spec get(t(), atom(), DefaultValue::term()) -> term().
 get(#state_t{config_values=Config}, Key, DefaultValue)
   when erlang:is_atom(Key) ->
-  try
-      ec_dictionary:get(Key, Config)
-  catch
-      throw:not_found ->
-          DefaultValue
-  end.
+    maps:get(Key, Config, DefaultValue).
 
 -spec put(t(), atom(), term()) ->t().
 put(M=#state_t{config_values=Config}, Key, Value)
   when erlang:is_atom(Key) ->
-    M#state_t{config_values=ec_dictionary:add(Key, Value, Config)}.
+    M#state_t{config_values=Config#{Key => Value}}.
 
 -spec caller(t()) -> caller().
 caller(#state_t{caller=Caller}) ->
@@ -458,7 +446,7 @@ format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
                 goals=Goals, config_file=ConfigFile,
                 providers=Providers},
        Indent) ->
-    Values1 = ec_dictionary:to_list(Values0),
+    Values1 = maps:to_list(Values0),
     [rlx_util:indent(Indent),
      <<"state(">>, erlang:atom_to_list(Caller), <<"):\n">>,
      rlx_util:indent(Indent + 2), <<"log: ">>, ec_cmd_log:format(LogState), <<",\n">>,
