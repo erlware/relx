@@ -118,7 +118,7 @@ find_default_release(State, DepGraph) ->
 resolve_default_release(State0, DepGraph) ->
     %% Here we will just get the highest versioned release and run that.
     case lists:sort(fun release_sort/2,
-                    ec_dictionary:to_list(rlx_state:configured_releases(State0))) of
+                    maps:to_list(rlx_state:configured_releases(State0))) of
         [{{RelName, RelVsn}, _} | _] ->
             State1 = rlx_state:default_configured_release(State0, RelName, RelVsn),
             solve_release(State1, DepGraph, RelName, RelVsn);
@@ -128,7 +128,7 @@ resolve_default_release(State0, DepGraph) ->
 
 resolve_default_version(State0, DepGraph, RelName) ->
     %% Here we will just get the lastest version and run that.
-    AllReleases = ec_dictionary:to_list(rlx_state:configured_releases(State0)),
+    AllReleases = maps:to_list(rlx_state:configured_releases(State0)),
     SpecificReleases = [Rel || Rel={{PossibleRelName, _}, _} <- AllReleases,
                                PossibleRelName =:= RelName],
     case lists:sort(fun release_sort/2, SpecificReleases) of
@@ -167,7 +167,7 @@ solve_release(State0, DepGraph, RelName, RelVsn) ->
 
         %% get per release config values and override the State with them
         Config = rlx_release:config(Release),
-        {ok, State1} = lists:foldl(fun rlx_config:load_terms/2, {ok, State0}, Config),
+        {ok, State1} = lists:foldl(fun rlx_config_terms:load/2, {ok, State0}, Config),
         Goals = rlx_release:constraints(Release),
         GlobalGoals = rlx_state:goals(State1),
         MergedGoals = rlx_release:merge_application_goals(Goals, GlobalGoals),
@@ -218,7 +218,7 @@ get_realized_release(State, RelName, RelVsn) ->
         Release = rlx_state:get_realized_release(State, RelName, RelVsn),
         {ok, Release}
     catch
-        throw:not_found ->
+        error:{badkey, _} ->
             undefined
     end.
 
