@@ -66,7 +66,6 @@ Options
 | -r    | --root       | string  | ./      | Sets the root of the project |
 | -n    | --relname    | string  |         | Name for the release that will be generated |
 | -v    | --relvsn     | string  |         | Version for the release |
-| -g    | --goal       | string  |         | A goal for the system. These are usually the OTP apps that are part of the release |
 | -u    | --upfrom     | string  |         | The release to upgrade from. Only valid with relup target |
 | -o    | --output-dir | string  | ./      | The output directory for the release |
 | -l    | --lib-dir    | string  |         | Additional dirs to search for OTP apps |
@@ -81,7 +80,6 @@ Options
 |       | --sys_config     | string  |  | Path to a file to use for sys.config |
 | -d    | --dev-mode     | boolean | false | Symlink all applications and configuration into the release instead of copying|
 | -i    | --include-erts | boolean/string | true | If true include a copy of erts used to build with, if a path include erts at that path. If false, do not include erts |
-|       | --provider     | string         |      | Specify an additional relx provider |
 
 Wiki
 ----
