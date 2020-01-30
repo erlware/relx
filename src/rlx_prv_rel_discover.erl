@@ -62,10 +62,10 @@ format_error(_) ->
 %%% Internal Functions
 %%%===================================================================
 %% @doc only add the release if its not documented in the system
-add(Rel, Dict) ->
+add(Rel, Map) ->
     RelName = rlx_release:name(Rel),
     RelVsn = rlx_release:vsn(Rel),
-    Dict#{{RelName, RelVsn} => Rel}.
+    Map#{{RelName, RelVsn} => Rel}.
 
 get_lib_dirs(State) ->
     LibDirs0 = rlx_state:lib_dirs(State),
