@@ -17,49 +17,7 @@
 %%%-------------------------------------------------------------------
 -module(rlx_extended_bin_SUITE).
 
--export([suite/0,
-         init_per_suite/1,
-         end_per_suite/1,
-         init_per_testcase/2,
-         all/0,
-         start_sname_in_other_argsfile/1,
-         start_preserves_arguments/1,
-         start_nodetool_with_data_from_argsfile/1,
-         start_upgrade_escript_with_argsfile_data/1,
-         start_fail_when_no_name/1,
-         start_fail_when_multiple_names/1,
-         start_fail_when_missing_argsfile/1,
-         start_fail_when_nonreadable_argsfile/1,
-         start_fail_when_relative_argsfile/1,
-         start_fail_when_circular_argsfiles/1,
-         ping/1,
-         shortname_ping/1,
-         longname_ping/1,
-         attach/1,
-         pid/1,
-         restart/1,
-         reboot/1,
-         escript/1,
-         os_var_timeouts/1,
-         remote_console/1, shortname_remote_console/1,
-         replace_os_vars/1,
-         replace_os_vars_sys_config_vm_args_src/1,
-         replace_os_vars_multi_node/1,
-         replace_os_vars_included_config/1,
-         replace_os_vars_custom_location/1,
-         replace_os_vars_dev_mode/1,
-         replace_os_vars_twice/1,
-         replace_os_vars_default_env/1,
-         custom_start_script_hooks/1,
-         custom_start_script_hooks_console/1,
-         builtin_wait_for_vm_start_script_hook/1,
-         builtin_pid_start_script_hook/1,
-         builtin_wait_for_process_start_script_hook/1,
-         mixed_custom_and_builtin_start_script_hooks/1,
-         builtin_status_script/1, custom_status_script/1,
-         extension_script/1,
-         extension_script_exit_code/1,
-         extension_script_fail_when_no_exit/1]).
+-compile([export_all]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
@@ -126,7 +84,6 @@ ping(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -165,7 +122,7 @@ shortname_ping(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -204,7 +161,7 @@ longname_ping(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -237,7 +194,7 @@ attach(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -271,7 +228,7 @@ pid(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -304,7 +261,7 @@ restart(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -342,7 +299,7 @@ reboot(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -382,7 +339,7 @@ escript(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -419,7 +376,7 @@ os_var_timeouts(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -461,7 +418,7 @@ remote_console(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -503,7 +460,7 @@ shortname_remote_console(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -551,7 +508,7 @@ replace_os_vars(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -666,7 +623,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -779,7 +736,7 @@ replace_os_vars_multi_node(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -924,7 +881,7 @@ replace_os_vars_included_config(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -1037,7 +994,7 @@ replace_os_vars_custom_location(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -1164,7 +1121,7 @@ replace_os_vars_twice(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                             {relvsn, "0.0.1"},
-                            {goals, []},
+
                             {lib_dirs, [LibDir1]},
                             {log_level, 3},
                             {output_dir, OutputDir},
@@ -1237,7 +1194,7 @@ replace_os_vars_dev_mode(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -1359,7 +1316,7 @@ replace_os_vars_default_env(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -1852,12 +1809,11 @@ start_sname_in_other_argsfile(Config) ->
                                rlx_test_utils:create_random_name("relx-output")]),
 
     {ok, _State} = relx:do([{relname, foo},
-                           {relvsn, "0.0.1"},
-                           {goals, []},
-                           {lib_dirs, [LibDir1]},
-                           {log_level, 3},
-                           {output_dir, OutputDir},
-                           {config, ConfigFile}], ["release"]),
+                            {relvsn, "0.0.1"},
+                            {lib_dirs, [LibDir1]},
+                            {log_level, 3},
+                            {output_dir, OutputDir},
+                            {config, ConfigFile}], ["release"]),
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
@@ -1886,12 +1842,11 @@ start_preserves_arguments(Config) ->
     OutputDir = filename:join([PrivDir, rlx_test_utils:create_random_name("relx-output")]),
 
     {ok, _State} = relx:do([{relname, foo},
-                           {relvsn, "0.0.1"},
-                           {goals, []},
-                           {lib_dirs, [LibDir1]},
-                           {log_level, 3},
-                           {output_dir, OutputDir},
-                           {config, ConfigFile}], ["release"]),
+                            {relvsn, "0.0.1"},
+                            {lib_dirs, [LibDir1]},
+                            {log_level, 3},
+                            {output_dir, OutputDir},
+                            {config, ConfigFile}], ["release"]),
 
     %% now start/stop the release to make sure the extended script is working
     %% and preserving the "tricky" argument that contains a string with a space
@@ -1936,7 +1891,6 @@ start_nodetool_with_data_from_argsfile(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -1976,7 +1930,7 @@ start_upgrade_escript_with_argsfile_data(Config) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
+
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
@@ -2110,7 +2064,6 @@ start_fail_with_vmargs(Config, VmArgs, ExpectedCode) ->
 
     {ok, _State} = relx:do([{relname, foo},
                            {relvsn, "0.0.1"},
-                           {goals, []},
                            {lib_dirs, [LibDir1]},
                            {log_level, 3},
                            {output_dir, OutputDir},
