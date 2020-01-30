@@ -194,10 +194,10 @@ set_resolved(State, Release0, Pkgs) ->
                             "Resolved ~p-~s~n",
                             [rlx_release:name(Release1),
                              rlx_release:vsn(Release1)]),
-            ec_cmd_log:debug(rlx_state:log(State),
-                             fun() ->
-                                     rlx_release:format(0, Release1)
-                             end),
+            %% ec_cmd_log:debug(rlx_state:log(State),
+            %%                  fun() ->
+            %%                          rlx_release:format(0, Release1)
+            %%                  end),
             case rlx_state:get(State, include_erts, undefined) of
                 IncludeErts when is_atom(IncludeErts) ->
                     {ok, rlx_state:add_realized_release(State, Release1)};

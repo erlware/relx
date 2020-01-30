@@ -323,6 +323,8 @@ create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
         end,
     Vsn = rlx_app_info:vsn(App),
     case BaseAnnots of
+        Incld0=[H|_] when is_atom(H) ->
+            {AppName, Vsn, Incld0};
         {void, void} ->
             {AppName, Vsn};
         {Type, void} ->
@@ -330,7 +332,15 @@ create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
         {void, Incld0} ->
             {AppName, Vsn, Incld0};
         {Type, Incld1} ->
-            {AppName, Vsn, Type, Incld1}
+            {AppName, Vsn, Type, Incld1};
+        Type when  Type =:= permanent;
+                   Type =:= transient;
+                   Type =:= temporary;
+                   Type =:= load;
+                   Type =:= none ->
+            {AppName, Vsn, Type};
+        _ ->
+            {AppName, Vsn}
     end.
 
 -spec subset_world([{app_name(), app_vsn()}], [rlx_app_info:t()]) -> [rlx_app_info:t()].
@@ -346,53 +356,18 @@ get_app_info({PkgName, PkgVsn}, World) ->
                       end, World),
     WorldEl.
 
-parse_goal0({Constraint0, Annots}, {ok, Release})
-  when Annots =:= permanent;
-       Annots =:= transient;
-       Annots =:= temporary;
-       Annots =:= load;
-       Annots =:= none ->
-    case parse_constraint(Constraint0) of
-        {ok, Constraint1} ->
-            parse_goal1(Release, Constraint1, {Annots, void});
-        Error  ->
-            Error
+parse_goal0(Constraint, {ok, Release=#release_t{annotations=Annots,
+                                           goals=Goals}}) when is_atom(Constraint) ->
+    case get_app_name(Constraint) of
+        E1 = {error, _} ->
+            E1;
+        AppName ->
+            {ok,
+             Release#release_t{annotations=Annots#{AppName => {void, void}},
+                               goals = Goals++[Constraint]}}
     end;
-parse_goal0({Constraint0, Annots, Incls}, {ok, Release})
-  when (Annots =:= permanent orelse
-            Annots =:= transient orelse
-            Annots =:= temporary orelse
-            Annots =:= load orelse
-            Annots =:= none),
-       erlang:is_list(Incls) ->
-    case parse_constraint(Constraint0) of
-        {ok, Constraint1} ->
-            parse_goal1(Release, Constraint1, {Annots, Incls});
-        Error  ->
-            Error
-    end;
-parse_goal0({Constraint0, Incls}, {ok, Release})
-  when erlang:is_list(Incls), Incls == [] orelse is_atom(hd(Incls)) ->
-    case parse_constraint(Constraint0) of
-        {ok, Constraint1} ->
-            parse_goal1(Release, Constraint1, {void, Incls});
-        Error  ->
-            Error
-    end;
-parse_goal0(Constraint0, {ok, Release}) ->
-    case parse_constraint(Constraint0) of
-        {ok, Constraint1} ->
-            parse_goal1(Release, Constraint1, {void, void});
-        Error  ->
-            Error
-    end;
-parse_goal0(_, E = {error, _}) ->
-    E;
-parse_goal0(Constraint, _) ->
-    ?RLX_ERROR({invalid_constraint, 1, Constraint}).
-
-parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
-            Constraint, NewAnnots) ->
+parse_goal0({Constraint, NewAnnots}, {ok, Release=#release_t{annotations=Annots,
+                                                             goals=Goals}}) ->
     case get_app_name(Constraint) of
         E1 = {error, _} ->
             E1;
@@ -401,28 +376,6 @@ parse_goal1(Release = #release_t{annotations=Annots,  goals=Goals},
              Release#release_t{annotations=Annots#{AppName => NewAnnots},
                                goals = Goals++[Constraint]}}
     end.
-
--spec parse_constraint(application_constraint()) ->
-                              rlx_depsolver:constraint() | relx:error().
-parse_constraint(Constraint0)
-  when erlang:is_list(Constraint0); erlang:is_binary(Constraint0) ->
-    case rlx_goal:parse(Constraint0) of
-        {fail, _} ->
-            ?RLX_ERROR({failed_to_parse, Constraint0});
-        {ok, Constraint1} ->
-            {ok, Constraint1}
-    end;
-parse_constraint(Constraint0)
-  when erlang:is_tuple(Constraint0);
-       erlang:is_atom(Constraint0) ->
-    case rlx_depsolver:is_valid_raw_constraint(Constraint0) of
-        false ->
-            ?RLX_ERROR({invalid_constraint, 2, Constraint0});
-        true ->
-            {ok, Constraint0}
-    end;
-parse_constraint(Constraint) ->
-    ?RLX_ERROR({invalid_constraint, 3, Constraint}).
 
 -spec get_app_name(rlx_depsolver:raw_constraint()) ->
                           AppName::atom() | relx:error().
