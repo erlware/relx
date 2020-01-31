@@ -46,8 +46,7 @@ init(State) ->
 %% looking for OTP Applications
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State) ->
-    DepGraph = create_dep_graph(State),
-    find_default_release(State, DepGraph).
+    find_default_release(State).
 
 -spec format_error(ErrorDetail::term()) -> iolist().
 format_error(no_goals_specified) ->
@@ -78,35 +77,19 @@ format_error({release_error, Error}) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
--spec create_dep_graph(rlx_state:t()) -> rlx_depsolver:t().
-create_dep_graph(State) ->
-    Apps = rlx_state:available_apps(State),
-    Graph0 = rlx_depsolver:new_graph(),
-    lists:foldl(fun(App, Graph1) ->
-                        AppName = rlx_app_info:name(App),
-                        AppVsn = rlx_app_info:vsn(App),
-                        Deps = rlx_app_info:active_deps(App) ++
-                            rlx_app_info:library_deps(App),
-                        rlx_depsolver:add_package_version(Graph1,
-                                                          AppName,
-                                                          AppVsn,
-                                                          Deps)
-                end, Graph0, Apps).
 
-
--spec find_default_release(rlx_state:t(), rlx_depsolver:t()) ->
-                                  {ok, rlx_state:t()} | relx:error().
-find_default_release(State, DepGraph) ->
+-spec find_default_release(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
+find_default_release(State) ->
     try
         case rlx_state:default_configured_release(State) of
             {undefined, undefined} ->
-                resolve_default_release(State, DepGraph);
+                resolve_default_release(State);
             {RelName, undefined} ->
-                resolve_default_version(State, DepGraph, RelName);
+                resolve_default_version(State, RelName);
             {undefined, Vsn} ->
                 ?RLX_ERROR({no_release_name, Vsn});
             {RelName, RelVsn} ->
-                solve_release(State, DepGraph, RelName, RelVsn);
+                solve_release(State, RelName, RelVsn);
             undefined ->
                 ?RLX_ERROR(no_releases_in_system)
         end
@@ -115,18 +98,18 @@ find_default_release(State, DepGraph) ->
             ?RLX_ERROR(Error)
     end.
 
-resolve_default_release(State0, DepGraph) ->
+resolve_default_release(State0) ->
     %% Here we will just get the highest versioned release and run that.
     case lists:sort(fun release_sort/2,
                     maps:to_list(rlx_state:configured_releases(State0))) of
         [{{RelName, RelVsn}, _} | _] ->
             State1 = rlx_state:default_configured_release(State0, RelName, RelVsn),
-            solve_release(State1, DepGraph, RelName, RelVsn);
+            solve_release(State1, RelName, RelVsn);
         [] ->
             ?RLX_ERROR(no_releases_in_system)
     end.
 
-resolve_default_version(State0, DepGraph, RelName) ->
+resolve_default_version(State0, RelName) ->
     %% Here we will just get the lastest version and run that.
     AllReleases = maps:to_list(rlx_state:configured_releases(State0)),
     SpecificReleases = [Rel || Rel={{PossibleRelName, _}, _} <- AllReleases,
@@ -134,7 +117,7 @@ resolve_default_version(State0, DepGraph, RelName) ->
     case lists:sort(fun release_sort/2, SpecificReleases) of
         [{{RelName, RelVsn}, _} | _] ->
             State1 = rlx_state:default_configured_release(State0, RelName, RelVsn),
-            solve_release(State1, DepGraph, RelName, RelVsn);
+            solve_release(State1, RelName, RelVsn);
         [] ->
             ?RLX_ERROR({no_releases_for, RelName})
     end.
@@ -152,43 +135,83 @@ release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
     %% and return
     erlang:throw({multiple_release_names, RelA, RelB}).
 
-solve_release(State0, DepGraph, RelName, RelVsn) ->
+solve_release(State0, RelName, RelVsn) ->
     ec_cmd_log:debug(rlx_state:log(State0),
                      "Solving Release ~p-~s~n",
                      [RelName, RelVsn]),
+    AllApps = rlx_state:available_apps(State0),
     try
         Release =
             case get_realized_release(State0, RelName, RelVsn) of
                 undefined ->
                     rlx_state:get_configured_release(State0, RelName, RelVsn);
                 {ok, Release0} ->
-                    rlx_release:relfile(rlx_state:get_configured_release(State0, RelName, RelVsn), rlx_release:relfile(Release0))
+                    rlx_release:relfile(rlx_state:get_configured_release(State0, RelName, RelVsn),
+                                        rlx_release:relfile(Release0))
             end,
 
         %% get per release config values and override the State with them
         Config = rlx_release:config(Release),
         {ok, State1} = lists:foldl(fun rlx_config_terms:load/2, {ok, State0}, Config),
-        Goals = rlx_release:constraints(Release),
-        GlobalGoals = rlx_state:goals(State1),
-        MergedGoals = rlx_release:merge_application_goals(Goals, GlobalGoals),
-        case MergedGoals of
+        Goals = rlx_release:goals(Release),
+        case Goals of
             [] ->
                 ?RLX_ERROR(no_goals_specified);
             _ ->
-                case rlx_depsolver:solve(DepGraph, MergedGoals) of
-                    {ok, Pkgs} ->
-                        set_resolved(State1, Release, Pkgs);
-                    {error, Error} ->
-                        ?RLX_ERROR({failed_solve, Error})
-                end
+                Pkgs = subset(maps:to_list(Goals), AllApps),
+                set_resolved(State1, Release, Pkgs)
         end
     catch
         throw:not_found ->
             ?RLX_ERROR({release_not_found, {RelName, RelVsn}})
     end.
 
+subset(Apps, World) ->
+    subset(Apps, World, sets:new(), []).
+
+subset([], _World, _Seen, Acc) ->
+    Acc;
+subset([Goal | Rest], World, Seen, Acc) ->
+    {Name, Vsn} = name_version(Goal),
+    case sets:is_element(Name, Seen) of
+        true ->
+            subset(Rest, World, Seen, Acc);
+        _ ->
+            AppInfo=#{applications := Applications,
+                      included_applications := IncludedApplications} =
+                case ec_lists:find(fun(App) ->
+                                           case Vsn of
+                                               undefined ->
+                                                   rlx_app_info:name(App) =:= Name;
+                                                _ ->
+                                                   rlx_app_info:name(App) =:= Name
+                                                       andalso rlx_app_info:vsn(App) =:= Vsn
+                                           end
+                                   end, World) of
+                          {ok, A} ->
+                              A;
+                          error ->
+                              throw({error, {notfound, Name}})
+                              %% TODO: Support overriding the dirs to search
+                              %% precedence: apps > deps > erl_libs > system
+                              %% Dir = code:lib_dir(Name),
+                              %% case rebar_app_discover:find_app(Dir, valid) of
+                              %%     {true, A} ->
+                              %%         A;
+                              %%     _ ->
+                              %%         throw({app_not_found, Name})
+                              %% end
+                      end,
+
+            subset(Rest ++ Applications ++ IncludedApplications,
+                   World,
+                   sets:add_element(Name, Seen),
+                   Acc ++ [AppInfo])
+    end.
+
+
 set_resolved(State, Release0, Pkgs) ->
-    case rlx_release:realize(Release0, Pkgs, rlx_state:available_apps(State)) of
+    case rlx_release:realize(Release0, Pkgs) of
         {ok, Release1} ->
             ec_cmd_log:info(rlx_state:log(State),
                             "Resolved ~p-~s~n",
@@ -222,6 +245,7 @@ get_realized_release(State, RelName, RelVsn) ->
             undefined
     end.
 
-%%%===================================================================
-%%% Test Functions
-%%%===================================================================
+name_version(Name) when is_atom(Name) ->
+    {Name, undefined};
+name_version({Name, #{vsn := Vsn}}) ->
+    {Name, Vsn}.

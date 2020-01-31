@@ -20,8 +20,8 @@
 %%% @doc
 -module(relx).
 
--export([build_release/3,
-         build_relup/3]).
+%% -export([build_release/3,
+%%          build_relup/3]).
 
 -export([main/1,
          main/2,
@@ -43,22 +43,22 @@
 -type error() :: {error, {Module::module(), Reason::term()}}.
 -type goal() :: string() | binary() | rlx_depsolver:constraint().
 
--type release() :: #{name := atom(),
-                     vsn := string(),
-                     applications := list(),
-                     relfile_path := file:filename_all() | undefined}.
+%% -type release() :: #{name := atom(),
+%%                      vsn := string(),
+%%                      applications := list(),
+%%                      relfile_path := file:filename_all() | undefined}.
 
 %%============================================================================
 %% API
 %%============================================================================
 
--spec build_release(release(), [rlx_app:t()], rlx_config:t()) -> ok | {error, term()}.
-build_release(Release, Apps, Config) ->
-    ok.
+%% -spec build_release(release(), [rlx_app:t()], rlx_config:t()) -> ok | {error, term()}.
+%% build_release(Release, Apps, Config) ->
+%%     ok.
 
--spec build_relup(release(), release(), [rlx_app:t()], rlx_config:t()) -> ok | {error, term()}.
-build_relup(Release1, Release2, Apps, Config) ->
-    ok.
+%% -spec build_relup(release(), release(), [rlx_app:t()], rlx_config:t()) -> ok | {error, term()}.
+%% build_relup(Release1, Release2, Apps, Config) ->
+%%     ok.
 
 -spec main([string()]) -> ok | error() | {ok, rlx_state:t()}.
 main(Args) ->
