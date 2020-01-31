@@ -43,23 +43,23 @@ init_per_testcase(_, Config) ->
     [{lib1, LibDir1},
      {state, State1} | Config].
 
-%% all() ->
-%%     [make_config_release].
-
 all() ->
-    [providers,
-     make_release, make_extend_release, make_extend_config_release,
-     make_extend_release_versioned,
-     make_scriptless_release, make_overridden_release, make_auto_skip_empty_app_release,
-     make_skip_app_release, make_exclude_app_release, make_app_type_none_release,
-     make_implicit_config_release, make_rerun_overridden_release, overlay_release,
-     make_goalless_release, make_depfree_release, make_invalid_config_release,
-     make_relup_release, make_relup_release2, make_one_app_top_level_release,
-     make_dev_mode_release, make_dev_mode_template_release, make_config_script_release,
-     make_release_twice, make_release_twice_dev_mode, make_erts_release,
-     make_erts_config_release, make_included_nodetool_release,
-     make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
-     make_exclude_modules_release, make_release_with_sys_config_vm_args_src].
+    [make_config_release].
+
+%% all() ->
+%%     [providers,
+%%      make_release, make_extend_release, make_extend_config_release,
+%%      make_extend_release_versioned,
+%%      make_scriptless_release, make_overridden_release, make_auto_skip_empty_app_release,
+%%      make_skip_app_release, make_exclude_app_release, make_app_type_none_release,
+%%      make_implicit_config_release, make_rerun_overridden_release, overlay_release,
+%%      make_goalless_release, make_depfree_release, make_invalid_config_release,
+%%      make_relup_release, make_relup_release2, make_one_app_top_level_release,
+%%      make_dev_mode_release, make_dev_mode_template_release, make_config_script_release,
+%%      make_release_twice, make_release_twice_dev_mode, make_erts_release,
+%%      make_erts_config_release, make_included_nodetool_release,
+%%      make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
+%%      make_exclude_modules_release, make_release_with_sys_config_vm_args_src].
 
 providers(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
@@ -156,24 +156,33 @@ make_config_release(Config) ->
 
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     C = [{release, {foo, "0.0.1"},
-               [goal_app_1,
-                goal_app_2],
-               [{some, config1}]},
-              {release, {foo, "0.0.2"},
-               [goal_app_1,
-                goal_app_2],
-               [{some, config2}]}],
+          [goal_app_1,
+           goal_app_2],
+          [{some, config1}]},
+         {release, {foo, "0.0.2"},
+          [goal_app_1,
+           goal_app_2],
+          [{some, config2}]},
+         {lib_dirs, [LibDir1]},
+         {default_release, {foo, "0.0.2"}}],
     rlx_test_utils:write_config(ConfigFile, C),
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
 
-    S = rlx_state:new([{output_dir, OutputDir} | C], [release]),
-    {ok, Release} = rlx_resolve:release(foo, "0.0.2", [goal_app_1, goal_app_2], [], S),
+    S0 = rlx_state:new([{output_dir, OutputDir} | C], [release]),
+    {ok, S} = rlx_config_terms:to_state(C, S0),
+
+    %% TODO: this needs to go
+    Ds = [list_to_binary(Dir) || Dir <- rlx_util:wildcard_paths([LibDir1 | code:get_path()])],
+    {ok, Apps} = rlx_app_discovery:do(S, Ds),
+
+    {ok, S1} = rlx_prv_release:do(rlx_state:available_apps(S, Apps)),
+    {ok, State} = rlx_prv_assembler:do(S1),
     %% rlx_assemble:release(Release, #{}, S),
 
     %% {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
     %%                           OutputDir, ConfigFile),
-    %% [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
