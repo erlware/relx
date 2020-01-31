@@ -41,7 +41,7 @@ init_per_testcase(_, Config) ->
     [{lib1, LibDir1} | Config].
 
 all() ->
-    [make_config_release, make_dev_mode_template_release].
+    [make_config_release, make_dev_mode_template_release, overlay_release].
 
 %% all() ->
 %%     [providers,
@@ -613,7 +613,6 @@ overlay_release(Config) ->
     rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
-    ConfigFile = filename:join([LibDir1, "relx.config"]),
     OverlayVars1 = filename:join([LibDir1, "vars1.config"]),
     OverlayVars2 = filename:join([LibDir1, "vars2.config"]),
     OverlayVars3 = filename:join([LibDir1, "vars3.config"]),
@@ -624,9 +623,8 @@ overlay_release(Config) ->
     TestDirFull = filename:join([LibDir1, TestDir]),
     TestFileFull = filename:join(TestDirFull, TestFile),
     SecondTestDir = "second_test_dir",
-    rlx_test_utils:write_config(ConfigFile,
-                  [{overlay_vars, [{var_list_dir, "non-file-variable-list"},
-                                   OverlayVars1, OverlayVars2, OverlayVars4]},
+    RelxConfig = [{overlay_vars, [{var_list_dir, "non-file-variable-list"},
+                                  OverlayVars1, OverlayVars2, OverlayVars4]},
                   {overlay, [{mkdir, "{{target_dir}}/fooo"},
                              {mkdir, "{{target_dir}}/{{var_list_dir}}"},
                              {copy, OverlayVars1,
@@ -639,12 +637,12 @@ overlay_release(Config) ->
                               "{{target_dir}}/"++SecondTestDir++"/"},
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"},
-                            {template, Template,
+                             {template, Template,
                               "bin/{{default_release_name}}-{{default_release_version}}"},
-                            {copy, "{{erts_dir}}/bin/erl", "bin/copy.erl"}]},
+                             {copy, "{{erts_dir}}/bin/erl", "bin/copy.erl"}]},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}]),
+                    goal_app_2]}],
 
     VarsFile1 = filename:join([LibDir1, "vars1.config"]),
     %% `tpl_var' is defined in vars1, but redifined in vars2 using template.
@@ -689,18 +687,14 @@ overlay_release(Config) ->
     ApiCallerOverlays =
         [{api_caller_var, ApiCallerVarValue},
          {release_name, ApiCallerReleaseNameValue},
-         {config_file, ApiCallerConfigFileValue},
          {yahoo, ApiCallerYahooValue}],
 
-    {ok, State} = relx:do([{relname, undefined},
-                           {relvsn, undefined},
-                           {goals, []},
-                           {lib_dirs, [LibDir1]},
-                           {log_level, 3},
-                           {output_dir, OutputDir},
-                           {config, ConfigFile},
-                           {api_caller_overlays, ApiCallerOverlays}],
-                          ["release"]),
+    Dirs = [list_to_binary(Dir) || Dir <- rlx_util:wildcard_paths([LibDir1 | code:get_path()])],
+    Apps = rlx_test_utils:resolve_app_metadata(Dirs),
+
+    {ok, State} = relx:build_release(#{}, Apps, [{root_dir, LibDir1},
+                                                 {overlay_vars_values, ApiCallerOverlays},
+                                                 {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
@@ -737,8 +731,6 @@ overlay_release(Config) ->
                  proplists:get_value(release_version, TemplateData)),
     ?assertEqual(foo,
                  proplists:get_value(release_name, TemplateData)),
-    ?assertMatch(ConfigFile,
-                 proplists:get_value(config_file, TemplateData)),
     ?assertEqual("yahoo/foo4",
                  proplists:get_value(yahoo4, TemplateData)),
     ?assertEqual("foo_yahoo",
