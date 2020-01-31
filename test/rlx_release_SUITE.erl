@@ -44,8 +44,7 @@ all() ->
     [make_config_release, make_dev_mode_template_release, overlay_release].
 
 %% all() ->
-%%     [providers,
-%%      make_release, make_extend_release, make_extend_config_release,
+%%     [make_release, make_extend_release, make_extend_config_release,
 %%      make_extend_release_versioned,
 %%      make_scriptless_release, make_overridden_release, make_auto_skip_empty_app_release,
 %%      make_skip_app_release, make_exclude_app_release, make_app_type_none_release,
@@ -57,43 +56,6 @@ all() ->
 %%      make_erts_config_release, make_included_nodetool_release,
 %%      make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
 %%      make_exclude_modules_release, make_release_with_sys_config_vm_args_src].
-
-providers(Config) ->
-    LibDir1 = proplists:get_value(lib1, Config),
-
-    [(fun({Name, Vsn}) ->
-              rlx_test_utils:create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
-      end)(App)
-    ||
-        App <-
-            [{rlx_test_utils:create_random_name("lib_app1_"), rlx_test_utils:create_random_vsn()}
-            || _ <- lists:seq(1, 100)]],
-
-    rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
-    rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
-    rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
-    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
-    rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
-
-    ConfigFile = filename:join([LibDir1, "relx.config"]),
-    rlx_test_utils:write_config(ConfigFile,
-                 [{release, {foo, "0.0.1"},
-                   [goal_app_1,
-                    goal_app_2]},
-                  {providers, [rlx_prv_app_discover]}]),
-    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
-                               rlx_test_utils:create_random_name("relx-output")]),
-    {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
-                              OutputDir, ConfigFile),
-    [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
-    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
-    ?assert(lists:keymember(kernel, 1, AppSpecs)),
-    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
-    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
-    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
-    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
-    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),

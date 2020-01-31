@@ -1,25 +1,10 @@
 -module(rlx_assemble).
 
 -export([do/2,
-         release/3]).
+         release/3,
+         format_error/1]).
 
 -include("relx.hrl").
-
--spec release(rlx_resolve:t(), [rlx_app:t()], term()) -> ok.
-release(Release, _World, _Opts) ->
-    RelDir = "/tmp/relx4",
-
-    {ok, RelMeta} = rlx_resolve:metadata(Release),
-    ok = ec_file:write_term(filename:join(RelDir, "relname1.rel"), RelMeta),
-
-    Options = [{outdir, RelDir},
-               {path, [RelDir]}%% ,
-               %% exref
-               %% silent
-              ],
-
-    R = systools:make_script("relname1", Options),
-    io:format("R ~p~n", [R]).
 
 do(Release, State) ->
     OutputDir = rlx_state:output_dir(State),
@@ -808,3 +793,60 @@ render(Template, Data) ->
     Tpl = rlx_util:load_file(Files, escript, atom_to_list(Template)),
     {ok, Content} = rlx_util:render(Tpl, Data),
     Content.
+
+%%
+
+-spec format_error(ErrorDetail::term()) -> iolist().
+format_error({unresolved_release, RelName, RelVsn}) ->
+    io_lib:format("The release has not been resolved ~p-~s", [RelName, RelVsn]);
+format_error({ec_file_error, AppDir, TargetDir, E}) ->
+    io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
+                  [AppDir, TargetDir, E]);
+format_error({vmargs_does_not_exist, Path}) ->
+    io_lib:format("The vm.args file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({vmargs_src_does_not_exist, Path}) ->
+    io_lib:format("The vm.args.src file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({config_does_not_exist, Path}) ->
+    io_lib:format("The sys.config file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({config_src_does_not_exist, Path}) ->
+    io_lib:format("The sys.config.src file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({sys_config_parse_error, ConfigPath, Reason}) ->
+    io_lib:format("The config file (~s) specified for this release could not be opened or parsed: ~s",
+                  [ConfigPath, file:format_error(Reason)]);
+format_error({specified_erts_does_not_exist, ErtsVersion}) ->
+    io_lib:format("Specified version of erts (~s) does not exist",
+                  [ErtsVersion]);
+format_error({release_script_generation_error, RelFile}) ->
+    io_lib:format("Unknown internal release error generating the release file to ~s",
+                  [RelFile]);
+format_error({release_script_generation_warning, Module, Warnings}) ->
+    ["Warnings generating release \s",
+     rlx_util:indent(2), Module:format_warning(Warnings)];
+format_error({unable_to_create_output_dir, OutputDir}) ->
+    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
+                  [OutputDir]);
+format_error({release_script_generation_error, Module, Errors}) ->
+    ["Errors generating release \n",
+     rlx_util:indent(2), Module:format_error(Errors)];
+format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
+    io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
+                  [AppDir, TargetDir, rlx_util:indent(2),
+                   file:format_error(Reason)]);
+format_error(boot_script_generation_error) ->
+    "Unknown internal release error generating start_clean.boot";
+format_error({boot_script_generation_warning, Module, Warnings}) ->
+    ["Warnings generating start_clean.boot \s",
+     rlx_util:indent(2), Module:format_warning(Warnings)];
+format_error({boot_script_generation_error, Module, Errors}) ->
+    ["Errors generating start_clean.boot \n",
+     rlx_util:indent(2), Module:format_error(Errors)];
+format_error({strip_release, Reason}) ->
+    io_lib:format("Stripping debug info from release beam files failed becuase ~s",
+                  [beam_lib:format_error(Reason)]);
+format_error({rewrite_app_file, AppFile, Error}) ->
+    io_lib:format("Unable to rewrite .app file ~s due to ~p",
+                  [AppFile, Error]).
