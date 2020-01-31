@@ -149,6 +149,7 @@ make_config_release(Config) ->
             || _ <- lists:seq(1, 100)]],
 
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.2", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
@@ -160,7 +161,7 @@ make_config_release(Config) ->
            goal_app_2],
           [{some, config1}]},
          {release, {foo, "0.0.2"},
-          [goal_app_1,
+          [{goal_app_1, "0.0.2"},
            goal_app_2],
           [{some, config2}]},
          {lib_dirs, [LibDir1]},
@@ -188,7 +189,7 @@ make_config_release(Config) ->
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
-    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.2"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
     ?assertEqual([{some, config2}], rlx_release:config(Release)).

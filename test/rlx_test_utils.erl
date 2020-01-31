@@ -196,14 +196,8 @@ escript_contents() ->
     "io:format(\"~s\n\",\n"
     "    [os:getenv(\"RELEASE_ROOT_DIR\")]).\n".
 
--ifdef(rand_module).
 random_uniform(N) ->
     rand:uniform(N).
--else.
-random_uniform(N) ->
-    random:seed(os:timestamp()),
-    random:uniform(N).
--endif.
 
 list_to_term(String) ->
     {ok, T, _} = erl_scan:string(String++"."),
