@@ -175,7 +175,7 @@ make_config_release(Config) ->
 
     %% TODO: this needs to go
     Ds = [list_to_binary(Dir) || Dir <- rlx_util:wildcard_paths([LibDir1 | code:get_path()])],
-    {ok, Apps} = rlx_app_discovery:do(S, Ds),
+    Apps = rlx_test_utils:resolve_app_metadata(Ds),
 
     {ok, S1} = rlx_prv_release:do(rlx_state:available_apps(S, Apps)),
     {ok, State} = rlx_prv_assembler:do(S1),
