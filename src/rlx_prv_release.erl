@@ -91,7 +91,7 @@ find_default_release(State) ->
             {RelName, RelVsn} ->
                 solve_release(State, RelName, RelVsn);
             undefined ->
-                ?RLX_ERROR(no_releases_in_system)
+                resolve_default_release(State)
         end
     catch
         throw:{multiple_release_names, _, _}=Error ->

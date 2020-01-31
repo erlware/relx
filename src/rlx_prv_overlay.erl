@@ -152,15 +152,14 @@ get_overlay_vars_from_file(State, OverlayVars) ->
 -spec read_overlay_vars(rlx_state:t(), proplists:proplist(), [file:name()]) ->
                                proplists:proplist() | relx:error().
 read_overlay_vars(State, OverlayVars, FileNames) ->
-    ApiCallerVars = rlx_state:api_caller_overlays(State),
     Terms = merge_overlay_vars(State, FileNames),
-    case render_overlay_vars(OverlayVars ++ ApiCallerVars, Terms, []) of
+    case render_overlay_vars(OverlayVars, Terms, []) of
         {ok, NewTerms} ->
             % We place `ApiCallerVars' at the end on purpose; their
             % definitions should be overwrittenable by both internal
             % and rendered vars, as not to change behaviour in
             % setups preceding the support for API caller overlays.
-            OverlayVars ++ NewTerms ++ ApiCallerVars;
+            OverlayVars ++ NewTerms;
         Error ->
             Error
     end.
@@ -252,16 +251,12 @@ generate_release_vars(Release) ->
 
 -spec generate_state_vars(rlx_state:t()) -> proplists:proplist().
 generate_state_vars(State) ->
-    [{log, ec_cmd_log:format(rlx_state:log(State))},
+    [%% {log, ec_cmd_log:format(rlx_state:log(State))},
      {output_dir, rlx_state:output_dir(State)},
      {target_dir, rlx_state:output_dir(State)},
      {overridden, [AppName || {AppName, _} <- rlx_state:overrides(State)]},
      {overrides, rlx_state:overrides(State)},
-     {goals, [rlx_depsolver:format_constraint(Constraint) ||
-                 Constraint <- rlx_state:goals(State)]},
      {lib_dirs, rlx_state:lib_dirs(State)},
-     {config_file, rlx_state:config_file(State)},
-     {providers, rlx_state:providers(State)},
      {vm_args, rlx_state:vm_args(State)},
      {sys_config, rlx_state:sys_config(State)},
      {root_dir, rlx_state:root_dir(State)},
@@ -426,17 +421,7 @@ make_link(FromFile, ToFile) ->
     file:make_symlink(FromFile, ToFile).
 
 get_relative_root(State) ->
-    case rlx_state:config_file(State) of
-        [] ->
-            rlx_state:root_dir(State);
-        Config ->
-            case filelib:is_regular(Config) of
-                true ->
-                    filename:dirname(Config);
-                false ->
-                    rlx_state:root_dir(State)
-            end
-    end.
+    rlx_state:root_dir(State).
 
 absolute_path_from(State, Path) ->
     absolutize(State, filename:join(get_relative_root(State), Path)).
