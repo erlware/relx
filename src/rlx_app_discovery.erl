@@ -102,6 +102,7 @@ resolve_app_metadata(State, LibDirs) ->
                    false ->
                        lists:flatten(rlx_dscv_util:do(fun discover_dir/2, LibDirs))
                end,
+
     case [case Err of
               {error, Ret} ->
                   Ret
@@ -121,7 +122,7 @@ resolve_app_metadata(State, LibDirs) ->
             ExcludeApps = rlx_state:exclude_apps(State),
             AppMeta1 = [rm_exclude_apps(App, ExcludeApps) ||
                            {ok, App} <- setup_overrides(State, AppMeta0),
-                               not lists:keymember(rlx_app_info:name(App), 1, SkipApps++ExcludeApps)],
+                           not lists:keymember(rlx_app_info:name(App), 1, SkipApps++ExcludeApps)],
             ec_cmd_log:debug(rlx_state:log(State),
                              fun() ->
                                      ["Resolved the following OTP Applications from the system: \n",

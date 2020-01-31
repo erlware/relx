@@ -29,6 +29,12 @@
 
 -include("relx.hrl").
 
+%% TODO: fill in with typespec for all available config values
+-type config() :: term().
+-type t() :: [config()].
+
+-export_type([t/0]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
