@@ -23,10 +23,8 @@
 %%% have a more mutable api.
 -module(rlx_state).
 
--export([new/2,
-         new/3,
+-export([new/0,
          log/1,
-         actions/1,
          output_dir/1,
          base_output_dir/1,
          base_output_dir/2,
@@ -40,19 +38,6 @@
          exclude_apps/2,
          debug_info/1,
          debug_info/2,
-         goals/1,
-         goals/2,
-         config_file/1,
-         config_file/2,
-         api_caller_overlays/1,
-         cli_args/1,
-         cli_args/2,
-         providers/1,
-         providers/2,
-         add_provider/2,
-         prepend_hook/3,
-         append_hook/3,
-         hooks/2,
          vm_args/1,
          vm_args/2,
          vm_args_src/1,
@@ -78,8 +63,6 @@
          get/2,
          get/3,
          put/3,
-         caller/1,
-         caller/2,
          dev_mode/1,
          dev_mode/2,
          include_src/1,
@@ -94,21 +77,12 @@
          warnings_as_errors/2]).
 
 -export_type([t/0,
-             releases/0,
-             cmd_args/0,
-             action/0]).
+              releases/0]).
 
--record(state_t, {log :: ec_cmd_log:t(),
-                  root_dir :: file:name(),
-                  caller :: caller(),
-                  actions=[] :: [action()],
+-record(state_t, {root_dir :: file:name(),
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
-                  api_caller_overlays=[] :: [{atom(),term()}],
-                  cli_args=[] :: proplists:proplist(),
-                  goals=[] :: [rlx_depsolver:raw_constraint()],
-                  providers=[] :: [providers:t()],
                   available_apps=[] :: [rlx_app_info:t()],
                   default_configured_release :: {rlx_release:name() | undefined,
                                                  rlx_release:vsn() |undefined} | undefined,
@@ -134,56 +108,26 @@
 %%============================================================================
 
 -type releases() :: #{{rlx_release:name(), rlx_release:vsn()} => rlx_release:t()}.
--type cmd_args() :: proplists:proplist().
--type caller() :: command_line | api.
--type action() :: atom().
-
 -opaque t() :: #state_t{}.
 
 %%============================================================================
 %% API
 %%============================================================================
 
--spec new(string(), undefined | [atom()]) -> t() | relx:error().
-new(Config, Targets) ->
-    new(Config, [], Targets).
-
--spec new(string(), proplists:proplist(), undefined | [atom()]) -> t() | relx:error().
-new(Config, CommandLineConfig, undefined) ->
-    new(Config, CommandLineConfig, [release]);
-new(Config, CommandLineConfig, Targets)
-  when erlang:is_list(CommandLineConfig),
-     erlang:is_list(Targets) ->
+new() ->
     {ok, Root} = file:get_cwd(),
-
-    Caller = proplists:get_value(caller, CommandLineConfig, api),
-    Log = proplists:get_value(
-            log, CommandLineConfig,
-            ec_cmd_log:new(error, Caller, rlx_util:intensity())),
-    ApiCallerOverlays = proplists:get_value(api_caller_overlays, CommandLineConfig, []),
-    State0 = #state_t{log=Log,
-                      config_file=Config,
-                      api_caller_overlays=ApiCallerOverlays,
-                      cli_args=CommandLineConfig,
-                      actions=Targets,
-                      caller=Caller,
-                      root_dir=Root,
+    State0 = #state_t{root_dir=Root,
                       output_dir=filename:join(Root, "_rel"),
-                      providers=[],
-                      default_configured_release=undefined,
+                      default_configured_release={undefined, undefined},
                       configured_releases=#{},
                       realized_releases=#{},
                       config_values=#{}},
     State1 = rlx_state:put(State0, default_libs, true),
     State2 = rlx_state:put(State1, system_libs, true),
-    State3 = rlx_state:put(State2, overlay_vars, []),
+    rlx_state:put(State2, overlay_vars, []).
 
-    create_logic_providers(State3).
-
-%% @doc the actions targeted for this system
--spec actions(t()) -> [action()].
-actions(#state_t{actions=Actions}) ->
-    Actions.
+log(_) ->
+    debug.
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
@@ -230,11 +174,6 @@ debug_info(#state_t{debug_info=DebugInfo}) ->
 debug_info(State, DebugInfo) ->
     State#state_t{debug_info=DebugInfo}.
 
-%% @doc get the current log state for the system
--spec log(t()) -> ec_cmd_log:t().
-log(#state_t{log=LogState}) ->
-    LogState.
-
 -spec output_dir(t()) -> file:name().
 output_dir(State=#state_t{output_dir=OutDir}) ->
     {RelName, _RelVsn} = default_configured_release(State),
@@ -255,38 +194,6 @@ lib_dirs(#state_t{lib_dirs=LibDir}) ->
 -spec add_lib_dirs(t(), [file:name()]) -> t().
 add_lib_dirs(State=#state_t{lib_dirs=LibDir}, Dirs) ->
     State#state_t{lib_dirs=lists:umerge(lists:sort(LibDir), lists:sort(Dirs))}.
-
--spec goals(t()) -> [rlx_depsolver:raw_constraint()].
-goals(#state_t{goals=TS}) ->
-    TS.
-
--spec goals(t(), [rlx_depsolver:raw_constraint()]) -> t().
-goals(State, Goals) ->
-    State#state_t{goals=Goals}.
-
--spec config_file(t()) -> file:filename() | proplists:proplist() | undefined.
-config_file(#state_t{config_file=ConfigFiles}) ->
-    ConfigFiles.
-
--spec config_file(t(), file:filename() | proplists:proplist() | undefined) -> t().
-config_file(State, ConfigFiles) ->
-    State#state_t{config_file=ConfigFiles}.
-
--spec api_caller_overlays(t()) -> [{atom(),term()}].
-api_caller_overlays(#state_t{api_caller_overlays = ApiCallerOverlays}) ->
-    ApiCallerOverlays.
-
--spec cli_args(t()) -> proplists:proplist().
-cli_args(#state_t{cli_args=CliArgs}) ->
-    CliArgs.
-
--spec cli_args(t(), proplists:proplist()) -> t().
-cli_args(State, CliArgs) ->
-    State#state_t{cli_args=CliArgs}.
-
--spec providers(t()) -> [providers:t()].
-providers(#state_t{providers=Providers}) ->
-    Providers.
 
 -spec vm_args(t()) -> file:filename() | false | undefined.
 vm_args(#state_t{vm_args=VmArgs}) ->
@@ -327,14 +234,6 @@ root_dir(#state_t{root_dir=RootDir}) ->
 -spec root_dir(t(), file:filename()) -> t().
 root_dir(State, RootDir) ->
     State#state_t{root_dir=filename:absname(RootDir)}.
-
--spec providers(t(), [providers:t()]) -> t().
-providers(M, NewProviders) ->
-    M#state_t{providers=NewProviders}.
-
--spec add_provider(t(), providers:t()) -> t().
-add_provider(M=#state_t{providers=Providers}, Provider) ->
-    M#state_t{providers=[Provider | Providers]}.
 
 -spec add_configured_release(t(), rlx_release:t()) -> t().
 add_configured_release(M=#state_t{configured_releases=Releases}, Release) ->
@@ -404,14 +303,6 @@ put(M=#state_t{config_values=Config}, Key, Value)
   when erlang:is_atom(Key) ->
     M#state_t{config_values=Config#{Key => Value}}.
 
--spec caller(t()) -> caller().
-caller(#state_t{caller=Caller}) ->
-    Caller.
-
--spec caller(t(), caller()) -> t().
-caller(S, Caller) ->
-    S#state_t{caller=Caller}.
-
 -spec dev_mode(t()) -> boolean().
 dev_mode(#state_t{dev_mode=DevMode}) ->
     DevMode.
@@ -441,38 +332,18 @@ format(Mod) ->
     format(Mod, 0).
 
 -spec format(t(), non_neg_integer()) -> iolist().
-format(#state_t{log=LogState, output_dir=OutDir, lib_dirs=LibDirs,
-                caller=Caller, config_values=Values0,
-                goals=Goals, config_file=ConfigFile,
-                providers=Providers},
+format(#state_t{output_dir=OutDir, 
+                lib_dirs=LibDirs,
+                config_values=Values0},
        Indent) ->
     Values1 = maps:to_list(Values0),
     [rlx_util:indent(Indent),
-     <<"state(">>, erlang:atom_to_list(Caller), <<"):\n">>,
-     rlx_util:indent(Indent + 2), <<"log: ">>, ec_cmd_log:format(LogState), <<",\n">>,
-     rlx_util:indent(Indent + 2), "config file: ", rlx_util:optional_to_string(ConfigFile), "\n",
-     rlx_util:indent(Indent + 2), "goals: \n",
-     [[rlx_util:indent(Indent + 3), rlx_depsolver:format_constraint(Goal), ",\n"] || Goal <- Goals],
+     <<"state:\n">>,
      rlx_util:indent(Indent + 2), "output_dir: ", OutDir, "\n",
      rlx_util:indent(Indent + 2), "lib_dirs: \n",
      [[rlx_util:indent(Indent + 3), LibDir, ",\n"] || LibDir <- LibDirs],
-     rlx_util:indent(Indent + 2), "providers: \n",
-     [[rlx_util:indent(Indent + 3), providers:format(Provider), ",\n"] || Provider <- Providers],
-     rlx_util:indent(Indent + 2), "provider config values: \n",
+     rlx_util:indent(Indent + 2), "config values: \n",
      [[rlx_util:indent(Indent + 3), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
-
-prepend_hook(State=#state_t{providers=_Providers}, Target, Hook) ->
-    {Providers1, State1} = add_hook(pre, Target, Hook, State),
-    State1#state_t{providers=Providers1}.
-
-append_hook(State=#state_t{providers=_Providers}, Target, Hook) ->
-    {Providers1, State1} = add_hook(post, Target, Hook, State),
-    State1#state_t{providers=Providers1}.
-
--spec hooks(t(), atom()) -> {[providers:t()], [providers:t()]}.
-hooks(_State=#state_t{providers=Providers}, Target) ->
-    Provider = providers:get_provider(Target, Providers),
-    providers:hooks(Provider).
 
 -spec warnings_as_errors(t()) -> boolean().
 warnings_as_errors(#state_t{warnings_as_errors=WarningsAsErrors}) ->
@@ -481,46 +352,3 @@ warnings_as_errors(#state_t{warnings_as_errors=WarningsAsErrors}) ->
 -spec warnings_as_errors(t(), boolean()) -> t().
 warnings_as_errors(State, WarningsAsErrors) ->
     State#state_t{warnings_as_errors=WarningsAsErrors}.
-
-%% ===================================================================
-%% Internal functions
-%% ===================================================================
-
-add_hook(Which, Target, Hook, State) ->
-    {ok, State1} = providers:new(Hook, State),
-    Providers1 = providers(State1),
-    HookProvider = providers:get_provider_by_module(Hook, Providers1),
-    Provider = providers:get_provider(Target, Providers1),
-    Hooks = providers:hooks(Provider),
-    NewHooks = add_hook(Which, Hooks, HookProvider),
-    NewProvider = providers:hooks(Provider, NewHooks),
-    {[NewProvider | lists:delete(Provider, Providers1)], State1}.
-
-add_hook(pre, {PreHooks, PostHooks}, Hook) ->
-    {[Hook | PreHooks], PostHooks};
-add_hook(post, {PreHooks, PostHooks}, Hook) ->
-    {PreHooks, [Hook | PostHooks]}.
-
--spec create_logic_providers(t()) -> t() | relx:error().
-create_logic_providers(State) ->
-    create_all(State, [rlx_prv_app_discover,
-                       rlx_prv_rel_discover,
-                       rlx_prv_overlay,
-                       rlx_prv_release,
-                       rlx_prv_assembler,
-                       rlx_prv_relup,
-                       rlx_prv_archive]).
-
-create_all(State, []) ->
-    State;
-create_all(State, [Module | Rest]) ->
-    case providers:new(Module, State) of
-        {ok, State1} ->
-            create_all(State1, Rest);
-        Error ->
-             Error
-    end.
-
-%%%===================================================================
-%%% Test Functions
-%%%===================================================================

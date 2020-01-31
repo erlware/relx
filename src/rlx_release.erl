@@ -51,6 +51,7 @@
               name/0,
               vsn/0,
               type/0,
+              incl_apps/0,
               application_spec/0,
               goal/0]).
 
@@ -74,11 +75,6 @@
 -type vsn() :: string().
 -type type() :: permanent | transient | temporary | load | none.
 -type incl_apps() :: [name()].
-
--type config_goal() :: name() |
-                       {name(), vsn() | type()} |
-                       {name(), vsn(), type() | incl_apps()} |
-                       {name(), vsn(), type(), incl_apps()}.
 
 -type goal() :: #{name := name(),
                   vsn => vsn() | undefined,
@@ -131,7 +127,7 @@ erts(Release, Vsn) ->
 erts(#release_t{erts=Vsn}) ->
     Vsn.
 
--spec goals(t(), [config_goal()]) -> {ok, t()} | relx:error().
+-spec goals(t(), [relx:config_goal()]) -> {ok, t()} | relx:error().
 goals(Release, ConfigGoals) ->
     {ok, Release#release_t{goals=parse_goals(ConfigGoals)}}.
 
@@ -329,7 +325,7 @@ parse_goals(ConfigGoals) ->
                                                   included_applications => undefined}, Goal)}
               end, #{}, ConfigGoals).
 
--spec parse_goal(config_goal()) -> goal().
+-spec parse_goal(relx:config_goal()) -> goal().
 parse_goal(AppName) when is_atom(AppName) ->
     #{name => AppName};
 parse_goal({AppName, Type}) when Type =:= permanent ;
