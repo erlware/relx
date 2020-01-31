@@ -94,7 +94,8 @@
 %%============================================================================
 -spec new(atom(), string(), undefined | file:name()) -> t().
 new(ReleaseName, ReleaseVsn, Relfile) ->
-    #release_t{name=rlx_util:to_atom(ReleaseName), vsn=ReleaseVsn,
+    #release_t{name=rlx_util:to_atom(ReleaseName),
+               vsn=ReleaseVsn,
                relfile = Relfile,
                annotations=#{}}.
 

@@ -53,9 +53,13 @@ release(Name, Vsn, Goals) ->
 build_release(_Release, Apps, Config) ->
     State = rlx_state:new(),
     {ok, State1} = rlx_config_terms:to_state(Config, State),
-    {ok, State2} = rlx_prv_release:do(rlx_state:available_apps(State1, Apps)),
-    {ok, State3} = rlx_prv_assembler:do(State2),
-    rlx_prv_overlay:do(State3).
+    {ok, State2} = rlx_resolve:find_default_release(rlx_state:available_apps(State1, Apps)),
+
+    {RelName, RelVsn} = rlx_state:default_configured_release(State2),
+    RealizedRelease = rlx_state:get_realized_release(State2, RelName, RelVsn),
+
+    {ok, State3} = rlx_assemble:do(RealizedRelease, State2),
+    rlx_overlay:render(RealizedRelease, State3).
 
 -spec build_relup(release(), release(), [rlx_app:t()], rlx_config:t()) -> ok | {error, term()}.
 build_relup(_Release1, _Release2, _Apps, _Config) ->
