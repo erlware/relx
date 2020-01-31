@@ -152,14 +152,15 @@ get_overlay_vars_from_file(State, OverlayVars) ->
 -spec read_overlay_vars(rlx_state:t(), proplists:proplist(), [file:name()]) ->
                                proplists:proplist() | relx:error().
 read_overlay_vars(State, OverlayVars, FileNames) ->
+    OverlayVarsValues = rlx_state:get(State, overlay_vars_values),
     Terms = merge_overlay_vars(State, FileNames),
-    case render_overlay_vars(OverlayVars, Terms, []) of
+    case render_overlay_vars(OverlayVars ++ OverlayVarsValues, Terms, []) of
         {ok, NewTerms} ->
-            % We place `ApiCallerVars' at the end on purpose; their
+            % We place `OverlayVarsvalues' at the end on purpose; their
             % definitions should be overwrittenable by both internal
             % and rendered vars, as not to change behaviour in
-            % setups preceding the support for API caller overlays.
-            OverlayVars ++ NewTerms;
+            % setups preceding the support for overlays from the caller.
+            OverlayVars ++ NewTerms ++ OverlayVarsValues;
         Error ->
             Error
     end.

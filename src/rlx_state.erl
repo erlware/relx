@@ -124,7 +124,8 @@ new() ->
                       config_values=#{}},
     State1 = rlx_state:put(State0, default_libs, true),
     State2 = rlx_state:put(State1, system_libs, true),
-    rlx_state:put(State2, overlay_vars, []).
+    State3 = rlx_state:put(State2, overlay_vars_values, []),
+    rlx_state:put(State3, overlay_vars, []).
 
 log(_) ->
     debug.
