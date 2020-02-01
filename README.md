@@ -1,5 +1,5 @@
-[![Build Status](https://api.cirrus-ci.com/github/erlware/relx.svg)](https://cirrus-ci.com/github/erlware/relx)
 ![](https://github.com/erlware/relx/workflows/Common%20Test/badge.svg)
+![Cirrus CI - Task and Script Build Status](https://img.shields.io/cirrus/github/erlware/relx?label=OSX%20Tests)
 
 Relx
 =======
