@@ -55,7 +55,7 @@ format_error(ErrorDetails)
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-resolve_rel_metadata(State, LibDirs, AppMeta) ->
+resolve_rel_metadata(_State, LibDirs, AppMeta) ->
     ReleaseMeta0 = lists:flatten(rlx_dscv_util:do(fun(LibDir, FileType) ->
                                                           discover_dir(LibDir,
                                                                        AppMeta,
@@ -77,11 +77,11 @@ resolve_rel_metadata(State, LibDirs, AppMeta) ->
     case Errors of
         [] ->
             ReleaseMeta1 = [RelMeta || {ok, RelMeta} <- ReleaseMeta0],
-            ec_cmd_log:debug(rlx_state:log(State),
-                          fun() ->
-                                  ["Resolved the following OTP Releases from the system: \n",
-                                   [[rlx_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta1]]
-                          end),
+            %% ec_cmd_log:debug(rlx_state:log(State),
+            %%               fun() ->
+            %%                       ["Resolved the following OTP Releases from the system: \n",
+            %%                        [[rlx_release:format(1, Rel), "\n"] || Rel <- ReleaseMeta1]]
+            %%               end),
             {ok, ReleaseMeta1};
         _ ->
             ?RLX_ERROR(Errors)
@@ -154,7 +154,7 @@ find_app(AppName, AppVsn, AppMeta) ->
                                NAppName = rlx_app_info:name(App),
                                NAppVsn = rlx_app_info:vsn(App),
                                AppName == NAppName andalso
-                                   AppVsn == NAppVsn
+                                   lists:flatten(ec_semver:format(AppVsn)) == NAppVsn
                        end, AppMeta) of
         {ok, Head} ->
             Head;

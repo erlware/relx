@@ -185,8 +185,6 @@ opt_spec_list() ->
     [{relname,  $n, "relname",  string,
       "Specify the name for the release that will be generated"},
      {relvsn, $v, "relvsn", string, "Specify the version for the release"},
-     {goal, $g, "goal", string,
-      "Specify a target constraint on the system. These are usually the OTP"},
      {upfrom, $u, "upfrom", string,
       "Only valid with relup target, specify the release to upgrade from"},
      {output_dir, $o, "output-dir", string,
@@ -214,8 +212,7 @@ opt_spec_list() ->
      {sys_config, undefined, "sys_config", string, "Path to a file to use for sys.config"},
      {system_libs, undefined, "system_libs", string, "Path to dir of Erlang system libs"},
      {version, undefined, "version", undefined, "Print relx version"},
-     {root_dir, $r, "root", string, "The project root directory"},
-     {provider, undefined, "provider", atom, "Specify an additional relx provider"}].
+     {root_dir, $r, "root", string, "The project root directory"}].
 
 -spec format_error(Reason::term()) -> string().
 format_error({invalid_return_value, Provider, Value}) ->

@@ -37,7 +37,7 @@ write_src_file(Dir, Name) ->
 write_appup_file(AppInfo, DownVsn) ->
     Dir = rlx_app_info:dir(AppInfo),
     Name = rlx_util:to_string(rlx_app_info:name(AppInfo)),
-    Vsn = rlx_app_info:vsn_as_string(AppInfo),
+    Vsn = rlx_app_info:vsn(AppInfo),
     Filename = filename:join([Dir, "ebin", Name ++ ".appup"]),
     ok = filelib:ensure_dir(Filename),
     ok = ec_file:write_term(Filename, {Vsn, [{DownVsn, []}], [{DownVsn, []}]}).

@@ -48,7 +48,7 @@ do(State0) ->
     case rlx_rel_discovery:do(State0, LibDirs, AppMeta) of
         {ok, Releases} ->
             {ok, rlx_state:realized_releases(State0, lists:foldl(fun add/2,
-                                                                 ec_dictionary:new(ec_dict),
+                                                                 #{},
                                                                  Releases))};
         Error ->
             Error
@@ -62,10 +62,10 @@ format_error(_) ->
 %%% Internal Functions
 %%%===================================================================
 %% @doc only add the release if its not documented in the system
-add(Rel, Dict) ->
+add(Rel, Map) ->
     RelName = rlx_release:name(Rel),
     RelVsn = rlx_release:vsn(Rel),
-    ec_dictionary:add({RelName, RelVsn}, Rel, Dict).
+    Map#{{RelName, RelVsn} => Rel}.
 
 get_lib_dirs(State) ->
     LibDirs0 = rlx_state:lib_dirs(State),

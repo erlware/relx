@@ -95,7 +95,7 @@ make_relup(State, Release) ->
     end.
 
 get_last_release(State, Release) ->
-    Releases0 = [Rel || {{_, _}, Rel} <- ec_dictionary:to_list(rlx_state:realized_releases(State))],
+    Releases0 = [Rel || {{_, _}, Rel} <- maps:to_list(rlx_state:realized_releases(State))],
     Releases1 = lists:sort(fun(R1, R2) ->
                                   ec_semver:lte(rlx_release:vsn(R1),
                                                 rlx_release:vsn(R2))
@@ -120,9 +120,9 @@ get_last_release(State, Release) ->
 get_up_release(State, Release, Vsn) ->
     Name = rlx_release:name(Release),
     try
-        ec_dictionary:get({Name, Vsn}, rlx_state:realized_releases(State))
+        maps:get({Name, Vsn}, rlx_state:realized_releases(State))
     catch
-        throw:not_found ->
+        error:{badkey, _} ->
             undefined
     end.
 
@@ -147,10 +147,7 @@ make_upfrom_script(State, Release, UpFrom) ->
     ec_cmd_log:debug(rlx_state:log(State),
                   "systools:make_relup(~p, ~p, ~p, ~p)",
                   [CurrentRel, UpFromRel, UpFromRel, Options]),
-    case rlx_util:make_script(Options,
-                     fun(CorrectOptions) ->
-                             systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], CorrectOptions)
-                     end) of
+    case systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], [no_warn_sasl | Options]) of
         ok ->
             ec_cmd_log:info(rlx_state:log(State),
                           "relup from ~s to ~s successfully created!",

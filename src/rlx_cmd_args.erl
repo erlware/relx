@@ -345,7 +345,7 @@ parse_goal(Spec, Rest, Acc)
   when erlang:is_tuple(Spec) ->
     convert_goals(Rest, [Spec | Acc]);
 parse_goal(RawSpec, Rest, Acc) ->
-    case rlx_goal:parse(RawSpec) of
+    case parse_pkg(RawSpec) of
         {ok, Spec} ->
             convert_goals(Rest, [Spec | Acc]);
         {fail, _} ->
@@ -362,3 +362,8 @@ check_lib_dirs([Dir | Rest]) ->
         true ->
             check_lib_dirs(Rest)
     end.
+
+parse_pkg({PkgName, PkgVsn}) ->
+    {PkgName, PkgVsn};
+parse_pkg(PkgName) when is_atom(PkgName) ->
+    PkgName.
