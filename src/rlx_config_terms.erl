@@ -139,7 +139,7 @@ parse_vsn({git, long}) ->
     git_ref("");
 parse_vsn({file, File}) ->
     {ok, Vsn} = file:read_file(File),
-    binary_to_list(rlx_string:trim(Vsn, both, "\n"));
+    rlx_util:to_string(rlx_string:trim(rlx_util:to_string(Vsn), both, "\n"));
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
     {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
     V;
@@ -163,7 +163,7 @@ git_ref(Arg) ->
                     %% if the result isn't exactly either 40 or 7 characters then
                     %% it must have failed
                     {ok, Dir} = file:get_cwd(),
-                    ec_cmd_log:warn("Getting ref of git repo failed in ~ts. "
+                    ec_cmd_log:warn("Getting ref of git repo failed in directory ~ts. "
                                     "Falling back to version 0", [Dir]),
                     {plain, "0"}
             end
@@ -173,8 +173,7 @@ add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, State0) -
     Release0 = rlx_release:new(RelName, NewVsn),
     ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn2),
     Applications1 = rlx_release:goals(ExtendRelease),
-    case rlx_release:goals(Release0,
-                          rlx_release:merge_application_goals(Applications, Applications1)) of
+    case rlx_release:goals(Release0, merge_application_goals(Applications, Applications1)) of
         E={error, _} ->
             E;
         {ok, Release1} ->
@@ -185,8 +184,7 @@ add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, Config, S
     Release0 = rlx_release:new(RelName, NewVsn),
     ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn2),
     Applications1 = rlx_release:goals(ExtendRelease),
-    case rlx_release:goals(Release0,
-                          rlx_release:merge_application_goals(Applications, Applications1)) of
+    case rlx_release:goals(Release0, merge_application_goals(Applications, Applications1)) of
         E={error, _} ->
             E;
         {ok, Release1} ->
@@ -203,3 +201,7 @@ list_of_overlay_vars_files([H | _]=Vars) when erlang:is_list(H) ;
     Vars;
 list_of_overlay_vars_files(FileName) when is_list(FileName) ->
     [FileName].
+
+merge_application_goals(Goals, BaseGoals) ->
+    ParsedGoals = rlx_release:parse_goals(Goals),
+    maps:merge(BaseGoals, ParsedGoals).
