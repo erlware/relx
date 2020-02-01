@@ -5,6 +5,10 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+all() ->
+    [].
+    %% [make_relup_release, make_relup_release2].
+
 suite() ->
     [].
 
@@ -19,9 +23,6 @@ init_per_testcase(_, Config) ->
     LibDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir1_")]),
     ok = rlx_util:mkdir_p(LibDir1),
     [{lib_dir, LibDir1} | Config].
-
-all() ->
-    [make_relup_release, make_relup_release2].
 
 make_relup_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),

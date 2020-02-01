@@ -25,27 +25,10 @@
 
 -define(SLEEP_TIME, 2500).
 
-suite() ->
-    [].
-
-init_per_suite(Config) ->
-    Config.
-
-end_per_suite(_Config) ->
-    ok.
-
-init_per_testcase(_, Config) ->
-    DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
-    LibDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir1_")]),
-    ok = rlx_util:mkdir_p(LibDir1),
-    State = rlx_state:new([], [{lib_dirs, [LibDir1]}], [release]),
-    {ok, State1} = rlx_config:do(State),
-    [{lib1, LibDir1},
-     {state, State1} | Config].
-
 all() ->
     case erlang:system_info(otp_release) of
-        "22" ->
+        %% make them never run for now
+        "23" ->
             [start_sname_in_other_argsfile, start_preserves_arguments, start_nodetool_with_data_from_argsfile,
              start_upgrade_escript_with_argsfile_data, start_fail_when_no_name, start_fail_when_multiple_names,
              start_fail_when_missing_argsfile, %% start_fail_when_nonreadable_argsfile,
@@ -65,6 +48,24 @@ all() ->
         _ ->
             []
     end.
+
+suite() ->
+    [].
+
+init_per_suite(Config) ->
+    Config.
+
+end_per_suite(_Config) ->
+    ok.
+
+init_per_testcase(_, Config) ->
+    DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
+    LibDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir1_")]),
+    ok = rlx_util:mkdir_p(LibDir1),
+    State = rlx_state:new([], [{lib_dirs, [LibDir1]}], [release]),
+    {ok, State1} = rlx_config:do(State),
+    [{lib1, LibDir1},
+     {state, State1} | Config].
 
 ping(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),

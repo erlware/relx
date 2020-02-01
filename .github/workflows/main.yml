@@ -1,4 +1,4 @@
-name: CI
+name: Common Test
 
 on: [push]
 
@@ -9,7 +9,7 @@ jobs:
 
     strategy:
       matrix:
-        otp_version: [18, 19, 20, 21, 22]
+        otp_version: [19, 20, 21, 22]
         os: [ubuntu-latest]
 
     container:
@@ -20,4 +20,4 @@ jobs:
     - name: Compile
       run: rebar3 compile
     - name: Run tests
-      run: rebar3 do eunit, ct
+      run: rebar3 ct
