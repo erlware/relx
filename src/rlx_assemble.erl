@@ -1,7 +1,6 @@
 -module(rlx_assemble).
 
 -export([do/2,
-         release/3,
          format_error/1]).
 
 -include("relx.hrl").

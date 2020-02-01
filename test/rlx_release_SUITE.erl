@@ -41,7 +41,7 @@ init_per_testcase(_, Config) ->
     [{lib1, LibDir1} | Config].
 
 all() ->
-    [make_config_release, make_dev_mode_template_release, overlay_release].
+    [make_release, make_config_release, make_dev_mode_template_release, overlay_release].
 
 %% all() ->
 %%     [make_release, make_extend_release, make_extend_config_release,
@@ -60,32 +60,27 @@ all() ->
 make_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
 
-    [(fun({Name, Vsn}) ->
-              rlx_test_utils:create_app(LibDir1, Name, Vsn, [kernel, stdlib], [])
-      end)(App)
-    ||
-        App <-
-            [{rlx_test_utils:create_random_name("lib_app1_"), rlx_test_utils:create_random_vsn()}
-            || _ <- lists:seq(1, 100)]],
-
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
-    ConfigFile = filename:join([LibDir1, "relx.config"]),
-    rlx_test_utils:write_config(ConfigFile,
-                 [{release, {foo, "0.0.1"},
+    RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]},
                   {release, {foo, "0.0.2"},
-                     [goal_app_1,
-                      goal_app_2]}]),
+                   [goal_app_1,
+                    goal_app_2]}],
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
-    {ok, State} = relx:do(undefined, undefined, [], [LibDir1], 3,
-                              OutputDir, ConfigFile),
+
+    %% TODO: this needs to go
+    Dirs = [list_to_binary(Dir) || Dir <- rlx_util:wildcard_paths([LibDir1 | code:get_path()])],
+    Apps = rlx_test_utils:resolve_app_metadata(Dirs),
+
+    {ok, State} = relx:build_release(#{}, Apps, [{root_dir, LibDir1}, {output_dir, OutputDir} | RelxConfig]),
+
     [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
