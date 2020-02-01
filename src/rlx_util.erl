@@ -235,7 +235,7 @@ symlink_or_copy(Source, Target) ->
     end.
 
 cp_r(Source, Target) ->
-    ec_file:copy(Source, Target, [{recursive, true}, {fileinfo, [mode, time, owner, group]}]).
+    copy(Source, Target, [{recursive, true}, {file_info, [mode, time, owner, group]}]).
 
 win32_make_junction_or_copy(Source, Target) ->
     case filelib:is_dir(Source) of
@@ -313,18 +313,114 @@ include_erts_is_win32(State) ->
     Path -> is_win32_erts(Path,State)
   end.
 
-is_win32_erts(Path,State) ->
+is_win32_erts(Path, _State) ->
   case filelib:wildcard(filename:join([Path,"bin","erl.exe"])) of
-    [] -> false;
+    [] ->
+          false;
     _ ->
-      ec_cmd_log:info(rlx_state:log(State),
-        "Including Erts is win32 ~n", []),
+      %% ec_cmd_log:info(rlx_state:log(State), "Including Erts is win32 ~n", []),
       true
   end.
 
 
+%% file operations
+
+%% @doc copy an entire directory to another location.
+copy(From, To, Options) ->
+    case proplists:get_value(recursive,  Options, false) of
+        true ->
+            case is_dir(From) of
+                false ->
+                    copy_(From, To, Options);
+                true ->
+                    make_dir_if_dir(To),
+                    copy_subfiles(From, To, Options)
+            end;
+        false ->
+            copy_(From, To, Options)
+    end.
+
+copy_(From, To, Options) ->
+    case file:copy(From, To) of
+        {ok, _} ->
+            copy_file_info(To, From, proplists:get_value(file_info, Options, []));
+        {error, Error} ->
+            {error, {copy_failed, Error}}
+    end.
+
+copy_file_info(To, From, FileInfoToKeep) ->
+    case file:read_file_info(From) of
+        {ok, FileInfo} ->
+            case write_file_info(To, FileInfo, FileInfoToKeep) of
+                [] ->
+                    ok;
+                Errors ->
+                    {error, {write_file_info_failed_for, Errors}}
+            end;
+        {error, RFError} ->
+            {error, {read_file_info_failed, RFError}}
+    end.
+
+write_file_info(To, FileInfo, FileInfoToKeep) ->
+    WriteInfoFuns = [{mode, fun try_write_mode/2},
+                     {time, fun try_write_time/2},
+                     {group, fun try_write_group/2},
+                     {owner, fun try_write_owner/2}],
+    lists:foldl(fun(Info, Acc) ->
+                        case proplists:get_value(Info, WriteInfoFuns, undefined) of
+                            undefined ->
+                                Acc;
+                            F ->
+                                case F(To, FileInfo) of
+                                    ok ->
+                                        Acc;
+                                    {error, Reason} ->
+                                        [{Info, Reason} | Acc]
+                                end
+                        end
+                end, [], FileInfoToKeep).
 
 
-%%%===================================================================
-%%% Test Functions
-%%%===================================================================
+try_write_mode(To, #file_info{mode=Mode}) ->
+    file:write_file_info(To, #file_info{mode=Mode}).
+
+try_write_time(To, #file_info{atime=Atime, mtime=Mtime}) ->
+    file:write_file_info(To, #file_info{atime=Atime, mtime=Mtime}).
+
+try_write_owner(To, #file_info{uid=OwnerId}) ->
+    file:write_file_info(To, #file_info{uid=OwnerId}).
+
+try_write_group(To, #file_info{gid=OwnerId}) ->
+    file:write_file_info(To, #file_info{gid=OwnerId}).
+
+is_dir(Path) ->
+    case file:read_file_info(Path) of
+        {ok, #file_info{type = directory}} ->
+            true;
+        _ ->
+            false
+    end.
+
+-spec make_dir_if_dir(file:name()) -> ok | {error, term()}.
+make_dir_if_dir(File) ->
+    case is_dir(File) of
+        true  -> ok;
+        false -> mkdir_path(File)
+    end.
+
+%% @doc Makes a directory including parent dirs if they are missing.
+-spec mkdir_path(file:name()) -> ok | {error, Reason::term()}.
+mkdir_path(Path) ->
+    mkdir_p(Path).
+
+copy_subfiles(From, To, Options) ->
+    Fun =
+        fun(ChildFrom) ->
+                ChildTo = filename:join([To, filename:basename(ChildFrom)]),
+                copy(ChildFrom, ChildTo, Options)
+        end,
+    lists:foreach(Fun, sub_files(From)).
+
+sub_files(From) ->
+    {ok, SubFiles} = file:list_dir(From),
+    [filename:join(From, SubFile) || SubFile <- SubFiles].

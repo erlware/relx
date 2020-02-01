@@ -4,14 +4,14 @@
          new/6]).
 
 %% TODO: remove the undefines
--type t() :: #{name                 := atom() | undefined,
-               vsn                  := string() | undefined,
+-type t() :: #{name                  := atom() | undefined,
+               vsn                   := string() | undefined,
 
-               applications         := [atom()],
-               included_application := [atom()],
+               applications          := [atom()],
+               included_applications := [atom()],
 
-               dir                  := file:name() | undefined,
-               link                 := boolean() | undefined}.
+               dir                   := file:name() | undefined,
+               link                  := boolean() | undefined}.
 
 -export_type([t/0]).
 
@@ -26,6 +26,7 @@ new() ->
       dir => undefined,
       link => undefined}.
 
+-spec new(atom(), string(), file:name(), [atom()], [atom()], boolean()) -> t().
 new(Name, Vsn, Dir, Applications, IncludedApplications, IsLink) ->
     #{name => Name,
       vsn => Vsn,
