@@ -1,31 +1,6 @@
-%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
-%%% Copyright 2012 Erlware, LLC. All Rights Reserved.
-%%%
-%%% This file is provided to you under the Apache License,
-%%% Version 2.0 (the "License"); you may not use this file
-%%% except in compliance with the License.  You may obtain
-%%% a copy of the License at
-%%%
-%%%   http://www.apache.org/licenses/LICENSE-2.0
-%%%
-%%% Unless required by applicable law or agreed to in writing,
-%%% software distributed under the License is distributed on an
-%%% "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%%% KIND, either express or implied.  See the License for the
-%%% specific language governing permissions and limitations
-%%% under the License.
-%%%---------------------------------------------------------------------------
-%%% @author Eric Merritt <ericbmerritt@gmail.com>
-%%% @copyright (C) 2012 Erlware, LLC.
-%%%
-%%% @doc Given a complete built release this provider assembles that release
-%%% into a release directory.
--module(rlx_prv_overlay).
+-module(rlx_overlay).
 
--behaviour(provider).
-
--export([init/1,
-         do/1,
+-export([render/2,
          format_error/1]).
 
 -export([generate_overlay_vars/2,
@@ -35,37 +10,13 @@
 
 -include("relx.hrl").
 
--define(PROVIDER, overlay).
--define(DEPS, [resolve_release]).
-
-%%============================================================================
-%% API
-%%============================================================================
-
--spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
-init(State) ->
-    State1 = rlx_state:add_provider(State, providers:create([{name, ?PROVIDER},
-                                                             {module, ?MODULE},
-                                                             {deps, ?DEPS}])),
-    {ok, State1}.
-
-%% @doc recursively dig down into the library directories specified in the state
-%% looking for OTP Applications
--spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
-do(State) ->
-    {RelName, RelVsn} = rlx_state:default_configured_release(State),
-    Release = rlx_state:get_realized_release(State, RelName, RelVsn),
-    case rlx_release:realized(Release) of
-        true ->
-            case generate_overlay_vars(State, Release) of
-                {error, Reason} ->
-                    {error, Reason};
-                OverlayVars ->
-                    Files = rlx_util:template_files(),
-                    do_overlay(State, Files, OverlayVars)
-            end;
-        false ->
-            ?RLX_ERROR({unresolved_release, RelName, RelVsn})
+render(Release, State) ->
+    case generate_overlay_vars(State, Release) of
+        {error, Reason} ->
+            {error, Reason};
+        OverlayVars ->
+            Files = rlx_util:template_files(),
+            do_overlay(State, Files, OverlayVars)
     end.
 
 -spec format_error(ErrorDetail::term()) -> iolist().
@@ -152,15 +103,15 @@ get_overlay_vars_from_file(State, OverlayVars) ->
 -spec read_overlay_vars(rlx_state:t(), proplists:proplist(), [file:name()]) ->
                                proplists:proplist() | relx:error().
 read_overlay_vars(State, OverlayVars, FileNames) ->
-    ApiCallerVars = rlx_state:api_caller_overlays(State),
+    OverlayVarsValues = rlx_state:get(State, overlay_vars_values),
     Terms = merge_overlay_vars(State, FileNames),
-    case render_overlay_vars(OverlayVars ++ ApiCallerVars, Terms, []) of
+    case render_overlay_vars(OverlayVars ++ OverlayVarsValues, Terms, []) of
         {ok, NewTerms} ->
-            % We place `ApiCallerVars' at the end on purpose; their
+            % We place `OverlayVarsvalues' at the end on purpose; their
             % definitions should be overwrittenable by both internal
             % and rendered vars, as not to change behaviour in
-            % setups preceding the support for API caller overlays.
-            OverlayVars ++ NewTerms ++ ApiCallerVars;
+            % setups preceding the support for overlays from the caller.
+            OverlayVars ++ NewTerms ++ OverlayVarsValues;
         Error ->
             Error
     end.
@@ -252,16 +203,12 @@ generate_release_vars(Release) ->
 
 -spec generate_state_vars(rlx_state:t()) -> proplists:proplist().
 generate_state_vars(State) ->
-    [{log, ec_cmd_log:format(rlx_state:log(State))},
+    [%% {log, ec_cmd_log:format(rlx_state:log(State))},
      {output_dir, rlx_state:output_dir(State)},
      {target_dir, rlx_state:output_dir(State)},
      {overridden, [AppName || {AppName, _} <- rlx_state:overrides(State)]},
      {overrides, rlx_state:overrides(State)},
-     {goals, [rlx_depsolver:format_constraint(Constraint) ||
-                 Constraint <- rlx_state:goals(State)]},
      {lib_dirs, rlx_state:lib_dirs(State)},
-     {config_file, rlx_state:config_file(State)},
-     {providers, rlx_state:providers(State)},
      {vm_args, rlx_state:vm_args(State)},
      {sys_config, rlx_state:sys_config(State)},
      {root_dir, rlx_state:root_dir(State)},
@@ -426,17 +373,7 @@ make_link(FromFile, ToFile) ->
     file:make_symlink(FromFile, ToFile).
 
 get_relative_root(State) ->
-    case rlx_state:config_file(State) of
-        [] ->
-            rlx_state:root_dir(State);
-        Config ->
-            case filelib:is_regular(Config) of
-                true ->
-                    filename:dirname(Config);
-                false ->
-                    rlx_state:root_dir(State)
-            end
-    end.
+    rlx_state:root_dir(State).
 
 absolute_path_from(State, Path) ->
     absolutize(State, filename:join(get_relative_root(State), Path)).
@@ -452,7 +389,6 @@ is_directory(ToFile0, ToFile1) ->
         _ ->
             true
     end.
-
 
 -spec render_template(proplists:proplist(), binary()) ->
                              {ok, binary()} | relx:error().

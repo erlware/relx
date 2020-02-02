@@ -30,11 +30,9 @@
          erts/1,
          goals/2,
          goals/1,
-         constraints/1,
-         merge_application_goals/2,
          name/1,
          vsn/1,
-         realize/3,
+         realize/2,
          applications/1,
          application_details/1,
          application_details/2,
@@ -52,21 +50,20 @@
 -export_type([t/0,
               name/0,
               vsn/0,
-              app_name/0,
-              app_vsn/0,
-              app_type/0,
+              type/0,
+              incl_apps/0,
               application_spec/0,
-              application_goal/0]).
+              goal/0]).
 
 -include("relx.hrl").
 
 -record(release_t, {name :: atom(),
                     vsn :: ec_semver:any_version(),
                     erts :: undefined | ec_semver:any_version(),
-                    goals = [] :: [rlx_depsolver:constraint()],
+                    goals = [] :: [goal()],
                     realized = false :: boolean(),
                     annotations = undefined :: annotations(),
-                    applications = [] ::  [application_spec()],
+                    applications = [] ::  [rlx_app:t()],
                     relfile :: undefined | string(),
                     app_detail = [] :: [rlx_app_info:t()],
                     config = []}).
@@ -76,22 +73,19 @@
 %%============================================================================
 -type name() :: atom().
 -type vsn() :: string().
--type app_name() :: atom().
--type app_vsn() :: string().
--type app_type() :: permanent | transient | temporary | load | none.
--type incl_apps() :: [app_name()].
+-type type() :: permanent | transient | temporary | load | none.
+-type incl_apps() :: [name()].
 
--type application_spec() :: {app_name(),  app_vsn()} |
-                            {app_name(), app_vsn(), app_type() | incl_apps()} |
-                            {app_name(), app_vsn(), app_type(), incl_apps()}.
+-type goal() :: #{name := name(),
+                  vsn => vsn() | undefined,
+                  type => type(),
+                  included_applications => incl_apps()}.
 
--type application_constraint() :: rlx_depsolver:raw_constraint() | string() | binary().
--type application_goal() :: application_constraint()
-                          | {application_constraint(), app_type() | incl_apps()}
-                          | {application_constraint(), app_type(), incl_apps() | void}.
+-type annotations() ::  #{name() => {type(), incl_apps() | void}}.
 
--type annotations() ::  #{app_name() => {app_type(), incl_apps() | void}}.
-
+-type application_spec() :: {name(), vsn()} |
+                            {name(), vsn(), type() | incl_apps()} |
+                            {name(), vsn(), type(), incl_apps()}.
 
 -opaque t() :: #release_t{}.
 
@@ -100,7 +94,8 @@
 %%============================================================================
 -spec new(atom(), string(), undefined | file:name()) -> t().
 new(ReleaseName, ReleaseVsn, Relfile) ->
-    #release_t{name=to_atom(ReleaseName), vsn=ReleaseVsn,
+    #release_t{name=rlx_util:to_atom(ReleaseName),
+               vsn=ReleaseVsn,
                relfile = Relfile,
                annotations=#{}}.
 
@@ -125,49 +120,43 @@ name(#release_t{name=Name}) ->
 vsn(#release_t{vsn=Vsn}) ->
     Vsn.
 
--spec erts(t(), app_vsn()) -> t().
+-spec erts(t(), vsn()) -> t().
 erts(Release, Vsn) ->
     Release#release_t{erts=Vsn}.
 
--spec erts(t()) -> app_vsn().
+-spec erts(t()) -> vsn().
 erts(#release_t{erts=Vsn}) ->
     Vsn.
 
--spec goals(t(), [application_goal()]) -> {ok, t()} | relx:error().
-goals(Release, Goals0) ->
-    lists:foldl(fun parse_goal0/2,
-                {ok, Release}, Goals0).
+-spec goals(t(), [relx:config_goal()]) -> {ok, t()} | relx:error().
+goals(Release, ConfigGoals) ->
+    {ok, Release#release_t{goals=parse_goals(ConfigGoals)}}.
 
--spec goals(t()) -> [application_goal()].
-goals(#release_t{goals=Goals, annotations=Annots}) ->
-    [application_goal(Goal, Annots) || Goal <- Goals].
-
--spec constraints(t()) -> [rlx_depsolver:raw_constraint()].
-constraints(#release_t{goals=Goals}) ->
+-spec goals(t()) -> [goal()].
+goals(#release_t{goals=Goals}) ->
     Goals.
 
--spec realize(t(), [{app_name(), app_vsn()}], [rlx_app_info:t()]) ->
+-spec realize(t(), [rlx_app:t()]) ->
                      {ok, t()}.
-realize(Rel, Pkgs0, World0) ->
-    World1 = subset_world(Pkgs0, World0),
-    process_specs(realize_erts(Rel), World1).
+realize(Rel, Pkgs0) ->
+    process_specs(realize_erts(Rel), Pkgs0).
 
 %% @doc this gives the application specs for the release. This can only be
 %% populated by the 'realize' call in this module.
--spec applications(t()) -> [application_spec()].
+-spec applications(t()) -> [rlx_app:t()].
 applications(#release_t{applications=Apps}) ->
     Apps.
 
 %% @doc this gives the rlx_app_info objects representing the applications in
 %% this release. These should only be populated by the 'realize' call in this
 %% module or by reading an existing rel file.
--spec application_details(t()) -> [rlx_app_info:t()].
+-spec application_details(t()) -> [rlx_app:t()].
 application_details(#release_t{app_detail=App}) ->
     App.
 
 %% @doc this is only expected to be called by a process building a new release
 %% from an existing rel file.
--spec application_details(t(), [rlx_app_info:t()]) -> t().
+-spec application_details(t(), [rlx_app:t()]) -> t().
 application_details(Release, AppDetail) ->
     Release#release_t{app_detail=AppDetail}.
 
@@ -176,8 +165,11 @@ realized(#release_t{realized=Realized}) ->
     Realized.
 
 -spec metadata(t()) -> term().
-metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=Apps,
-                                realized=Realized}) ->
+metadata(#release_t{name=Name,
+                    vsn=Vsn,
+                    erts=ErtsVsn,
+                    applications=Apps,
+                    realized=Realized}) ->
     case Realized of
         true ->
             {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
@@ -251,7 +243,7 @@ format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
              []
      end].
 
--spec format_goal(application_goal()) -> iolist().
+-spec format_goal(goal()) -> iolist().
 format_goal({Constraint, AppType}) ->
     io_lib:format("~p", [{rlx_depsolver:format_constraint(Constraint), AppType}]);
 format_goal({Constraint, AppType, AppInc}) ->
@@ -279,171 +271,103 @@ realize_erts(Rel) ->
 
 -spec process_specs(t(), [rlx_app_info:t()]) ->
                            {ok, t()}.
-process_specs(Rel=#release_t{annotations=Annots,
-                             goals=Goals}, World) ->
-    ActiveApps = lists:flatten([rlx_app_info:active_deps(El) || El <- World] ++
-                                  [case get_app_name(Goal) of
-                                       {error, _} -> [];
-                                       G -> G
-                                   end || Goal <- Goals]),
+process_specs(Rel=#release_t{goals=Goals}, World) ->
+    ActiveApps = lists:flatten([rlx_app_info:active_deps(El) || El <- World] ++ maps:keys(Goals)),
     LibraryApps = lists:flatten([rlx_app_info:library_deps(El) || El <- World]),
-    Specs = [create_app_spec(Annots, App, ActiveApps, LibraryApps) || App <- World],
-    {ok, Rel#release_t{annotations=Annots,
+    Specs = [create_app_spec(App, Goals, ActiveApps, LibraryApps) || App <- World],
+    {ok, Rel#release_t{goals=Goals,
                        applications=Specs,
                        app_detail=World,
                        realized=true}}.
 
--spec create_app_spec(annotations(), rlx_app_info:t(), [app_name()],
-                      [app_name()]) ->
-                             application_spec().
-create_app_spec(Annots, App, ActiveApps, LibraryApps) ->
+-spec create_app_spec(rlx_app:t(), [goal()], [name()], [name()]) -> application_spec().
+create_app_spec(App, Goals, ActiveApps, LibraryApps) ->
     %% If the app only exists as a dependency in a library app then it should
     %% get the 'load' annotation unless the release spec has provided something
     %% else
     AppName = rlx_app_info:name(App),
+    Vsn = rlx_app_info:vsn(App),
     TypeAnnot =
         case (lists:member(AppName, LibraryApps) and
               (not lists:member(AppName, ActiveApps))) of
             true ->
                 load;
             false ->
-                void
+                undefined
         end,
-    BaseAnnots =
-        try
-            case maps:get(AppName, Annots) of
-                {void, Incld} ->
-                    {TypeAnnot, Incld};
-                Else ->
-                    Else
-            end
-        catch
-            error:{badkey, _} ->
-                {TypeAnnot, void}
-        end,
-    Vsn = rlx_app_info:vsn(App),
-    case BaseAnnots of
-        Incld0=[H|_] when is_atom(H) ->
-            {AppName, Vsn, Incld0};
-        {void, void} ->
+
+    #{type := Type,
+      included_applications := IncludedApplications} =
+        maps:get(AppName, Goals, #{type => TypeAnnot,
+                                   included_applications => undefined}),
+
+    case {Type, IncludedApplications} of
+        {undefined, undefined} ->
             {AppName, Vsn};
-        {Type, void} ->
+        {Type, undefined} when Type =:= permanent ;
+                               Type =:= transient ;
+                               Type =:= temporary ;
+                               Type =:= load ;
+                               Type =:= none ->
             {AppName, Vsn, Type};
-        {void, Incld0} ->
-            {AppName, Vsn, Incld0};
-        {Type, Incld1} ->
-            {AppName, Vsn, Type, Incld1};
-        Type when  Type =:= permanent;
-                   Type =:= transient;
-                   Type =:= temporary;
-                   Type =:= load;
-                   Type =:= none ->
-            {AppName, Vsn, Type};
+        {undefined, IncludedApplications} ->
+            {AppName, Vsn, IncludedApplications};
+        {Type, IncludedApplications} ->
+            {AppName, Vsn, Type, IncludedApplications};
         _ ->
-            {AppName, Vsn}
+            error(?RLX_ERROR({bad_app_goal, {AppName, Vsn, Type, IncludedApplications}}))
     end.
 
--spec subset_world([{app_name(), app_vsn()}], [rlx_app_info:t()]) -> [rlx_app_info:t()].
-subset_world(Pkgs, World) ->
-    [get_app_info(Pkg, World) || Pkg <- Pkgs].
+parse_goals(ConfigGoals) ->
+    lists:foldl(fun(ConfigGoal, Acc) ->
+                        Goal=#{name := Name} = parse_goal(ConfigGoal),
+                        Acc#{Name => maps:merge(#{vsn=> undefined,
+                                                  type => undefined,
+                                                  included_applications => undefined}, Goal)}
+              end, #{}, ConfigGoals).
 
--spec get_app_info({app_name(), app_vsn()}, [rlx_app_info:t()]) -> rlx_app_info:t().
-get_app_info({PkgName, PkgVsn}, World) ->
-    {ok, WorldEl} =
-        ec_lists:find(fun(El) ->
-                              rlx_app_info:name(El) =:= PkgName andalso
-                                  rlx_app_info:vsn(El) =:= lists:flatten(ec_semver:format(PkgVsn))
-                      end, World),
-    WorldEl.
-
-parse_goal0(Constraint, {ok, Release=#release_t{annotations=Annots,
-                                           goals=Goals}}) when is_atom(Constraint) ->
-    case get_app_name(Constraint) of
-        E1 = {error, _} ->
-            E1;
-        AppName ->
-            {ok,
-             Release#release_t{annotations=Annots#{AppName => {void, void}},
-                               goals = Goals++[Constraint]}}
-    end;
-parse_goal0({Constraint, NewAnnots}, {ok, Release=#release_t{annotations=Annots,
-                                                             goals=Goals}}) ->
-    case get_app_name(Constraint) of
-        E1 = {error, _} ->
-            E1;
-        AppName ->
-            {ok,
-             Release#release_t{annotations=Annots#{AppName => NewAnnots},
-                               goals = Goals++[Constraint]}}
-    end.
-
--spec get_app_name(rlx_depsolver:raw_constraint()) ->
-                          AppName::atom() | relx:error().
-get_app_name(AppName) when erlang:is_atom(AppName) ->
-    AppName;
-get_app_name({AppName, _}) when erlang:is_atom(AppName) ->
-    AppName;
-get_app_name({AppName, _, _}) when erlang:is_atom(AppName) ->
-    AppName;
-get_app_name({AppName, _, _, _}) when erlang:is_atom(AppName) ->
-    AppName;
-get_app_name(V) ->
-    ?RLX_ERROR({invalid_constraint, 4, V}).
-
--spec get_goal_app_name(application_goal()) -> atom() | relx:error().
-get_goal_app_name({Constraint, Annots})
-  when Annots =:= permanent;
-       Annots =:= transient;
-       Annots =:= temporary;
-       Annots =:= load;
-       Annots =:= none ->
-    get_app_name(Constraint);
-get_goal_app_name({Constraint, Annots, Incls})
-  when (Annots =:= permanent orelse
-            Annots =:= transient orelse
-            Annots =:= temporary orelse
-            Annots =:= load orelse
-            Annots =:= none),
-       erlang:is_list(Incls) ->
-    get_app_name(Constraint);
-get_goal_app_name({Constraint, Incls})
-  when erlang:is_list(Incls), Incls == [] orelse is_atom(hd(Incls)) ->
-    get_app_name(Constraint);
-get_goal_app_name(Constraint) ->
-    get_app_name(Constraint).
-
--spec application_goal(rlx_depsolver:raw_constraint(), annotations()) -> application_goal().
-application_goal(Constraint, Annots) ->
-    AppName = get_app_name(Constraint),
-    try maps:get(AppName, Annots) of
-        {void, void} ->
-            Constraint;
-        {void, Incls} ->
-            {Constraint, Incls};
-        {Type, void} ->
-            {Constraint, Type};
-        {Type, Incls} ->
-            {Constraint, Type, Incls}
-    catch
-        error:{badkey, _} ->
-            Constraint
-    end.
-
-to_atom(RelName)
-  when erlang:is_list(RelName) ->
-    erlang:list_to_atom(RelName);
-to_atom(Else)
-  when erlang:is_atom(Else) ->
-    Else.
-
--spec merge_application_goals([application_goal()], [application_goal()]) -> [application_goal()].
-merge_application_goals(Goals, BaseGoals) ->
-    Goals ++ lists:foldl(fun filter_goal_by_name/2, BaseGoals, Goals).
-
-filter_goal_by_name(AppGoal, GoalList) when is_list(GoalList) ->
-    case get_goal_app_name(AppGoal) of
-        AppName when is_atom(AppName) ->
-            lists:filter(fun(Goal) -> get_goal_app_name(Goal) /= AppName end, GoalList);
-        _Error ->
-            GoalList
-    end.
+-spec parse_goal(relx:config_goal()) -> goal().
+parse_goal(AppName) when is_atom(AppName) ->
+    #{name => AppName};
+parse_goal({AppName, Type}) when Type =:= permanent ;
+                                 Type =:= transient ;
+                                 Type =:= temporary ;
+                                 Type =:= load ;
+                                 Type =:= none ->
+    #{name => AppName,
+      type => Type};
+parse_goal({AppName, IncludedApplications=[H|_]}) when is_atom(H) ->
+    #{name => AppName,
+      included_applications => IncludedApplications};
+parse_goal({AppName, []}) when is_atom(AppName) ->
+    #{name => AppName,
+      included_applications => []};
+parse_goal({AppName, Vsn}) when is_list(Vsn) ->
+    #{name => AppName,
+      vsn => Vsn};
+parse_goal({AppName, Vsn, Type})
+  when is_list(Vsn) andalso (Type =:= permanent orelse
+                             Type =:= transient orelse
+                             Type =:= temporary orelse
+                             Type =:= load orelse
+                             Type =:= none) ->
+    #{name => AppName,
+      vsn => Vsn,
+      type => Type};
+parse_goal({AppName, Vsn, IncludedApplications}) when is_list(Vsn) ,
+                                                      is_list(IncludedApplications) ->
+    #{name => AppName,
+      vsn => Vsn,
+      included_applications => IncludedApplications};
+parse_goal({AppName, Vsn, Type, IncludedApplications})
+  when is_list(Vsn) andalso is_list(IncludedApplications) andalso (Type =:= permanent orelse
+                                                                   Type =:= transient orelse
+                                                                   Type =:= temporary orelse
+                                                                   Type =:= load orelse
+                                                                   Type =:= none) ->
+    #{name => AppName,
+      vsn => Vsn,
+      type => Type,
+      included_applications => IncludedApplications};
+parse_goal(Goal) ->
+    error(?RLX_ERROR({bad_goal, Goal})).

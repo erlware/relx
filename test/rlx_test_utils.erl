@@ -196,14 +196,8 @@ escript_contents() ->
     "io:format(\"~s\n\",\n"
     "    [os:getenv(\"RELEASE_ROOT_DIR\")]).\n".
 
--ifdef(rand_module).
 random_uniform(N) ->
     rand:uniform(N).
--else.
-random_uniform(N) ->
-    random:seed(os:timestamp()),
-    random:uniform(N).
--endif.
 
 list_to_term(String) ->
     {ok, T, _} = erl_scan:string(String++"."),
@@ -217,3 +211,126 @@ list_to_term(String) ->
 unescape_string(String) ->
     re:replace(String, "\"", "",
                [global, {return, list}]).
+
+%% discovery
+
+app_files(LibDirs) ->
+    lists:foldl(fun(LibDir, Acc) ->
+                        Files = app_files_paths(LibDir),
+                        BinFiles = lists:map(fun(F) ->
+                                                     list_to_binary(F)
+                                             end, Files),
+                        Acc ++ BinFiles
+                end, [], LibDirs).
+
+-spec app_files_paths(binary()) -> list(string()).
+app_files_paths(LibDir) ->
+    %% Search for Erlang apps in the lib dir itself
+    Path1 = filename:join([binary_to_list(LibDir),
+                           "*.app"]),
+    %% Search for Erlang apps in subdirs of lib dir
+    Path2 = filename:join([binary_to_list(LibDir),
+                           "*",
+                           "ebin",
+                           "*.app"]),
+    lists:foldl(fun(Path, Acc) ->
+                        Files = filelib:wildcard(Path),
+                        Files ++ Acc
+                end, [], [Path1, Path2]).
+
+-spec get_app_metadata(list(binary())) -> list({ok, rlx_app_info:t()}).
+get_app_metadata(LibDirs) ->
+    lists:foldl(fun(AppFile, Acc) ->
+                        case is_valid_otp_app(AppFile) of
+                            {ok, _} = AppMeta ->
+                                [AppMeta|Acc];
+                            {warning, _W} ->
+                                Acc;
+                            {error, _E} ->
+                                Acc;
+                            _ ->
+                                Acc
+                        end
+                end, [], app_files(LibDirs)).
+
+resolve_app_metadata(LibDirs) ->
+    [App || {ok, App} <- lists:flatten(rlx_dscv_util:do(fun discover_dir/2, LibDirs))].
+
+-spec discover_dir([file:name()], directory | file) -> {ok, rlx_app_info:t()} |
+                                                       {error, Reason::term()}.
+discover_dir(_File, directory) ->
+    {noresult, true};
+discover_dir(File, file) ->
+    is_valid_otp_app(File).
+
+-spec is_valid_otp_app(file:name()) -> {ok, rlx_app_info:t()} |
+                                       {warning, Reason::term()} |
+                                       {error, Reason::term()} |
+                                       {noresult, false}.
+is_valid_otp_app(File) ->
+    %% Is this an ebin dir?
+    EbinDir = filename:dirname(File),
+    case filename:basename(EbinDir) of
+        <<"ebin">> ->
+            case filename:extension(File) of
+                <<".app">> ->
+                    gather_application_info(EbinDir, File);
+                _ ->
+                    {noresult, false}
+            end;
+        _ ->
+            {noresult, false}
+    end.
+
+
+-spec gather_application_info(file:name(), file:filename()) ->
+                                     {ok, rlx_app_info:t()} |
+                                     {warning, Reason::term()} |
+                                     {error, Reason::term()}.
+gather_application_info(EbinDir, File) ->
+    AppDir = filename:dirname(EbinDir),
+    case file:consult(File) of
+        {ok, [{application, AppName, AppDetail}]} ->
+            validate_application_info(EbinDir, AppName, AppDetail);
+        {error, Reason} ->
+            {warning, {unable_to_load_app, AppDir, Reason}};
+        _ ->
+            {warning, {invalid_app_file, File}}
+    end.
+
+validate_application_info(EbinDir, AppName, AppDetail) ->
+    AppDir = filename:dirname(EbinDir),
+    get_vsn(AppDir, AppName, AppDetail).
+
+-spec get_vsn(file:name(), atom(), proplists:proplist()) ->
+                     {ok, rlx_app_info:t()} | {error, Reason::term()}.
+get_vsn(AppDir, AppName, AppDetail) ->
+    case proplists:get_value(vsn, AppDetail) of
+        undefined ->
+            {error, {unversioned_app, AppDir, AppName}};
+        AppVsn ->
+            case get_deps(AppDir, AppName, AppVsn, AppDetail) of
+                {ok, App} ->
+                    {ok, App};
+                {error, Detail} ->
+                    {error, {app_info_error, Detail}}
+            end
+    end.
+
+-spec get_deps(binary(), atom(), string(), proplists:proplist()) ->
+                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
+get_deps(AppDir, AppName, AppVsn, AppDetail) ->
+    %% ensure that at least stdlib and kernel are defined as application deps
+    ActiveApps = ensure_stdlib_kernel(AppName,
+                                      proplists:get_value(applications, AppDetail, [])),
+    LibraryApps = proplists:get_value(included_applications, AppDetail, []),
+    rlx_app_info:new(AppName, AppVsn, AppDir, ActiveApps, LibraryApps).
+
+-spec ensure_stdlib_kernel(AppName :: atom(),
+                           Apps :: list(atom())) -> list(atom()).
+ensure_stdlib_kernel(kernel, Deps) -> Deps;
+ensure_stdlib_kernel(stdlib, Deps) -> Deps;
+ensure_stdlib_kernel(_AppName, []) ->
+    %% minimum required deps are kernel and stdlib
+    [kernel, stdlib];
+ensure_stdlib_kernel(_AppName, Deps) -> Deps.

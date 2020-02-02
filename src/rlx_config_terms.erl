@@ -109,6 +109,10 @@ load({root_dir, Root}, {ok, State}) ->
     {ok, rlx_state:root_dir(State, filename:absname(Root))};
 load({output_dir, OutputDir}, {ok, State}) ->
     {ok, rlx_state:base_output_dir(State, filename:absname(OutputDir))};
+load({overlay_vars_values, OverlayVarsValues}, {ok, State}) ->
+    CurrentOverlayVarsValues = rlx_state:get(State, overlay_vars_values),
+    NewOverlayVarsValues = CurrentOverlayVarsValues ++ OverlayVarsValues,
+    {ok, rlx_state:put(State, overlay_vars_values, NewOverlayVarsValues)};
 load({overlay_vars, OverlayVars}, {ok, State}) ->
     CurrentOverlayVars = rlx_state:get(State, overlay_vars),
     NewOverlayVars0 = list_of_overlay_vars_files(OverlayVars),

@@ -2,20 +2,17 @@
 %%% @copyright (C) 2015, Tristan Sloughter
 -module(rlx_archive_SUITE).
 
--export([suite/0,
-         init_per_suite/1,
-         end_per_suite/1,
-         init_per_testcase/2,
-         all/0,
-         basic_tar/1,
-         exclude_erts/1,
-         exclude_src/1,
-         include_src/1,
-         overlay_archive/1]).
+-compile([export_all]).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kernel/include/file.hrl").
+
+
+all() ->
+    [].
+    %% [basic_tar, exclude_erts, exclude_src, include_src,
+    %%  overlay_archive].
 
 suite() ->
     [].
@@ -34,10 +31,6 @@ init_per_testcase(_, Config) ->
     {ok, State1} = rlx_config:do(State),
     [{lib1, LibDir1},
      {state, State1} | Config].
-
-all() ->
-    [basic_tar, exclude_erts, exclude_src, include_src,
-     overlay_archive].
 
 basic_tar(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),

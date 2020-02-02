@@ -1,151 +1,37 @@
-%% -*- erlang-indent-level: 4; indent-tabs-mode: nil; fill-column: 80 -*-
-%%% Copyright 2012 Erlware, LLC. All Rights Reserved.
-%%%
-%%% This file is provided to you under the Apache License,
-%%% Version 2.0 (the "License"); you may not use this file
-%%% except in compliance with the License.  You may obtain
-%%% a copy of the License at
-%%%
-%%%   http://www.apache.org/licenses/LICENSE-2.0
-%%%
-%%% Unless required by applicable law or agreed to in writing,
-%%% software distributed under the License is distributed on an
-%%% "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-%%% KIND, either express or implied.  See the License for the
-%%% specific language governing permissions and limitations
-%%% under the License.
-%%%---------------------------------------------------------------------------
-%%% @author Eric Merritt <ericbmerritt@gmail.com>
-%%% @copyright (C) 2012 Erlware, LLC.
-%%%
-%%% @doc Given a complete built release this provider assembles that release
-%%% into a release directory.
--module(rlx_prv_assembler).
+-module(rlx_assemble).
 
--behaviour(provider).
-
--export([init/1,
-         do/1,
+-export([do/2,
          format_error/1]).
 
 -include("relx.hrl").
 
--define(PROVIDER, release).
--define(DEPS, [resolve_release]).
-
-%%============================================================================
-%% API
-%%============================================================================
--spec init(rlx_state:t()) -> {ok, rlx_state:t()}.
-init(State) ->
-    State1 = rlx_state:add_provider(State, providers:create([{name, ?PROVIDER},
-                                                             {module, ?MODULE},
-                                                             {deps, ?DEPS},
-                                                             {hooks, {[], [overlay]}}])),
-    {ok, State1}.
-
-%% @doc recursively dig down into the library directories specified in the state
-%% looking for OTP Applications
--spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
-do(State) ->
-    print_dev_mode(State),
-    {RelName, RelVsn} = rlx_state:default_configured_release(State),
-    Release = rlx_state:get_realized_release(State, RelName, RelVsn),
+do(Release, State) ->
     OutputDir = rlx_state:output_dir(State),
     case create_output_dir(OutputDir) of
         ok ->
-            case rlx_release:realized(Release) of
-                true ->
-                    case copy_app_directories_to_output(State, Release, OutputDir) of
-                        {ok, State1} ->
-                            case rlx_state:debug_info(State1) =:= strip
-                                andalso rlx_state:dev_mode(State1) =:= false of
-                                true ->
-                                    case beam_lib:strip_release(OutputDir) of
-                                        {ok, _} ->
-                                            {ok, State1};
-                                        {error, _, Reason} ->
-                                            ?RLX_ERROR({strip_release, Reason})
-                                    end;
-                                false ->
-                                    {ok, State1}
+            case copy_app_directories_to_output(Release, OutputDir, State) of
+                ok ->
+                    {ok, State1} = create_release_info(State, Release, OutputDir),
+                    case rlx_state:debug_info(State1) =:= strip
+                        andalso rlx_state:dev_mode(State1) =:= false of
+                        true ->
+                            case beam_lib:strip_release(OutputDir) of
+                                {ok, _} ->
+                                    {ok, State1};
+                                {error, _, Reason} ->
+                                    ?RLX_ERROR({strip_release, Reason})
                             end;
-                        E ->
-                            E
+                        false ->
+                            {ok, State1}
                     end;
-                false ->
-                    ?RLX_ERROR({unresolved_release, RelName, RelVsn})
+                E ->
+                    E
             end;
-        Error ->
-            Error
+        E ->
+            E
     end.
 
--spec format_error(ErrorDetail::term()) -> iolist().
-format_error({unresolved_release, RelName, RelVsn}) ->
-    io_lib:format("The release has not been resolved ~p-~s", [RelName, RelVsn]);
-format_error({ec_file_error, AppDir, TargetDir, E}) ->
-    io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
-                  [AppDir, TargetDir, E]);
-format_error({vmargs_does_not_exist, Path}) ->
-    io_lib:format("The vm.args file specified for this release (~s) does not exist!",
-                  [Path]);
-format_error({vmargs_src_does_not_exist, Path}) ->
-    io_lib:format("The vm.args.src file specified for this release (~s) does not exist!",
-                  [Path]);
-format_error({config_does_not_exist, Path}) ->
-    io_lib:format("The sys.config file specified for this release (~s) does not exist!",
-                  [Path]);
-format_error({config_src_does_not_exist, Path}) ->
-    io_lib:format("The sys.config.src file specified for this release (~s) does not exist!",
-                  [Path]);
-format_error({sys_config_parse_error, ConfigPath, Reason}) ->
-    io_lib:format("The config file (~s) specified for this release could not be opened or parsed: ~s",
-                  [ConfigPath, file:format_error(Reason)]);
-format_error({specified_erts_does_not_exist, ErtsVersion}) ->
-    io_lib:format("Specified version of erts (~s) does not exist",
-                  [ErtsVersion]);
-format_error({release_script_generation_error, RelFile}) ->
-    io_lib:format("Unknown internal release error generating the release file to ~s",
-                  [RelFile]);
-format_error({release_script_generation_warning, Module, Warnings}) ->
-    ["Warnings generating release \s",
-     rlx_util:indent(2), Module:format_warning(Warnings)];
-format_error({unable_to_create_output_dir, OutputDir}) ->
-    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
-                  [OutputDir]);
-format_error({release_script_generation_error, Module, Errors}) ->
-    ["Errors generating release \n",
-     rlx_util:indent(2), Module:format_error(Errors)];
-format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
-    io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
-                  [AppDir, TargetDir, rlx_util:indent(2),
-                   file:format_error(Reason)]);
-format_error(boot_script_generation_error) ->
-    "Unknown internal release error generating start_clean.boot";
-format_error({boot_script_generation_warning, Module, Warnings}) ->
-    ["Warnings generating start_clean.boot \s",
-     rlx_util:indent(2), Module:format_warning(Warnings)];
-format_error({boot_script_generation_error, Module, Errors}) ->
-    ["Errors generating start_clean.boot \n",
-     rlx_util:indent(2), Module:format_error(Errors)];
-format_error({strip_release, Reason}) ->
-    io_lib:format("Stripping debug info from release beam files failed becuase ~s",
-                  [beam_lib:format_error(Reason)]);
-format_error({rewrite_app_file, AppFile, Error}) ->
-    io_lib:format("Unable to rewrite .app file ~s due to ~p",
-                  [AppFile, Error]).
-
-%%%===================================================================
-%%% Internal Functions
-%%%===================================================================
-print_dev_mode(State) ->
-    case rlx_state:dev_mode(State) of
-        true ->
-            ec_cmd_log:info(rlx_state:log(State),
-                            "Dev mode enabled, release will be symlinked");
-        false ->
-            ok
-    end.
+%% internal functions
 
 -spec create_output_dir(file:name()) ->
                                ok | {error, Reason::term()}.
@@ -162,26 +48,16 @@ create_output_dir(OutputDir) ->
             ok
     end.
 
-copy_app_directories_to_output(State, Release, OutputDir) ->
+copy_app_directories_to_output(Release, OutputDir, State) ->
     LibDir = filename:join([OutputDir, "lib"]),
-    ok = ec_file:mkdir_p(LibDir),
+    ok = rlx_util:mkdir_p(LibDir),
     IncludeSrc = rlx_state:include_src(State),
-    IncludeErts = rlx_state:get(State, include_erts, true),
+    IncludeSystemLibs = rlx_state:get(State, include_system_libs, rlx_state:get(State, include_erts, true)),
     Apps = prepare_applications(State, rlx_release:application_details(Release)),
-    Result = lists:filter(fun({error, _}) ->
-                                  true;
-                             (_) ->
-                                  false
-                          end,
-                         lists:flatten(ec_plists:map(fun(App) ->
-                                                             copy_app(State, LibDir, App, IncludeSrc, IncludeErts)
-                                                     end, Apps))),
-    case Result of
-        [E | _] ->
-            E;
-        [] ->
-            create_release_info(State, Release, OutputDir)
-    end.
+    lists:map(fun(App) ->
+                      copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs)
+              end, Apps),
+    ok.
 
 prepare_applications(State, Apps) ->
     case rlx_state:dev_mode(State) of
@@ -191,20 +67,20 @@ prepare_applications(State, Apps) ->
             Apps
     end.
 
-copy_app(State, LibDir, App, IncludeSrc, IncludeErts) ->
+copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) ->
     AppName = erlang:atom_to_list(rlx_app_info:name(App)),
     AppVsn = rlx_app_info:vsn(App),
     AppDir = rlx_app_info:dir(App),
     TargetDir = filename:join([LibDir, AppName ++ "-" ++ AppVsn]),
-    case AppDir == ec_cnv:to_binary(TargetDir) of
+    case AppDir == rlx_util:to_binary(TargetDir) of
         true ->
             %% No need to do anything here, discover found something already in
             %% a release dir
             ok;
         false ->
-            case IncludeErts of
+            case IncludeSystemLibs of
                 false ->
-                    case is_erts_lib(AppDir) of
+                    case is_system_lib(AppDir) of
                         true ->
                             [];
                         false ->
@@ -215,7 +91,7 @@ copy_app(State, LibDir, App, IncludeSrc, IncludeErts) ->
             end
     end.
 
-is_erts_lib(Dir) ->
+is_system_lib(Dir) ->
     lists:prefix(filename:split(list_to_binary(code:lib_dir())), filename:split(Dir)).
 
 copy_app_(State, App, AppDir, TargetDir, IncludeSrc) ->
@@ -229,49 +105,50 @@ copy_app_(State, App, AppDir, TargetDir, IncludeSrc) ->
             rewrite_app_file(State, App, TargetDir)
     end.
 
-%% If excluded apps exist in this App's applications list we must write a new .app
+%% If excluded apps or modules exist in this App's applications list we must write a new .app
 rewrite_app_file(State, App, TargetDir) ->
     Name = rlx_app_info:name(App),
-    ActiveDeps = rlx_app_info:active_deps(App),
-    IncludedDeps = rlx_app_info:library_deps(App),
+    Applications = rlx_app_info:active_deps(App),
+    IncludedApplications = rlx_app_info:library_deps(App),
+
+    %% TODO: should really read this in when creating rlx_app:t() and keep it
     AppFile = filename:join([TargetDir, "ebin", ec_cnv:to_list(Name) ++ ".app"]),
     {ok, [{application, AppName, AppData0}]} = file:consult(AppFile),
-    OldActiveDeps = proplists:get_value(applications, AppData0, []),
-    OldIncludedDeps = proplists:get_value(included_applications, AppData0, []),
-    OldModules = proplists:get_value(modules, AppData0, []),
-    ExcludedModules = proplists:get_value(Name,
-                                          rlx_state:exclude_modules(State), []),
 
     %% maybe replace excluded apps
-    AppData2 =
-        case {OldActiveDeps, OldIncludedDeps} of
-            {ActiveDeps, IncludedDeps} ->
-                AppData0;
-            _ ->
-                AppData1 = lists:keyreplace(applications
-                                           ,1
-                                           ,AppData0
-                                           ,{applications, ActiveDeps}),
-                lists:keyreplace(included_applications
-                                 ,1
-                                 ,AppData1
-                                 ,{included_applications, IncludedDeps})
-        end,
-    %% maybe replace excluded modules
-    AppData3 =
-        case ExcludedModules of
-            [] -> AppData2;
-            _ ->
-                lists:keyreplace(modules
-                                 ,1
-                                 ,AppData2
-                                 ,{modules, OldModules -- ExcludedModules})
-        end,
-    Spec = [{application, AppName, AppData3}],
+    AppData1 = maybe_exclude_apps(Applications, IncludedApplications,
+                                  AppData0, rlx_state:exclude_apps(State)),
+
+    AppData2 = maybe_exclude_modules(AppData1, proplists:get_value(Name,
+                                                                   rlx_state:exclude_modules(State),
+                                                                   [])),
+
+    Spec = [{application, AppName, AppData2}],
     case write_file_if_contents_differ(AppFile, Spec) of
         ok -> ok;
-        Error -> ?RLX_ERROR({rewrite_app_file, AppFile, Error})
+        Error -> throw(?RLX_ERROR({rewrite_app_file, AppFile, Error}))
     end.
+
+maybe_exclude_apps(_Applications, _IncludedApplications, AppData, []) ->
+    AppData;
+maybe_exclude_apps(Applications, IncludedApplications, AppData, ExcludeApps) ->
+    AppData1 = lists:keyreplace(applications,
+                                1,
+                                AppData,
+                                {applications, Applications -- ExcludeApps}),
+    lists:keyreplace(included_applications,
+                     1,
+                     AppData1,
+                     {included_applications, IncludedApplications -- ExcludeApps}).
+
+maybe_exclude_modules(AppData, []) ->
+    AppData;
+maybe_exclude_modules(AppData, ExcludeModules) ->
+    Modules = proplists:get_value(modules, AppData, []),
+    lists:keyreplace(modules,
+                     1,
+                     AppData,
+                     {modules, Modules -- ExcludeModules}).
 
 write_file_if_contents_differ(Filename, Spec) ->
     ToWrite = io_lib:format("~p.\n", Spec),
@@ -329,7 +206,7 @@ copy_dir(State, App, AppDir, TargetDir, SubDir) ->
             AppName = rlx_app_info:name(App),
             ExcludedModules = proplists:get_value(AppName, rlx_state:exclude_modules(State),
                                                   []),
-            ExcludedFiles = [filename:join([binary_to_list(SubSource), 
+            ExcludedFiles = [filename:join([binary_to_list(SubSource),
                                             atom_to_list(M) ++ ".beam"]) ||
                                 M <- ExcludedModules],
             case copy_dir(SubSource, SubTarget, ExcludedFiles) of
@@ -364,7 +241,7 @@ create_release_info(State0, Release0, OutputDir) ->
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     StartCleanFile = filename:join([ReleaseDir, "start_clean.rel"]),
     NoDotErlFile = filename:join([ReleaseDir, "no_dot_erlang.rel"]),
-    ok = ec_file:mkdir_p(ReleaseDir),
+    ok = rlx_util:mkdir_p(ReleaseDir),
     Release1 = rlx_release:relfile(Release0, ReleaseFile),
     State1 = rlx_state:update_realized_release(State0, Release1),
     case rlx_release:metadata(Release1) of
@@ -389,7 +266,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     RelName = erlang:atom_to_list(rlx_release:name(Release)),
     RelVsn = rlx_release:vsn(Release),
     BinDir = filename:join([OutputDir, "bin"]),
-    ok = ec_file:mkdir_p(BinDir),
+    ok = rlx_util:mkdir_p(BinDir),
     VsnRel = filename:join(BinDir, rlx_release:canonical_name(Release)),
     BareRel = filename:join(BinDir, RelName),
     ErlOpts = rlx_state:get(State, erl_opts, ""),
@@ -685,7 +562,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                 false ->
                     ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
                 true ->
-                    ok = ec_file:mkdir_p(LocalErts),
+                    ok = rlx_util:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive, {file_info, [mode, time]}]),
                     case OsFamily of
                         unix ->
@@ -915,3 +792,60 @@ render(Template, Data) ->
     Tpl = rlx_util:load_file(Files, escript, atom_to_list(Template)),
     {ok, Content} = rlx_util:render(Tpl, Data),
     Content.
+
+%%
+
+-spec format_error(ErrorDetail::term()) -> iolist().
+format_error({unresolved_release, RelName, RelVsn}) ->
+    io_lib:format("The release has not been resolved ~p-~s", [RelName, RelVsn]);
+format_error({ec_file_error, AppDir, TargetDir, E}) ->
+    io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
+                  [AppDir, TargetDir, E]);
+format_error({vmargs_does_not_exist, Path}) ->
+    io_lib:format("The vm.args file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({vmargs_src_does_not_exist, Path}) ->
+    io_lib:format("The vm.args.src file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({config_does_not_exist, Path}) ->
+    io_lib:format("The sys.config file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({config_src_does_not_exist, Path}) ->
+    io_lib:format("The sys.config.src file specified for this release (~s) does not exist!",
+                  [Path]);
+format_error({sys_config_parse_error, ConfigPath, Reason}) ->
+    io_lib:format("The config file (~s) specified for this release could not be opened or parsed: ~s",
+                  [ConfigPath, file:format_error(Reason)]);
+format_error({specified_erts_does_not_exist, ErtsVersion}) ->
+    io_lib:format("Specified version of erts (~s) does not exist",
+                  [ErtsVersion]);
+format_error({release_script_generation_error, RelFile}) ->
+    io_lib:format("Unknown internal release error generating the release file to ~s",
+                  [RelFile]);
+format_error({release_script_generation_warning, Module, Warnings}) ->
+    ["Warnings generating release \s",
+     rlx_util:indent(2), Module:format_warning(Warnings)];
+format_error({unable_to_create_output_dir, OutputDir}) ->
+    io_lib:format("Unable to create output directory (possible permissions issue): ~s",
+                  [OutputDir]);
+format_error({release_script_generation_error, Module, Errors}) ->
+    ["Errors generating release \n",
+     rlx_util:indent(2), Module:format_error(Errors)];
+format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
+    io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
+                  [AppDir, TargetDir, rlx_util:indent(2),
+                   file:format_error(Reason)]);
+format_error(boot_script_generation_error) ->
+    "Unknown internal release error generating start_clean.boot";
+format_error({boot_script_generation_warning, Module, Warnings}) ->
+    ["Warnings generating start_clean.boot \s",
+     rlx_util:indent(2), Module:format_warning(Warnings)];
+format_error({boot_script_generation_error, Module, Errors}) ->
+    ["Errors generating start_clean.boot \n",
+     rlx_util:indent(2), Module:format_error(Errors)];
+format_error({strip_release, Reason}) ->
+    io_lib:format("Stripping debug info from release beam files failed becuase ~s",
+                  [beam_lib:format_error(Reason)]);
+format_error({rewrite_app_file, AppFile, Error}) ->
+    io_lib:format("Unable to rewrite .app file ~s due to ~p",
+                  [AppFile, Error]).

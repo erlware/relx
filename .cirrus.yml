@@ -1,8 +1,9 @@
 osx_check_task:
+  name: OSX Tests
   osx_instance:
-    image: mojave-base
+    image: catalina-base
   install_script: brew install erlang
   test_script: |
     wget https://s3.amazonaws.com/rebar3/rebar3
     chmod +x rebar3
-    ./rebar3 eunit && ./rebar3 ct
+    ./rebar3 ct
