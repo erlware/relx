@@ -92,9 +92,10 @@ build_release(Release=#{name := RelName,
 build_release(Release, _, _) ->
     ?RLX_ERROR({unrecognized_release, Release}).
 
--spec build_relup(release(), release(), [rlx_app:t()], rlx_config:t()) -> ok | {error, term()}.
-build_relup(_Release1, _Release2, _Apps, _Config) ->
-    ok.
+-spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_config:t()) -> ok | {error, term()}.
+build_relup(RelName, ToVsn, UpFromVsn, Config) ->
+    State = config_to_state(Config),
+    rlx_relup:do(RelName, ToVsn, UpFromVsn, State).
 
 -spec format_error(Reason::term()) -> string().
 format_error({unrecognized_release, Release}) ->
