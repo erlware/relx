@@ -598,30 +598,35 @@ include_erts(State, Release, OutputDir, RelDir) ->
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) ->
                               {ok, rlx_state:t()} | relx:error().
 make_boot_script(State, Release, OutputDir, RelDir) ->
+    WarningsAsErrors = rlx_state:warnings_as_errors(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
                {variables, make_boot_script_variables(State)},
-               no_module_tests, silent],
+               no_module_tests,
+               silent | case WarningsAsErrors of
+                            true -> [warnings_as_errors];
+                            false -> []
+                        end],
     Name = erlang:atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
-    case systools:make_script(Name, [no_warn_sasl | Options]) of
-        ok ->
+    case systools:make_script(Name, Options) of
+        Result when Result =:= ok orelse (is_tuple(Result) andalso
+                                          element(1, Result) =:= ok) ->
+            maybe_print_warnings(Result),
             ?log_info("Release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
             create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
         error ->
-            ?RLX_ERROR({release_script_generation_error, ReleaseFile});
-        {ok, _, []} ->
-            ?log_info("Release successfully created!"),
-            create_RELEASES(OutputDir, ReleaseFile),
-            create_no_dot_erlang(RelDir, OutputDir, Options, State),
-            create_start_clean(RelDir, OutputDir, Options, State);
-        {ok,Module,Warnings} ->
-            ?RLX_ERROR({release_script_generation_warn, Module, Warnings});
-        {error,Module,Error} ->
-            ?RLX_ERROR({release_script_generation_error, Module, Error})
+            erlang:error(?RLX_ERROR({release_script_generation_error, ReleaseFile}));
+        {error, Module, Error} ->
+            erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
     end.
+
+maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
+    ?log_warn("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
+maybe_print_warnings(_) ->
+    ok.
 
 make_boot_script_variables(State) ->
     % A boot variable is needed when {include_erts, false} and the application
@@ -651,29 +656,24 @@ create_no_dot_erlang(RelDir, OutputDir, Options, State) ->
 create_start_clean(RelDir, OutputDir, Options, State) ->
     create_boot_file(RelDir, OutputDir, Options, State, "start_clean").
 
-create_boot_file(RelDir, OutputDir, Options, State, Name) ->
-    case systools:make_script(Name, [no_warn_sasl | Options]) of
-        ok ->
-            ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
-                              filename:join([OutputDir, "bin", Name++".boot"]),
-                              [{file_info, [mode, time]}]),
-            ec_file:remove(filename:join([RelDir, Name++".rel"])),
-            ec_file:remove(filename:join([RelDir, Name++".script"])),
+%% TODO: do we need the Options here at all?
+create_boot_file(RelDir, _OutputDir, Options, State, Name) ->
+    case systools:make_script(Name, [{outdir, RelDir},
+                                     no_warn_sasl | Options]) of
+        Result when Result =:= ok orelse (is_tuple(Result) andalso
+                                          element(1, Result) =:= ok) ->
+            maybe_print_warnings(Result),
+            remove_rel_and_script(RelDir, Name),
             {ok, State};
         error ->
-            ?RLX_ERROR(boot_script_generation_error);
-        {ok, _, []} ->
-            ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
-                              filename:join([OutputDir, "bin", Name++".boot"]),
-                              [{file_info, [mode, time]}]),
-            ec_file:remove(filename:join([RelDir, Name++".rel"])),
-            ec_file:remove(filename:join([RelDir, Name++".script"])),
-            {ok, State};
-        {ok,Module,Warnings} ->
-            ?RLX_ERROR({boot_script_generation_warn, Module, Warnings});
-        {error,Module,Error} ->
-            ?RLX_ERROR({boot_script_generation_error, Module, Error})
+            erlang:error(?RLX_ERROR({boot_script_generation_error, Name}));
+        {error, Module, Error} ->
+            erlang:error(?RLX_ERROR({boot_script_generation_error, Name, Module, Error}))
     end.
+
+remove_rel_and_script(RelDir, Name) ->
+    ec_file:remove(filename:join([RelDir, Name++".rel"])),
+    ec_file:remove(filename:join([RelDir, Name++".script"])).
 
 create_RELEASES(OutputDir, ReleaseFile) ->
     {ok, OldCWD} = file:get_cwd(),
@@ -809,26 +809,19 @@ format_error({specified_erts_does_not_exist, ErtsVersion}) ->
 format_error({release_script_generation_error, RelFile}) ->
     io_lib:format("Unknown internal release error generating the release file to ~s",
                   [RelFile]);
-format_error({release_script_generation_warning, Module, Warnings}) ->
-    ["Warnings generating release \s",
-     rlx_util:indent(2), Module:format_warning(Warnings)];
 format_error({unable_to_create_output_dir, OutputDir}) ->
     io_lib:format("Unable to create output directory (possible permissions issue): ~s",
                   [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
-    ["Errors generating release \n",
-     rlx_util:indent(2), Module:format_error(Errors)];
+    ["Error generating release: \n", Module:format_error(Errors)];
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),
                    file:format_error(Reason)]);
-format_error(boot_script_generation_error) ->
-    "Unknown internal release error generating start_clean.boot";
-format_error({boot_script_generation_warning, Module, Warnings}) ->
-    ["Warnings generating start_clean.boot \s",
-     rlx_util:indent(2), Module:format_warning(Warnings)];
-format_error({boot_script_generation_error, Module, Errors}) ->
-    ["Errors generating start_clean.boot \n",
+format_error({boot_script_generation_error, Name}) ->
+    io_lib:format("Unknown internal release error generating ~s.boot", [Name]);
+format_error({boot_script_generation_error, Name, Module, Errors}) ->
+    [io_lib:format("Errors generating ~s.boot: \n", [Name]),
      rlx_util:indent(2), Module:format_error(Errors)];
 format_error({strip_release, Reason}) ->
     io_lib:format("Stripping debug info from release beam files failed becuase ~s",
