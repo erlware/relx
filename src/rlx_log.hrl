@@ -1,10 +1,14 @@
-%% logging macros
--define(log_debug(Msg, State), rlx_log:log(debug, Msg, [], State)).
--define(log_warn(Msg, State), rlx_log:log(warn, Msg, [], State)).
--define(log_error(Msg, State), rlx_log:log(error, Msg, [], State)).
--define(log_info(Msg, State), rlx_log:log(info, Msg, [], State)).
+-ifndef(RLX_LOG).
+-define(RLX_LOG, rlx_log).
+-endif.
 
--define(log_debug(Msg, Args, State), rlx_log:log(debug, Msg, Args, State)).
--define(log_warn(Msg, Args, State), rlx_log:log(warn, Msg, Args, State)).
--define(log_error(Msg, Args, State), rlx_log:log(error, Msg, Args, State)).
--define(log_info(Msg, Args, State), rlx_log:log(info, Msg, Args, State)).
+%% logging macros
+-define(log_debug(Msg), ?RLX_LOG:log(debug, Msg, [])).
+-define(log_warn(Msg), ?RLX_LOG:log(warn, Msg, [])).
+-define(log_error(Msg), ?RLX_LOG:log(error, Msg, [])).
+-define(log_info(Msg), ?RLX_LOG:log(info, Msg, [])).
+
+-define(log_debug(Msg, Args), ?RLX_LOG:log(debug, Msg, Args)).
+-define(log_warn(Msg, Args), ?RLX_LOG:log(warn, Msg, Args)).
+-define(log_error(Msg, Args), ?RLX_LOG:log(error, Msg, Args)).
+-define(log_info(Msg, Args), ?RLX_LOG:log(info, Msg, Args)).

@@ -11,7 +11,7 @@ to_state(Config, State) ->
 
 -spec load(term(), {ok, rlx_state:t()} | relx:error()) -> {ok, rlx_state:t()} | relx:error().
 load({default_release, {RelName, RelVsn}}, {ok, State}) ->
-    NewVsn = parse_vsn(RelVsn, State),
+    NewVsn = parse_vsn(RelVsn),
     {ok, rlx_state:default_configured_release(State, RelName, NewVsn)};
 load({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
@@ -40,21 +40,21 @@ load({upfrom, UpFrom}, {ok, State0}) ->
 load({include_src, IncludeSrc}, {ok, State0}) ->
     {ok, rlx_state:include_src(State0, IncludeSrc)};
 load({release, {RelName, Vsn, {extend, {RelName2, Vsn2}}}, Applications}, {ok, State0}) ->
-    NewVsn = parse_vsn(Vsn, State0),
-    NewVsn2 = parse_vsn(Vsn2, State0),
+    NewVsn = parse_vsn(Vsn),
+    NewVsn2 = parse_vsn(Vsn2),
     add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, State0);
 load({release, {RelName, Vsn, {extend, RelName2}}, Applications}, {ok, State0}) ->
-    NewVsn = parse_vsn(Vsn, State0),
+    NewVsn = parse_vsn(Vsn),
     add_extended_release(RelName, NewVsn, RelName2, NewVsn, Applications, State0);
 load({release, {RelName, Vsn, {extend, {RelName2, Vsn2}}}, Applications, Config}, {ok, State0}) ->
-    NewVsn = parse_vsn(Vsn, State0),
-    NewVsn2 = parse_vsn(Vsn2, State0),
+    NewVsn = parse_vsn(Vsn),
+    NewVsn2 = parse_vsn(Vsn2),
     add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, Config, State0);
 load({release, {RelName, Vsn, {extend, RelName2}}, Applications, Config}, {ok, State0}) ->
-    NewVsn = parse_vsn(Vsn, State0),
+    NewVsn = parse_vsn(Vsn),
     add_extended_release(RelName, NewVsn, RelName2, NewVsn, Applications, Config, State0);
 load({release, {RelName, Vsn}, {erts, ErtsVsn}, Applications}, {ok, State0}) ->
-    NewVsn = parse_vsn(Vsn, State0),
+    NewVsn = parse_vsn(Vsn),
     Release0 = rlx_release:erts(rlx_release:new(RelName, NewVsn), ErtsVsn),
     case rlx_release:goals(Release0, Applications) of
         E={error, _} ->
@@ -63,7 +63,7 @@ load({release, {RelName, Vsn}, {erts, ErtsVsn}, Applications}, {ok, State0}) ->
             {ok, rlx_state:add_configured_release(State0, Release1)}
     end;
 load({release, {RelName, Vsn}, {erts, ErtsVsn}, Applications, Config}, {ok, State0}) ->
-    NewVsn = parse_vsn(Vsn, State0),
+    NewVsn = parse_vsn(Vsn),
     Release0 = rlx_release:erts(rlx_release:new(RelName, NewVsn), ErtsVsn),
     case rlx_release:goals(Release0, Applications) of
         E={error, _} ->
@@ -73,7 +73,7 @@ load({release, {RelName, Vsn}, {erts, ErtsVsn}, Applications, Config}, {ok, Stat
             {ok, rlx_state:add_configured_release(State0, Release2)}
     end;
 load({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
-    NewVsn = parse_vsn(Vsn, State0),
+    NewVsn = parse_vsn(Vsn),
     Release0 = rlx_release:new(RelName, NewVsn),
     case rlx_release:goals(Release0, Applications) of
         E={error, _} ->
@@ -82,7 +82,7 @@ load({release, {RelName, Vsn}, Applications}, {ok, State0}) ->
             {ok, rlx_state:add_configured_release(State0, Release1)}
         end;
 load({release, {RelName, Vsn}, Applications, Config}, {ok, State0}) ->
-    NewVsn = parse_vsn(Vsn, State0),
+    NewVsn = parse_vsn(Vsn),
     Release0 = rlx_release:new(RelName, NewVsn),
     case rlx_release:goals(Release0, Applications) of
         E={error, _} ->
@@ -128,29 +128,29 @@ load(InvalidTerm, _) ->
 
 %%
 
-parse_vsn(Vsn, _State) when Vsn =:= git ; Vsn =:= "git" ->
+parse_vsn(Vsn) when Vsn =:= git ; Vsn =:= "git" ->
     {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
     V;
-parse_vsn({git, short}, State) ->
-    git_ref("--short", State);
-parse_vsn({git, long}, State) ->
-    git_ref("", State);
-parse_vsn({file, File}, _State) ->
+parse_vsn({git, short}) ->
+    git_ref("--short");
+parse_vsn({git, long}) ->
+    git_ref("");
+parse_vsn({file, File}) ->
     {ok, Vsn} = file:read_file(File),
     rlx_util:to_string(rlx_string:trim(rlx_util:to_string(Vsn), both, "\n"));
-parse_vsn(Vsn, _State) when Vsn =:= semver ; Vsn =:= "semver" ->
+parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
     {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
     V;
-parse_vsn({semver, Data}, _State) ->
+parse_vsn({semver, Data}) ->
     {ok, V} = ec_git_vsn:vsn(Data),
     V;
-parse_vsn({cmd, Command}, _State) ->
+parse_vsn({cmd, Command}) ->
     V = os:cmd(Command),
     V;
-parse_vsn(Vsn, _State) ->
+parse_vsn(Vsn) ->
     Vsn.
 
-git_ref(Arg, State) ->
+git_ref(Arg) ->
     case os:cmd("git rev-parse " ++ Arg ++ " HEAD") of
         String ->
             Vsn = rlx_string:trim(String, both, "\n"),
@@ -162,7 +162,7 @@ git_ref(Arg, State) ->
                     %% it must have failed
                     {ok, Dir} = file:get_cwd(),
                     ?log_warn("Getting ref of git repo failed in directory ~ts. Falling back to version 0",
-                              [Dir], State),
+                              [Dir]),
                     {plain, "0"}
             end
     end.

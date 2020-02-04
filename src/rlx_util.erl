@@ -82,6 +82,8 @@ indent(Amount) when erlang:is_integer(Amount) ->
 -spec to_binary(iolist() | binary()) -> binary().
 to_binary(String) when erlang:is_list(String) ->
     erlang:iolist_to_binary(String);
+to_binary(Atom) when erlang:is_atom(Atom) ->
+    erlang:atom_to_binary(Atom, utf8);
 to_binary(Bin) when erlang:is_binary(Bin) ->
     Bin.
 
@@ -303,15 +305,15 @@ include_erts_is_win32(State) ->
   case rlx_state:get(State, include_erts, true) of
     true -> false;
     false -> false;
-    Path -> is_win32_erts(Path,State)
+    Path -> is_win32_erts(Path)
   end.
 
-is_win32_erts(Path, State) ->
+is_win32_erts(Path) ->
   case filelib:wildcard(filename:join([Path,"bin","erl.exe"])) of
     [] ->
           false;
     _ ->
-      ?log_info("Including Erts is win32", State),
+      ?log_info("Including Erts is win32"),
       true
   end.
 

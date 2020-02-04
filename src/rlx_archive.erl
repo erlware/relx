@@ -95,7 +95,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                                 [{"lib", filename:join(TempDir, "lib")},
                                  {"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
                         end]++ConfigFiles++OverlayFiles, [dereference,compressed]),
-    ?log_info("tarball ~s successfully created!~n", [TarFile], State),
+    ?log_info("tarball ~s successfully created!", [TarFile]),
     ec_file:remove(TempDir, [recursive]),
     {ok, State}.
 

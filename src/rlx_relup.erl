@@ -48,19 +48,18 @@ make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
                                 end],
     CurrentRel = strip_dot_rel(find_rel_file(Name, ToVsn, OutputDir)),
     UpFromRel = strip_dot_rel(find_rel_file(Name, UpFromVsn, OutputDir)),
-    ?log_debug("systools:make_relup(~p, ~p, ~p, ~p)", [CurrentRel, UpFromRel, UpFromRel, Options], State),
+    ?log_debug("systools:make_relup(~p, ~p, ~p, ~p)", [CurrentRel, UpFromRel, UpFromRel, Options]),
     case systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], [no_warn_sasl | Options]) of
         ok ->
-            ?log_info("relup from ~s to ~s successfully created!", [UpFromRel, CurrentRel], State),
+            ?log_info("relup from ~s to ~s successfully created!", [UpFromRel, CurrentRel]),
             {ok, State};
         error ->
             error(?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel}));
         {ok, _RelUp, _, []} ->
-            ?log_info("relup successfully created!", State),
+            ?log_info("relup successfully created!"),
             {ok, State};
         {ok, _RelUp, _Module, Warnings} ->
-            ?log_warn("Warnings generating relup:~n~s",
-                      [[systools_relup:format_warning("    ", W) || W <- Warnings]], State),
+            ?log_warn("Warnings generating relup:~n~s", [[systools_relup:format_warning("    ", W) || W <- Warnings]]),
             {ok, State};
 
         {error, Module, Error} ->

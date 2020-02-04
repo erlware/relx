@@ -150,7 +150,7 @@ merge_overlay_vars(State, FileNames) ->
                                                     lists:keydelete(element(1, NewTerm), 1, A)
                                             end, Acc, NewTerms) ++ NewTerms;
                             {error, Reason} ->
-                                ?log_warn(format_error({unable_to_read_varsfile, FileName, Reason}), State),
+                                ?log_warn(format_error({unable_to_read_varsfile, FileName, Reason})),
                                 Acc
                         end;
                    (Var, Acc) ->
