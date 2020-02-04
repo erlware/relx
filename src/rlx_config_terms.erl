@@ -20,7 +20,7 @@ load({default_libs, DefaultLibs}, {ok, State}) ->
     State2 = rlx_state:put(State, default_libs, DefaultLibs),
     {ok, State2};
 load({lib_dirs, Dirs}, {ok, State}) ->
-    LibDirs = [list_to_binary(Dir) || Dir <- rlx_util:wildcard_paths(Dirs)],
+    LibDirs = [list_to_binary(Dir) || Dir <- rlx_file_utils:wildcard_paths(Dirs)],
     State1 = rlx_state:add_lib_dirs(State, LibDirs),
     {ok, State1};
 load({skip_apps, SkipApps0}, {ok, State0}) ->

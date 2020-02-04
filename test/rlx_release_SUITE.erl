@@ -37,7 +37,7 @@ end_per_suite(_Config) ->
 init_per_testcase(_, Config) ->
     DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
     LibDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir1_")]),
-    ok = rlx_util:mkdir_p(LibDir1),
+    ok = rlx_file_utils:mkdir_p(LibDir1),
     [{lib1, LibDir1} | Config].
 
 all() ->
@@ -605,7 +605,7 @@ overlay_release(Config) ->
     rlx_test_utils:write_config(VarsFile4, [{prop1, "val1"},
                                             {prop2, 2}]),
 
-    ok = rlx_util:mkdir_p(TestDirFull),
+    ok = rlx_file_utils:mkdir_p(TestDirFull),
     ok = file:write_file(TestFileFull, rlx_test_utils:test_template_contents()),
 
     TemplateFile = filename:join([LibDir1, "test_template"]),
