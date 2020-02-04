@@ -45,7 +45,6 @@
          config/1,
          config/2,
          format/1,
-         format/2,
          format_error/1]).
 
 -export_type([t/0,
