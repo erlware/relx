@@ -9,6 +9,7 @@
 -define(DIRECTORY_RE, ".*(\/|\\\\)$").
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 render(Release, State) ->
     case generate_overlay_vars(State, Release) of
@@ -149,8 +150,7 @@ merge_overlay_vars(State, FileNames) ->
                                                     lists:keydelete(element(1, NewTerm), 1, A)
                                             end, Acc, NewTerms) ++ NewTerms;
                             {error, Reason} ->
-                                ec_cmd_log:warn(rlx_state:log(State),
-                                                format_error({unable_to_read_varsfile, FileName, Reason})),
+                                ?log_warn(format_error({unable_to_read_varsfile, FileName, Reason}), State),
                                 Acc
                         end;
                    (Var, Acc) ->
@@ -203,8 +203,7 @@ generate_release_vars(Release) ->
 
 -spec generate_state_vars(rlx_state:t()) -> proplists:proplist().
 generate_state_vars(State) ->
-    [%% {log, ec_cmd_log:format(rlx_state:log(State))},
-     {output_dir, rlx_state:output_dir(State)},
+    [{output_dir, rlx_state:output_dir(State)},
      {target_dir, rlx_state:output_dir(State)},
      {overridden, [AppName || {AppName, _} <- rlx_state:overrides(State)]},
      {overrides, rlx_state:overrides(State)},

@@ -183,8 +183,11 @@ metadata(#release_t{name=Name,
     end.
 
 -spec start_clean_metadata(t()) -> term().
-start_clean_metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=Apps,
-                    realized=Realized}) ->
+start_clean_metadata(#release_t{name=Name,
+                                vsn=Vsn,
+                                erts=ErtsVsn,
+                                applications=Apps,
+                                realized=Realized}) ->
     case Realized of
         true ->
             {value, Kernel, Apps1} = lists:keytake(kernel, 1, Apps),
@@ -230,26 +233,32 @@ format(Release) ->
     format(0, Release).
 
 -spec format(non_neg_integer(), t()) -> iolist().
-format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
-                         goals = Goals, applications=Apps}) ->
+format(Indent, #release_t{name=Name,
+                          vsn=Vsn,
+                          erts=ErtsVsn,
+                          realized=Realized,
+                          goals = Goals,
+                          applications=Apps}) ->
     BaseIndent = rlx_util:indent(Indent),
     [BaseIndent, "release: ", rlx_util:to_string(Name), "-", Vsn, "\n",
-     rlx_util:indent(Indent + 2), " erts-", ErtsVsn,
-     ", realized = ",  erlang:atom_to_list(Realized), "\n",
+     rlx_util:indent(Indent + 1), "erts: ", ErtsVsn, "\n",
      rlx_util:indent(Indent + 1), "goals: \n",
-     [[rlx_util:indent(Indent + 2),  format_goal(Goal), ",\n"] || Goal <- Goals],
+     [[rlx_util:indent(Indent + 2),  format_goal(Goal), "\n"] || {_, Goal} <- maps:to_list(Goals)],
      case Realized of
          true ->
              [rlx_util:indent(Indent + 1), "applications: \n",
-              [[rlx_util:indent(Indent + 2),  io_lib:format("~p", [App]), ",\n"] ||
+              [[rlx_util:indent(Indent + 2),  io_lib:format("~p", [App]), "\n"] ||
                   App <- Apps]];
          false ->
              []
      end].
 
 -spec format_goal(parsed_goal()) -> iolist().
-format_goal(Goal) ->
-    io_lib:format("Goal ~p", [Goal]).
+format_goal(#{name := Name,
+              vsn := Vsn}) when Vsn =/= undefined ->
+    io_lib:format("{~p, ~s}", [Name, Vsn]);
+format_goal(#{name := Name}) ->
+    io_lib:format("~p", [Name]).
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({failed_to_parse, Con}) ->
@@ -269,8 +278,7 @@ realize_erts(Rel=#release_t{erts=undefined}) ->
 realize_erts(Rel) ->
     Rel.
 
--spec process_specs(t(), [rlx_app_info:t()]) ->
-                           {ok, t()}.
+-spec process_specs(t(), [rlx_app_info:t()]) -> {ok, t()}.
 process_specs(Rel=#release_t{goals=Goals}, World) ->
     ActiveApps = lists:flatten([rlx_app_info:active_deps(El) || El <- World] ++ maps:keys(Goals)),
     LibraryApps = lists:flatten([rlx_app_info:library_deps(El) || El <- World]),

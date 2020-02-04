@@ -4,6 +4,7 @@
          format_error/1]).
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 do(Release, State) ->
     OutputDir = rlx_state:output_dir(State),
@@ -349,11 +350,7 @@ expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc, State) ->
                         %% extended script
                         Acc0 ++ [hook_invocation(Hook)];
                     false ->
-                        ec_cmd_log:error(
-                            rlx_state:log(State),
-                            io_lib:format("~p hook is not allowed in the ~p phase, ignoring it", [Hook, Phase])
-                        ),
-
+                        ?log_error("~p hook is not allowed in the ~p phase, ignoring it", [Hook, Phase], State),
                         Acc0
                 end
             end, [], Hooks0),
@@ -408,12 +405,7 @@ hook_template(builtin_status) -> builtin_hook_status.
 %% be copied by the release overlays
 render_hook(custom, _, _) -> ok;
 render_hook(TemplateName, Script, State) ->
-    ec_cmd_log:info(
-        rlx_state:log(State),
-        "rendering ~p hook to ~p~n",
-        [TemplateName, Script]
-    ),
-
+    ?log_info("rendering ~p hook to ~p", [TemplateName, Script], State),
     Template = render(TemplateName),
     ok = filelib:ensure_dir(Script),
     _ = ec_file:remove(Script),
@@ -466,8 +458,7 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
                 undefined ->
                     ok;
                 _->
-                    ec_cmd_log:warn(rlx_state:log(State),
-                                    "Both vm_args_src and vm_args are set, vm_args will be ignored~n", [])
+                    ?log_warn("Both vm_args_src and vm_args are set, vm_args will be ignored~n", State)
             end,
 
             case filelib:is_regular(ArgsSrcPath) of
@@ -511,8 +502,7 @@ copy_or_generate_sys_config_file(State, RelDir) ->
                 P when P =:= false orelse P =:= undefined ->
                     ok;
                 _->
-                    ec_cmd_log:warn(rlx_state:log(State),
-                                    "Both sys_config_src and sys_config are set, sys_config will be ignored~n", [])
+                    ?log_warn("Both sys_config_src and sys_config are set, sys_config will be ignored", State)
             end,
 
             case filelib:is_regular(ConfigSrcPath) of
@@ -552,8 +542,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
         false ->
             make_boot_script(State, Release, OutputDir, RelDir);
         _ ->
-            ec_cmd_log:info(rlx_state:log(State),
-                            "Including Erts from ~s~n", [Prefix]),
+            ?log_info("Including Erts from ~s~n", [Prefix], State),
             ErtsVersion = rlx_release:erts(Release),
             ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
             LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
@@ -617,16 +606,14 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
     ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
     case systools:make_script(Name, [no_warn_sasl | Options]) of
         ok ->
-            ec_cmd_log:info(rlx_state:log(State),
-                             "release successfully created!"),
+            ?log_info("release successfully created!", State),
             create_RELEASES(OutputDir, ReleaseFile),
             create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
         error ->
             ?RLX_ERROR({release_script_generation_error, ReleaseFile});
         {ok, _, []} ->
-            ec_cmd_log:info(rlx_state:log(State),
-                          "release successfully created!"),
+            ?log_info("release successfully created!", State),
             create_RELEASES(OutputDir, ReleaseFile),
             create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);

@@ -6,6 +6,7 @@
          format_error/1]).
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 -type name() :: atom().
 -type vsn() :: string().
@@ -147,7 +148,7 @@ format_error({release_erts_error, Dir}) ->
 %% legacy
 
 solve_release(RelName, RelVsn, State0) ->
-    ec_cmd_log:debug(rlx_state:log(State0), "Solving Release ~p-~s~n", [RelName, RelVsn]),
+    ?log_debug("Solving Release ~p-~s~n", [RelName, RelVsn], State0),
     AllApps = rlx_state:available_apps(State0),
     try
         Release =
@@ -222,14 +223,8 @@ subset([Goal | Rest], World, Seen, Acc) ->
 set_resolved(Release0, Pkgs, State) ->
     case rlx_release:realize(Release0, Pkgs) of
         {ok, Release1} ->
-            ec_cmd_log:info(rlx_state:log(State),
-                            "Resolved ~p-~s~n",
-                            [rlx_release:name(Release1),
-                             rlx_release:vsn(Release1)]),
-            %% ec_cmd_log:debug(rlx_state:log(State),
-            %%                  fun() ->
-            %%                          rlx_release:format(0, Release1)
-            %%                  end),
+            ?log_info("Resolved ~p-~s~n", [rlx_release:name(Release1), rlx_release:vsn(Release1)], State),
+            ?log_debug(fun() -> rlx_release:format(0, Release1) end, State),
             case rlx_state:get(State, include_erts, undefined) of
                 IncludeErts when is_atom(IncludeErts) ->
                     {ok, Release1, rlx_state:add_realized_release(State, Release1)};
