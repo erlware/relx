@@ -39,7 +39,7 @@ do(Release, State) ->
 create_output_dir(OutputDir) ->
     case ec_file:is_dir(OutputDir) of
         false ->
-            case rlx_util:mkdir_p(OutputDir) of
+            case rlx_file_utils:mkdir_p(OutputDir) of
                 ok ->
                     ok;
                 {error, _} ->
@@ -51,7 +51,7 @@ create_output_dir(OutputDir) ->
 
 copy_app_directories_to_output(Release, OutputDir, State) ->
     LibDir = filename:join([OutputDir, "lib"]),
-    ok = rlx_util:mkdir_p(LibDir),
+    ok = rlx_file_utils:mkdir_p(LibDir),
     IncludeSrc = rlx_state:include_src(State),
     IncludeSystemLibs = rlx_state:get(State, include_system_libs, rlx_state:get(State, include_erts, true)),
     Apps = prepare_applications(State, rlx_release:application_details(Release)),
@@ -176,7 +176,7 @@ remove_symlink_or_directory(TargetDir) ->
     end.
 
 link_directory(AppDir, TargetDir) ->
-    case rlx_util:symlink_or_copy(AppDir, TargetDir) of
+    case rlx_file_utils:symlink_or_copy(AppDir, TargetDir) of
         {error, Reason} ->
             ?RLX_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
         ok ->
@@ -202,7 +202,7 @@ copy_dir(State, App, AppDir, TargetDir, SubDir) ->
     SubTarget = filename:join(TargetDir, SubDir),
     case ec_file:is_dir(SubSource) of
         true ->
-            ok = rlx_util:mkdir_p(SubTarget),
+            ok = rlx_file_utils:mkdir_p(SubTarget),
             %% get a list of the modules to be excluded from this app
             AppName = rlx_app_info:name(App),
             ExcludedModules = proplists:get_value(AppName, rlx_state:exclude_modules(State),
@@ -242,7 +242,7 @@ create_release_info(State0, Release0, OutputDir) ->
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     StartCleanFile = filename:join([ReleaseDir, "start_clean.rel"]),
     NoDotErlFile = filename:join([ReleaseDir, "no_dot_erlang.rel"]),
-    ok = rlx_util:mkdir_p(ReleaseDir),
+    ok = rlx_file_utils:mkdir_p(ReleaseDir),
     Release1 = rlx_release:relfile(Release0, ReleaseFile),
     State1 = rlx_state:update_realized_release(State0, Release1),
     case rlx_release:metadata(Release1) of
@@ -267,7 +267,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     RelName = erlang:atom_to_list(rlx_release:name(Release)),
     RelVsn = rlx_release:vsn(Release),
     BinDir = filename:join([OutputDir, "bin"]),
-    ok = rlx_util:mkdir_p(BinDir),
+    ok = rlx_file_utils:mkdir_p(BinDir),
     VsnRel = filename:join(BinDir, rlx_release:canonical_name(Release)),
     BareRel = filename:join(BinDir, RelName),
     ErlOpts = rlx_state:get(State, erl_opts, ""),
@@ -520,7 +520,7 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
     ensure_not_exist(RelConfPath),
     case rlx_state:dev_mode(State) of
         true ->
-            ok = rlx_util:symlink_or_copy(ConfigPath, RelConfPath);
+            ok = rlx_file_utils:symlink_or_copy(ConfigPath, RelConfPath);
         _ ->
             ok = ec_file:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}])
     end.
@@ -551,7 +551,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                 false ->
                     ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
                 true ->
-                    ok = rlx_util:mkdir_p(LocalErts),
+                    ok = rlx_file_utils:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive, {file_info, [mode, time]}]),
                     case OsFamily of
                         unix ->

@@ -26,7 +26,7 @@ end_per_suite(_Config) ->
 init_per_testcase(_, Config) ->
     DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
     LibDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir1_")]),
-    ok = rlx_util:mkdir_p(LibDir1),
+    ok = rlx_file_utils:mkdir_p(LibDir1),
     State = rlx_state:new([], [{lib_dirs, [LibDir1]}], [release]),
     {ok, State1} = rlx_config:do(State),
     [{lib1, LibDir1},
@@ -310,7 +310,7 @@ overlay_archive(Config) ->
     TestScriptFile2 = filename:join([LibDir1,TestScript2]),
     ok = file:write_file(TestScriptFile2, <<"#!/bin/sh\necho \"hello world 2\"">>),
 
-    ok = rlx_util:mkdir_p(TestDirFull),
+    ok = rlx_file_utils:mkdir_p(TestDirFull),
     ok = file:write_file(TestFileFull, rlx_test_utils:test_template_contents()),
 
     TemplateFile = filename:join([LibDir1, "test_template"]),

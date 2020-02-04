@@ -215,7 +215,7 @@ unescape_string(String) ->
 %% discovery
 
 all_apps(LibDirs) ->
-    Dirs = [list_to_binary(Dir) || Dir <- rlx_util:wildcard_paths(LibDirs ++ code:get_path())],
+    Dirs = [list_to_binary(Dir) || Dir <- rlx_file_utils:wildcard_paths(LibDirs ++ code:get_path())],
     resolve_app_metadata(Dirs).
 
 app_files(LibDirs) ->

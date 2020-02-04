@@ -59,7 +59,7 @@ make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
             ?log_info("relup successfully created!"),
             {ok, State};
         {ok, _RelUp, _Module, Warnings} ->
-            ?log_warn("Warnings generating relup:~n~s", [[systools_relup:format_warning("    ", W) || W <- Warnings]]),
+            ?log_warn("Warnings generating relup:~n~s", [[systools_relup:format_warning(W) || W <- Warnings]]),
             {ok, State};
 
         {error, Module, Error} ->
