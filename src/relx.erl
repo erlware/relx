@@ -85,7 +85,7 @@ build_release({RelName, RelVsn}, Apps, Config) when is_atom(RelName) ,
                 vsn => RelVsn},
     build_release_(Release, Apps, State1);
 build_release(Release=#{name := RelName,
-                        vsn := RelVsn}, Apps, Config) when is_map(Release) ->
+                        vsn := RelVsn}, Apps, Config) ->
     State = config_to_state(Config),
     State1 = rlx_state:default_configured_release(State, RelName, RelVsn),
     build_release_(Release, Apps, State1);
