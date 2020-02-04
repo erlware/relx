@@ -46,14 +46,7 @@
 -define(ONE_LEVEL_INDENT, "     ").
 
 -include_lib("kernel/include/file.hrl").
-%%============================================================================
-%% types
-%%============================================================================
-
-
-%%============================================================================
-%% API
-%%============================================================================
+-include("rlx_log.hrl").
 
 %% @doc Generates the correct set of code paths for the system.
 -spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].
@@ -313,12 +306,12 @@ include_erts_is_win32(State) ->
     Path -> is_win32_erts(Path,State)
   end.
 
-is_win32_erts(Path, _State) ->
+is_win32_erts(Path, State) ->
   case filelib:wildcard(filename:join([Path,"bin","erl.exe"])) of
     [] ->
           false;
     _ ->
-      %% ec_cmd_log:info(rlx_state:log(State), "Including Erts is win32 ~n", []),
+      ?log_info("Including Erts is win32", State),
       true
   end.
 

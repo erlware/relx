@@ -4,6 +4,7 @@
          format_error/1]).
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 -spec do(atom(), string(), string() | undefined, rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(RelName, ToVsn, undefined, State) ->
@@ -47,24 +48,19 @@ make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
                                 end],
     CurrentRel = strip_dot_rel(find_rel_file(Name, ToVsn, OutputDir)),
     UpFromRel = strip_dot_rel(find_rel_file(Name, UpFromVsn, OutputDir)),
-    %% ec_cmd_log:debug(rlx_state:log(State),
-    %%               "systools:make_relup(~p, ~p, ~p, ~p)",
-    %%               [CurrentRel, UpFromRel, UpFromRel, Options]),
+    ?log_debug("systools:make_relup(~p, ~p, ~p, ~p)", [CurrentRel, UpFromRel, UpFromRel, Options], State),
     case systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], [no_warn_sasl | Options]) of
         ok ->
-            %% ec_cmd_log:info(rlx_state:log(State),
-            %%                 "relup from ~s to ~s successfully created!",
-            %%                 [UpFromRel, CurrentRel]),
+            ?log_info("relup from ~s to ~s successfully created!", [UpFromRel, CurrentRel], State),
             {ok, State};
         error ->
             error(?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel}));
         {ok, _RelUp, _, []} ->
-            %% ec_cmd_log:info(rlx_state:log(State),
-            %%                 "relup successfully created!"),
+            ?log_info("relup successfully created!", State),
             {ok, State};
-        {ok, _RelUp, _Module, _Warnings} ->
-            %% ec_cmd_log:warn(rlx_state:log(State), "Warnings generating relup ~n~s",
-            %% [[systools_relup:format_warning("", W) || W <- Warnings]]),
+        {ok, _RelUp, _Module, Warnings} ->
+            ?log_warn("Warnings generating relup:~n~s",
+                      [[systools_relup:format_warning("    ", W) || W <- Warnings]], State),
             {ok, State};
 
         {error, Module, Error} ->

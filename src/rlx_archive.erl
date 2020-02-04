@@ -4,6 +4,7 @@
          format_error/1]).
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 -spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(State) ->
@@ -94,8 +95,7 @@ update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                                 [{"lib", filename:join(TempDir, "lib")},
                                  {"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
                         end]++ConfigFiles++OverlayFiles, [dereference,compressed]),
-    ec_cmd_log:info(rlx_state:log(State),
-                    "tarball ~s successfully created!~n", [TarFile]),
+    ?log_info("tarball ~s successfully created!~n", [TarFile], State),
     ec_file:remove(TempDir, [recursive]),
     {ok, State}.
 

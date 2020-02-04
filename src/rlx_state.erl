@@ -24,7 +24,8 @@
 -module(rlx_state).
 
 -export([new/0,
-         log/1,
+         log_fun/2,
+         log_funs/2,
          output_dir/1,
          base_output_dir/1,
          base_output_dir/2,
@@ -101,7 +102,8 @@
                   include_src=true :: boolean(),
                   upfrom :: string() | binary() | undefined,
                   config_values :: #{atom() => term()},
-                  warnings_as_errors=false :: boolean()}).
+                  warnings_as_errors=false :: boolean(),
+                  log_funs = undefined :: #{atom() => fun()}}).
 
 %%============================================================================
 %% types
@@ -127,8 +129,16 @@ new() ->
     State3 = rlx_state:put(State2, overlay_vars_values, []),
     rlx_state:put(State3, overlay_vars, []).
 
-log(_) ->
-    debug.
+-spec log_fun(atom(), t()) -> no_log_funs | no_level_fun | fun().
+log_fun(_Level, #state_t{log_funs=undefined}) ->
+    no_log_funs;
+log_fun(Level, #state_t{log_funs=LogFuns}) ->
+    maps:get(Level, LogFuns, no_level_fun).
+
+%% log_funs must be a map of log level to function that takes 2 arguments
+%% the message and the arguments to use when formatting that message
+log_funs(LogFuns, State) when is_map(LogFuns) ->
+    State#state_t{log_funs=LogFuns}.
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
