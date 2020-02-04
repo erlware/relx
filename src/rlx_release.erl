@@ -176,7 +176,7 @@ metadata(#release_t{name=Name,
                     realized=Realized}) ->
     case Realized of
         true ->
-            {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
+            {ok, {release, {rlx_util:to_string(Name), Vsn}, {erts, ErtsVsn},
                   Apps}};
         false ->
             ?RLX_ERROR({not_realized, Name, Vsn})

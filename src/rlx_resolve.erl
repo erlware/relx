@@ -143,12 +143,13 @@ find(Key, [_ | Rest]) ->
 format_error(no_goals_specified) ->
     "No goals specified for this release ~n";
 format_error({release_erts_error, Dir}) ->
-    io_lib:format("Unable to find erts in ~s~n", [Dir]).
-
+    io_lib:format("Unable to find erts in ~s~n", [Dir]);
+format_error({notfound, App}) ->
+    io_lib:format("Application needed for release not found: ~p~n", [App]).
 %% legacy
 
 solve_release(RelName, RelVsn, State0) ->
-    ?log_debug("Solving Release ~p-~s~n", [RelName, RelVsn], State0),
+    ?log_debug("Solving Release ~p-~s", [RelName, RelVsn]),
     AllApps = rlx_state:available_apps(State0),
     try
         Release =
@@ -201,7 +202,7 @@ subset([Goal | Rest], World, Seen, Acc) ->
                           {ok, A} ->
                               A;
                           error ->
-                              throw({error, {notfound, Name}})
+                              error(?RLX_ERROR({notfound, Name}))
                               %% TODO: Support overriding the dirs to search
                               %% precedence: apps > deps > erl_libs > system
                               %% Dir = code:lib_dir(Name),
@@ -223,8 +224,8 @@ subset([Goal | Rest], World, Seen, Acc) ->
 set_resolved(Release0, Pkgs, State) ->
     case rlx_release:realize(Release0, Pkgs) of
         {ok, Release1} ->
-            ?log_info("Resolved ~p-~s~n", [rlx_release:name(Release1), rlx_release:vsn(Release1)], State),
-            ?log_debug(fun() -> rlx_release:format(0, Release1) end, State),
+            ?log_info("Resolved ~p-~s", [rlx_release:name(Release1), rlx_release:vsn(Release1)]),
+            ?log_debug(rlx_release:format(0, Release1)),
             case rlx_state:get(State, include_erts, undefined) of
                 IncludeErts when is_atom(IncludeErts) ->
                     {ok, Release1, rlx_state:add_realized_release(State, Release1)};
