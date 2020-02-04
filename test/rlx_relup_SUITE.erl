@@ -186,22 +186,10 @@ no_upfrom_release(Config) ->
                                rlx_test_utils:create_random_name("relx-output")]),
 
     Apps = rlx_test_utils:all_apps([LibDir1]),
-    %% {ok, _State} = relx:build_release({foo, "0.0.1"}, Apps, [{root_dir, LibDir1},
-    %%                                                          {output_dir, OutputDir} | RelxConfig]),
-
-    %% {ok, _State1} = relx:build_release({foo, "0.0.2"}, Apps, [{root_dir, LibDir1},
-    %%                                                           {output_dir, OutputDir} | RelxConfig]),
-
-    %% %% Goal apps are removed to simulate a users dev environment where the apps
-    %% %% being used in an appup/relup are likely only under _rel/<release>/lib/
-    %% ec_file:remove(filename:join(LibDir1, "goal_app_1-0.0.1"), [recursive]),
-    %% ec_file:remove(filename:join(LibDir1, "goal_app_1-0.0.2"), [recursive]),
-
     {ok, _} = relx:build_release({foo, "0.0.3"}, Apps, [{root_dir, LibDir1},
                                                         {output_dir, OutputDir} | RelxConfig]),
 
     %% no release to build relup from leads to an error
-
     ?assertError({error, {rlx_relup, {no_upfrom_release_found, "0.0.3"}}},
                  relx:build_relup(foo, "0.0.3", undefined,
                                   [{root_dir, LibDir1},
