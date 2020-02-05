@@ -23,37 +23,21 @@
 
 -export([get_code_paths/2,
          release_output_dir/2,
-         mkdir_p/1,
          to_binary/1,
          to_string/1,
          to_atom/1,
          is_error/1,
          error_reason/1,
          indent/1,
-         optional_to_string/1,
-         wildcard_paths/1,
-         render/1,
          render/2,
          load_file/3,
-         template_files/0,
-         escript_foldl/3,
-         intensity/0,
-         symlink_or_copy/2]).
+         template_files/0]).
 
 -export([os_type/1]).
 
--define(DFLT_INTENSITY,   high).
 -define(ONE_LEVEL_INDENT, "     ").
 
--include_lib("kernel/include/file.hrl").
-%%============================================================================
-%% types
-%%============================================================================
-
-
-%%============================================================================
-%% API
-%%============================================================================
+-include("rlx_log.hrl").
 
 %% @doc Generates the correct set of code paths for the system.
 -spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].
@@ -71,16 +55,6 @@ release_output_dir(State, Release) ->
                    "releases",
                    rlx_release:vsn(Release)]).
 
-%% @doc Makes a directory including parent dirs if they are missing.
--spec mkdir_p(string()) -> ok | {error, Reason::file:posix()}.
-mkdir_p(Path) ->
-    %% We are exploiting a feature of ensuredir that that creates all
-    %% directories up to the last element in the filename, then ignores
-    %% that last element. This way we ensure that the dir is created
-    %% and not have any worries about path names
-    DirName = filename:join([filename:absname(Path), "tmp"]),
-    filelib:ensure_dir(DirName).
-
 %% @doc ident to the level specified
 -spec indent(non_neg_integer()) -> iolist().
 indent(Amount) when erlang:is_integer(Amount) ->
@@ -89,6 +63,8 @@ indent(Amount) when erlang:is_integer(Amount) ->
 -spec to_binary(iolist() | binary()) -> binary().
 to_binary(String) when erlang:is_list(String) ->
     erlang:iolist_to_binary(String);
+to_binary(Atom) when erlang:is_atom(Atom) ->
+    erlang:atom_to_binary(Atom, utf8);
 to_binary(Bin) when erlang:is_binary(Bin) ->
     Bin.
 
@@ -121,39 +97,6 @@ is_error({error, _}) ->
     true;
 is_error(_) ->
     false.
-
-%% @doc convert optional argument to empty string if undefined
-optional_to_string(undefined) ->
-    "";
-optional_to_string(Value) when is_list(Value) ->
-    case io_lib:printable_list(Value) of
-        true ->
-            Value;
-        false ->
-            ""
-    end.
-
-%% @doc expand wildcards and names in the given paths
--spec wildcard_paths([file:filename_all()]) -> [string()].
-wildcard_paths(Paths) ->
-    [filename:absname(Expanded) || Path <- Paths, Expanded <- wildcard(Path)].
-
-%% In case the given directory does not expand,
-%% we return it back in a list so we trigger the
-%% proper error reportings.
--spec wildcard(file:filename_all()) -> [string()].
-wildcard(Path) when is_binary(Path) ->
-    wildcard(binary_to_list(Path));
-wildcard(Path) when is_list(Path) ->
-    case filelib:wildcard(Path) of
-        []   -> [Path];
-        Paths -> Paths
-    end.
-
--spec render(binary() | iolist()) ->
-                {ok, binary()} | {error, render_failed}.
-render(Template) ->
-    render(Template, []).
 
 -spec render(binary() | iolist(), proplists:proplist()) ->
                 {ok, binary()} | {error, render_failed}.
@@ -215,91 +158,6 @@ escript_foldl(Fun, Acc, File) ->
             Error
     end.
 
-symlink_or_copy(Source, Target) ->
-    case file:make_symlink(Source, Target) of
-        ok ->
-            ok;
-        {error, eexist} ->
-            {error, eexist};
-        {error, Err} ->
-            case {os:type(), Err} of
-                {{win32, _}, eperm} ->
-                    % We get eperm on Windows if we do not have
-                    %   SeCreateSymbolicLinkPrivilege
-                    % Try the next alternative
-                    win32_make_junction_or_copy(Source, Target);
-                _ ->
-                    % On other systems we try to copy next
-                    cp_r(Source, Target)
-            end
-    end.
-
-cp_r(Source, Target) ->
-    ec_file:copy(Source, Target, [{recursive, true}, {fileinfo, [mode, time, owner, group]}]).
-
-win32_make_junction_or_copy(Source, Target) ->
-    case filelib:is_dir(Source) of
-        true ->
-            win32_make_junction(Source, Target);
-        _ ->
-            cp_r(Source, Target)
-    end.
-
-win32_make_junction(Source, Target) ->
-    % The mklink will fail if the target already exists, check for that first
-    case file:read_link_info(Target) of
-        {error, enoent} ->
-            win32_make_junction_cmd(Source, Target);
-        {ok, #file_info{type = symlink}} ->
-            case file:read_link(Target) of
-                {ok, Source} ->
-                    ok;
-                {ok, _} ->
-                    ok = file:del_dir(Target),
-                    win32_make_junction_cmd(Source, Target);
-                {error, Reason} ->
-                    {error, {readlink, Reason}}
-            end;
-        {ok, #file_info{type = _Type}} ->
-            % Directory already exists, so we overwrite the copy
-            cp_r(Source, Target);
-        Error ->
-            Error
-    end.
-
-win32_make_junction_cmd(Source, Target) ->
-    S = unicode:characters_to_list(Source),
-    T = unicode:characters_to_list(Target),
-    Cmd = "cmd /c mklink /j " ++ filename:nativename(T) ++ " " ++ filename:nativename(S),
-    case os:cmd(Cmd) of
-        "Junction created " ++ _ ->
-            ok;
-        [] ->
-            % When mklink fails it prints the error message to stderr which
-            % is not picked up by os:cmd() hence this case switch is for
-            % an empty message
-            cp_r(Source, Target)
-    end.
-
-%% @doc Returns the color intensity, we first check the application envorinment
-%% if that is not set we check the environment variable RELX_COLOR.
-intensity() ->
-    case application:get_env(relx, color_intensity) of
-        undefined ->
-            R = case os:getenv("RELX_COLOR") of
-                    "high" ->
-                        high;
-                    "low" ->
-                        low;
-                    _ ->
-                        ?DFLT_INTENSITY
-                end,
-            application:set_env(relx, color_intensity, R),
-            R;
-        {ok, Mode} ->
-            Mode
-    end.
-
 os_type(State) ->
   case include_erts_is_win32(State) of
     true -> {win32,nt};
@@ -310,21 +168,16 @@ include_erts_is_win32(State) ->
   case rlx_state:get(State, include_erts, true) of
     true -> false;
     false -> false;
-    Path -> is_win32_erts(Path,State)
+    Path -> is_win32_erts(Path)
   end.
 
-is_win32_erts(Path,State) ->
+is_win32_erts(Path) ->
   case filelib:wildcard(filename:join([Path,"bin","erl.exe"])) of
-    [] -> false;
+    [] ->
+          false;
     _ ->
-      ec_cmd_log:info(rlx_state:log(State),
-        "Including Erts is win32 ~n", []),
+      ?log_info("Including Erts is win32"),
       true
   end.
 
 
-
-
-%%%===================================================================
-%%% Test Functions
-%%%===================================================================

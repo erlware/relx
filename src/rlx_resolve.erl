@@ -1,11 +1,12 @@
 -module(rlx_resolve).
 
--export([release/5,
+-export([solve_release/3,
+         release/5,
          metadata/1,
-         find_default_release/1,
          format_error/1]).
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 -type name() :: atom().
 -type vsn() :: string().
@@ -139,93 +140,18 @@ find(Key, [_ | Rest]) ->
 %% format errors
 
 -spec format_error(ErrorDetail::term()) -> iolist().
-format_error(no_goals_specified) ->
-    "No goals specified for this release ~n";
+format_error({no_goals_specified, {RelName, RelVsn}}) ->
+    io_lib:format("No applications configured to be included in release ~s-~s", [RelName, RelVsn]);
 format_error({release_erts_error, Dir}) ->
-    io_lib:format("Unable to find erts in ~s~n", [Dir]);
-format_error({no_release_name, Vsn}) ->
-    io_lib:format("A target release version was specified (~s) but no name", [Vsn]);
-format_error({invalid_release_info, Info}) ->
-    io_lib:format("Target release information is in an invalid format ~p", [Info]);
-format_error({multiple_release_names, RelA, RelB}) ->
-    io_lib:format("No default release name was specified and there are multiple "
-                 "releases in the config: ~s, ~s",
-                 [RelA, RelB]);
-format_error(no_releases_in_system) ->
-    "No releases have been specified in the system!";
-format_error({no_releases_for, RelName}) ->
-    io_lib:format("No releases exist in the system for ~s!", [RelName]);
+    io_lib:format("Unable to find erts in ~s", [Dir]);
 format_error({release_not_found, {RelName, RelVsn}}) ->
-    io_lib:format("No releases exist in the system for ~p:~s!", [RelName, RelVsn]);
-format_error({failed_solve, Error}) ->
-    io_lib:format("Failed to solve release:\n ~s",
-                  [rlx_depsolver:format_error({error, Error})]);
-format_error({release_error, Error}) ->
-    io_lib:format("Failed to resolve release:\n ~p~n", [Error]).
-
+    io_lib:format("No release named ~s of version ~s found in configuration", [RelName, RelVsn]);
+format_error({app_not_found, App}) ->
+    io_lib:format("Application needed for release not found: ~p", [App]).
 %% legacy
 
--spec find_default_release(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
-find_default_release(State) ->
-    try
-        case rlx_state:default_configured_release(State) of
-            {undefined, undefined} ->
-                resolve_default_release(State);
-            {RelName, undefined} ->
-                resolve_default_version(State, RelName);
-            {undefined, Vsn} ->
-                ?RLX_ERROR({no_release_name, Vsn});
-            {RelName, RelVsn} ->
-                solve_release(State, RelName, RelVsn);
-            undefined ->
-                resolve_default_release(State)
-        end
-    catch
-        throw:{multiple_release_names, _, _}=Error ->
-            ?RLX_ERROR(Error)
-    end.
-
-resolve_default_release(State0) ->
-    %% Here we will just get the highest versioned release and run that.
-    case lists:sort(fun release_sort/2,
-                    maps:to_list(rlx_state:configured_releases(State0))) of
-        [{{RelName, RelVsn}, _} | _] ->
-            State1 = rlx_state:default_configured_release(State0, RelName, RelVsn),
-            solve_release(State1, RelName, RelVsn);
-        [] ->
-            ?RLX_ERROR(no_releases_in_system)
-    end.
-
-resolve_default_version(State0, RelName) ->
-    %% Here we will just get the lastest version and run that.
-    AllReleases = maps:to_list(rlx_state:configured_releases(State0)),
-    SpecificReleases = [Rel || Rel={{PossibleRelName, _}, _} <- AllReleases,
-                               PossibleRelName =:= RelName],
-    case lists:sort(fun release_sort/2, SpecificReleases) of
-        [{{RelName, RelVsn}, _} | _] ->
-            State1 = rlx_state:default_configured_release(State0, RelName, RelVsn),
-            solve_release(State1, RelName, RelVsn);
-        [] ->
-            ?RLX_ERROR({no_releases_for, RelName})
-    end.
-
--spec release_sort({{rlx_release:name(),rlx_release:vsn()}, term()},
-                   {{rlx_release:name(),rlx_release:vsn()}, term()}) ->
-                          boolean().
-release_sort({{RelName, RelVsnA}, _},
-             {{RelName, RelVsnB}, _}) ->
-    ec_semver:lte(RelVsnB, RelVsnA);
-release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
-    %% The release names are different. When the releases are named differently
-    %% we can not just take the lastest version. You *must* provide a default
-    %% release name at least. So we throw an error here that the top can catch
-    %% and return
-    erlang:throw({multiple_release_names, RelA, RelB}).
-
-solve_release(State0, RelName, RelVsn) ->
-    ec_cmd_log:debug(rlx_state:log(State0),
-                     "Solving Release ~p-~s~n",
-                     [RelName, RelVsn]),
+solve_release(RelName, RelVsn, State0) ->
+    ?log_debug("Solving Release ~p-~s", [RelName, RelVsn]),
     AllApps = rlx_state:available_apps(State0),
     try
         Release =
@@ -240,17 +166,17 @@ solve_release(State0, RelName, RelVsn) ->
         %% get per release config values and override the State with them
         Config = rlx_release:config(Release),
         {ok, State1} = lists:foldl(fun rlx_config_terms:load/2, {ok, State0}, Config),
-        Goals = rlx_release:goals(Release),
-        case Goals of
-            [] ->
-                ?RLX_ERROR(no_goals_specified);
-            _ ->
+        case rlx_release:goals(Release) of
+            Goals when map_size(Goals) =:= 0 ->
+                erlang:error(?RLX_ERROR({no_goals_specified, {RelName, RelVsn}}));
+            Goals ->
                 Pkgs = subset(maps:to_list(Goals), AllApps),
-                set_resolved(State1, Release, Pkgs)
+                Pkgs1 = remove_exclude_apps(Pkgs, State0),
+                set_resolved(Release, Pkgs1, State1)
         end
     catch
         throw:not_found ->
-            ?RLX_ERROR({release_not_found, {RelName, RelVsn}})
+            erlang:error(?RLX_ERROR({release_not_found, {RelName, RelVsn}}))
     end.
 
 subset(Apps, World) ->
@@ -278,7 +204,7 @@ subset([Goal | Rest], World, Seen, Acc) ->
                           {ok, A} ->
                               A;
                           error ->
-                              throw({error, {notfound, Name}})
+                              error(?RLX_ERROR({app_not_found, Name}))
                               %% TODO: Support overriding the dirs to search
                               %% precedence: apps > deps > erl_libs > system
                               %% Dir = code:lib_dir(Name),
@@ -297,25 +223,20 @@ subset([Goal | Rest], World, Seen, Acc) ->
     end.
 
 
-set_resolved(State, Release0, Pkgs) ->
+set_resolved(Release0, Pkgs, State) ->
     case rlx_release:realize(Release0, Pkgs) of
         {ok, Release1} ->
-            ec_cmd_log:info(rlx_state:log(State),
-                            "Resolved ~p-~s~n",
-                            [rlx_release:name(Release1),
-                             rlx_release:vsn(Release1)]),
-            %% ec_cmd_log:debug(rlx_state:log(State),
-            %%                  fun() ->
-            %%                          rlx_release:format(0, Release1)
-            %%                  end),
+            ?log_info("Resolved ~p-~s", [rlx_release:name(Release1), rlx_release:vsn(Release1)]),
+            ?log_debug(rlx_release:format(Release1)),
             case rlx_state:get(State, include_erts, undefined) of
                 IncludeErts when is_atom(IncludeErts) ->
-                    {ok, rlx_state:add_realized_release(State, Release1)};
+                    {ok, Release1, rlx_state:add_realized_release(State, Release1)};
                 ErtsDir ->
                     try
                         [Erts | _] = filelib:wildcard(filename:join(ErtsDir, "erts-*")),
                         [_, ErtsVsn] = rlx_string:lexemes(filename:basename(Erts), "-"),
-                        {ok, rlx_state:add_realized_release(State, rlx_release:erts(Release1, ErtsVsn))}
+                        Release2 = rlx_release:erts(Release1, ErtsVsn),
+                        {ok, Release2, rlx_state:add_realized_release(State, Release2)}
                     catch
                         _:_ ->
                             ?RLX_ERROR({release_erts_error, ErtsDir})
@@ -336,3 +257,16 @@ name_version(Name) when is_atom(Name) ->
     {Name, undefined};
 name_version({Name, #{vsn := Vsn}}) ->
     {Name, Vsn}.
+
+remove_exclude_apps(AllApps, State) ->
+    ExcludeApps = rlx_state:exclude_apps(State),
+    lists:foldl(fun(AppName, Acc) ->
+                        find_and_remove(AppName, Acc)
+                end, AllApps, ExcludeApps).
+
+find_and_remove(_, []) ->
+    [];
+find_and_remove(ExcludeName, [#{name := Name} | Rest]) when ExcludeName =:= Name ->
+    Rest;
+find_and_remove(ExcludeName, [H | Rest]) ->
+    [H | find_and_remove(ExcludeName, Rest)].

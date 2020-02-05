@@ -1,149 +1,104 @@
 -module(rlx_relup).
 
--export([do/1,
+-export([do/4,
          format_error/1]).
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
--spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
-do(State) ->
-    {RelName, RelVsn} = rlx_state:default_configured_release(State),
-    Release0 = rlx_state:get_realized_release(State, RelName, RelVsn),
-    make_relup(State, Release0).
+-spec do(atom(), string(), string() | undefined, rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
+do(RelName, ToVsn, undefined, State) ->
+    OutputDir = rlx_state:base_output_dir(State),
+    ReleasesDir = filename:join([OutputDir, atom_to_list(RelName), "releases"]),
+    LastRelVsn = get_version_before(RelName, ToVsn, ReleasesDir),
+    make_upfrom_script(RelName, ToVsn, LastRelVsn, State);
+do(RelName, ToVsn, UpFromVsn, State) ->
+    make_upfrom_script(RelName, ToVsn, UpFromVsn, State).
 
+format_error({relfile_not_found, {Name, Vsn}}) ->
+    io_lib:format("Release ~p-~s not found", [Name, Vsn]);
+format_error({bad_rel_tuple, Release}) ->
+    io_lib:format("Release format ~p not recognized. Should be of the form {Name, Vsn}.", [Release]);
+format_error({no_upfrom_release_found, Vsn})->
+    io_lib:format("No previous version of release found for building relup to version ~s", [Vsn]);
 format_error({relup_generation_error, CurrentName, UpFromName}) ->
     io_lib:format("Unknown internal release error generating the relup from ~s to ~s",
                   [UpFromName, CurrentName]);
-format_error({relup_generation_warning, Module, Warnings}) ->
-    ["Warnings generating relup \s",
-     rlx_util:indent(2), Module:format_warning(Warnings)];
 format_error({no_upfrom_release_found, undefined}) ->
     io_lib:format("No earlier release for relup found", []);
 format_error({no_upfrom_release_found, Vsn}) ->
     io_lib:format("Upfrom release version (~s) for relup not found", [Vsn]);
-format_error({relup_script_generation_error,
-              {relup_script_generation_error, systools_relup,
-               {missing_sasl, _}}}) ->
+format_error({relup_script_generation_error, systools_relup, {missing_sasl, _}}) ->
     "Unfortunately, due to requirements in systools, you need to have the sasl application "
         "in both the current release and the release to upgrade from.";
-format_error({relup_script_generation_warn, systools_relup,
-               [{erts_vsn_changed, _},
-                {erts_vsn_changed, _}]}) ->
-    "It has been detected that the ERTS version changed while generating the relup between versions, "
-    "please be aware that an instruction that will automatically restart the VM will be inserted in "
-    "this case";
-format_error({relup_script_generation_warn, Module, Warnings}) ->
-    ["Warnings generating relup \n",
-     rlx_util:indent(2), Module:format_warning(Warnings)];
-format_error({relup_script_generation_error, Module, Errors}) ->
-    ["Errors generating relup \n",
-     rlx_util:indent(2), Module:format_error(Errors)].
+format_error({relup_script_generation_error, Module, Error}) ->
+    ["Error generating relup: \n", rlx_util:indent(2), Module:format_error(Error)].
 
-make_relup(State, Release) ->
-    Vsn = rlx_state:upfrom(State),
-    UpFrom =
-        case Vsn of
-            undefined ->
-                get_last_release(State, Release);
-            Vsn ->
-                get_up_release(State, Release, Vsn)
-        end,
-    case UpFrom of
-        undefined ->
-            ?RLX_ERROR({no_upfrom_release_found, Vsn});
-        _ ->
-            make_upfrom_script(State, Release, UpFrom)
-    end.
+%%
 
-get_last_release(State, Release) ->
-    Releases0 = [Rel || {{_, _}, Rel} <- maps:to_list(rlx_state:realized_releases(State))],
-    Releases1 = lists:sort(fun(R1, R2) ->
-                                  ec_semver:lte(rlx_release:vsn(R1),
-                                                rlx_release:vsn(R2))
-                          end, Releases0),
-    Res = lists:foldl(fun(_Rel, R = {found, _}) ->
-                              R;
-                         (Rel, Prev) ->
-                              case rlx_release:vsn(Rel) == rlx_release:vsn(Release)  of
-                                  true ->
-                                      {found, Prev};
-                                  false ->
-                                      Rel
-                              end
-                      end, undefined, Releases1),
-    case Res of
-        {found, R} ->
-            R;
-        Else ->
-            Else
-    end.
-
-get_up_release(State, Release, Vsn) ->
-    Name = rlx_release:name(Release),
-    try
-        maps:get({Name, Vsn}, rlx_state:realized_releases(State))
-    catch
-        error:{badkey, _} ->
-            undefined
-    end.
-
-make_upfrom_script(State, Release, UpFrom) ->
-    OutputDir = rlx_state:output_dir(State),
+make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
+    OutputDir = rlx_state:base_output_dir(State),
+    OutDir = filename:join([OutputDir, atom_to_list(Name), "releases", ToVsn]),
     WarningsAsErrors = rlx_state:warnings_as_errors(State),
-    Options = [{outdir, OutputDir},
-               {path, rlx_util:get_code_paths(Release, OutputDir) ++
-                   rlx_util:get_code_paths(UpFrom, OutputDir)},
-               silent],
-               %% the following block can be uncommented
-               %% when systools:make_relup/4 returns
-               %% {error,Module,Errors} instead of error
-               %% when taking the warnings_as_errors option
-               %% ++
-               %% case WarningsAsErrors of
-               %%     true -> [warnings_as_errors];
-               %%     false -> []
-              % end,
-    CurrentRel = strip_rel(rlx_release:relfile(Release)),
-    UpFromRel = strip_rel(rlx_release:relfile(UpFrom)),
-    ec_cmd_log:debug(rlx_state:log(State),
-                  "systools:make_relup(~p, ~p, ~p, ~p)",
-                  [CurrentRel, UpFromRel, UpFromRel, Options]),
+    Options = [{outdir, OutDir},
+               {path, [filename:join([OutputDir, "*", "lib", "*", "ebin"])]},
+               {silent, true} | case WarningsAsErrors of
+                                    true -> [warnings_as_errors];
+                                    false -> []
+                                end],
+    CurrentRel = strip_dot_rel(find_rel_file(Name, ToVsn, OutputDir)),
+    UpFromRel = strip_dot_rel(find_rel_file(Name, UpFromVsn, OutputDir)),
+    ?log_debug("systools:make_relup(~p, ~p, ~p, ~p)", [CurrentRel, UpFromRel, UpFromRel, Options]),
     case systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], [no_warn_sasl | Options]) of
         ok ->
-            ec_cmd_log:info(rlx_state:log(State),
-                          "relup from ~s to ~s successfully created!",
-                          [UpFromRel, CurrentRel]),
+            ?log_info("relup from ~s to ~s successfully created!", [UpFromRel, CurrentRel]),
             {ok, State};
         error ->
-            ?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel});
-        {ok, RelUp, _, []} ->
-            write_relup_file(State, Release, RelUp),
-            ec_cmd_log:info(rlx_state:log(State),
-                            "relup successfully created!"),
+            error(?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel}));
+        {ok, _RelUp, _, []} ->
+            ?log_info("relup successfully created!"),
             {ok, State};
-        {ok, RelUp, Module,Warnings} ->
-            case WarningsAsErrors of
-                true ->
-                    %% since we don't pass the warnings_as_errors option
-                    %% the relup file gets generated anyway, we need to delete
-                    %% it
-                    file:delete(filename:join([OutputDir, "relup"])),
-                    ?RLX_ERROR({relup_script_generation_warn, Module, Warnings});
-                false ->
-                    write_relup_file(State, Release, RelUp),
-                    ec_cmd_log:warn(rlx_state:log(State),
-                            format_error({relup_script_generation_warn, Module, Warnings})),
-                    {ok, State}
-            end;
-        {error,Module,Errors} ->
-            ?RLX_ERROR({relup_script_generation_error, Module, Errors})
+        {ok, _RelUp, Module, Warnings} ->
+            ?log_warn("Warnings generating relup:~n~s", [[Module:format_warning(W) || W <- Warnings]]),
+            {ok, State};
+
+        {error, Module, Error} ->
+            error(?RLX_ERROR({relup_script_generation_error, Module, Error}))
     end.
 
-write_relup_file(State, Release, Relup) ->
-    OutDir = rlx_util:release_output_dir(State, Release),
-    RelupFile = filename:join(OutDir, "relup"),
-    ok = ec_file:write_term(RelupFile, Relup).
-
-strip_rel(Name) ->
+%% return path to rel file without the .rel extension as a string (not binary)
+strip_dot_rel(Name) ->
     rlx_util:to_string(filename:join(filename:dirname(Name),
                                      filename:basename(Name, ".rel"))).
+
+find_rel_file(Name, Vsn, Dir) when is_atom(Name) ,
+                                   is_list(Vsn) ->
+    RelFile = filename:join([Dir, atom_to_list(Name), "releases", Vsn, atom_to_list(Name) ++ ".rel"]),
+    case filelib:is_regular(RelFile) of
+        true ->
+            RelFile;
+        _ ->
+            error(?RLX_ERROR({relfile_not_found, {Name, Vsn}}))
+    end;
+find_rel_file(Name, Vsn, _) ->
+    error(?RLX_ERROR({bad_rel_tuple, {Name, Vsn}})).
+
+get_version_before(Name, Vsn, ReleasesDir) ->
+    %% Given directory where all releases for `Name' are find all versions of the release.
+    %% Since the releases directory will have other files like `RELEASES', use the wildcard
+    %% `*/Name.rel' to find all version directories and then trim down to just the version
+    %% string with `filename:dirname/1'
+    Vsns = [filename:dirname(R) ||
+               R <- filelib:wildcard(filename:join("*", atom_to_list(Name) ++ ".rel"), ReleasesDir)],
+
+    %% sort all the versions
+    SortedVsns = lists:sort(fun ec_semver:lte/2, Vsns),
+
+    %% take the last element of a list that has every element up to the `Vsn' we are building
+    %% the relup for. This will be the most recent version of the same release found.
+    case lists:reverse(lists:takewhile(fun(X) -> X =/= Vsn end, SortedVsns)) of
+        [LastVersion | _] ->
+            LastVersion;
+        _ ->
+            error(?RLX_ERROR({no_upfrom_release_found, Vsn}))
+    end.

@@ -9,6 +9,7 @@
 -define(DIRECTORY_RE, ".*(\/|\\\\)$").
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 render(Release, State) ->
     case generate_overlay_vars(State, Release) of
@@ -149,8 +150,7 @@ merge_overlay_vars(State, FileNames) ->
                                                     lists:keydelete(element(1, NewTerm), 1, A)
                                             end, Acc, NewTerms) ++ NewTerms;
                             {error, Reason} ->
-                                ec_cmd_log:warn(rlx_state:log(State),
-                                                format_error({unable_to_read_varsfile, FileName, Reason})),
+                                ?log_warn(format_error({unable_to_read_varsfile, FileName, Reason})),
                                 Acc
                         end;
                    (Var, Acc) ->
@@ -203,8 +203,7 @@ generate_release_vars(Release) ->
 
 -spec generate_state_vars(rlx_state:t()) -> proplists:proplist().
 generate_state_vars(State) ->
-    [%% {log, ec_cmd_log:format(rlx_state:log(State))},
-     {output_dir, rlx_state:output_dir(State)},
+    [{output_dir, rlx_state:output_dir(State)},
      {target_dir, rlx_state:output_dir(State)},
      {overridden, [AppName || {AppName, _} <- rlx_state:overrides(State)]},
      {overrides, rlx_state:overrides(State)},
@@ -279,7 +278,7 @@ do_individual_overlay(State, _Files, OverlayVars, {mkdir, Dir}) ->
     file_render_do(OverlayVars, Dir,
                    fun(Dir0) ->
                        Absolute = absolute_path_to(State, Dir0),
-                       case rlx_util:mkdir_p(Absolute) of
+                       case rlx_file_utils:mkdir_p(Absolute) of
                            {error, Error} ->
                                ?RLX_ERROR({unable_to_make_dir, Absolute, Error});
                            ok ->
@@ -335,7 +334,7 @@ wildcard_copy(State, FromFile0, ToFile0, CopyFun, ErrorTag) ->
                       is_list(FromFile0) -> filelib:wildcard(FromFile0, Root);
                       true -> [FromFile1]
                   end,
-                  rlx_util:mkdir_p(ToFile1),
+                  rlx_file_utils:mkdir_p(ToFile1),
                   lists:foldl(fun
                       (_, {error, _} = Error) -> Error;
                       (FromFile, ok) ->

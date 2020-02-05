@@ -28,6 +28,7 @@
          relfile/2,
          erts/2,
          erts/1,
+         parse_goals/1,
          goals/2,
          goals/1,
          name/1,
@@ -44,7 +45,6 @@
          config/1,
          config/2,
          format/1,
-         format/2,
          format_error/1]).
 
 -export_type([t/0,
@@ -53,14 +53,14 @@
               type/0,
               incl_apps/0,
               application_spec/0,
-              goal/0]).
+              parsed_goal/0]).
 
 -include("relx.hrl").
 
 -record(release_t, {name :: atom(),
                     vsn :: ec_semver:any_version(),
                     erts :: undefined | ec_semver:any_version(),
-                    goals = [] :: [goal()],
+                    goals = [] :: parsed_goals(),
                     realized = false :: boolean(),
                     annotations = undefined :: annotations(),
                     applications = [] ::  [rlx_app:t()],
@@ -76,10 +76,12 @@
 -type type() :: permanent | transient | temporary | load | none.
 -type incl_apps() :: [name()].
 
--type goal() :: #{name := name(),
-                  vsn => vsn() | undefined,
-                  type => type(),
-                  included_applications => incl_apps()}.
+-type parsed_goal() :: #{name := name(),
+                         vsn => vsn() | undefined,
+                         type => type(),
+                         included_applications => incl_apps()}.
+
+-type parsed_goals() :: #{name() => parsed_goal()}.
 
 -type annotations() ::  #{name() => {type(), incl_apps() | void}}.
 
@@ -94,7 +96,7 @@
 %%============================================================================
 -spec new(atom(), string(), undefined | file:name()) -> t().
 new(ReleaseName, ReleaseVsn, Relfile) ->
-    #release_t{name=rlx_util:to_atom(ReleaseName),
+    #release_t{name=ReleaseName,
                vsn=ReleaseVsn,
                relfile = Relfile,
                annotations=#{}}.
@@ -102,7 +104,6 @@ new(ReleaseName, ReleaseVsn, Relfile) ->
 -spec new(atom(), string()) -> t().
 new(ReleaseName, ReleaseVsn) ->
     new(ReleaseName, ReleaseVsn, undefined).
-
 
 -spec relfile(t()) -> file:name() | undefined.
 relfile(#release_t{relfile=Relfile}) ->
@@ -128,11 +129,13 @@ erts(Release, Vsn) ->
 erts(#release_t{erts=Vsn}) ->
     Vsn.
 
--spec goals(t(), [relx:config_goal()]) -> {ok, t()} | relx:error().
+-spec goals(t(), [relx:goal()] | parsed_goals()) -> {ok, t()} | relx:error().
+goals(Release, ParsedGoals) when is_map(ParsedGoals) ->
+    {ok, Release#release_t{goals=ParsedGoals}};
 goals(Release, ConfigGoals) ->
     {ok, Release#release_t{goals=parse_goals(ConfigGoals)}}.
 
--spec goals(t()) -> [goal()].
+-spec goals(t()) -> parsed_goals().
 goals(#release_t{goals=Goals}) ->
     Goals.
 
@@ -172,15 +175,18 @@ metadata(#release_t{name=Name,
                     realized=Realized}) ->
     case Realized of
         true ->
-            {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
+            {ok, {release, {rlx_util:to_string(Name), Vsn}, {erts, ErtsVsn},
                   Apps}};
         false ->
             ?RLX_ERROR({not_realized, Name, Vsn})
     end.
 
 -spec start_clean_metadata(t()) -> term().
-start_clean_metadata(#release_t{name=Name, vsn=Vsn, erts=ErtsVsn, applications=Apps,
-                    realized=Realized}) ->
+start_clean_metadata(#release_t{name=Name,
+                                vsn=Vsn,
+                                erts=ErtsVsn,
+                                applications=Apps,
+                                realized=Realized}) ->
     case Realized of
         true ->
             {value, Kernel, Apps1} = lists:keytake(kernel, 1, Apps),
@@ -226,30 +232,32 @@ format(Release) ->
     format(0, Release).
 
 -spec format(non_neg_integer(), t()) -> iolist().
-format(Indent, #release_t{name=Name, vsn=Vsn, erts=ErtsVsn, realized=Realized,
-                         goals = Goals, applications=Apps}) ->
+format(Indent, #release_t{name=Name,
+                          vsn=Vsn,
+                          erts=ErtsVsn,
+                          realized=Realized,
+                          goals = Goals,
+                          applications=Apps}) ->
     BaseIndent = rlx_util:indent(Indent),
     [BaseIndent, "release: ", rlx_util:to_string(Name), "-", Vsn, "\n",
-     rlx_util:indent(Indent + 2), " erts-", ErtsVsn,
-     ", realized = ",  erlang:atom_to_list(Realized), "\n",
+     rlx_util:indent(Indent + 1), "erts: ", ErtsVsn, "\n",
      rlx_util:indent(Indent + 1), "goals: \n",
-     [[rlx_util:indent(Indent + 2),  format_goal(Goal), ",\n"] || Goal <- Goals],
+     [[rlx_util:indent(Indent + 2),  format_goal(Goal), "\n"] || Goal <- maps:values(Goals)],
      case Realized of
          true ->
              [rlx_util:indent(Indent + 1), "applications: \n",
-              [[rlx_util:indent(Indent + 2),  io_lib:format("~p", [App]), ",\n"] ||
+              [[rlx_util:indent(Indent + 2),  io_lib:format("~p", [App]), "\n"] ||
                   App <- Apps]];
          false ->
              []
      end].
 
--spec format_goal(goal()) -> iolist().
-format_goal({Constraint, AppType}) ->
-    io_lib:format("~p", [{rlx_depsolver:format_constraint(Constraint), AppType}]);
-format_goal({Constraint, AppType, AppInc}) ->
-    io_lib:format("~p", [{rlx_depsolver:format_constraint(Constraint), AppType, AppInc}]);
-format_goal(Constraint) ->
-    rlx_depsolver:format_constraint(Constraint).
+-spec format_goal(parsed_goal()) -> iolist().
+format_goal(#{name := Name,
+              vsn := Vsn}) when Vsn =/= undefined ->
+    io_lib:format("{~p, ~s}", [Name, Vsn]);
+format_goal(#{name := Name}) ->
+    io_lib:format("~p", [Name]).
 
 -spec format_error(Reason::term()) -> iolist().
 format_error({failed_to_parse, Con}) ->
@@ -269,8 +277,7 @@ realize_erts(Rel=#release_t{erts=undefined}) ->
 realize_erts(Rel) ->
     Rel.
 
--spec process_specs(t(), [rlx_app_info:t()]) ->
-                           {ok, t()}.
+-spec process_specs(t(), [rlx_app_info:t()]) -> {ok, t()}.
 process_specs(Rel=#release_t{goals=Goals}, World) ->
     ActiveApps = lists:flatten([rlx_app_info:active_deps(El) || El <- World] ++ maps:keys(Goals)),
     LibraryApps = lists:flatten([rlx_app_info:library_deps(El) || El <- World]),
@@ -280,7 +287,7 @@ process_specs(Rel=#release_t{goals=Goals}, World) ->
                        app_detail=World,
                        realized=true}}.
 
--spec create_app_spec(rlx_app:t(), [goal()], [name()], [name()]) -> application_spec().
+-spec create_app_spec(rlx_app:t(), parsed_goals(), [name()], [name()]) -> application_spec().
 create_app_spec(App, Goals, ActiveApps, LibraryApps) ->
     %% If the app only exists as a dependency in a library app then it should
     %% get the 'load' annotation unless the release spec has provided something
@@ -326,7 +333,7 @@ parse_goals(ConfigGoals) ->
                                                   included_applications => undefined}, Goal)}
               end, #{}, ConfigGoals).
 
--spec parse_goal(relx:config_goal()) -> goal().
+-spec parse_goal(relx:goal()) -> parsed_goal().
 parse_goal(AppName) when is_atom(AppName) ->
     #{name => AppName};
 parse_goal({AppName, Type}) when Type =:= permanent ;

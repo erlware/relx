@@ -56,9 +56,6 @@
 
 -include("relx.hrl").
 
-%%============================================================================
-%% API
-%% ============================================================================
 %% @doc Build a new, empty, app info value. This is not of a lot of use and you
 %% probably wont be doing this much.
 -spec new() -> {ok, rlx_app:t()}.
@@ -66,14 +63,12 @@ new() ->
     {ok, rlx_app:new()}.
 
 %% @doc build a complete version of the app info with all fields set.
--spec new(atom(), string(), binary(), [atom()], [atom()]) ->
-                 {ok, rlx_app:t()} | relx:error().
+-spec new(atom(), string(), file:name(), [atom()], [atom()]) -> {ok, rlx_app:t()}.
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps) ->
     new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, false).
 
 %% @doc build a complete version of the app info with all fields set.
--spec new(atom(), string(), binary(), [atom()], [atom()], boolean()) ->
-                 {ok, rlx_app:t()} | relx:error().
+-spec new(atom(), string(), file:name(), [atom()], [atom()], boolean()) -> {ok, rlx_app:t()}.
 new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)
   when erlang:is_atom(AppName),
        erlang:is_list(ActiveDeps),

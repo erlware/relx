@@ -4,6 +4,7 @@
          format_error/1]).
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 do(Release, State) ->
     OutputDir = rlx_state:output_dir(State),
@@ -38,7 +39,7 @@ do(Release, State) ->
 create_output_dir(OutputDir) ->
     case ec_file:is_dir(OutputDir) of
         false ->
-            case rlx_util:mkdir_p(OutputDir) of
+            case rlx_file_utils:mkdir_p(OutputDir) of
                 ok ->
                     ok;
                 {error, _} ->
@@ -50,7 +51,7 @@ create_output_dir(OutputDir) ->
 
 copy_app_directories_to_output(Release, OutputDir, State) ->
     LibDir = filename:join([OutputDir, "lib"]),
-    ok = rlx_util:mkdir_p(LibDir),
+    ok = rlx_file_utils:mkdir_p(LibDir),
     IncludeSrc = rlx_state:include_src(State),
     IncludeSystemLibs = rlx_state:get(State, include_system_libs, rlx_state:get(State, include_erts, true)),
     Apps = prepare_applications(State, rlx_release:application_details(Release)),
@@ -175,7 +176,7 @@ remove_symlink_or_directory(TargetDir) ->
     end.
 
 link_directory(AppDir, TargetDir) ->
-    case rlx_util:symlink_or_copy(AppDir, TargetDir) of
+    case rlx_file_utils:symlink_or_copy(AppDir, TargetDir) of
         {error, Reason} ->
             ?RLX_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
         ok ->
@@ -201,7 +202,7 @@ copy_dir(State, App, AppDir, TargetDir, SubDir) ->
     SubTarget = filename:join(TargetDir, SubDir),
     case ec_file:is_dir(SubSource) of
         true ->
-            ok = rlx_util:mkdir_p(SubTarget),
+            ok = rlx_file_utils:mkdir_p(SubTarget),
             %% get a list of the modules to be excluded from this app
             AppName = rlx_app_info:name(App),
             ExcludedModules = proplists:get_value(AppName, rlx_state:exclude_modules(State),
@@ -241,7 +242,7 @@ create_release_info(State0, Release0, OutputDir) ->
     ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
     StartCleanFile = filename:join([ReleaseDir, "start_clean.rel"]),
     NoDotErlFile = filename:join([ReleaseDir, "no_dot_erlang.rel"]),
-    ok = rlx_util:mkdir_p(ReleaseDir),
+    ok = rlx_file_utils:mkdir_p(ReleaseDir),
     Release1 = rlx_release:relfile(Release0, ReleaseFile),
     State1 = rlx_state:update_realized_release(State0, Release1),
     case rlx_release:metadata(Release1) of
@@ -266,7 +267,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     RelName = erlang:atom_to_list(rlx_release:name(Release)),
     RelVsn = rlx_release:vsn(Release),
     BinDir = filename:join([OutputDir, "bin"]),
-    ok = rlx_util:mkdir_p(BinDir),
+    ok = rlx_file_utils:mkdir_p(BinDir),
     VsnRel = filename:join(BinDir, rlx_release:canonical_name(Release)),
     BareRel = filename:join(BinDir, RelName),
     ErlOpts = rlx_state:get(State, erl_opts, ""),
@@ -349,11 +350,7 @@ expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc, State) ->
                         %% extended script
                         Acc0 ++ [hook_invocation(Hook)];
                     false ->
-                        ec_cmd_log:error(
-                            rlx_state:log(State),
-                            io_lib:format("~p hook is not allowed in the ~p phase, ignoring it", [Hook, Phase])
-                        ),
-
+                        ?log_error("~p hook is not allowed in the ~p phase, ignoring it", [Hook, Phase]),
                         Acc0
                 end
             end, [], Hooks0),
@@ -407,13 +404,8 @@ hook_template(builtin_status) -> builtin_hook_status.
 %% custom hooks are not rendered, they should
 %% be copied by the release overlays
 render_hook(custom, _, _) -> ok;
-render_hook(TemplateName, Script, State) ->
-    ec_cmd_log:info(
-        rlx_state:log(State),
-        "rendering ~p hook to ~p~n",
-        [TemplateName, Script]
-    ),
-
+render_hook(TemplateName, Script, _State) ->
+    ?log_info("rendering ~p hook to ~p", [TemplateName, Script]),
     Template = render(TemplateName),
     ok = filelib:ensure_dir(Script),
     _ = ec_file:remove(Script),
@@ -466,8 +458,7 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
                 undefined ->
                     ok;
                 _->
-                    ec_cmd_log:warn(rlx_state:log(State),
-                                    "Both vm_args_src and vm_args are set, vm_args will be ignored~n", [])
+                    ?log_warn("Both vm_args_src and vm_args are set, vm_args will be ignored")
             end,
 
             case filelib:is_regular(ArgsSrcPath) of
@@ -511,8 +502,7 @@ copy_or_generate_sys_config_file(State, RelDir) ->
                 P when P =:= false orelse P =:= undefined ->
                     ok;
                 _->
-                    ec_cmd_log:warn(rlx_state:log(State),
-                                    "Both sys_config_src and sys_config are set, sys_config will be ignored~n", [])
+                    ?log_warn("Both sys_config_src and sys_config are set, sys_config will be ignored")
             end,
 
             case filelib:is_regular(ConfigSrcPath) of
@@ -530,7 +520,7 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
     ensure_not_exist(RelConfPath),
     case rlx_state:dev_mode(State) of
         true ->
-            ok = rlx_util:symlink_or_copy(ConfigPath, RelConfPath);
+            ok = rlx_file_utils:symlink_or_copy(ConfigPath, RelConfPath);
         _ ->
             ok = ec_file:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}])
     end.
@@ -552,8 +542,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
         false ->
             make_boot_script(State, Release, OutputDir, RelDir);
         _ ->
-            ec_cmd_log:info(rlx_state:log(State),
-                            "Including Erts from ~s~n", [Prefix]),
+            ?log_info("Including Erts from ~s", [Prefix]),
             ErtsVersion = rlx_release:erts(Release),
             ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
             LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
@@ -562,7 +551,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
                 false ->
                     ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
                 true ->
-                    ok = rlx_util:mkdir_p(LocalErts),
+                    ok = rlx_file_utils:mkdir_p(LocalErts),
                     ok = ec_file:copy(ErtsDir, LocalErts, [recursive, {file_info, [mode, time]}]),
                     case OsFamily of
                         unix ->
@@ -609,32 +598,35 @@ include_erts(State, Release, OutputDir, RelDir) ->
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) ->
                               {ok, rlx_state:t()} | relx:error().
 make_boot_script(State, Release, OutputDir, RelDir) ->
+    WarningsAsErrors = rlx_state:warnings_as_errors(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
                {variables, make_boot_script_variables(State)},
-               no_module_tests, silent],
+               no_module_tests,
+               silent | case WarningsAsErrors of
+                            true -> [warnings_as_errors];
+                            false -> []
+                        end],
     Name = erlang:atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
-    case systools:make_script(Name, [no_warn_sasl | Options]) of
-        ok ->
-            ec_cmd_log:info(rlx_state:log(State),
-                             "release successfully created!"),
+    case systools:make_script(Name, Options) of
+        Result when Result =:= ok orelse (is_tuple(Result) andalso
+                                          element(1, Result) =:= ok) ->
+            maybe_print_warnings(Result),
+            ?log_info("Release successfully created!"),
             create_RELEASES(OutputDir, ReleaseFile),
             create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
         error ->
-            ?RLX_ERROR({release_script_generation_error, ReleaseFile});
-        {ok, _, []} ->
-            ec_cmd_log:info(rlx_state:log(State),
-                          "release successfully created!"),
-            create_RELEASES(OutputDir, ReleaseFile),
-            create_no_dot_erlang(RelDir, OutputDir, Options, State),
-            create_start_clean(RelDir, OutputDir, Options, State);
-        {ok,Module,Warnings} ->
-            ?RLX_ERROR({release_script_generation_warn, Module, Warnings});
-        {error,Module,Error} ->
-            ?RLX_ERROR({release_script_generation_error, Module, Error})
+            erlang:error(?RLX_ERROR({release_script_generation_error, ReleaseFile}));
+        {error, Module, Error} ->
+            erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
     end.
+
+maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
+    ?log_warn("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
+maybe_print_warnings(_) ->
+    ok.
 
 make_boot_script_variables(State) ->
     % A boot variable is needed when {include_erts, false} and the application
@@ -664,29 +656,24 @@ create_no_dot_erlang(RelDir, OutputDir, Options, State) ->
 create_start_clean(RelDir, OutputDir, Options, State) ->
     create_boot_file(RelDir, OutputDir, Options, State, "start_clean").
 
-create_boot_file(RelDir, OutputDir, Options, State, Name) ->
-    case systools:make_script(Name, [no_warn_sasl | Options]) of
-        ok ->
-            ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
-                              filename:join([OutputDir, "bin", Name++".boot"]),
-                              [{file_info, [mode, time]}]),
-            ec_file:remove(filename:join([RelDir, Name++".rel"])),
-            ec_file:remove(filename:join([RelDir, Name++".script"])),
+%% TODO: do we need the Options here at all?
+create_boot_file(RelDir, _OutputDir, Options, State, Name) ->
+    case systools:make_script(Name, [{outdir, RelDir},
+                                     no_warn_sasl | Options]) of
+        Result when Result =:= ok orelse (is_tuple(Result) andalso
+                                          element(1, Result) =:= ok) ->
+            maybe_print_warnings(Result),
+            remove_rel_and_script(RelDir, Name),
             {ok, State};
         error ->
-            ?RLX_ERROR(boot_script_generation_error);
-        {ok, _, []} ->
-            ok = ec_file:copy(filename:join([RelDir, Name++".boot"]),
-                              filename:join([OutputDir, "bin", Name++".boot"]),
-                              [{file_info, [mode, time]}]),
-            ec_file:remove(filename:join([RelDir, Name++".rel"])),
-            ec_file:remove(filename:join([RelDir, Name++".script"])),
-            {ok, State};
-        {ok,Module,Warnings} ->
-            ?RLX_ERROR({boot_script_generation_warn, Module, Warnings});
-        {error,Module,Error} ->
-            ?RLX_ERROR({boot_script_generation_error, Module, Error})
+            erlang:error(?RLX_ERROR({boot_script_generation_error, Name}));
+        {error, Module, Error} ->
+            erlang:error(?RLX_ERROR({boot_script_generation_error, Name, Module, Error}))
     end.
+
+remove_rel_and_script(RelDir, Name) ->
+    ec_file:remove(filename:join([RelDir, Name++".rel"])),
+    ec_file:remove(filename:join([RelDir, Name++".script"])).
 
 create_RELEASES(OutputDir, ReleaseFile) ->
     {ok, OldCWD} = file:get_cwd(),
@@ -706,7 +693,7 @@ unless_exists_write_default(Path, File) ->
     end.
 
 -spec ensure_not_exist(file:name()) -> ok.
-ensure_not_exist(RelConfPath) ->
+ensure_not_exist(RelConfPath)     ->
     case ec_file:exists(RelConfPath) of
         false ->
             ok;
@@ -822,26 +809,19 @@ format_error({specified_erts_does_not_exist, ErtsVersion}) ->
 format_error({release_script_generation_error, RelFile}) ->
     io_lib:format("Unknown internal release error generating the release file to ~s",
                   [RelFile]);
-format_error({release_script_generation_warning, Module, Warnings}) ->
-    ["Warnings generating release \s",
-     rlx_util:indent(2), Module:format_warning(Warnings)];
 format_error({unable_to_create_output_dir, OutputDir}) ->
     io_lib:format("Unable to create output directory (possible permissions issue): ~s",
                   [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
-    ["Errors generating release \n",
-     rlx_util:indent(2), Module:format_error(Errors)];
+    ["Error generating release: \n", Module:format_error(Errors)];
 format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
     io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
                   [AppDir, TargetDir, rlx_util:indent(2),
                    file:format_error(Reason)]);
-format_error(boot_script_generation_error) ->
-    "Unknown internal release error generating start_clean.boot";
-format_error({boot_script_generation_warning, Module, Warnings}) ->
-    ["Warnings generating start_clean.boot \s",
-     rlx_util:indent(2), Module:format_warning(Warnings)];
-format_error({boot_script_generation_error, Module, Errors}) ->
-    ["Errors generating start_clean.boot \n",
+format_error({boot_script_generation_error, Name}) ->
+    io_lib:format("Unknown internal release error generating ~s.boot", [Name]);
+format_error({boot_script_generation_error, Name, Module, Errors}) ->
+    [io_lib:format("Errors generating ~s.boot: \n", [Name]),
      rlx_util:indent(2), Module:format_error(Errors)];
 format_error({strip_release, Reason}) ->
     io_lib:format("Stripping debug info from release beam files failed becuase ~s",
