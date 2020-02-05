@@ -42,7 +42,6 @@ init_per_suite(Config) ->
     ok = rlx_file_utils:mkdir_p(LibDir),
 
     rlx_test_utils:create_app(LibDir, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
-    rlx_test_utils:create_app(LibDir, "goal_app_1", "0.0.2", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
     rlx_test_utils:create_app(LibDir, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
@@ -90,9 +89,14 @@ make_release(Config) ->
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 make_config_release(Config) ->
+    DataDir = ?config(data_dir, Config),
     LibDir1 = ?config(lib_dir, Config),
     Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
+    OtherAppsDir = filename:join([DataDir, rlx_test_utils:create_random_name("other_apps_")]),
+
+    %% create goal_app_1-0.0.2
+    rlx_test_utils:create_app(OtherAppsDir, "goal_app_1", "0.0.2", [stdlib,kernel,non_goal_1], []),
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
@@ -105,10 +109,9 @@ make_config_release(Config) ->
                   {lib_dirs, [LibDir1]},
                   {default_release, {foo, "0.0.2"}}],
 
-
-
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
+    {ok, State} = relx:build_release(foo, Apps1++Apps, [{root_dir, LibDir1},
+                                                        {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
