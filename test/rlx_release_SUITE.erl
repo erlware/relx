@@ -37,10 +37,9 @@ groups() ->
        make_scriptless_release, make_app_type_none_release,
        make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
        make_exclude_modules_release, make_release_with_sys_config_vm_args_src,
-       make_skip_app_release, make_exclude_app_release, make_overridden_release,
-       make_goalless_release, make_one_app_top_level_release, make_release_twice,
-       make_erts_release, make_erts_config_release,
-       make_included_nodetool_release]},
+       make_exclude_app_release, make_overridden_release, make_goalless_release,
+       make_one_app_top_level_release, make_release_twice, make_erts_release,
+       make_erts_config_release, make_included_nodetool_release]},
      {dev_mode, [shuffle], [make_dev_mode_template_release,
                             make_dev_mode_release,
                             make_release_twice_dev_mode]}].
@@ -293,28 +292,6 @@ make_overridden_release(Config) ->
                                                        OverrideApp ++ "-" ++ OverrideVsn])),
             ?assertEqual(filename:absname(OverrideAppDir), Real)
     end.
-
-make_skip_app_release(Config) ->
-    LibDir1 = ?config(lib_dir, Config),
-    OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
-
-    RelxConfig = [{release, {foo, "0.0.1"},
-                   [goal_app_1]},
-                  {skip_apps, [goal_app_2]}],
-
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
-
-    [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
-    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
-    ?assert(lists:keymember(kernel, 1, AppSpecs)),
-    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
-    ?assertNot(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
-    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
-    ?assertNot(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
-    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 %% Test to ensure that an excluded app and its deps are not included in a release
 make_exclude_app_release(Config) ->
