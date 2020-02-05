@@ -140,12 +140,14 @@ find(Key, [_ | Rest]) ->
 %% format errors
 
 -spec format_error(ErrorDetail::term()) -> iolist().
-format_error(no_goals_specified) ->
-    "No goals specified for this release ~n";
+format_error({no_goals_specified, {RelName, RelVsn}}) ->
+    io_lib:format("No applications configured to be included in release ~s-~s", [RelName, RelVsn]);
 format_error({release_erts_error, Dir}) ->
-    io_lib:format("Unable to find erts in ~s~n", [Dir]);
-format_error({notfound, App}) ->
-    io_lib:format("Application needed for release not found: ~p~n", [App]).
+    io_lib:format("Unable to find erts in ~s", [Dir]);
+format_error({release_not_found, {RelName, RelVsn}}) ->
+    io_lib:format("No release named ~s of version ~s found in configuration", [RelName, RelVsn]);
+format_error({app_not_found, App}) ->
+    io_lib:format("Application needed for release not found: ~p", [App]).
 %% legacy
 
 solve_release(RelName, RelVsn, State0) ->
@@ -164,17 +166,17 @@ solve_release(RelName, RelVsn, State0) ->
         %% get per release config values and override the State with them
         Config = rlx_release:config(Release),
         {ok, State1} = lists:foldl(fun rlx_config_terms:load/2, {ok, State0}, Config),
-        Goals = rlx_release:goals(Release),
-        case Goals of
-            [] ->
-                error(?RLX_ERROR(no_goals_specified));
-            _ ->
+        case rlx_release:goals(Release) of
+            Goals when map_size(Goals) =:= 0 ->
+                erlang:error(?RLX_ERROR({no_goals_specified, {RelName, RelVsn}}));
+            Goals ->
                 Pkgs = subset(maps:to_list(Goals), AllApps),
-                set_resolved(Release, Pkgs, State1)
+                Pkgs1 = remove_exclude_apps(Pkgs, State0),
+                set_resolved(Release, Pkgs1, State1)
         end
     catch
         throw:not_found ->
-            error(?RLX_ERROR({release_not_found, {RelName, RelVsn}}))
+            erlang:error(?RLX_ERROR({release_not_found, {RelName, RelVsn}}))
     end.
 
 subset(Apps, World) ->
@@ -202,7 +204,7 @@ subset([Goal | Rest], World, Seen, Acc) ->
                           {ok, A} ->
                               A;
                           error ->
-                              error(?RLX_ERROR({notfound, Name}))
+                              error(?RLX_ERROR({app_not_found, Name}))
                               %% TODO: Support overriding the dirs to search
                               %% precedence: apps > deps > erl_libs > system
                               %% Dir = code:lib_dir(Name),
@@ -255,3 +257,16 @@ name_version(Name) when is_atom(Name) ->
     {Name, undefined};
 name_version({Name, #{vsn := Vsn}}) ->
     {Name, Vsn}.
+
+remove_exclude_apps(AllApps, State) ->
+    ExcludeApps = rlx_state:exclude_apps(State),
+    lists:foldl(fun(AppName, Acc) ->
+                        find_and_remove(AppName, Acc)
+                end, AllApps, ExcludeApps).
+
+find_and_remove(_, []) ->
+    [];
+find_and_remove(ExcludeName, [#{name := Name} | Rest]) when ExcludeName =:= Name ->
+    Rest;
+find_and_remove(ExcludeName, [H | Rest]) ->
+    [H | find_and_remove(ExcludeName, Rest)].
