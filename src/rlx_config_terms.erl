@@ -23,8 +23,6 @@ load({lib_dirs, Dirs}, {ok, State}) ->
     LibDirs = [list_to_binary(Dir) || Dir <- rlx_file_utils:wildcard_paths(Dirs)],
     State1 = rlx_state:add_lib_dirs(State, LibDirs),
     {ok, State1};
-load({skip_apps, SkipApps0}, {ok, State0}) ->
-    {ok, rlx_state:skip_apps(State0, SkipApps0)};
 load({exclude_apps, ExcludeApps0}, {ok, State0}) ->
     {ok, rlx_state:exclude_apps(State0, ExcludeApps0)};
 load({exclude_modules, ExcludeModules0}, {ok, State0}) ->

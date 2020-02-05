@@ -31,8 +31,6 @@
          add_lib_dirs/2,
          overrides/1,
          overrides/2,
-         skip_apps/1,
-         skip_apps/2,
          exclude_apps/1,
          exclude_apps/2,
          debug_info/1,
@@ -90,7 +88,6 @@
                   sys_config :: file:filename() | false | undefined,
                   sys_config_src :: file:filename() | undefined,
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
-                  skip_apps=[] :: [AppName::atom()],
                   exclude_apps=[] :: [AppName::atom()],
                   exclude_modules=[] :: [{App::atom(), [Module::atom()]}],
                   debug_info=keep :: keep | strip,
@@ -136,23 +133,14 @@ overrides(#state_t{overrides=Overrides}) ->
 overrides(State, Overrides) ->
     State#state_t{overrides=Overrides}.
 
--spec skip_apps(t()) -> [AppName::atom()].
-skip_apps(#state_t{skip_apps=Apps}) ->
-    Apps.
-
-%% @doc the application overrides for the system
--spec skip_apps(t(), [AppName::atom()]) -> t().
-skip_apps(State, SkipApps) ->
-    State#state_t{skip_apps=SkipApps}.
-
 -spec exclude_apps(t()) -> [AppName::atom()].
 exclude_apps(#state_t{exclude_apps=Apps}) ->
     Apps.
 
-%% @doc the application overrides for the system
+%% @doc applications to exclude from the release and remove from .app files
 -spec exclude_apps(t(), [AppName::atom()]) -> t().
-exclude_apps(State, SkipApps) ->
-    State#state_t{exclude_apps=SkipApps}.
+exclude_apps(State, ExcludeApps) ->
+    State#state_t{exclude_apps=ExcludeApps}.
 
 -spec exclude_modules(t()) -> [{App::atom(), [Module::atom()]}].
 exclude_modules(#state_t{exclude_modules=Modules}) ->
