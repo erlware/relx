@@ -89,7 +89,7 @@ make_release(Config) ->
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 make_config_release(Config) ->
-    DataDir = ?config(data_dir, Config),
+    DataDir = ?config(priv_dir, Config),
     LibDir1 = ?config(lib_dir, Config),
     Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
@@ -624,11 +624,11 @@ make_dev_mode_template_release(Config) ->
 %% verify that creating a new app with the same name after creating a release results in the
 %% newest version being used in the new release
 make_release_twice(Config) ->
-    DataDir = ?config(data_dir, Config),
+    PrivDir = ?config(priv_dir, Config),
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
     Apps = ?config(apps, Config),
-    OtherAppsDir = filename:join([DataDir, rlx_test_utils:create_random_name("other_apps_")]),
+    OtherAppsDir = filename:join([PrivDir, rlx_test_utils:create_random_name("other_apps_")]),
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
@@ -667,11 +667,11 @@ make_release_twice(Config) ->
 %% verify that creating a new app with the same name after creating a release results in the
 %% newest version being used in the new release
 make_release_twice_dev_mode(Config) ->
-    DataDir = ?config(data_dir, Config),
+    PrivDir = ?config(priv_dir, Config),
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
     Apps = ?config(apps, Config),
-    OtherAppsDir = filename:join([DataDir, rlx_test_utils:create_random_name("other_apps_")]),
+    OtherAppsDir = filename:join([PrivDir, rlx_test_utils:create_random_name("other_apps_")]),
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
