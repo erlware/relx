@@ -242,7 +242,7 @@ format(Indent, #release_t{name=Name,
     [BaseIndent, "release: ", rlx_util:to_string(Name), "-", Vsn, "\n",
      rlx_util:indent(Indent + 1), "erts: ", ErtsVsn, "\n",
      rlx_util:indent(Indent + 1), "goals: \n",
-     [[rlx_util:indent(Indent + 2),  format_goal(Goal), "\n"] || {_, Goal} <- maps:to_list(Goals)],
+     [[rlx_util:indent(Indent + 2),  format_goal(Goal), "\n"] || Goal <- maps:values(Goals)],
      case Realized of
          true ->
              [rlx_util:indent(Indent + 1), "applications: \n",
