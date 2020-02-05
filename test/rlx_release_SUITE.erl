@@ -26,15 +26,24 @@
 -include_lib("kernel/include/file.hrl").
 
 all() ->
-    [make_release, make_config_release, make_dev_mode_template_release, overlay_release,
-     make_extend_release, make_extend_release_versioned, make_extend_config_release,
-     make_scriptless_release, make_app_type_none_release, make_dev_mode_release,
-     make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
-     make_exclude_modules_release, make_release_with_sys_config_vm_args_src,
-     make_skip_app_release, make_exclude_app_release, make_overridden_release,
-     make_goalless_release, make_one_app_top_level_release, make_release_twice,
-     make_release_twice_dev_mode, make_erts_release, make_erts_config_release,
-     make_included_nodetool_release].
+    [{group, regular_mode},
+     {group, dev_mode}].
+
+%% Tests using dev_mode can't run in parallel because they write to the same directories
+groups() ->
+    [{regular_mode, [shuffle, parallel],
+      [make_release, make_config_release, overlay_release,
+       make_extend_release, make_extend_release_versioned, make_extend_config_release,
+       make_scriptless_release, make_app_type_none_release,
+       make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
+       make_exclude_modules_release, make_release_with_sys_config_vm_args_src,
+       make_skip_app_release, make_exclude_app_release, make_overridden_release,
+       make_goalless_release, make_one_app_top_level_release, make_release_twice,
+       make_erts_release, make_erts_config_release,
+       make_included_nodetool_release]},
+     {dev_mode, [shuffle], [make_dev_mode_template_release,
+                            make_dev_mode_release,
+                            make_release_twice_dev_mode]}].
 
 init_per_suite(Config) ->
     DataDir = filename:join(?config(data_dir, Config), ?MODULE),
