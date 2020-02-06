@@ -46,49 +46,51 @@ all() ->
              extension_script_exit_code,
              extension_script_fail_when_no_exit];
         _ ->
-            []
+            [ping]
     end.
 
-suite() ->
-    [].
-
 init_per_suite(Config) ->
-    Config.
+    DataDir = filename:join(proplists:get_value(data_dir, Config), ?MODULE),
+    LibDir = filename:join([DataDir, rlx_test_utils:create_random_name("tar_lib_dir1_")]),
+    ok = rlx_file_utils:mkdir_p(LibDir),
+
+    rlx_test_utils:create_app(LibDir, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
+    rlx_test_utils:create_app(LibDir, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
+    rlx_test_utils:create_app(LibDir, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    rlx_test_utils:create_app(LibDir, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
+    rlx_test_utils:create_app(LibDir, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+
+    Apps = rlx_test_utils:all_apps([LibDir]),
+
+    [{lib_dir, LibDir},
+     {apps, Apps} | Config].
 
 end_per_suite(_Config) ->
     ok.
 
 init_per_testcase(_, Config) ->
-    DataDir = filename:join(proplists:get_value(priv_dir, Config), ?MODULE),
-    LibDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir1_")]),
-    ok = rlx_file_utils:mkdir_p(LibDir1),
-    State = rlx_state:new([], [{lib_dirs, [LibDir1]}], [release]),
-    {ok, State1} = rlx_config:do(State),
-    [{lib1, LibDir1},
-     {state, State1} | Config].
+    PrivDir = ?config(priv_dir, Config),
+    DirName = rlx_test_utils:create_random_name("extended-testcase-output"),
+    OutputDir = filename:join(PrivDir, DirName),
+    [{out_dir, OutputDir} | Config].
+
+end_per_testcase(_, _) ->
+    ok.
 
 ping(Config) ->
-    LibDir1 = proplists:get_value(lib1, Config),
-    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
+    LibDir1 = ?config(lib_dir, Config),
+    Apps = ?config(apps, Config),
+    OutputDir = ?config(out_dir, Config),
 
-    ConfigFile = filename:join([LibDir1, "relx.config"]),
-    rlx_test_utils:write_config(ConfigFile,
-                 [{release, {foo, "0.0.1"},
-                   [goal_app]},
-                  {lib_dirs, [filename:join(LibDir1, "*")]},
-                  {generate_start_script, true},
-                  {extended_start_script, true}
-                 ]),
+    RelxConfig =[{release, {foo, "0.0.1"},
+                  [goal_app_1]},
+                 {lib_dirs, [filename:join(LibDir1, "*")]},
+                 {generate_start_script, true},
+                 {extended_start_script, true}
+                ],
 
-    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
-                               rlx_test_utils:create_random_name("relx-output")]),
-
-    {ok, _State} = relx:do([{relname, foo},
-                           {relvsn, "0.0.1"},
-                           {lib_dirs, [LibDir1]},
-                           {log_level, 3},
-                           {output_dir, OutputDir},
-                           {config, ConfigFile}], ["release"]),
+    {ok, _State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
+                                                  {output_dir, OutputDir} | RelxConfig]),
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
