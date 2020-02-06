@@ -148,7 +148,7 @@ relx_get_pid() {
 relx_get_nodename() {
     id="longname$(relx_gen_id)-${NAME}"
     if [ -z "$COOKIE" ]; then
-        "$BINDIR/erl" -boot start_clean \
+        "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
                       -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
@@ -156,7 +156,7 @@ relx_get_nodename() {
                       -noshell ${NAME_TYPE} $id
     else
         # running with setcookie prevents a ~/.erlang.cookie from being created
-        "$BINDIR/erl" -boot start_clean \
+        "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
                       -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
@@ -176,7 +176,7 @@ relx_rem_sh() {
     TICKTIME="$(relx_nodetool rpcterms net_kernel get_net_ticktime)"
 
     # Setup remote shell command to control node
-    exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot start_clean -mode interactive \
+    exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
          -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" $MAYBE_DIST_ARGS \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
 }
@@ -693,7 +693,7 @@ case "$1" in
             console_clean)
                 # if not set by user use interactive mode for console_clean
                 CODE_LOADING_MODE="${CODE_LOADING_MODE:-interactive}"
-                BOOTFILE="$ROOTDIR/bin/start_clean"
+                BOOTFILE="$REL_DIR/start_clean"
                 ;;
             console_boot)
                 shift

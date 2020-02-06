@@ -181,21 +181,16 @@ metadata(#release_t{name=Name,
             ?RLX_ERROR({not_realized, Name, Vsn})
     end.
 
+%% Include all apps in the release as `none' type so they are not
+%% loaded or started but are available in the path when a the
+%% `start_clean' is used, like is done with command `console_clean'
 -spec start_clean_metadata(t()) -> term().
-start_clean_metadata(#release_t{name=Name,
-                                vsn=Vsn,
-                                erts=ErtsVsn,
-                                applications=Apps,
-                                realized=Realized}) ->
-    case Realized of
-        true ->
-            {value, Kernel, Apps1} = lists:keytake(kernel, 1, Apps),
-            {value, StdLib, Apps2} = lists:keytake(stdlib, 1, Apps1),
-            {ok, {release, {erlang:atom_to_list(Name), Vsn}, {erts, ErtsVsn},
-                  [Kernel, StdLib | none_type_apps(Apps2)]}};
-        false ->
-            ?RLX_ERROR({not_realized, Name, Vsn})
-    end.
+start_clean_metadata(#release_t{erts=ErtsVsn,
+                                applications=Apps}) ->
+    {value, Kernel, Apps1} = lists:keytake(kernel, 1, Apps),
+    {value, StdLib, Apps2} = lists:keytake(stdlib, 1, Apps1),
+    {ok, {release, {"start_clean", "1.0"}, {erts, ErtsVsn},
+          [Kernel, StdLib | none_type_apps(Apps2)]}}.
 
 none_type_apps([]) ->
     [];
@@ -206,11 +201,17 @@ none_type_apps([{Name, Version, _} | Rest]) ->
 none_type_apps([{Name, Version, _, _} | Rest]) ->
     [{Name, Version, none} | none_type_apps(Rest)].
 
-%% The no_dot_erlang.rel.src file is a literal copy of start_clean.rel.src
-%% in Erlang/OTP itself.
+%% no_dot_erlang.boot goes in the root bin dir of the release_handler
+%% so should not have anything specific to the release version in it
+%% Here it only has kernel and stdlib.
 -spec no_dot_erlang_metadata(t()) -> term().
-no_dot_erlang_metadata(T) ->
-    start_clean_metadata(T).
+no_dot_erlang_metadata(#release_t{erts=ErtsVsn,
+                                  applications=Apps}) ->
+    {value, Kernel, Apps1} = lists:keytake(kernel, 1, Apps),
+    {value, StdLib, _Apps2} = lists:keytake(stdlib, 1, Apps1),
+    {ok, {release, {"no_dot_erlang", "1.0"}, {erts, ErtsVsn},
+          [Kernel, StdLib]}}.
+
 
 %% @doc produce the canonical name (<name>-<vsn>) for this release
 -spec canonical_name(t()) -> string().

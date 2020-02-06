@@ -253,7 +253,8 @@ create_release_info(State0, Release0, OutputDir) ->
                     ok = ec_file:write_term(ReleaseFile, Meta),
                     ok = ec_file:write_term(StartCleanFile, StartCleanMeta),
                     ok = ec_file:write_term(NoDotErlFile, NoDotErlMeta),
-                    write_bin_file(State1, Release1, OutputDir, ReleaseDir);
+                    write_bin_file(State1, Release1, OutputDir, ReleaseDir),
+                    {ok, State1};
                 {{ok, _}, E} ->
                     E;
                 {_, E} ->
@@ -650,22 +651,20 @@ make_boot_script_variables(State) ->
             [{"ERTS_LIB_DIR", code:lib_dir()}]
     end.
 
-create_no_dot_erlang(RelDir, OutputDir, Options, State) ->
-    create_boot_file(RelDir, OutputDir, [no_dot_erlang | Options], State, "no_dot_erlang").
+create_no_dot_erlang(RelDir, OutputDir, Options, _State) ->
+    create_boot_file(RelDir, [no_dot_erlang | Options], "no_dot_erlang"),
+    copy_boot_to_bin(RelDir, OutputDir, "no_dot_erlang").
 
-create_start_clean(RelDir, OutputDir, Options, State) ->
-    create_boot_file(RelDir, OutputDir, Options, State, "start_clean").
+create_start_clean(RelDir, _OutputDir, Options, _State) ->
+    create_boot_file(RelDir, Options, "start_clean").
 
-%% TODO: do we need the Options here at all?
-create_boot_file(RelDir, OutputDir, Options, State, Name) ->
+create_boot_file(RelDir, Options, Name) ->
     case systools:make_script(Name, [{outdir, RelDir},
                                      no_warn_sasl | Options]) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
-            copy_boot_to_bin(RelDir, OutputDir, Name),
-            remove_rel_and_script(RelDir, Name),
-            {ok, State};
+            remove_rel_and_script(RelDir, Name);
         error ->
             erlang:error(?RLX_ERROR({boot_script_generation_error, Name}));
         {error, Module, Error} ->
