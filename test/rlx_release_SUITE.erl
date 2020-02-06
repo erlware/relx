@@ -46,7 +46,7 @@ groups() ->
 
 init_per_suite(Config) ->
     DataDir = filename:join(?config(data_dir, Config), ?MODULE),
-    LibDir = filename:join([DataDir, rlx_test_utils:create_random_name("lib_dir_")]),
+    LibDir = filename:join([DataDir, rlx_test_utils:create_random_name("release_lib_dir_")]),
     ok = rlx_file_utils:mkdir_p(LibDir),
 
     rlx_test_utils:create_app(LibDir, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),

@@ -261,8 +261,10 @@ do_individual_overlay(State, _Files, OverlayVars, {chmod, Mode, Path}) ->
     % some reason something other than an integer is used
     NewMode =
         case is_integer(Mode) of
-            true -> Mode;
-            false -> erlang:binary_to_integer(render_string (OverlayVars, Mode))
+            true ->
+                Mode;
+            false ->
+                erlang:binary_to_integer(render_string(OverlayVars, Mode))
         end,
 
     file_render_do(OverlayVars, Path,
