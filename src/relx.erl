@@ -24,6 +24,7 @@
 -export([release/3,
          build_release/2,
          build_release/3,
+         build_tar/3,
          build_relup/4,
          format_error/1]).
 
@@ -92,6 +93,19 @@ build_release(Release=#{name := RelName,
 build_release(Release, _, _) ->
     ?RLX_ERROR({unrecognized_release, Release}).
 
+-spec build_tar(Release, Apps, Config) -> ok | {error, term()} when
+      Release :: atom() | {atom(), string()} | release(),
+      Apps :: [rlx_app:t()],
+      Config :: rlx_config:t().
+build_tar(RelName, Apps, Config) when is_atom(RelName) ->
+    State = config_to_state(Config),
+    State1 = resolve_default_version(RelName, State),
+    {RelName, RelVsn} = rlx_state:default_configured_release(State1),
+    Release = #{name => RelName,
+                vsn => RelVsn},
+    {ok, State2} = build_release_(Release, Apps, State1),
+    build_tar_(Release, Apps, State2).
+
 -spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_config:t()) -> ok | {error, term()}.
 build_relup(RelName, ToVsn, UpFromVsn, Config) ->
     State = config_to_state(Config),
@@ -125,6 +139,12 @@ config_to_state(Config) ->
     State = rlx_state:new(),
     {ok, State1} = rlx_config_terms:to_state(Config, State),
     State1.
+
+build_tar_(#{name := RelName,
+             vsn := RelVsn}, _Apps, State) ->
+    OutputDir = rlx_state:output_dir(State),
+    Release = rlx_state:get_realized_release(State, RelName, RelVsn),
+    rlx_tar:make_tar(State, Release, OutputDir).
 
 build_release_(_Release=#{name := RelName,
                           vsn := RelVsn}, Apps, State) ->

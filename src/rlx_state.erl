@@ -119,9 +119,8 @@ new() ->
                       realized_releases=#{},
                       config_values=#{}},
     State1 = rlx_state:put(State0, default_libs, true),
-    State2 = rlx_state:put(State1, system_libs, true),
-    State3 = rlx_state:put(State2, overlay_vars_values, []),
-    rlx_state:put(State3, overlay_vars, []).
+    State2 = rlx_state:put(State1, overlay_vars_values, []),
+    rlx_state:put(State2, overlay_vars, []).
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
