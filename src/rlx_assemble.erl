@@ -651,18 +651,19 @@ make_boot_script_variables(State) ->
     end.
 
 create_no_dot_erlang(RelDir, OutputDir, Options, State) ->
-    create_boot_file(RelDir, OutputDir, Options, State, "no_dot_erlang").
+    create_boot_file(RelDir, OutputDir, [no_dot_erlang | Options], State, "no_dot_erlang").
 
 create_start_clean(RelDir, OutputDir, Options, State) ->
     create_boot_file(RelDir, OutputDir, Options, State, "start_clean").
 
 %% TODO: do we need the Options here at all?
-create_boot_file(RelDir, _OutputDir, Options, State, Name) ->
+create_boot_file(RelDir, OutputDir, Options, State, Name) ->
     case systools:make_script(Name, [{outdir, RelDir},
                                      no_warn_sasl | Options]) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
+            copy_boot_to_bin(RelDir, OutputDir, Name),
             remove_rel_and_script(RelDir, Name),
             {ok, State};
         error ->
@@ -670,6 +671,11 @@ create_boot_file(RelDir, _OutputDir, Options, State, Name) ->
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({boot_script_generation_error, Name, Module, Error}))
     end.
+
+%% escript requires boot files in bin/ and not under the release dir
+copy_boot_to_bin(RelDir, OutputDir, Name) ->
+    Boot = filename:join([RelDir, Name++".boot"]),
+    ec_file:copy(Boot, filename:join([OutputDir, "bin", Name++".boot"])).
 
 remove_rel_and_script(RelDir, Name) ->
     ec_file:remove(filename:join([RelDir, Name++".rel"])),
