@@ -8,6 +8,7 @@ create_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
     write_app_file(AppDir, Name, Vsn, app_modules(Name), Deps, LibDeps),
     write_src_file(AppDir, Name),
+    write_priv_file(AppDir),
     compile_src_files(AppDir),
     rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
                      Deps, []).
@@ -28,6 +29,11 @@ create_empty_app(Dir, Name, Vsn, Deps, LibDeps) ->
 app_modules(Name) ->
     [list_to_atom(M ++ Name) ||
         M <- ["a_real_beam"]].
+
+write_priv_file(AppDir) ->
+    File = filename:join([AppDir, "priv", "subdir", "foo.txt"]),
+    ok = filelib:ensure_dir(File),
+    ok = file:write_file(File, <<"just some file contents">>).
 
 write_src_file(Dir, Name) ->
     Src = filename:join([Dir, "src", "a_real_beam" ++ Name ++ ".erl"]),
