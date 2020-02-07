@@ -40,7 +40,7 @@
 @set bindir=%erts_dir%\bin
 @set vm_args=%rel_dir%\vm.args
 @set progname=erl.exe
-@set clean_boot_script=%release_root_dir%\bin\start_clean
+@set clean_boot_script=%rel_dir%\start_clean
 @set erlsrv="%bindir%\erlsrv.exe"
 @set epmd="%bindir%\epmd.exe"
 @set escript="%bindir%\escript.exe"
