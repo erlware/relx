@@ -663,7 +663,6 @@ create_boot_file(RelDir, Options, Name) ->
                                      no_warn_sasl | Options]) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
-            maybe_print_warnings(Result),
             remove_rel_and_script(RelDir, Name);
         error ->
             erlang:error(?RLX_ERROR({boot_script_generation_error, Name}));
