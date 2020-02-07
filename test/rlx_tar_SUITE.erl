@@ -75,8 +75,8 @@ basic_tar(Config) ->
     ?assert(lists:any(fun(X) -> re:run(X, "lib/kernel-.*/ebin/.*") =/= nomatch end, Files)),
 
     %% only works in otp-21 and above
-    case erlang:system_info(otp_release) of
-        R when R =:= "21" orelse R =:= "22" orelse R =:= "23" ->
+    case list_to_integer(erlang:system_info(otp_release)) >= 21 of
+        true ->
             ?assert(lists:member("releases/0.0.1/vm.args.src", Files)),
             ?assert(lists:member("releases/0.0.1/sys.config.src", Files));
         _ ->

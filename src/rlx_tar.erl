@@ -54,7 +54,7 @@ make_tar(State, Release, OutputDir) ->
 
 update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     IncludeErts = rlx_state:get(State, include_erts, true),
-    SystemLibs = rlx_state:get(State, include_system_libs, IncludeErts),
+    SystemLibs = rlx_state:get(State, system_libs, IncludeErts),
     {RelName, RelVsn} = rlx_state:default_configured_release(State),
     Release = rlx_state:get_realized_release(State, RelName, RelVsn),
     TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
