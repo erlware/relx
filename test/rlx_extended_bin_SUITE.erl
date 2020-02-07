@@ -23,7 +23,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("kernel/include/file.hrl").
 
--define(SLEEP_TIME, 1000).
+-define(SLEEP_TIME, 2500).
 -define(LONG_SLEEP_TIME, 2500).
 
 all() ->
