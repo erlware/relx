@@ -50,7 +50,7 @@ basic_tar(Config) ->
     VmArgsSrc = filename:join([LibDir1, "config", "vm.args.src"]),
     ec_file:write(VmArgsSrc, ""),
 
-    RelxConfig = [{release, {foo, "0.0.1"},
+    RelxConfig = [{release, {foo, "0.0.4"},
                    [goal_app_1,
                     goal_app_2]},
                   {sys_config_src, SysConfigSrc},
@@ -59,7 +59,7 @@ basic_tar(Config) ->
     {ok, State} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                              {output_dir, OutputDir} | RelxConfig]),
 
-    [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    [{{foo, "0.0.4"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -69,7 +69,7 @@ basic_tar(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
-    TarFile = filename:join([OutputDir, "foo", "foo-0.0.1.tar.gz"]),
+    TarFile = filename:join([OutputDir, "foo", "foo-0.0.4.tar.gz"]),
     {ok, Files} = erl_tar:table(TarFile, [compressed]),
     ?assert(lists:any(fun(X) -> re:run(X, "lib/stdlib-.*/ebin/.*") =/= nomatch end, Files)),
     ?assert(lists:any(fun(X) -> re:run(X, "lib/kernel-.*/ebin/.*") =/= nomatch end, Files)),
@@ -77,8 +77,8 @@ basic_tar(Config) ->
     %% only works in otp-21 and above
     case list_to_integer(erlang:system_info(otp_release)) >= 21 of
         true ->
-            ?assert(lists:member("releases/0.0.1/vm.args.src", Files)),
-            ?assert(lists:member("releases/0.0.1/sys.config.src", Files));
+            ?assert(lists:member("releases/0.0.4/vm.args.src", Files)),
+            ?assert(lists:member("releases/0.0.4/sys.config.src", Files));
         _ ->
             ok
     end,
@@ -90,7 +90,7 @@ exclude_erts(Config) ->
     Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
-    RelxConfig = [{release, {foo, "0.0.2"},
+    RelxConfig = [{release, {foo, "0.0.3"},
                    [goal_app_1,
                     goal_app_2]},
                   {include_erts, false}
@@ -98,7 +98,7 @@ exclude_erts(Config) ->
     {ok, State} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                              {output_dir, OutputDir} | RelxConfig]),
 
-    [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    [{{foo, "0.0.3"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -108,7 +108,7 @@ exclude_erts(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
-    TarFile = filename:join([OutputDir, "foo", "foo-0.0.2.tar.gz"]),
+    TarFile = filename:join([OutputDir, "foo", "foo-0.0.3.tar.gz"]),
     {ok, Files} = erl_tar:table(TarFile, [compressed]),
     ?assert(lists:all(fun(X) -> re:run(X, "lib/stdlib-.*/ebin/.*") =:= nomatch end, Files)),
     ?assert(lists:all(fun(X) -> re:run(X, "lib/kernel-.*/ebin/.*") =:= nomatch end, Files)),
@@ -148,14 +148,14 @@ include_src(Config) ->
     Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
-    RelxConfig = [{release, {foo, "0.0.1"},
+    RelxConfig = [{release, {foo, "0.0.2"},
                    [goal_app_1,
                     goal_app_2]}],
 
     {ok, State} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                              {output_dir, OutputDir} | RelxConfig]),
 
-    [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -165,7 +165,7 @@ include_src(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
-    TarFile = filename:join([OutputDir, "foo", "foo-0.0.1.tar.gz"]),
+    TarFile = filename:join([OutputDir, "foo", "foo-0.0.2.tar.gz"]),
     {ok, Files} = erl_tar:table(TarFile, [compressed]),
     ?assert(lists:any(fun(X) -> re:run(X, "lib/stdlib-.*/src/.*") =/= nomatch end, Files)),
     ?assert(lists:any(fun(X) -> re:run(X, "lib/kernel-.*/src/.*") =/= nomatch end, Files)),
