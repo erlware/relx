@@ -1617,7 +1617,11 @@ make_exclude_modules_release(Config) ->
     LibDir1 = proplists:get_value(lib1, Config),
 
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel, non_goal_1], []),
-    rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], []),
+    {ok, NonGoalAppInfo} = rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], []),
+
+    NonGoalAppDir = rlx_app_info:dir(NonGoalAppInfo),
+    FooFilename = filename:join([NonGoalAppDir, "priv/subdir/foo.txt"]),
+    rlx_test_utils:write_config(FooFilename, []),
 
     ConfigFile = filename:join([LibDir1, "relx.config"]),
     rlx_test_utils:write_config(ConfigFile,

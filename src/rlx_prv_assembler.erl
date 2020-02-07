@@ -355,7 +355,7 @@ copy_dir(SourceDir, TargetDir, ExcludeFiles) ->
     lists:foreach(fun(F) ->
                     ok = ec_file:copy(F,
                                       filename:join([TargetDir,
-                                                     filename:basename(F)]), [{file_info, [mode, time]}])
+                                                     filename:basename(F)]), [recursive, {file_info, [mode, time]}])
                   end, SourceFiles -- ExcludeFiles).
 
 create_release_info(State0, Release0, OutputDir) ->
