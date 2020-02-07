@@ -1,17 +1,10 @@
--module(rlx_archive).
+-module(rlx_tar).
 
--export([do/1,
+-export([make_tar/3,
          format_error/1]).
 
 -include("relx.hrl").
 -include("rlx_log.hrl").
-
--spec do(rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
-do(State) ->
-    {RelName, RelVsn} = rlx_state:default_configured_release(State),
-    Release = rlx_state:get_realized_release(State, RelName, RelVsn),
-    OutputDir = rlx_state:output_dir(State),
-    make_tar(State, Release, OutputDir).
 
 format_error({tar_unknown_generation_error, Module, Vsn}) ->
     io_lib:format("Tarball generation error of ~s ~s",
@@ -20,8 +13,7 @@ format_error({tar_generation_warn, Module, Warnings}) ->
     io_lib:format("Tarball generation warnings for ~p : ~p",
                   [Module, Warnings]);
 format_error({tar_generation_error, Module, Errors}) ->
-    io_lib:format("Tarball generation error for ~p reason ~p",
-                  [Module, Errors]).
+    io_lib:format("Tarball generation error for ~p", [Module:format_error(Errors)]).
 
 make_tar(State, Release, OutputDir) ->
     Name = atom_to_list(rlx_release:name(Release)),
@@ -62,7 +54,7 @@ make_tar(State, Release, OutputDir) ->
 
 update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     IncludeErts = rlx_state:get(State, include_erts, true),
-    SystemLibs = rlx_state:get(State, system_libs, true),
+    SystemLibs = rlx_state:get(State, system_libs, IncludeErts),
     {RelName, RelVsn} = rlx_state:default_configured_release(State),
     Release = rlx_state:get_realized_release(State, RelName, RelVsn),
     TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
