@@ -82,7 +82,7 @@ make_relup_release(Config) ->
 
     [{{foo, "0.0.3"}, Release}] = maps:to_list(rlx_state:realized_releases(State2)),
 
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -145,7 +145,7 @@ make_relup_release2(Config) ->
     [{{foo, "0.0.3"}, Release}] = maps:to_list(rlx_state:realized_releases(State2)),
     ?assertMatch(foo, rlx_release:name(Release)),
     ?assertMatch("0.0.3", rlx_release:vsn(Release)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),

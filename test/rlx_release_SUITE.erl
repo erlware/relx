@@ -87,7 +87,7 @@ make_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -122,7 +122,7 @@ make_config_release(Config) ->
                                                         {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -153,7 +153,7 @@ make_extend_release(Config) ->
                                                       {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo_test, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -183,7 +183,7 @@ make_extend_release_versioned(Config) ->
                                                       {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo_test, "0.0.3"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -213,7 +213,7 @@ make_extend_config_release(Config) ->
                                                       {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo_test, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -239,7 +239,7 @@ make_scriptless_release(Config) ->
     ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "bin", "foo-0.0.1"]))),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -273,7 +273,7 @@ make_overridden_release(Config) ->
                                                              {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -306,7 +306,7 @@ make_exclude_app_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(not lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -323,7 +323,7 @@ make_app_type_none_release(Config) ->
     {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
                                                  {output_dir, OutputDir} | RelxConfig]),
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -417,7 +417,7 @@ overlay_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -505,7 +505,7 @@ make_one_app_top_level_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)).
@@ -623,7 +623,7 @@ make_release_twice(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State1)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -640,7 +640,7 @@ make_release_twice(Config) ->
                                                          {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release1}] = maps:to_list(rlx_state:realized_releases(State2)),
-    AppSpecs1 = rlx_release:applications(Release1),
+    AppSpecs1 = rlx_release:app_specs(Release1),
     ?assert(lists:keymember(stdlib, 1, AppSpecs1)),
     ?assert(lists:keymember(kernel, 1, AppSpecs1)),
     ?assert(lists:member({non_goal_1, "0.0.3"}, AppSpecs1)),
@@ -667,7 +667,7 @@ make_release_twice_dev_mode(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -682,7 +682,7 @@ make_release_twice_dev_mode(Config) ->
                                                          {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release1}] = maps:to_list(rlx_state:realized_releases(State2)),
-    AppSpecs1 = rlx_release:applications(Release1),
+    AppSpecs1 = rlx_release:app_specs(Release1),
     ?assert(lists:keymember(stdlib, 1, AppSpecs1)),
     ?assert(lists:keymember(kernel, 1, AppSpecs1)),
     ?assert(lists:member({non_goal_1, "0.0.3"}, AppSpecs1)),
@@ -704,7 +704,7 @@ make_erts_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assertEqual(ErtsVsn, rlx_release:erts(Release)).
@@ -723,7 +723,7 @@ make_erts_config_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assertEqual(ErtsVsn, rlx_release:erts(Release)),
@@ -744,7 +744,7 @@ make_included_nodetool_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -765,7 +765,7 @@ make_not_included_nodetool_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     %% extended start script needs nodetool to work, so the
     %% {include_nodetool, false} option is simply ignored
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
@@ -790,7 +790,7 @@ make_src_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
@@ -813,7 +813,7 @@ make_excluded_src_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
@@ -834,7 +834,7 @@ make_exclude_modules_release(Config) ->
                                                  {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),

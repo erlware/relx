@@ -45,7 +45,7 @@ get_code_paths(Release, OutDir) ->
     [filename:join([LibDir,
                     erlang:atom_to_list(rlx_app_info:name(App)) ++ "-" ++
                         rlx_app_info:vsn(App), "ebin"]) ||
-        App <- rlx_release:application_details(Release)].
+        App <- rlx_release:applications(Release)].
 
 -spec release_output_dir(rlx_state:t(), rlx_release:t()) -> string().
 release_output_dir(State, Release) ->

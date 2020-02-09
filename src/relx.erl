@@ -97,6 +97,14 @@ build_release(Release, _, _) ->
       Release :: atom() | {atom(), string()} | release(),
       Apps :: [rlx_app_info:t()],
       Config :: rlx_config:t().
+build_tar(undefined, Apps, Config) ->
+    State = config_to_state(Config),
+    {RelName, RelVsn} = pick_release(State),
+    Release = #{name => RelName,
+                vsn => RelVsn},
+    RealizedRelease = build_release_(Release, Apps, State),
+    build_tar_(RealizedRelease, State),
+    {ok, RealizedRelease};
 build_tar(RelName, Apps, Config) when is_atom(RelName) ->
     State = config_to_state(Config),
     {RelName, RelVsn} = pick_release_version(RelName, State),

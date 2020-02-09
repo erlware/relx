@@ -6,39 +6,6 @@
 -include("relx.hrl").
 -include("rlx_log.hrl").
 
--type name() :: atom().
--type vsn() :: string().
-
--type type() :: permanent | transient | temporary | load | none.
--type incl_apps() :: [name()].
-
--type app_config() :: name() |
-                      {name(), vsn() | type() | incl_apps()} |
-                      {name(), type(), incl_apps()} |
-                      {name(), vsn(), type() | incl_apps()} |
-                      {name(), vsn(), type(), incl_apps()}.
-
--type application_spec() :: {name(), vsn()} |
-                            {name(), vsn(), type() | incl_apps()} |
-                            {name(), vsn(), type(), incl_apps()}.
-
--record(release, {name             :: name(),
-                  vsn              :: string(),
-                  erts             :: undefined | string(),
-                  realized = false :: boolean(),
-                  app_spec         :: [application_spec()] | undefined,
-                  apps_config      :: [app_config()],
-                  relfile          :: undefined | string(),
-                  app_detail = []  :: [rlx_app_info:t()],
-
-                  %% per-release config values
-                  config = []      :: [term()]}).
--type release() :: #release{}.
-
--export_type([release/0]).
-
-%% format errors
-
 -spec format_error(ErrorDetail::term()) -> iolist().
 format_error({no_goals_specified, {RelName, RelVsn}}) ->
     io_lib:format("No applications configured to be included in release ~s-~s", [RelName, RelVsn]);
@@ -102,6 +69,7 @@ set_resolved(Release0, Pkgs, State) ->
                     {ok, Release1, rlx_state:add_realized_release(State, Release1)};
                 ErtsDir ->
                     try
+                        %% figure out erts version from the path given
                         [Erts | _] = filelib:wildcard(filename:join(ErtsDir, "erts-*")),
                         [_, ErtsVsn] = rlx_string:lexemes(filename:basename(Erts), "-"),
                         Release2 = rlx_release:erts(Release1, ErtsVsn),
