@@ -63,8 +63,8 @@ make_relup_release(Config) ->
 
     %% Goal apps are removed to simulate a users dev environment where the apps
     %% being used in an appup/relup are likely only under _rel/<release>/lib/
-    ec_file:remove(filename:join(LibDir1, "goal_app_1-0.0.1"), [recursive]),
-    ec_file:remove(filename:join(LibDir1, "goal_app_1-0.0.2"), [recursive]),
+    rlx_file_utils:remove(filename:join(LibDir1, "goal_app_1-0.0.1"), [recursive]),
+    rlx_file_utils:remove(filename:join(LibDir1, "goal_app_1-0.0.2"), [recursive]),
 
     {ok, State2} = relx:build_release({foo, "0.0.3"}, Apps, [{root_dir, LibDir1},
                                                               {output_dir, OutputDir} | RelxConfig]),

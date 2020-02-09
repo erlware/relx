@@ -44,10 +44,10 @@
 -spec do(process_fun([term()] | term()), [file:name()]) ->
                 [term() | {error, term()}].
 do(ProcessDir, LibDirs) ->
-    lists:flatten(ec_plists:map(fun(LibDir) ->
-                                        discover_dir(ProcessDir, LibDir,
-                                                     ec_file:type(LibDir))
-                                end, LibDirs)).
+    lists:flatten(lists:map(fun(LibDir) ->
+                                    discover_dir(ProcessDir, LibDir,
+                                                 rlx_file_utils:type(LibDir))
+                            end, LibDirs)).
 
 -spec format_error([ErrorDetail::term()]) -> iolist().
 format_error(ErrorDetails)
@@ -134,9 +134,9 @@ recurse(ProcessDir, File) ->
         {error, Reason} ->
             {error, {accessing, File, Reason}};
         {ok, List} ->
-            ec_plists:map(fun(LibDir) ->
-                                  discover_dir(ProcessDir, LibDir, ec_file:type(LibDir))
-                          end, [filename:join([File, Dir]) || Dir <- List])
+            lists:map(fun(LibDir) ->
+                              discover_dir(ProcessDir, LibDir, rlx_file_utils:type(LibDir))
+                      end, [filename:join([File, Dir]) || Dir <- List])
     end.
 
 iolist_to_list(IoList) ->

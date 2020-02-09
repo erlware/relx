@@ -235,8 +235,8 @@ make_scriptless_release(Config) ->
     {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
                                                  {output_dir, OutputDir} | RelxConfig]),
 
-    ?assert(not ec_file:exists(filename:join([OutputDir, "bin", "foo"]))),
-    ?assert(not ec_file:exists(filename:join([OutputDir, "bin", "foo-0.0.1"]))),
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "bin", "foo"]))),
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "bin", "foo-0.0.1"]))),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
@@ -426,12 +426,12 @@ overlay_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "non-file-variable-list"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "fooo"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "foodir", "vars1.config"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "yahoo", "vars1.config"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", SecondTestDir, TestDir, TestFile]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "bin", "copy.erl"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "non-file-variable-list"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "fooo"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "foodir", "vars1.config"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "yahoo", "vars1.config"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", SecondTestDir, TestDir, TestFile]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "copy.erl"]))),
 
     TemplateData = case file:consult(filename:join([OutputDir, "foo", "test_template_resolved"])) of
                        {ok, Details} ->
@@ -519,7 +519,7 @@ make_dev_mode_release(Config) ->
     rlx_test_utils:write_config(SysConfig, [{this_is_a_test, "yup it is"}]),
 
     VmArgs = filename:join([LibDir1, "config", "vm.args"]),
-    ec_file:write(VmArgs, ""),
+    rlx_file_utils:write(VmArgs, ""),
 
     RelxConfig = [{dev_mode, true},
                   {sys_config, SysConfig},
@@ -535,14 +535,14 @@ make_dev_mode_release(Config) ->
 
     case os:type() of
         {unix, _} ->
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                       "sys.config"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                       "vm.args"])));
         {win32, _} ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
@@ -567,7 +567,7 @@ make_dev_mode_template_release(Config) ->
     rlx_test_utils:write_config(SysConfig, SysConfigTerm),
 
     VmArgs = filename:join([LibDir1, "config", "vm.args"]),
-    ec_file:write(VmArgs, "-sname {{nodename}}"),
+    rlx_file_utils:write(VmArgs, "-sname {{nodename}}"),
 
     VarsFile1 = filename:join([LibDir1, "config", "vars1.config"]),
     rlx_test_utils:write_config(VarsFile1, [{var1, "indeed it is"},
@@ -592,19 +592,19 @@ make_dev_mode_template_release(Config) ->
 
     [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
 
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
-    ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
-    ?assert(not ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+    ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                   "sys.config"]))),
-    ?assert(not ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                   "vm.args"]))),
     %% ensure that the original sys.config didn't get overwritten
     ?assertMatch({ok, SysConfigTerm}, file:consult(SysConfig)),
     %% ensure that the original vm.args didn't get overwritten
-    ?assertMatch({ok, <<"-sname {{nodename}}">>}, ec_file:read(VmArgs)).
+    ?assertMatch({ok, <<"-sname {{nodename}}">>}, file:read_file(VmArgs)).
 
 %% verify that creating a new app with the same name after creating a release results in the
 %% newest version being used in the new release
@@ -745,7 +745,7 @@ make_included_nodetool_release(Config) ->
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assertEqual(ErtsVsn, rlx_release:erts(Release)).
@@ -768,7 +768,7 @@ make_not_included_nodetool_release(Config) ->
     AppSpecs = rlx_release:applications(Release),
     %% extended start script needs nodetool to work, so the
     %% {include_nodetool, false} option is simply ignored
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assertEqual(ErtsVsn, rlx_release:erts(Release)).
@@ -793,8 +793,8 @@ make_src_release(Config) ->
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "lib",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "lib",
                                           "goal_app_1-0.0.1", "src"]))).
 
 make_excluded_src_release(Config) ->
@@ -816,8 +816,8 @@ make_excluded_src_release(Config) ->
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
-    ?assert(not ec_file:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
-    ?assert(not ec_file:exists(filename:join([OutputDir, "foo", "lib",
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "lib",
                                               "goal_app_1-0.0.1", "src"]))).
 
 %% Test to ensure that excluded modules don't end up in the release 
@@ -839,7 +839,7 @@ make_exclude_modules_release(Config) ->
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     %% ensure that the excluded module beam file didn't get copied
-    ?assert(not ec_file:exists(filename:join([OutputDir, "foo", "lib",
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "lib",
                                               "non_goal_1-0.0.1", "ebin",
                                               "a_real_beamnon_goal_1.beam"]))),
 
@@ -867,10 +867,10 @@ make_release_with_sys_config_vm_args_src(Config) ->
     rlx_test_utils:write_config(SysConfigSrc, [{this_is_a_test, "yup it is"}]),
 
     VmArgs = filename:join([LibDir1, "config", "vm.args"]),
-    ec_file:write(VmArgs, ""),
+    rlx_file_utils:write(VmArgs, ""),
 
     VmArgsSrc = filename:join([LibDir1, "config", "vm.args.src"]),
-    ec_file:write(VmArgsSrc, ""),
+    rlx_file_utils:write(VmArgsSrc, ""),
 
     RelxConfig = [{dev_mode, true},
                   {sys_config_src, SysConfigSrc},
@@ -886,18 +886,18 @@ make_release_with_sys_config_vm_args_src(Config) ->
 
     case os:type() of
         {unix, _} ->
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                       "sys.config.src"]))),
-            ?assert(ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+            ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                       "vm.args.src"]))),
-            ?assert(not ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                           "sys.config"]))),
-            ?assert(not ec_file:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                           "sys.config"])));
         {win32, _} ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),

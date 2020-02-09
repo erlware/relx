@@ -27,12 +27,12 @@ make_tar(Release, OutputDir, State) ->
     case systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]),
                            Opts) of
         ok ->
-            TempDir = ec_file:insecure_mkdtemp(),
+            TempDir = rlx_file_utils:mkdtemp(),
             try
                 update_tar(Release, State, TempDir, OutputDir, Name, Vsn, ErtsVersion)
             catch
                 E:R ->
-                    ec_file:remove(TempDir, [recursive]),
+                    rlx_file_utils:remove(TempDir, [recursive]),
                     ?RLX_ERROR({tar_generation_error, E, R})
             end;
         {ok, Module, Warnings} ->
@@ -86,7 +86,7 @@ update_tar(Release, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                                  {"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
                         end]++ConfigFiles++OverlayFiles, [dereference,compressed]),
     ?log_info("tarball ~s successfully created!", [TarFile]),
-    ec_file:remove(TempDir, [recursive]),
+    rlx_file_utils:remove(TempDir, [recursive]),
     {ok, State}.
 
 config_files(Vsn, OutputDir) ->
@@ -103,7 +103,7 @@ overlay_files(OverlayVars, Overlay, OutputDir) ->
     [begin
          To = to(O),
          File = rlx_overlay:render_string(OverlayVars, To),
-         {ec_cnv:to_list(File), ec_cnv:to_list(filename:join(OutputDir, File))}
+         {rlx_util:to_string(File), rlx_util:to_string(filename:join(OutputDir, File))}
      end || O <- Overlay, filter(O)].
 
 to({link, _, To}) ->
