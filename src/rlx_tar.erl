@@ -7,7 +7,7 @@
 -include("rlx_log.hrl").
 
 make_tar(Release, OutputDir, State) ->
-    Name = atom_to_list(rlx_release:name(Release)),
+    Name = rlx_release:name(Release),
     Vsn = rlx_release:vsn(Release),
     ErtsVersion = rlx_release:erts(Release),
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
@@ -15,17 +15,13 @@ make_tar(Release, OutputDir, State) ->
             {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
                 true ->
-                    Prefix = code:root_dir(),
-                    ErtsDir = filename:join([Prefix]),
-                    [{erts, ErtsDir}];
+                    [{erts, code:root_dir()}];
                 false ->
                     [];
-                Prefix ->
-                    ErtsDir = filename:join([Prefix]),
+                ErtsDir ->
                     [{erts, ErtsDir}]
             end],
-    case systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]),
-                           Opts) of
+    case systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]), Opts) of
         ok ->
             TempDir = rlx_file_utils:mkdtemp(),
             try
@@ -33,7 +29,7 @@ make_tar(Release, OutputDir, State) ->
             catch
                 E:R ->
                     rlx_file_utils:remove(TempDir, [recursive]),
-                    ?RLX_ERROR({tar_generation_error, E, R})
+                    erlang:error(?RLX_ERROR({tar_generation_error, E, R}))
             end;
         {ok, Module, Warnings} ->
             ?RLX_ERROR({tar_generation_warn, Module, Warnings});
@@ -55,8 +51,8 @@ format_error({tar_generation_error, Module, Errors}) ->
 update_tar(Release, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     IncludeErts = rlx_state:get(State, include_erts, true),
     SystemLibs = rlx_state:get(State, system_libs, IncludeErts),
-    TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
-    file:rename(filename:join(OutputDir, Name++".tar.gz"), TarFile),
+    TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
+    file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
     OverlayVars = rlx_overlay:generate_overlay_vars(State, Release),
     OverlayFiles = overlay_files(OverlayVars, rlx_state:get(State, overlay, undefined), OutputDir),
@@ -83,7 +79,7 @@ update_tar(Release, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                                 end;
                             _ ->
                                 [{"lib", filename:join(TempDir, "lib")},
-                                 {"erts-"++ErtsVersion, filename:join(OutputDir, "erts-"++ErtsVersion)}]
+                                 {"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)}]
                         end]++ConfigFiles++OverlayFiles, [dereference,compressed]),
     ?log_info("tarball ~s successfully created!", [TarFile]),
     rlx_file_utils:remove(TempDir, [recursive]),
