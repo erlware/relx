@@ -49,7 +49,7 @@ copy_app_directories_to_output(Release, OutputDir, State) ->
     ok = rlx_file_utils:mkdir_p(LibDir),
     IncludeSrc = rlx_state:include_src(State),
     IncludeSystemLibs = rlx_state:get(State, system_libs, rlx_state:get(State, include_erts, true)),
-    Apps = prepare_applications(State, rlx_release:application_details(Release)),
+    Apps = prepare_applications(State, rlx_release:applications(Release)),
     [copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) || App <- Apps],
     ok.
 

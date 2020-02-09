@@ -59,7 +59,7 @@ basic_tar(Config) ->
     {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                                {output_dir, OutputDir} | RelxConfig]),
 
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -97,7 +97,7 @@ exclude_erts(Config) ->
     {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                                {output_dir, OutputDir} | RelxConfig]),
 
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -125,7 +125,7 @@ exclude_src(Config) ->
     {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                                {output_dir, OutputDir} | RelxConfig]),
 
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -152,7 +152,7 @@ include_src(Config) ->
     {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                                {output_dir, OutputDir} | RelxConfig]),
 
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -242,7 +242,7 @@ overlay_archive(Config) ->
     {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                                {output_dir, OutputDir} | RelxConfig]),
 
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
