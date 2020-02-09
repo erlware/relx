@@ -76,7 +76,7 @@ new(Name, Vsn, Dir, Applications, IncludedApplications) ->
 name(#{name := Name}) ->
     Name.
 
--spec vsn(t()) -> ec_semver:semver().
+-spec vsn(t()) -> string().
 vsn(#{vsn := Vsn}) ->
     Vsn.
 

@@ -59,8 +59,8 @@
 -include("relx.hrl").
 
 -record(release_t, {name :: atom(),
-                    vsn :: ec_semver:any_version(),
-                    erts :: undefined | ec_semver:any_version(),
+                    vsn :: string(),
+                    erts :: undefined | string(),
                     goals = undefined :: parsed_goals() | undefined,
                     realized = false :: boolean(),
                     annotations = undefined :: annotations(),

@@ -23,8 +23,8 @@
                             {name(), vsn(), type(), incl_apps()}.
 
 -record(release, {name             :: name(),
-                  vsn              :: ec_semver:any_version(),
-                  erts             :: undefined | ec_semver:any_version(),
+                  vsn              :: string(),
+                  erts             :: undefined | string(),
                   realized = false :: boolean(),
                   app_spec         :: [application_spec()] | undefined,
                   apps_config      :: [app_config()],
