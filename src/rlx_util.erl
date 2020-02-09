@@ -25,7 +25,6 @@
          release_output_dir/2,
          to_binary/1,
          to_string/1,
-         to_atom/1,
          is_error/1,
          error_reason/1,
          indent/1,
@@ -50,8 +49,9 @@ get_code_paths(Release, OutDir) ->
 
 -spec release_output_dir(rlx_state:t(), rlx_release:t()) -> string().
 release_output_dir(State, Release) ->
-    OutputDir = rlx_state:output_dir(State),
+    OutputDir = rlx_state:base_output_dir(State),
     filename:join([OutputDir,
+                   rlx_release:name(Release),
                    "releases",
                    rlx_release:vsn(Release)]).
 
@@ -75,17 +75,6 @@ to_string(Atom) when erlang:is_atom(Atom) ->
     erlang:atom_to_list(Atom);
 to_string(Else) when erlang:is_list(Else) ->
     Else.
-
--spec to_atom(atom() | string() | binary()) -> atom().
-to_atom(Binary)
-  when erlang:is_binary(Binary) ->
-    erlang:list_to_atom(to_string(Binary));
-to_atom(String)
-  when erlang:is_list(String) ->
-    erlang:list_to_atom(String);
-to_atom(Atom)
-  when erlang:is_atom(Atom) ->
-    Atom.
 
 %% @doc get the reason for a particular relx error
 -spec error_reason(relx:error()) -> any().

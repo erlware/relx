@@ -56,10 +56,9 @@ basic_tar(Config) ->
                   {sys_config_src, SysConfigSrc},
                   {vm_args_src, VmArgsSrc}],
 
-    {ok, State} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                             {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
+                                               {output_dir, OutputDir} | RelxConfig]),
 
-    [{{foo, "0.0.4"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -95,10 +94,9 @@ exclude_erts(Config) ->
                     goal_app_2]},
                   {include_erts, false}
                  ],
-    {ok, State} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                             {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
+                                               {output_dir, OutputDir} | RelxConfig]),
 
-    [{{foo, "0.0.3"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -124,10 +122,9 @@ exclude_src(Config) ->
                     goal_app_2]},
                   {include_src, false}],
 
-    {ok, State} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                             {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
+                                               {output_dir, OutputDir} | RelxConfig]),
 
-    [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -152,10 +149,9 @@ include_src(Config) ->
                    [goal_app_1,
                     goal_app_2]}],
 
-    {ok, State} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                             {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
+                                               {output_dir, OutputDir} | RelxConfig]),
 
-    [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -243,10 +239,9 @@ overlay_archive(Config) ->
     {ok, FileInfo} = file:read_file_info(TemplateFile),
     ok = file:write_file_info(TemplateFile, FileInfo#file_info{mode=8#00777}),
 
-    {ok, State} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                             {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
+                                               {output_dir, OutputDir} | RelxConfig]),
 
-    [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
@@ -256,15 +251,15 @@ overlay_archive(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
-    % check that the chmod of our file worked
+    %% check that the chmod of our file worked
     ChmodedFile = filename:join([OutputDir,"foo",SecondTestDir,TestScript]),
     {ok, ChmodedInfo} = file:read_file_info (ChmodedFile),
-    % mode from file_info is a bitmask which might have other bits set, but
-    % if we mask those we care about and check we should get true, see details
-    % here http://stackoverflow.com/questions/13183838/how-to-use-erlang-fileread-file-info-permissions-mode-info
+    %% mode from file_info is a bitmask which might have other bits set, but
+    %% if we mask those we care about and check we should get true, see details
+    %% here http://stackoverflow.com/questions/13183838/how-to-use-erlang-fileread-file-info-permissions-mode-info
     ?assert(ChmodedInfo#file_info.mode band 8#00700 =:= 8#00700),
 
-    % check that the templated chmod of our file worked
+    %% check that the templated chmod of our file worked
     ChmodedFile2 = filename:join([OutputDir,"foo",SecondTestDir,TestScript2]),
     {ok, ChmodedInfo2} = file:read_file_info (ChmodedFile2),
     ?assert(ChmodedInfo2#file_info.mode band 8#00770 =:= 8#00770),

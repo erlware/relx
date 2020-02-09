@@ -212,7 +212,6 @@ make_extend_config_release(Config) ->
     {ok, State} = relx:build_release(foo_test, Apps, [{root_dir, LibDir1},
                                                       {output_dir, OutputDir} | RelxConfig]),
 
-
     [{{foo_test, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:applications(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
