@@ -54,7 +54,7 @@ make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
             ?log_info("relup from ~s to ~s successfully created!", [UpFromRel, CurrentRel]),
             {ok, State};
         error ->
-            error(?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel}));
+            erlang:error(?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel}));
         {ok, _RelUp, _, []} ->
             ?log_info("relup successfully created!"),
             {ok, State};
@@ -63,7 +63,7 @@ make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
             {ok, State};
 
         {error, Module, Error} ->
-            error(?RLX_ERROR({relup_script_generation_error, Module, Error}))
+            erlang:error(?RLX_ERROR({relup_script_generation_error, Module, Error}))
     end.
 
 %% return path to rel file without the .rel extension as a string (not binary)
@@ -78,10 +78,10 @@ find_rel_file(Name, Vsn, Dir) when is_atom(Name) ,
         true ->
             RelFile;
         _ ->
-            error(?RLX_ERROR({relfile_not_found, {Name, Vsn}}))
+            erlang:error(?RLX_ERROR({relfile_not_found, {Name, Vsn}}))
     end;
 find_rel_file(Name, Vsn, _) ->
-    error(?RLX_ERROR({bad_rel_tuple, {Name, Vsn}})).
+    erlang:error(?RLX_ERROR({bad_rel_tuple, {Name, Vsn}})).
 
 get_version_before(Name, Vsn, ReleasesDir) ->
     %% Given directory where all releases for `Name' are find all versions of the release.
@@ -100,5 +100,5 @@ get_version_before(Name, Vsn, ReleasesDir) ->
         [LastVersion | _] ->
             LastVersion;
         _ ->
-            error(?RLX_ERROR({no_upfrom_release_found, Vsn}))
+            erlang:error(?RLX_ERROR({no_upfrom_release_found, Vsn}))
     end.

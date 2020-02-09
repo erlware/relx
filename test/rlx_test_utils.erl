@@ -10,8 +10,7 @@ create_app(Dir, Name, Vsn, Deps, LibDeps) ->
     write_src_file(AppDir, Name),
     write_priv_file(AppDir),
     compile_src_files(AppDir),
-    rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
-                     Deps, []).
+    rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir, Deps, []).
 
 create_full_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
@@ -301,7 +300,7 @@ gather_application_info(EbinDir, File) ->
     AppDir = filename:dirname(EbinDir),
     case file:consult(File) of
         {ok, [{application, AppName, AppDetail}]} ->
-            validate_application_info(EbinDir, AppName, AppDetail);
+            validate_application_info(EbinDir, AppName, maps:from_list(AppDetail));
         {error, Reason} ->
             {warning, {unable_to_load_app, AppDir, Reason}};
         _ ->
@@ -315,26 +314,19 @@ validate_application_info(EbinDir, AppName, AppDetail) ->
 -spec get_vsn(file:name(), atom(), proplists:proplist()) ->
                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
 get_vsn(AppDir, AppName, AppDetail) ->
-    case proplists:get_value(vsn, AppDetail) of
+    case maps:get(vsn, AppDetail, undefined) of
         undefined ->
             {error, {unversioned_app, AppDir, AppName}};
         AppVsn ->
-            case get_deps(AppDir, AppName, AppVsn, AppDetail) of
-                {ok, App} ->
-                    {ok, App};
-                {error, Detail} ->
-                    {error, {app_info_error, Detail}}
-            end
+            {ok, get_deps(AppDir, AppName, AppVsn, AppDetail)}
     end.
 
--spec get_deps(binary(), atom(), string(), proplists:proplist()) ->
-                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
+-spec get_deps(binary(), atom(), string(), proplists:proplist()) -> rlx_app_info:t().
 get_deps(AppDir, AppName, AppVsn, AppDetail) ->
     %% ensure that at least stdlib and kernel are defined as application deps
-    ActiveApps = ensure_stdlib_kernel(AppName,
-                                      proplists:get_value(applications, AppDetail, [])),
-    LibraryApps = proplists:get_value(included_applications, AppDetail, []),
-    rlx_app_info:new(AppName, AppVsn, AppDir, ActiveApps, LibraryApps).
+    Apps = ensure_stdlib_kernel(AppName, maps:get(applications, AppDetail, [])),
+    IncApps = maps:get(included_applications, AppDetail, []),
+    rlx_app_info:new(AppName, AppVsn, AppDir, Apps, IncApps).
 
 -spec ensure_stdlib_kernel(AppName :: atom(),
                            Apps :: list(atom())) -> list(atom()).

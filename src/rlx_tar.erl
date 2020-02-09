@@ -6,16 +6,7 @@
 -include("relx.hrl").
 -include("rlx_log.hrl").
 
-format_error({tar_unknown_generation_error, Module, Vsn}) ->
-    io_lib:format("Tarball generation error of ~s ~s",
-                  [Module, Vsn]);
-format_error({tar_generation_warn, Module, Warnings}) ->
-    io_lib:format("Tarball generation warnings for ~p : ~p",
-                  [Module, Warnings]);
-format_error({tar_generation_error, Module, Errors}) ->
-    io_lib:format("Tarball generation error for ~p", [Module:format_error(Errors)]).
-
-make_tar(State, Release, OutputDir) ->
+make_tar(Release, OutputDir, State) ->
     Name = atom_to_list(rlx_release:name(Release)),
     Vsn = rlx_release:vsn(Release),
     ErtsVersion = rlx_release:erts(Release),
@@ -38,7 +29,7 @@ make_tar(State, Release, OutputDir) ->
         ok ->
             TempDir = ec_file:insecure_mkdtemp(),
             try
-                update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion)
+                update_tar(Release, State, TempDir, OutputDir, Name, Vsn, ErtsVersion)
             catch
                 E:R ->
                     ec_file:remove(TempDir, [recursive]),
@@ -52,11 +43,18 @@ make_tar(State, Release, OutputDir) ->
             ?RLX_ERROR({tar_generation_error, Module, Errors})
     end.
 
-update_tar(State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
+format_error({tar_unknown_generation_error, Module, Vsn}) ->
+    io_lib:format("Tarball generation error of ~s ~s", [Module, Vsn]);
+format_error({tar_generation_warn, Module, Warnings}) ->
+    io_lib:format("Tarball generation warnings for ~p : ~p", [Module, Warnings]);
+format_error({tar_generation_error, Module, Errors}) ->
+    io_lib:format("Tarball generation error for ~p", [Module:format_error(Errors)]).
+
+%%
+
+update_tar(Release, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     IncludeErts = rlx_state:get(State, include_erts, true),
     SystemLibs = rlx_state:get(State, system_libs, IncludeErts),
-    {RelName, RelVsn} = rlx_state:default_configured_release(State),
-    Release = rlx_state:get_realized_release(State, RelName, RelVsn),
     TarFile = filename:join(OutputDir, Name++"-"++Vsn++".tar.gz"),
     file:rename(filename:join(OutputDir, Name++".tar.gz"), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
