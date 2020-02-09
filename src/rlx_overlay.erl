@@ -23,9 +23,6 @@ render(Release, State) ->
 -spec format_error(ErrorDetail::term()) -> iolist().
 format_error({unresolved_release, RelName, RelVsn}) ->
     io_lib:format("The release has not been resolved ~p-~s", [RelName, RelVsn]);
-format_error({ec_file_error, AppDir, TargetDir, E}) ->
-    io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
-                  [AppDir, TargetDir, E]);
 format_error({unable_to_read_varsfile, FileName, Reason}) ->
     io_lib:format("Unable to read vars file (~s) for overlay due to: ~p",
                   [FileName, Reason]);
@@ -359,12 +356,11 @@ wildcard_copy(State, Release, FromFile0, ToFile0, CopyFun, ErrorTag) ->
                         ToFile1, Err})
     end.
 
-
 -spec copy_to(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok | relx:error().
 copy_to(State, Release, FromFile0, ToFile0) ->
     wildcard_copy(State, Release, FromFile0, ToFile0,
                   fun(FromPath, ToPath) ->
-                          ec_file:copy(FromPath, ToPath, [recursive, {file_info, [mode, time]}]) end,
+                          rlx_file_utils:copy(FromPath, ToPath, [recursive, {file_info, [mode, time]}]) end,
                   copy_failed).
 
 -spec link_to(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok | relx:error().
@@ -374,9 +370,9 @@ link_to(State, Release, FromFile0, ToFile0) ->
                   link_failed).
 
 make_link(FromFile, ToFile) ->
-    case ec_file:is_symlink(ToFile) of
+    case rlx_file_utils:is_symlink(ToFile) of
         true -> file:delete(ToFile);
-        false -> ec_file:remove(ToFile, [recursive])
+        false -> rlx_file_utils:remove(ToFile, [recursive])
     end,
     file:make_symlink(FromFile, ToFile).
 
@@ -423,13 +419,13 @@ write_template(OverlayVars, FromFile, ToFile) ->
                             %% onto a symlink, this would cause an overwrite
                             %% of the original file, so we delete the symlink
                             %% and go ahead with the template render
-                            case ec_file:is_symlink(ToFile) of
-                                true -> ec_file:remove(ToFile);
+                            case rlx_file_utils:is_symlink(ToFile) of
+                                true -> rlx_file_utils:remove(ToFile);
                                 false -> ok
                             end,
                             case file:write_file(ToFile, IoData) of
                                 ok ->
-                                    ok = ec_file:copy_file_info(ToFile, FromFile, [mode, time]),
+                                    ok = rlx_file_utils:copy_file_info(ToFile, FromFile, [mode, time]),
                                     ok;
                                 {error, Reason} ->
                                     ?RLX_ERROR({unable_to_write, ToFile, Reason})

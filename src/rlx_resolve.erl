@@ -71,6 +71,7 @@ solve_release(Release, State0) ->
             erlang:error(?RLX_ERROR({release_not_found, {RelName, RelVsn}}))
     end.
 
+%% find the app_info records for each application and its deps needed for the release
 subset(Apps, World) ->
     subset(Apps, World, sets:new(), []).
 
@@ -83,31 +84,7 @@ subset([Goal | Rest], World, Seen, Acc) ->
             subset(Rest, World, Seen, Acc);
         _ ->
             AppInfo=#{applications := Applications,
-                      included_applications := IncludedApplications} =
-                case ec_lists:find(fun(App) ->
-                                           case Vsn of
-                                               undefined ->
-                                                   rlx_app_info:name(App) =:= Name;
-                                                _ ->
-                                                   rlx_app_info:name(App) =:= Name
-                                                       andalso rlx_app_info:vsn(App) =:= Vsn
-                                           end
-                                   end, World) of
-                          {ok, A} ->
-                              A;
-                          error ->
-                              error(?RLX_ERROR({app_not_found, Name}))
-                              %% TODO: Support overriding the dirs to search
-                              %% precedence: apps > deps > erl_libs > system
-                              %% Dir = code:lib_dir(Name),
-                              %% case rebar_app_discover:find_app(Dir, valid) of
-                              %%     {true, A} ->
-                              %%         A;
-                              %%     _ ->
-                              %%         throw({app_not_found, Name})
-                              %% end
-                      end,
-
+                      included_applications := IncludedApplications} = find_app(Name, Vsn, World),
             subset(Rest ++ Applications ++ IncludedApplications,
                    World,
                    sets:add_element(Name, Seen),
@@ -153,3 +130,30 @@ find_and_remove(ExcludeName, [#{name := Name} | Rest]) when ExcludeName =:= Name
     Rest;
 find_and_remove(ExcludeName, [H | Rest]) ->
     [H | find_and_remove(ExcludeName, Rest)].
+
+find_app(Name, _Vsn, []) ->
+    error(?RLX_ERROR({app_not_found, Name}));
+find_app(Name, Vsn, [App | Rest]) ->
+    case check_app(Name, Vsn, App) of
+        true ->
+            App;
+        false ->
+            find_app(Name, Vsn, Rest)
+    end.
+
+check_app(Name, undefined, App) ->
+    rlx_app_info:name(App) =:= Name;
+check_app(Name, Vsn, App) ->
+    rlx_app_info:name(App) =:= Name
+        andalso rlx_app_info:vsn(App) =:= Vsn.
+
+
+%% TODO: Support overriding the dirs to search
+%% precedence: apps > deps > erl_libs > system
+%% Dir = code:lib_dir(Name),
+%% case rebar_app_discover:find_app(Dir, valid) of
+%%     {true, A} ->
+%%         A;
+%%     _ ->
+%%         throw({app_not_found, Name})
+%% end

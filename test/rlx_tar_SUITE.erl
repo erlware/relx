@@ -48,7 +48,7 @@ basic_tar(Config) ->
     rlx_test_utils:write_config(SysConfigSrc, [{this_is_a_test, "yup it is"}]),
 
     VmArgsSrc = filename:join([LibDir1, "config", "vm.args.src"]),
-    ec_file:write(VmArgsSrc, ""),
+    rlx_file_utils:write(VmArgsSrc, ""),
 
     RelxConfig = [{release, {foo, "0.0.4"},
                    [goal_app_1,

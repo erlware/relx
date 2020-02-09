@@ -99,7 +99,7 @@ init_per_group(shortname, Config) ->
                                     {var2, "${VAR2}"}]}]]),
 
     VmArgs = filename:join([OutputDir, "vm.args"]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
+    rlx_file_utils:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     RelxConfig =[{release, {foo, "0.0.1"},
@@ -130,7 +130,7 @@ init_per_group(longname, Config) ->
     ok = rlx_file_utils:mkdir_p(OutputDir),
 
     VmArgs = filename:join([OutputDir, "vm.args"]),
-    ec_file:write(VmArgs, "-name ${NODENAME}@127.0.0.1\n\n"
+    rlx_file_utils:write(VmArgs, "-name ${NODENAME}@127.0.0.1\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     RelxConfig =[{release, {foo, "0.0.1"},
@@ -219,7 +219,7 @@ reboot(Config) ->
 escript(Config) ->
     OutputDir = ?config(out_dir, Config),
 
-    ok = ec_file:write(filename:join([OutputDir, "foo", "script.erl"]),
+    ok = rlx_file_utils:write(filename:join([OutputDir, "foo", "script.erl"]),
                        [rlx_test_utils:escript_contents()]),
 
     %% now start/stop the release to make sure the extended script is working
@@ -256,7 +256,7 @@ os_var_timeouts(Config) ->
                            {output_dir, OutputDir},
                            {config, ConfigFile}], ["release"]),
 
-    ok = ec_file:write(filename:join([OutputDir, "foo", "script.erl"]),
+    ok = rlx_file_utils:write(filename:join([OutputDir, "foo", "script.erl"]),
                        [rlx_test_utils:escript_contents()]),
 
     %% now start/stop the release to make sure the extended script is working
@@ -305,8 +305,8 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
 
     %% new with sys.config.src it doesn't have to be valid Erlang
     %% until after var replacemen at runtime.
-    ec_file:write(SysConfigSrc, "[{goal_app_3, [{var1, ${VAR1}}]}]."),
-    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
+    rlx_file_utils:write(SysConfigSrc, "[{goal_app_3, [{var1, ${VAR1}}]}]."),
+    rlx_file_utils:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
@@ -343,7 +343,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                           {"NODENAME", "node1"},
                           {"COOKIE", "cookie1"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                 [{"RELX_REPLACE_OS_VARS", "1"},
@@ -382,7 +382,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                           {"NODENAME", "node2"},
                           {"COOKIE", "cookie2"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                          [{"RELX_REPLACE_OS_VARS", "1"},
@@ -415,7 +415,7 @@ replace_os_vars_multi_node(Config) ->
 
     rlx_test_utils:write_config(SysConfig,
                                 [[{goal_app_3, [{var1, "${VAR1}"}]}]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
+    rlx_file_utils:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
@@ -458,7 +458,7 @@ replace_os_vars_multi_node(Config) ->
                           {"NODENAME", "node1"},
                           {"COOKIE", "cookie1"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys." ++
                                           rlx_test_utils:unescape_string(Node1) ++
                                           ".config"]))),
@@ -506,7 +506,7 @@ replace_os_vars_multi_node(Config) ->
                           {"NODENAME", "node2"},
                           {"COOKIE", "cookie2"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys." ++
                                           rlx_test_utils:unescape_string(Node2) ++
                                           ".config"]))),
@@ -556,7 +556,7 @@ replace_os_vars_included_config(Config) ->
                                   },
                                  "releases/0.0.1/config/included.config"]
                                 ]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
+    rlx_file_utils:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
@@ -593,7 +593,7 @@ replace_os_vars_included_config(Config) ->
                           {"NODENAME", "node1"},
                           {"COOKIE", "cookie1"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                 [{"RELX_REPLACE_OS_VARS", "1"},
@@ -632,7 +632,7 @@ replace_os_vars_included_config(Config) ->
                           {"NODENAME", "node2"},
                           {"COOKIE", "cookie2"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                          [{"RELX_REPLACE_OS_VARS", "1"},
@@ -679,7 +679,7 @@ replace_os_vars_custom_location(Config) ->
                                   },
                                  "releases/0.0.1/config/included.config"]
                                 ]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
+    rlx_file_utils:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
@@ -723,7 +723,7 @@ replace_os_vars_custom_location(Config) ->
                           {"NODENAME", "node1"},
                           {"COOKIE", "cookie1"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join(["/", "tmp",
+    ?assert(rlx_file_utils:exists(filename:join(["/", "tmp",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                 [{"RELX_REPLACE_OS_VARS", "1"},
@@ -769,7 +769,7 @@ replace_os_vars_custom_location(Config) ->
                           {"NODENAME", "node2"},
                           {"COOKIE", "cookie2"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join(["/", "tmp",
+    ?assert(rlx_file_utils:exists(filename:join(["/", "tmp",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                          [{"RELX_REPLACE_OS_VARS", "1"},
@@ -804,7 +804,7 @@ replace_os_vars_twice(Config) ->
                  ],
 
     rlx_test_utils:write_config(SysConfig, [[{goal_app_3, [{var9, "${VAR9}"}]}]]),
-    ec_file:write(VmArgs, "-sname node@localhost\n\n"
+    rlx_file_utils:write(VmArgs, "-sname node@localhost\n\n"
                           "-setcookie cookie\n"),
 
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
@@ -829,7 +829,7 @@ replace_os_vars_twice(Config) ->
                                        "foo eval 'atom_to_list(node()).'"]),
                          [{"RELX_REPLACE_OS_VARS", "1"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                  [{"RELX_REPLACE_OS_VARS", "1"}]),
@@ -881,7 +881,7 @@ replace_os_vars_dev_mode(Config) ->
                                               {var1, "${VAR1}"}]
                                   }
                                 ]]),
-    ec_file:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
+    rlx_file_utils:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
                           "-setcookie ${COOKIE}\n"),
 
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
@@ -918,7 +918,7 @@ replace_os_vars_dev_mode(Config) ->
                           {"NODENAME", "node1"},
                           {"COOKIE", "cookie1"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
@@ -957,7 +957,7 @@ replace_os_vars_dev_mode(Config) ->
                           {"NODENAME", "node2"},
                           {"COOKIE", "cookie2"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                 [{"RELX_REPLACE_OS_VARS", "1"},
@@ -990,10 +990,10 @@ replace_os_vars_default_env(Config) ->
 
     %% new with sys.config.src it doesn't have to be valid Erlang
     %% until after var replacemen at runtime.
-    ec_file:write(VmArgs, "-sname ${NODENAME:-node1}@localhost\n\n"
+    rlx_file_utils:write(VmArgs, "-sname ${NODENAME:-node1}@localhost\n\n"
                           "-setcookie ${COOKIE:-cookie1}\n"),
 
-    ec_file:write(SysConfigSrc,"[{goal_app_3, [{var1, ${VAR1:-222}},
+    rlx_file_utils:write(SysConfigSrc,"[{goal_app_3, [{var1, ${VAR1:-222}},
                                              {var2, \"${VAR2:-201:-test2}\"},
                                              {var3, \"${VAR3:-VA:-test3}\"},
                                              {var4, \"${VAR4:-VAR4:-test4}\"},
@@ -1056,7 +1056,7 @@ replace_os_vars_default_env(Config) ->
                           {"NODENAME", "node1"},
                           {"COOKIE", "cookie1"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                 [{"RELX_REPLACE_OS_VARS", "1"},
@@ -1124,7 +1124,7 @@ replace_os_vars_default_env(Config) ->
                           {"NODENAME", "node1"},
                           {"COOKIE", "cookie1"}]),
     %% check that the replaced files have been created in the right place
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                 [{"RELX_REPLACE_OS_VARS", "1"},
@@ -1217,7 +1217,7 @@ builtin_pid_start_script_hook(Config) ->
     %% executed
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
     %% check that the pid file really was created
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo.pid"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo.pid"]))),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     ok.
 
@@ -1396,7 +1396,7 @@ mixed_custom_and_builtin_start_script_hooks(Config) ->
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     ?assert((T2 div 1000) > 3000),
     %% check that the pid file really was created
-    ?assert(ec_file:exists(filename:join([OutputDir, "foo.pid"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo.pid"]))),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% now check that the output file contains the expected format
     {ok,[{pre_start, foo, _, foo},
@@ -1466,7 +1466,7 @@ custom_status_script(Config) ->
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the status to a file
     {ok, StatusStr} = sh(filename:join([OutputDir, "foo", "bin", "foo status"])),
-    ec_file:write(filename:join([OutputDir, "status.txt"]), StatusStr),
+    rlx_file_utils:write(filename:join([OutputDir, "status.txt"]), StatusStr),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {ok, [Status]} = file:consult(filename:join([OutputDir, "status.txt"])),
     {ok, {status, foo, _, foo} = Status}.
@@ -1490,10 +1490,10 @@ start_sname_in_other_argsfile(Config) ->
                   {extended_start_script, true}
                  ],
 
-    ec_file:write(VmArgs, "-args_file " ++ VmArgs2 ++ "\n\n"
+    rlx_file_utils:write(VmArgs, "-args_file " ++ VmArgs2 ++ "\n\n"
                           "-setcookie cookie\n"),
 
-    ec_file:write(VmArgs2, "-sname foo@localhost\n"),
+    rlx_file_utils:write(VmArgs2, "-sname foo@localhost\n"),
 
 
     Apps1 = rlx_test_utils:all_apps([OutputDir]),
@@ -1553,7 +1553,7 @@ start_nodetool_with_data_from_argsfile(Config) ->
     rlx_test_utils:create_full_app(OutputDir, "goal_app", "0.0.1", [stdlib,kernel], []),
 
     VmArgs = filename:join([OutputDir, "vm.args"]),
-    ec_file:write(VmArgs, "-setcookie cookie\n"
+    rlx_file_utils:write(VmArgs, "-setcookie cookie\n"
                           "-sname foo@localhost\n\n"
                           "-proto_dist inet_tcp\n\n"),
 
@@ -1586,7 +1586,7 @@ start_upgrade_escript_with_argsfile_data(Config) ->
     rlx_test_utils:create_full_app(OutputDir, "goal_app", "0.0.1", [stdlib,kernel], []),
 
     VmArgs = filename:join([OutputDir, "vm.args"]),
-    ec_file:write(VmArgs, "-setcookie cookie\n"
+    rlx_file_utils:write(VmArgs, "-setcookie cookie\n"
                           "-sname foo@localhost\n\n"
                           "-proto_dist inet_tcp\n\n"),
 
@@ -1616,7 +1616,7 @@ start_fail_when_no_name(Config) ->
     ok = rlx_file_utils:mkdir_p(OutputDir),
 
     VmArgs = filename:join([OutputDir, "vm-1.args"]),
-    ec_file:write(VmArgs, "-setcookie cookie\n"),
+    rlx_file_utils:write(VmArgs, "-setcookie cookie\n"),
     start_fail_with_vmargs(Config, VmArgs, 1).
 
 start_fail_when_multiple_names(Config) ->
@@ -1626,7 +1626,7 @@ start_fail_when_multiple_names(Config) ->
     ok = rlx_file_utils:mkdir_p(OutputDir),
 
     VmArgs = filename:join([OutputDir, "vm-2.args"]),
-    ec_file:write(VmArgs, "-name foo\n\n"
+    rlx_file_utils:write(VmArgs, "-name foo\n\n"
                           "-name bar\n\n"
                           "-setcookie cookie\n"),
     start_fail_with_vmargs([{out_dir, OutputDir} | Config], VmArgs, 2).
@@ -1638,7 +1638,7 @@ start_fail_when_missing_argsfile(Config) ->
     ok = rlx_file_utils:mkdir_p(OutputDir),
 
     VmArgs = filename:join([OutputDir, "vm-3.args"]),
-    ec_file:write(VmArgs, "-name foo\n\n"
+    rlx_file_utils:write(VmArgs, "-name foo\n\n"
                           "-args_file " ++ VmArgs ++ ".nonexistent\n\n"
                           "-setcookie cookie\n"),
     start_fail_with_vmargs([{out_dir, OutputDir} | Config], VmArgs, 3).
@@ -1650,7 +1650,7 @@ start_fail_when_relative_argsfile(Config) ->
     ok = rlx_file_utils:mkdir_p(OutputDir),
 
     VmArgs = filename:join([OutputDir, "vm-5.args"]),
-    ec_file:write(VmArgs, "-name foo\n\n"
+    rlx_file_utils:write(VmArgs, "-name foo\n\n"
                           "-args_file vm.args.relative\n\n"
                           "-setcookie cookie\n"),
     start_fail_with_vmargs([{out_dir, OutputDir} | Config], VmArgs, 4).
@@ -1664,11 +1664,11 @@ start_fail_when_circular_argsfiles(Config) ->
     VmArgs = filename:join([OutputDir, "vm-6.args"]),
     VmArgs2 = VmArgs ++ ".2",
     VmArgs3 = VmArgs ++ ".3",
-    ec_file:write(VmArgs, "-name foo\n\n"
+    rlx_file_utils:write(VmArgs, "-name foo\n\n"
                           "-args_file " ++ VmArgs2 ++ "\n\n"
                           "-setcookie cookie\n"),
-    ec_file:write(VmArgs2, "-args_file " ++ VmArgs3 ++ "\n"),
-    ec_file:write(VmArgs3, "-args_file " ++ VmArgs2 ++ "\n"),
+    rlx_file_utils:write(VmArgs2, "-args_file " ++ VmArgs3 ++ "\n"),
+    rlx_file_utils:write(VmArgs3, "-args_file " ++ VmArgs2 ++ "\n"),
     start_fail_with_vmargs([{out_dir, OutputDir} | Config], VmArgs, 5).
 
 extension_script(Config) ->
@@ -1682,7 +1682,7 @@ extension_script(Config) ->
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the extension script output to a file
     {ok, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
-    ec_file:write(filename:join([OutputDir, "bar.txt"]), Str),
+    rlx_file_utils:write(filename:join([OutputDir, "bar.txt"]), Str),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {ok, [Term]} = file:consult(filename:join([OutputDir, "bar.txt"])),
     {ok, {bar, foo, _, foo} = Term}.
