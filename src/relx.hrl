@@ -20,3 +20,9 @@
 %% this and that they all expose a format_error/1 message that returns
 %% an iolist.
 -define(RLX_ERROR(Reason), {error, {?MODULE, Reason}}).
+
+-ifdef(OTP_RELEASE).
+-define(WITH_STACKTRACE(T, R, S), T:R:S ->).
+-else.
+-define(WITH_STACKTRACE(T, R, S), T:R -> S = erlang:get_stacktrace(),).
+-endif.

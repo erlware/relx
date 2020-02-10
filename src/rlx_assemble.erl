@@ -587,9 +587,9 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
                             true -> [warnings_as_errors];
                             false -> []
                         end],
-    Name = erlang:atom_to_list(rlx_release:name(Release)),
-    ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
-    case systools:make_script(Name, Options) of
+    Name = atom_to_list(rlx_release:name(Release)),
+    ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
+    case make_script(Name, RelDir, Options) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
@@ -601,6 +601,23 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
             erlang:error(?RLX_ERROR({release_script_generation_error, ReleaseFile}));
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
+    end.
+
+make_script(Name, RelDir, Options) ->
+    case rlx_util:relx_sasl_vsn() of
+        true ->
+            systools:make_script(Name, [{script_name, "start"} | Options]);
+        false ->
+            case systools:make_script(Name, Options) of
+                Result when Result =:= ok orelse (is_tuple(Result) andalso
+                                          element(1, Result) =:= ok) ->
+                    %% TODO: probably just warn here if this fails?
+                    _ = rlx_file_utils:copy(filename:join([RelDir, [Name, ".boot"]]),
+                                            filename:join(RelDir, "start.boot")),
+                    Result;
+                Error ->
+                    Error
+            end
     end.
 
 maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
