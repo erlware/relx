@@ -21,7 +21,9 @@
 %%% @doc Trivial utility file to help handle common tasks
 -module(rlx_util).
 
--export([get_code_paths/2,
+-export([relx_sasl_vsn/0,
+         parse_vsn/1,
+         get_code_paths/2,
          release_output_dir/2,
          to_binary/1,
          to_string/1,
@@ -37,6 +39,23 @@
 -define(ONE_LEVEL_INDENT, "     ").
 
 -include("rlx_log.hrl").
+
+relx_sasl_vsn() ->
+    application:load(sasl),
+    case application:get_key(sasl, vsn) of
+        {ok, SaslVsn} ->
+            parse_vsn(SaslVsn) > {3,4,1};
+        _ ->
+            false
+    end.
+
+parse_vsn(Vsn) ->
+    case re:run(Vsn, "^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$", [{capture, [1,2,3], list}]) of
+        {match, [Major, Minor, Patch]} ->
+            {list_to_integer(Major), list_to_integer(Minor), list_to_integer(Patch)};
+        _ ->
+            0
+    end.
 
 %% @doc Generates the correct set of code paths for the system.
 -spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].
