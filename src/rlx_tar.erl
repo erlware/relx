@@ -136,6 +136,8 @@ config_files(Vsn, OutputDir) ->
               filename:join([OutputDir, "releases", Vsn, "vm.args"])},
     VMArgsSrc = {filename:join(["releases", Vsn, "vm.args.src"]),
                  filename:join([OutputDir, "releases", Vsn, "vm.args.src"])},
+
+    %% when we drop support for OTP-20 we can require the use of .src files and not deal with .orig
     VMArgsOrig = {filename:join(["releases", Vsn, "vm.args.orig"]),
                   filename:join([OutputDir, "releases", Vsn, "vm.args.orig"])},
     SysConfigOrig = {filename:join(["releases", Vsn, "sys.config.orig"]),

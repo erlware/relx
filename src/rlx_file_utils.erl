@@ -226,7 +226,6 @@ write_file_info(To, FileInfo, FileInfoToKeep) ->
                         end
                 end, [], FileInfoToKeep).
 
-
 try_write_mode(To, #file_info{mode=Mode}) ->
     file:write_file_info(To, #file_info{mode=Mode}).
 

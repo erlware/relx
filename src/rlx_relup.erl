@@ -88,16 +88,18 @@ get_version_before(Name, Vsn, ReleasesDir) ->
     %% Since the releases directory will have other files like `RELEASES', use the wildcard
     %% `*/Name.rel' to find all version directories and then trim down to just the version
     %% string with `filename:dirname/1'
-    Vsns = [filename:dirname(R) ||
-               R <- filelib:wildcard(filename:join("*", atom_to_list(Name) ++ ".rel"), ReleasesDir)],
+    Vsns = [begin
+                V = filename:dirname(R),
+                {rlx_util:parse_vsn(V), V}
+            end || R <- filelib:wildcard(filename:join("*", [Name, ".rel"]), ReleasesDir)],
 
     %% sort all the versions
-    SortedVsns = lists:sort(fun ec_semver:lte/2, Vsns),
+    SortedVsns = lists:keysort(1, Vsns),
 
     %% take the last element of a list that has every element up to the `Vsn' we are building
     %% the relup for. This will be the most recent version of the same release found.
-    case lists:reverse(lists:takewhile(fun(X) -> X =/= Vsn end, SortedVsns)) of
-        [LastVersion | _] ->
+    case lists:reverse(lists:takewhile(fun({_, X}) -> X =/= Vsn end, SortedVsns)) of
+        [{_, LastVersion} | _] ->
             LastVersion;
         _ ->
             erlang:error(?RLX_ERROR({no_upfrom_release_found, Vsn}))

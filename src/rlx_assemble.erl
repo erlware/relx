@@ -415,7 +415,6 @@ generate_start_erl_data_file(Release, ReleasesDir) ->
 
 %% @doc copy vm.args or generate one to releases/VSN/vm.args
 -spec copy_or_generate_vmargs_file(rlx_state:t(), rlx_release:t(), file:name()) -> ok.
-
 copy_or_generate_vmargs_file(State, Release, RelDir) ->
     RelVmargsPath = filename:join([RelDir, "vm.args"]),
     RelVmargsSrcPath = filename:join([RelDir, "vm.args.src"]),
@@ -611,13 +610,25 @@ make_script(Name, RelDir, Options) ->
             case systools:make_script(Name, Options) of
                 Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
-                    %% TODO: probably just warn here if this fails?
-                    _ = rlx_file_utils:copy(filename:join([RelDir, [Name, ".boot"]]),
-                                            filename:join(RelDir, "start.boot")),
+                    copy_to_start(RelDir, Name),
                     Result;
                 Error ->
                     Error
             end
+    end.
+
+%% systools:make_script in sasl 3.6.1 and earlier do not support `script_name'
+%% so the `Name.boot' file must be manually copied to `start.boot'
+copy_to_start(RelDir, Name) ->
+    BootFile = [Name, ".boot"],
+    case rlx_file_utils:copy(filename:join([RelDir, BootFile]),
+                             filename:join(RelDir, "start.boot")) of
+        ok ->
+            ok;
+        {error, Reason} ->
+            %% it isn't absolutely necesary for start.boot to exist so just warn
+            ?log_warn("Unable to copy boot file ~s to start.boot: ~p", [BootFile, Reason]),
+            ok
     end.
 
 maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
