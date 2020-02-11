@@ -5,7 +5,6 @@
   {registered,[]},
   {applications,[kernel,
                  stdlib,
-                 erlware_commons,
                  bbmustache]},
   {licenses,["Apache"]},
   {links,[{"Github","https://github.com/erlware/relx"}]}]}.
