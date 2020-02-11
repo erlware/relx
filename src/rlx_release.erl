@@ -23,8 +23,6 @@
 -module(rlx_release).
 
 -export([new/2,
-         new/3,
-         relfile/1,
          relfile/2,
          erts/2,
          erts/1,
@@ -36,7 +34,6 @@
          realize/2,
          applications/1,
          app_specs/1,
-         realized/1,
          metadata/1,
          start_clean_metadata/1,
          no_dot_erlang_metadata/1,
@@ -95,11 +92,8 @@
 -type release_spec() :: {release, {string(), vsn()}, {erts, vsn()},
                          [application_spec()]}.
 
--opaque t() :: #release_t{}.
+-type t() :: #release_t{}.
 
-%%============================================================================
-%% API
-%%============================================================================
 -spec new(atom(), string(), undefined | file:name()) -> t().
 new(ReleaseName, ReleaseVsn, Relfile) ->
     #release_t{name=ReleaseName,
@@ -109,10 +103,6 @@ new(ReleaseName, ReleaseVsn, Relfile) ->
 -spec new(atom(), string()) -> t().
 new(ReleaseName, ReleaseVsn) ->
     new(ReleaseName, ReleaseVsn, undefined).
-
--spec relfile(t()) -> file:name() | undefined.
-relfile(#release_t{relfile=Relfile}) ->
-    Relfile.
 
 -spec relfile(t(), file:name()) -> t().
 relfile(Release, Relfile) ->
@@ -154,10 +144,6 @@ applications(#release_t{applications=Apps}) ->
 
 app_specs(#release_t{app_specs=AppSpecs}) ->
     AppSpecs.
-
--spec realized(t()) -> boolean().
-realized(#release_t{realized=Realized}) ->
-    Realized.
 
 -spec metadata(t()) -> release_spec().
 metadata(#release_t{name=Name,

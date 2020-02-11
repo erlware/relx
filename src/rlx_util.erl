@@ -87,12 +87,10 @@ parsed_vsn_lt({MMPA, {AlphaA, PatchA}}, {MMPB, {AlphaB, PatchB}}) ->
            PatchA < PatchB))).
 
 %% @doc Generates the correct set of code paths for the system.
--spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].
+-spec get_code_paths(rlx_release:t(), file:name()) -> [filename:filename_all()].
 get_code_paths(Release, OutDir) ->
     LibDir = filename:join(OutDir, "lib"),
-    [filename:join([LibDir,
-                    erlang:atom_to_list(rlx_app_info:name(App)) ++ "-" ++
-                        rlx_app_info:vsn(App), "ebin"]) ||
+    [filename:join([LibDir, [rlx_app_info:name(App), "-", rlx_app_info:vsn(App)], "ebin"]) ||
         App <- rlx_release:applications(Release)].
 
 -spec release_output_dir(rlx_state:t(), rlx_release:t()) -> string().

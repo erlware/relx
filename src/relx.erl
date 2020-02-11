@@ -93,13 +93,27 @@ build_release(Release=#{name := _RelName,
 build_release(Release, _, _) ->
     ?RLX_ERROR({unrecognized_release, Release}).
 
--spec build_tar(Release, Apps, Config) -> {ok, rlx_state:t()} | {error, term()} when
-      Release :: atom() | {atom(), string()} | release(),
+-spec build_tar(Release, Apps, Config) -> {ok, rlx_release:t()} when
+      Release :: atom() | {atom(), string()} | release() | undefined,
       Apps :: [rlx_app_info:t()],
       Config :: rlx_config:t().
 build_tar(undefined, Apps, Config) ->
     State = config_to_state(Config),
     {RelName, RelVsn} = pick_release(State),
+    Release = #{name => RelName,
+                vsn => RelVsn},
+    RealizedRelease = build_release_(Release, Apps, State),
+    build_tar_(RealizedRelease, State),
+    {ok, RealizedRelease};
+build_tar(Release=#{name := RelName,
+                    vsn := RelVsn}, Apps, Config) when is_atom(RelName) ,
+                                                       is_list(RelVsn) ->
+    State = config_to_state(Config),
+    RealizedRelease = build_release_(Release, Apps, State),
+    build_tar_(RealizedRelease, State),
+    {ok, RealizedRelease};
+build_tar({RelName, RelVsn}, Apps, Config) when is_atom(RelName) ->
+    State = config_to_state(Config),
     Release = #{name => RelName,
                 vsn => RelVsn},
     RealizedRelease = build_release_(Release, Apps, State),

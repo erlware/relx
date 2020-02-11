@@ -6,6 +6,11 @@
 -include("relx.hrl").
 -include("rlx_log.hrl").
 
+%% TODO: list out each supported config
+-type t() :: [{atom(), term()}].
+
+-export_type([t/0]).
+
 to_state(Config, State) ->
     lists:foldl(fun load/2, {ok, State}, Config).
 
@@ -129,6 +134,7 @@ parse_vsn({cmd, Command}) ->
 parse_vsn(Vsn) ->
     Vsn.
 
+%% TODO: handle versions in rebar3 or whatever else is calling relx
 git_ref(Arg) ->
     case os:cmd("git rev-parse " ++ Arg ++ " HEAD") of
         String ->
@@ -157,13 +163,7 @@ collect_default_refcount() ->
     RawRef = os:cmd("git log -n 1 --pretty=format:'%h\n' "),
 
     {Tag, Vsn} = parse_tags(),
-    RawCount =
-        case Tag of
-            undefined ->
-                os:cmd("git rev-list --count HEAD");
-            _ ->
-                get_patch_count(Tag)
-        end,
+    RawCount = get_patch_count(Tag),
     {Vsn, RawRef, RawCount}.
 
 get_patch_count(RawRef) ->
@@ -174,12 +174,7 @@ get_patch_count(RawRef) ->
 build_vsn_string(Vsn, RawRef, RawCount) ->
     %% Cleanup the tag and the Ref information. Basically leading 'v's and
     %% whitespace needs to go away.
-    RefTag = case RawRef of
-                 undefined ->
-                     "";
-                 RawRef ->
-                     [".ref", re:replace(RawRef, "\\s", "", [global])]
-             end,
+    RefTag = [".ref", re:replace(RawRef, "\\s", "", [global])],
     Count = re:replace(RawCount, "\\s", "", [global]),
 
     %% Create the valid [semver](http://semver.org) version from the tag
@@ -192,7 +187,7 @@ build_vsn_string(Vsn, RawRef, RawCount) ->
 
 parse_tags() ->
     Tag = os:cmd("git describe --abbrev=0 --tags"),
-    Vsn = string:trim(string:trim(Tag, left, "v"), right, "\n"),
+    Vsn = rlx_string:trim(rlx_string:trim(Tag, leading, "v"), leading, "\n"),
     {Tag, Vsn}.
 
 
