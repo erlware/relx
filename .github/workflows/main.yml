@@ -27,5 +27,9 @@ jobs:
     - uses: actions/checkout@v1
     - name: Compile
       run: rebar3 compile
-    - name: Run tests
+    - name: CT tests
       run: rebar3 ct
+    - name: Xref
+      run: rebar3 xref
+    - name: Dialyzer
+      run: rebar3 dialyzer

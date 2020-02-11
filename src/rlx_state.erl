@@ -48,10 +48,8 @@
          add_configured_release/2,
          get_configured_release/3,
          configured_releases/1,
-         realized_releases/1,
-         realized_releases/2,
          add_realized_release/2,
-         get_realized_release/3,
+         realized_releases/1,
          update_realized_release/2,
          default_configured_release/1,
          default_configured_release/3,
@@ -64,7 +62,6 @@
          dev_mode/2,
          include_src/1,
          include_src/2,
-         upfrom/1,
          upfrom/2,
          format/1,
          format/2,
@@ -104,7 +101,7 @@
 %%============================================================================
 
 -type releases() :: #{{rlx_release:name(), rlx_release:vsn()} => rlx_release:t()}.
--opaque t() :: #state_t{}.
+-type t() :: #state_t{}.
 
 %%============================================================================
 %% API
@@ -236,18 +233,10 @@ configured_releases(#state_t{configured_releases=Releases}) ->
 realized_releases(#state_t{realized_releases=Releases}) ->
     Releases.
 
--spec realized_releases(t(), releases()) -> t().
-realized_releases(State, Releases) ->
-    State#state_t{realized_releases=Releases}.
-
 -spec add_realized_release(t(), rlx_release:t()) -> t().
 add_realized_release(State = #state_t{realized_releases=Releases}, Release) ->
     NewReleases = Releases#{{rlx_release:name(Release), rlx_release:vsn(Release)} => Release},
     State#state_t{realized_releases=NewReleases}.
-
--spec get_realized_release(t(), rlx_release:name(), rlx_release:vsn()) -> rlx_release:t().
-get_realized_release(#state_t{realized_releases=Releases}, Name, Vsn) ->
-    maps:get({Name, Vsn}, Releases).
 
 -spec update_realized_release(t(), rlx_release:t()) ->
      t().
@@ -302,10 +291,6 @@ include_src(#state_t{include_src=IncludeSrc}) ->
 -spec include_src(t(), boolean()) -> t().
 include_src(S, IncludeSrc) ->
     S#state_t{include_src=IncludeSrc}.
-
--spec upfrom(t()) -> string() | binary() | undefined.
-upfrom(#state_t{upfrom=UpFrom}) ->
-    UpFrom.
 
 -spec upfrom(t(), string() | binary() | undefined) -> t().
 upfrom(State, UpFrom) ->
