@@ -94,7 +94,7 @@ get_version_before(Name, Vsn, ReleasesDir) ->
             end || R <- filelib:wildcard(filename:join("*", [Name, ".rel"]), ReleasesDir)],
 
     %% sort all the versions
-    SortedVsns = lists:keysort(1, Vsns),
+    SortedVsns = lists:sort(fun vsn_lte/2, Vsns),
 
     %% take the last element of a list that has every element up to the `Vsn' we are building
     %% the relup for. This will be the most recent version of the same release found.
@@ -104,3 +104,6 @@ get_version_before(Name, Vsn, ReleasesDir) ->
         _ ->
             erlang:error(?RLX_ERROR({no_upfrom_release_found, Vsn}))
     end.
+
+vsn_lte({VsnA, _}, {VsnB, _}) ->
+    rlx_util:parsed_vsn_lte(VsnA, VsnB).

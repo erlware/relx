@@ -23,6 +23,7 @@
 
 -export([relx_sasl_vsn/0,
          parse_vsn/1,
+         parsed_vsn_lte/2,
          get_code_paths/2,
          release_output_dir/2,
          to_binary/1,
@@ -44,18 +45,46 @@ relx_sasl_vsn() ->
     application:load(sasl),
     case application:get_key(sasl, vsn) of
         {ok, SaslVsn} ->
-            parse_vsn(SaslVsn) > {3,4,1};
+            %% TODO: change to actual version of sasl with systools changes
+            parse_vsn(SaslVsn) > {{infinity, infinity, infinity}, [], []};
         _ ->
             false
     end.
 
+%% parses a semver into a tuple {{Major, Minor, Patch}, {PreRelease, Build}}
+-spec parse_vsn(string()) -> {{integer(), integer(), integer()}, {string(), string()}}.
 parse_vsn(Vsn) ->
-    case re:run(Vsn, "^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?(\\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$", [{capture, [1,2,3], list}]) of
-        {match, [Major, Minor, Patch]} ->
-            {list_to_integer(Major), list_to_integer(Minor), list_to_integer(Patch)};
+    case re:run(Vsn, "^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+                "(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?"
+                "(\\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$", [{capture, [1,2,3,5,7], list}]) of
+        {match, [Major, Minor, Patch, PreRelease, Build]} ->
+            {{list_to_integer(Major), list_to_integer(Minor), list_to_integer(Patch)}, {PreRelease, Build}};
         _ ->
             0
     end.
+
+%% less than or equal to comparison for versions parsed with `parse_vsn'
+parsed_vsn_lte(VsnA, VsnB) ->
+    parsed_vsn_lt(VsnA, VsnB) orelse VsnA =:= VsnB.
+
+parsed_vsn_lt({MMPA, {AlphaA, PatchA}}, {MMPB, {AlphaB, PatchB}}) ->
+    ((MMPA < MMPB)
+     orelse
+       ((MMPA =:= MMPB)
+        andalso
+          ((AlphaB =:= [] andalso AlphaA =/= [])
+           orelse
+             ((not (AlphaA =:= [] andalso AlphaB =/= []))
+              andalso
+                (AlphaA < AlphaB))))
+     orelse
+       ((MMPA =:= MMPB)
+        andalso
+          (AlphaA =:= AlphaB)
+        andalso
+          ((PatchA =:= [] andalso PatchB =/= [])
+           orelse
+           PatchA < PatchB))).
 
 %% @doc Generates the correct set of code paths for the system.
 -spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].

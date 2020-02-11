@@ -188,7 +188,7 @@ pick_release_version(RelName, State) ->
                           boolean().
 release_sort({{RelName, RelVsnA}, _},
              {{RelName, RelVsnB}, _}) ->
-    ec_semver:lte(RelVsnB, RelVsnA);
+    rlx_util:parsed_vsn_lte(rlx_util:parse_vsn(RelVsnB), rlx_util:parse_vsn(RelVsnA));
 release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
     %% The release names are different. When the releases are named differently
     %% we can not just take the lastest version. You *must* provide a default

@@ -111,8 +111,7 @@ load(InvalidTerm, _) ->
 %%
 
 parse_vsn(Vsn) when Vsn =:= git ; Vsn =:= "git" ->
-    {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
-    V;
+    git_tag_vsn();
 parse_vsn({git, short}) ->
     git_ref("--short");
 parse_vsn({git, long}) ->
@@ -121,11 +120,9 @@ parse_vsn({file, File}) ->
     {ok, Vsn} = file:read_file(File),
     rlx_util:to_string(rlx_string:trim(rlx_util:to_string(Vsn), both, "\n"));
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
-    {ok, V} = ec_git_vsn:vsn(ec_git_vsn:new()),
-    V;
-parse_vsn({semver, Data}) ->
-    {ok, V} = ec_git_vsn:vsn(Data),
-    V;
+    git_tag_vsn();
+parse_vsn({semver, _}) ->
+    git_tag_vsn();
 parse_vsn({cmd, Command}) ->
     V = os:cmd(Command),
     V;
@@ -148,6 +145,56 @@ git_ref(Arg) ->
                     {plain, "0"}
             end
     end.
+
+%% TODO: handle versions in rebar3 or whatever else is calling relx
+git_tag_vsn() ->
+    {Vsn, RawRef, RawCount} = collect_default_refcount(),
+    {ok, build_vsn_string(Vsn, RawRef, RawCount)}.
+
+collect_default_refcount() ->
+    %% Get the tag timestamp and minimal ref from the system. The
+    %% timestamp is really important from an ordering perspective.
+    RawRef = os:cmd("git log -n 1 --pretty=format:'%h\n' "),
+
+    {Tag, Vsn} = parse_tags(),
+    RawCount =
+        case Tag of
+            undefined ->
+                os:cmd("git rev-list --count HEAD");
+            _ ->
+                get_patch_count(Tag)
+        end,
+    {Vsn, RawRef, RawCount}.
+
+get_patch_count(RawRef) ->
+    Ref = re:replace(RawRef, "\\s", "", [global]),
+    Cmd = io_lib:format("git rev-list --count ~s..HEAD", [Ref]),
+    os:cmd(Cmd).
+
+build_vsn_string(Vsn, RawRef, RawCount) ->
+    %% Cleanup the tag and the Ref information. Basically leading 'v's and
+    %% whitespace needs to go away.
+    RefTag = case RawRef of
+                 undefined ->
+                     "";
+                 RawRef ->
+                     [".ref", re:replace(RawRef, "\\s", "", [global])]
+             end,
+    Count = re:replace(RawCount, "\\s", "", [global]),
+
+    %% Create the valid [semver](http://semver.org) version from the tag
+    case Count of
+        <<"0">> ->
+            lists:flatten(Vsn);
+        _ ->
+            lists:flatten([Vsn, "+build.", Count, RefTag])
+    end.
+
+parse_tags() ->
+    Tag = os:cmd("git describe --abbrev=0 --tags"),
+    Vsn = string:trim(string:trim(Tag, left, "v"), right, "\n"),
+    {Tag, Vsn}.
+
 
 add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, State0) ->
     Release0 = rlx_release:new(RelName, NewVsn),
