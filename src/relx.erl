@@ -56,57 +56,80 @@ release(Name, Vsn, Goals) ->
       goals => Goals,
       relfile_path => undefined}.
 
--spec build_release(Apps, Config) -> ok | {error, term()} when
-      Apps :: [rlx_app:t()],
+-spec build_release(Apps, Config) -> {ok, rlx_state:t()} | {error, term()} when
+      Apps :: [rlx_app_info:t()],
       Config :: rlx_config:t().
 build_release(Apps, Config) ->
     State = config_to_state(Config),
-    State1 = resolve_default_release(State),
-    {RelName, RelVsn} = rlx_state:default_configured_release(State1),
+    {RelName, RelVsn} = pick_release(State),
     Release = #{name => RelName,
-                vsn => RelVsn},
-    build_release_(Release, Apps, State1).
+                vsn  => RelVsn},
+    RealizedRelease = build_release_(Release, Apps, State),
+    {ok, rlx_state:add_realized_release(State, RealizedRelease)}.
 
--spec build_release(Release, Apps, Config) -> ok | {error, term()} when
+-spec build_release(Release, Apps, Config) -> {ok, rlx_state:t()} | {error, term()} when
       Release :: atom() | {atom(), string()} | release(),
-      Apps :: [rlx_app:t()],
+      Apps :: [rlx_app_info:t()],
       Config :: rlx_config:t().
 build_release(RelName, Apps, Config) when is_atom(RelName) ->
     State = config_to_state(Config),
-    State1 = resolve_default_version(RelName, State),
-    {RelName, RelVsn} = rlx_state:default_configured_release(State1),
+    {RelName, RelVsn} = pick_release_version(RelName, State),
     Release = #{name => RelName,
-                vsn => RelVsn},
-    build_release_(Release, Apps, State1);
+                vsn  => RelVsn},
+    RealizedRelease = build_release_(Release, Apps, State),
+    {ok, rlx_state:add_realized_release(State, RealizedRelease)};
 build_release({RelName, RelVsn}, Apps, Config) when is_atom(RelName) ,
                                                     is_list(RelVsn) ->
     State = config_to_state(Config),
-    State1 = rlx_state:default_configured_release(State, RelName, RelVsn),
     Release = #{name => RelName,
                 vsn => RelVsn},
-    build_release_(Release, Apps, State1);
-build_release(Release=#{name := RelName,
-                        vsn := RelVsn}, Apps, Config) ->
+    RealizedRelease = build_release_(Release, Apps, State),
+    {ok, rlx_state:add_realized_release(State, RealizedRelease)};
+build_release(Release=#{name := _RelName,
+                        vsn  := _RelVsn}, Apps, Config) ->
     State = config_to_state(Config),
-    State1 = rlx_state:default_configured_release(State, RelName, RelVsn),
-    build_release_(Release, Apps, State1);
+    RealizedRelease = build_release_(Release, Apps, State),
+    {ok, rlx_state:add_realized_release(State, RealizedRelease)};
 build_release(Release, _, _) ->
     ?RLX_ERROR({unrecognized_release, Release}).
 
--spec build_tar(Release, Apps, Config) -> ok | {error, term()} when
-      Release :: atom() | {atom(), string()} | release(),
-      Apps :: [rlx_app:t()],
+-spec build_tar(Release, Apps, Config) -> {ok, rlx_release:t()} when
+      Release :: atom() | {atom(), string()} | release() | undefined,
+      Apps :: [rlx_app_info:t()],
       Config :: rlx_config:t().
-build_tar(RelName, Apps, Config) when is_atom(RelName) ->
+build_tar(undefined, Apps, Config) ->
     State = config_to_state(Config),
-    State1 = resolve_default_version(RelName, State),
-    {RelName, RelVsn} = rlx_state:default_configured_release(State1),
+    {RelName, RelVsn} = pick_release(State),
     Release = #{name => RelName,
                 vsn => RelVsn},
-    {ok, State2} = build_release_(Release, Apps, State1),
-    build_tar_(Release, Apps, State2).
+    RealizedRelease = build_release_(Release, Apps, State),
+    build_tar_(RealizedRelease, State),
+    {ok, RealizedRelease};
+build_tar(Release=#{name := RelName,
+                    vsn := RelVsn}, Apps, Config) when is_atom(RelName) ,
+                                                       is_list(RelVsn) ->
+    State = config_to_state(Config),
+    RealizedRelease = build_release_(Release, Apps, State),
+    build_tar_(RealizedRelease, State),
+    {ok, RealizedRelease};
+build_tar({RelName, RelVsn}, Apps, Config) when is_atom(RelName) ->
+    State = config_to_state(Config),
+    Release = #{name => RelName,
+                vsn => RelVsn},
+    RealizedRelease = build_release_(Release, Apps, State),
+    build_tar_(RealizedRelease, State),
+    {ok, RealizedRelease};
+build_tar(RelName, Apps, Config) when is_atom(RelName) ->
+    State = config_to_state(Config),
+    {RelName, RelVsn} = pick_release_version(RelName, State),
+    Release = #{name => RelName,
+                vsn => RelVsn},
+    RealizedRelease = build_release_(Release, Apps, State),
+    build_tar_(RealizedRelease, State),
+    {ok, RealizedRelease}.
 
--spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_config:t()) -> ok | {error, term()}.
+-spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_config:t())
+                 -> {ok, rlx_state:t()} | {error, term()}.
 build_relup(RelName, ToVsn, UpFromVsn, Config) ->
     State = config_to_state(Config),
     rlx_relup:do(RelName, ToVsn, UpFromVsn, State).
@@ -137,41 +160,41 @@ format_error({error, {Module, Reason}}) ->
 
 config_to_state(Config) ->
     State = rlx_state:new(),
-    {ok, State1} = rlx_config_terms:to_state(Config, State),
+    {ok, State1} = rlx_config:to_state(Config, State),
     State1.
 
-build_tar_(#{name := RelName,
-             vsn := RelVsn}, _Apps, State) ->
-    OutputDir = rlx_state:output_dir(State),
-    Release = rlx_state:get_realized_release(State, RelName, RelVsn),
-    rlx_tar:make_tar(State, Release, OutputDir).
+build_tar_(RealizedRelease, State) ->
+    OutputDir = filename:join(rlx_state:base_output_dir(State),
+                              rlx_release:name(RealizedRelease)),
+    rlx_tar:make_tar(RealizedRelease, OutputDir, State).
 
-build_release_(_Release=#{name := RelName,
-                          vsn := RelVsn}, Apps, State) ->
-    {ok, RealizedRelease, State1} = rlx_resolve:solve_release(RelName,
-                                                              RelVsn,
-                                                              rlx_state:available_apps(State, Apps)),
+build_release_(#{name := RelName,
+                 vsn := RelVsn}, Apps, State) ->
+    Release = rlx_state:get_configured_release(State, RelName, RelVsn),
+    {ok, RealizedRelease, State1} =
+        rlx_resolve:solve_release(Release, rlx_state:available_apps(State, Apps)),
     {ok, State2} = rlx_assemble:do(RealizedRelease, State1),
-    rlx_overlay:render(RealizedRelease, State2).
+    _ = rlx_overlay:render(RealizedRelease, State2),
+    RealizedRelease.
 
-resolve_default_release(State) ->
+pick_release(State) ->
     %% Here we will just get the highest versioned release and run that.
     case lists:sort(fun release_sort/2, maps:to_list(rlx_state:configured_releases(State))) of
         [{{RelName, RelVsn}, _} | _] ->
-            rlx_state:default_configured_release(State, RelName, RelVsn);
+            {RelName, RelVsn};
         [] ->
-            error(?RLX_ERROR(no_releases_in_system))
+            erlang:error(?RLX_ERROR(no_releases_in_system))
     end.
 
-resolve_default_version(RelName, State) ->
+pick_release_version(RelName, State) ->
     %% Here we will just get the lastest version for name RelName and run that.
     AllReleases = maps:to_list(rlx_state:configured_releases(State)),
     SpecificReleases = [Rel || Rel={{PossibleRelName, _}, _} <- AllReleases, PossibleRelName =:= RelName],
     case lists:sort(fun release_sort/2, SpecificReleases) of
         [{{RelName, RelVsn}, _} | _] ->
-            rlx_state:default_configured_release(State, RelName, RelVsn);
+            {RelName, RelVsn};
         [] ->
-            error(?RLX_ERROR({no_releases_for, RelName}))
+            erlang:error(?RLX_ERROR({no_releases_for, RelName}))
     end.
 
 -spec release_sort({{rlx_release:name(),rlx_release:vsn()}, term()},
@@ -179,7 +202,7 @@ resolve_default_version(RelName, State) ->
                           boolean().
 release_sort({{RelName, RelVsnA}, _},
              {{RelName, RelVsnB}, _}) ->
-    ec_semver:lte(RelVsnB, RelVsnA);
+    rlx_util:parsed_vsn_lte(rlx_util:parse_vsn(RelVsnB), rlx_util:parse_vsn(RelVsnA));
 release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
     %% The release names are different. When the releases are named differently
     %% we can not just take the lastest version. You *must* provide a default

@@ -21,11 +21,13 @@
 %%% @doc Trivial utility file to help handle common tasks
 -module(rlx_util).
 
--export([get_code_paths/2,
+-export([relx_sasl_vsn/0,
+         parse_vsn/1,
+         parsed_vsn_lte/2,
+         get_code_paths/2,
          release_output_dir/2,
          to_binary/1,
          to_string/1,
-         to_atom/1,
          is_error/1,
          error_reason/1,
          indent/1,
@@ -39,19 +41,63 @@
 
 -include("rlx_log.hrl").
 
+relx_sasl_vsn() ->
+    application:load(sasl),
+    case application:get_key(sasl, vsn) of
+        {ok, SaslVsn} ->
+            %% TODO: change to actual version of sasl with systools changes
+            parse_vsn(SaslVsn) > {{infinity, infinity, infinity}, [], []};
+        _ ->
+            false
+    end.
+
+%% parses a semver into a tuple {{Major, Minor, Patch}, {PreRelease, Build}}
+-spec parse_vsn(string()) -> {{integer(), integer(), integer()}, {string(), string()}}.
+parse_vsn(Vsn) ->
+    case re:run(Vsn, "^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+                "(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?"
+                "(\\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$", [{capture, [1,2,3,5,7], list}]) of
+        {match, [Major, Minor, Patch, PreRelease, Build]} ->
+            {{list_to_integer(Major), list_to_integer(Minor), list_to_integer(Patch)}, {PreRelease, Build}};
+        _ ->
+            0
+    end.
+
+%% less than or equal to comparison for versions parsed with `parse_vsn'
+parsed_vsn_lte(VsnA, VsnB) ->
+    parsed_vsn_lt(VsnA, VsnB) orelse VsnA =:= VsnB.
+
+parsed_vsn_lt({MMPA, {AlphaA, PatchA}}, {MMPB, {AlphaB, PatchB}}) ->
+    ((MMPA < MMPB)
+     orelse
+       ((MMPA =:= MMPB)
+        andalso
+          ((AlphaB =:= [] andalso AlphaA =/= [])
+           orelse
+             ((not (AlphaA =:= [] andalso AlphaB =/= []))
+              andalso
+                (AlphaA < AlphaB))))
+     orelse
+       ((MMPA =:= MMPB)
+        andalso
+          (AlphaA =:= AlphaB)
+        andalso
+          ((PatchA =:= [] andalso PatchB =/= [])
+           orelse
+           PatchA < PatchB))).
+
 %% @doc Generates the correct set of code paths for the system.
--spec get_code_paths(rlx_release:t(), file:name()) -> [file:name()].
+-spec get_code_paths(rlx_release:t(), file:name()) -> [filename:filename_all()].
 get_code_paths(Release, OutDir) ->
     LibDir = filename:join(OutDir, "lib"),
-    [filename:join([LibDir,
-                    erlang:atom_to_list(rlx_app_info:name(App)) ++ "-" ++
-                        rlx_app_info:vsn(App), "ebin"]) ||
-        App <- rlx_release:application_details(Release)].
+    [filename:join([LibDir, [rlx_app_info:name(App), "-", rlx_app_info:vsn(App)], "ebin"]) ||
+        App <- rlx_release:applications(Release)].
 
 -spec release_output_dir(rlx_state:t(), rlx_release:t()) -> string().
 release_output_dir(State, Release) ->
-    OutputDir = rlx_state:output_dir(State),
+    OutputDir = rlx_state:base_output_dir(State),
     filename:join([OutputDir,
+                   rlx_release:name(Release),
                    "releases",
                    rlx_release:vsn(Release)]).
 
@@ -76,17 +122,6 @@ to_string(Atom) when erlang:is_atom(Atom) ->
 to_string(Else) when erlang:is_list(Else) ->
     Else.
 
--spec to_atom(atom() | string() | binary()) -> atom().
-to_atom(Binary)
-  when erlang:is_binary(Binary) ->
-    erlang:list_to_atom(to_string(Binary));
-to_atom(String)
-  when erlang:is_list(String) ->
-    erlang:list_to_atom(String);
-to_atom(Atom)
-  when erlang:is_atom(Atom) ->
-    Atom.
-
 %% @doc get the reason for a particular relx error
 -spec error_reason(relx:error()) -> any().
 error_reason({error, {_, Reason}}) ->
@@ -101,7 +136,7 @@ is_error(_) ->
 -spec render(binary() | iolist(), proplists:proplist()) ->
                 {ok, binary()} | {error, render_failed}.
 render(Template, Data) when is_list(Template) ->
-    render(ec_cnv:to_binary(Template), Data);
+    render(rlx_util:to_binary(Template), Data);
 render(Template, Data) when is_binary(Template) ->
     case catch bbmustache:render(Template, Data,
                                  [{key_type, atom}]) of

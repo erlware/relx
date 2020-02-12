@@ -22,32 +22,26 @@
 %%% application. The relevant information is.
 %%%
 %%% <ul>
-%%%  <li> Name - The application name as an atom </li>
-%%%  <li> Vsn - The application version as a list </li>
-%%%  <li> The root directory of the application. The directory that contains the
-%%%  ebin/src/priv etc </li>
-%%%  <li> Active Deps - The Active or 'application' dependencies of the OTP
-%%%  App. That is the things in the 'applications' property of the application
+%%%  <li> `name' - The application name as an atom. </li>
+%%%  <li> `vsn' - The application version as a list. </li>
+%%%  <li> `dir' - The root directory of the application. The directory that contains the
+%%%  ebin/src/priv </li>
+%%%  <li> `link' - Whether to symlink or copy the application directory. </li>
+%%%  <li> `applications' - The `application' dependencies of the OTP
+%%%  App. That is the things in the `applications' property of the application
 %%%  metadata </li>
-%%%  <li> Library Deps - The Inactive or Library dependencies of the ATP
-%%%  app. That is the things in the 'included_applications property of the
-%%%  application metadata.
+%%%  <li> `included_applications' - The apps in the `included_applications' property
+%%%  of the application metadata.
 %%%  </ul>
 %%%
 -module(rlx_app_info).
 
--export([new/0,
-         new/5,
+-export([new/5,
          name/1,
-         name/2,
          vsn/1,
-         vsn/2,
          dir/1,
-         dir/2,
-         active_deps/1,
-         active_deps/2,
-         library_deps/1,
-         library_deps/2,
+         applications/1,
+         included_applications/1,
          link/1,
          link/2,
          format_error/1,
@@ -56,74 +50,53 @@
 
 -include("relx.hrl").
 
-%% @doc Build a new, empty, app info value. This is not of a lot of use and you
-%% probably wont be doing this much.
--spec new() -> {ok, rlx_app:t()}.
-new() ->
-    {ok, rlx_app:new()}.
+-type t() :: #{name                  := atom() | undefined,
+               vsn                   := string() | undefined,
 
-%% @doc build a complete version of the app info with all fields set.
--spec new(atom(), string(), file:name(), [atom()], [atom()]) -> {ok, rlx_app:t()}.
-new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps) ->
-    new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, false).
+               applications          := [atom()],
+               included_applications := [atom()],
 
-%% @doc build a complete version of the app info with all fields set.
--spec new(atom(), string(), file:name(), [atom()], [atom()], boolean()) -> {ok, rlx_app:t()}.
-new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)
-  when erlang:is_atom(AppName),
-       erlang:is_list(ActiveDeps),
-       erlang:is_list(LibraryDeps) ->
-    {ok, rlx_app:new(AppName, Vsn, Dir, ActiveDeps, LibraryDeps, Link)}.
+               dir                   := file:name() | undefined,
+               link                  := boolean() | undefined}.
 
--spec name(rlx_app:t()) -> atom().
+-export_type([t/0]).
+
+-spec new(atom(), string(), file:name(), [atom()], [atom()]) -> t().
+new(Name, Vsn, Dir, Applications, IncludedApplications) ->
+    #{name => Name,
+      vsn => Vsn,
+
+      applications => Applications,
+      included_applications => IncludedApplications,
+
+      dir => Dir,
+      link => false}.
+
+-spec name(t()) -> atom().
 name(#{name := Name}) ->
     Name.
 
--spec name(rlx_app:t(), atom()) -> rlx_app:t().
-name(AppInfo, AppName)
-  when erlang:is_atom(AppName) ->
-    AppInfo#{name => AppName}.
-
--spec vsn(rlx_app:t()) -> ec_semver:semver().
+-spec vsn(t()) -> string().
 vsn(#{vsn := Vsn}) ->
     Vsn.
 
--spec vsn(rlx_app:t(), string()) -> {ok, rlx_app:t()} | relx:error().
-vsn(AppInfo, Vsn)
-  when erlang:is_list(Vsn) ->
-    {ok, AppInfo#{vsn => Vsn}}.
-
--spec dir(rlx_app:t()) -> binary().
+-spec dir(t()) -> binary().
 dir(#{dir := Dir}) ->
     Dir.
 
--spec dir(rlx_app:t(), binary()) -> rlx_app:t().
-dir(AppInfo, Dir) ->
-    AppInfo#{dir => Dir}.
-
--spec active_deps(rlx_app:t()) -> [atom()].
-active_deps(#{applications := Deps}) ->
+-spec applications(t()) -> [atom()].
+applications(#{applications := Deps}) ->
     Deps.
 
--spec active_deps(rlx_app:t(), [atom()]) -> rlx_app:t().
-active_deps(AppInfo, ActiveDeps)
-  when erlang:is_list(ActiveDeps) ->
-    AppInfo#{applications => ActiveDeps}.
-
--spec library_deps(rlx_app:t()) -> [atom()].
-library_deps(#{included_applications := Deps}) ->
+-spec included_applications(t()) -> [atom()].
+included_applications(#{included_applications := Deps}) ->
     Deps.
 
--spec library_deps(rlx_app:t(), [atom()]) -> rlx_app:t().
-library_deps(AppInfo, LibraryDeps)
-  when erlang:is_list(LibraryDeps) ->
-    AppInfo#{included_applications => LibraryDeps}.
-
--spec link(rlx_app:t()) -> boolean().
+-spec link(t()) -> boolean().
 link(#{link := Link}) ->
     Link.
 
--spec link(rlx_app:t(), boolean()) -> rlx_app:t().
+-spec link(t(), boolean()) -> t().
 link(AppInfo, NewLink) ->
     AppInfo#{link => NewLink}.
 
@@ -131,22 +104,20 @@ link(AppInfo, NewLink) ->
 format_error(Error) ->
     io_lib:format("~p", [Error]).
 
--spec format(rlx_app:t()) -> iolist().
+-spec format(t()) -> iolist().
 format(AppInfo) ->
     format(0, AppInfo).
 
--spec format(non_neg_integer(), rlx_app:t()) -> iolist().
+-spec format(non_neg_integer(), t()) -> iolist().
 format(Indent, #{name := Name,
                  vsn := Vsn,
                  dir := Dir,
                  applications := Deps,
-                 included_applications := LibDeps,
+                 included_applications := IncDeps,
                  link := Link}) ->
-    [rlx_util:indent(Indent), erlang:atom_to_list(Name), "-", Vsn,
-     ": ", Dir, "\n",
+    [rlx_util:indent(Indent), erlang:atom_to_list(Name), "-", Vsn, ": ", Dir, "\n",
      rlx_util:indent(Indent + 1), "Symlink: ", erlang:atom_to_list(Link), "\n",
-     rlx_util:indent(Indent + 1), "Active Dependencies:\n",
-     [[rlx_util:indent(Indent + 2), erlang:atom_to_list(Dep), ",\n"] || Dep <- Deps],
-     rlx_util:indent(Indent + 1), "Library Dependencies:\n",
-     [[rlx_util:indent(Indent + 2), erlang:atom_to_list(LibDep), ",\n"] || LibDep <- LibDeps]].
-
+     rlx_util:indent(Indent + 1), "Applications:\n",
+     [[rlx_util:indent(Indent + 2), erlang:atom_to_list(Dep), "\n"] || Dep <- Deps],
+     rlx_util:indent(Indent + 1), "Included Applications:\n",
+     [[rlx_util:indent(Indent + 2), erlang:atom_to_list(IncDep), "\n"] || IncDep <- IncDeps]].

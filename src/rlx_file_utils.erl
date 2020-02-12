@@ -1,10 +1,52 @@
 -module(rlx_file_utils).
 
--export([mkdir_p/1,
+-export([mkdtemp/0,
+         mkdir_p/1,
          wildcard_paths/1,
-         symlink_or_copy/2]).
+         copy/2,
+         copy/3,
+         copy_file_info/3,
+         exists/1,
+         write/2,
+         write_term/2,
+         is_symlink/1,
+         is_dir/1,
+         type/1,
+         symlink_or_copy/2,
+         remove/1,
+         remove/2]).
 
 -include_lib("kernel/include/file.hrl").
+
+-spec mkdtemp() -> file:name() | {error, term()}.
+mkdtemp() ->
+    UniqueNumber = erlang:integer_to_list(rand:uniform(1000000000000)),
+    TmpDirPath = filename:join(tmp(), [".tmp_dir-", UniqueNumber]),
+    case mkdir_p(TmpDirPath) of
+        ok ->
+            TmpDirPath;
+        Error ->
+            Error
+    end.
+
+-spec tmp() -> file:name().
+tmp() ->
+    case erlang:system_info(system_architecture) of
+        "win32" ->
+            case os:getenv("TEMP") of
+                false ->
+                    "./tmp";
+                Val ->
+                    Val
+            end;
+        _SysArch ->
+            case os:getenv("TMPDIR") of
+                false ->
+                    "/tmp";
+                Val ->
+                    Val
+            end
+    end.
 
 %% @doc Makes a directory including parent dirs if they are missing.
 -spec mkdir_p(string()) -> ok | {error, Reason::file:posix()}.
@@ -31,6 +73,32 @@ wildcard(Path) when is_list(Path) ->
     case filelib:wildcard(Path) of
         []   -> [Path];
         Paths -> Paths
+    end.
+
+-spec exists(file:filename()) -> boolean().
+exists(Filename) ->
+    case file:read_file_info(Filename) of
+        {ok, _}         ->
+            true;
+        {error, _Reason} ->
+            false
+    end.
+
+-spec write(file:name(), string()) -> ok | {error, term()}.
+write(FileName, Contents) ->
+    file:write_file(FileName, Contents).
+
+-spec write_term(file:filename(), term()) -> ok | {error, term()}.
+write_term(FileName, Term) ->
+    write(FileName, lists:flatten(io_lib:fwrite("~p. ", [Term]))).
+
+-spec is_symlink(file:name()) -> boolean().
+is_symlink(Path) ->
+    case file:read_link_info(Path) of
+        {ok, #file_info{type = symlink}} ->
+            true;
+        _ ->
+            false
     end.
 
 symlink_or_copy(Source, Target) ->
@@ -99,6 +167,10 @@ win32_make_junction_cmd(Source, Target) ->
             cp_r(Source, Target)
     end.
 
+-spec copy(file:name(), file:name()) -> ok | {error, term()}.
+copy(From, To) ->
+    copy_(From, To, [{file_info, [mode, time, owner, group]}]).
+
 %% @doc copy an entire directory to another location.
 copy(From, To, Options) ->
     case proplists:get_value(recursive,  Options, false) of
@@ -154,7 +226,6 @@ write_file_info(To, FileInfo, FileInfoToKeep) ->
                         end
                 end, [], FileInfoToKeep).
 
-
 try_write_mode(To, #file_info{mode=Mode}) ->
     file:write_file_info(To, #file_info{mode=Mode}).
 
@@ -178,8 +249,30 @@ is_dir(Path) ->
 -spec make_dir_if_dir(file:name()) -> ok | {error, term()}.
 make_dir_if_dir(File) ->
     case is_dir(File) of
-        true  -> ok;
-        false -> mkdir_path(File)
+        true  ->
+            ok;
+        false ->
+            mkdir_path(File)
+    end.
+
+-spec type(file:name()) -> file | symlink | directory | undefined.
+type(Path) ->
+    case filelib:is_regular(Path) of
+        true ->
+            file;
+        false ->
+            case is_symlink(Path) of
+                true ->
+                    symlink;
+                false ->
+                    case is_dir(Path) of
+                        true ->
+                            directory;
+                        false ->
+                            undefined
+                    end
+            end
+
     end.
 
 %% @doc Makes a directory including parent dirs if they are missing.
@@ -198,3 +291,28 @@ copy_subfiles(From, To, Options) ->
 sub_files(From) ->
     {ok, SubFiles} = file:list_dir(From),
     [filename:join(From, SubFile) || SubFile <- SubFiles].
+
+%% @doc delete a file. Use the recursive option for directories.
+-spec remove(file:name(), [] | [recursive]) -> ok | {error, term()}.
+remove(Path, Options) ->
+    case lists:member(recursive, Options) of
+        false -> file:delete(Path);
+        true  -> remove_recursive(Path, Options)
+    end.
+
+%% @doc delete a file.
+-spec remove(file:name()) -> ok | {error, term()}.
+remove(Path) ->
+    remove(Path, []).
+
+-spec remove_recursive(file:name(), list()) -> ok | {error, term()}.
+remove_recursive(Path, Options) ->
+    case is_dir(Path) of
+        false ->
+            file:delete(Path);
+        true ->
+            lists:foreach(fun(ChildPath) ->
+                                  remove_recursive(ChildPath, Options)
+                          end, sub_files(Path)),
+            file:del_dir(Path)
+    end.

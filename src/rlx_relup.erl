@@ -54,7 +54,7 @@ make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
             ?log_info("relup from ~s to ~s successfully created!", [UpFromRel, CurrentRel]),
             {ok, State};
         error ->
-            error(?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel}));
+            erlang:error(?RLX_ERROR({relup_generation_error, CurrentRel, UpFromRel}));
         {ok, _RelUp, _, []} ->
             ?log_info("relup successfully created!"),
             {ok, State};
@@ -63,7 +63,7 @@ make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
             {ok, State};
 
         {error, Module, Error} ->
-            error(?RLX_ERROR({relup_script_generation_error, Module, Error}))
+            erlang:error(?RLX_ERROR({relup_script_generation_error, Module, Error}))
     end.
 
 %% return path to rel file without the .rel extension as a string (not binary)
@@ -78,27 +78,32 @@ find_rel_file(Name, Vsn, Dir) when is_atom(Name) ,
         true ->
             RelFile;
         _ ->
-            error(?RLX_ERROR({relfile_not_found, {Name, Vsn}}))
+            erlang:error(?RLX_ERROR({relfile_not_found, {Name, Vsn}}))
     end;
 find_rel_file(Name, Vsn, _) ->
-    error(?RLX_ERROR({bad_rel_tuple, {Name, Vsn}})).
+    erlang:error(?RLX_ERROR({bad_rel_tuple, {Name, Vsn}})).
 
 get_version_before(Name, Vsn, ReleasesDir) ->
     %% Given directory where all releases for `Name' are find all versions of the release.
     %% Since the releases directory will have other files like `RELEASES', use the wildcard
     %% `*/Name.rel' to find all version directories and then trim down to just the version
     %% string with `filename:dirname/1'
-    Vsns = [filename:dirname(R) ||
-               R <- filelib:wildcard(filename:join("*", atom_to_list(Name) ++ ".rel"), ReleasesDir)],
+    Vsns = [begin
+                V = filename:dirname(R),
+                {rlx_util:parse_vsn(V), V}
+            end || R <- filelib:wildcard(filename:join("*", [Name, ".rel"]), ReleasesDir)],
 
     %% sort all the versions
-    SortedVsns = lists:sort(fun ec_semver:lte/2, Vsns),
+    SortedVsns = lists:sort(fun vsn_lte/2, Vsns),
 
     %% take the last element of a list that has every element up to the `Vsn' we are building
     %% the relup for. This will be the most recent version of the same release found.
-    case lists:reverse(lists:takewhile(fun(X) -> X =/= Vsn end, SortedVsns)) of
-        [LastVersion | _] ->
+    case lists:reverse(lists:takewhile(fun({_, X}) -> X =/= Vsn end, SortedVsns)) of
+        [{_, LastVersion} | _] ->
             LastVersion;
         _ ->
-            error(?RLX_ERROR({no_upfrom_release_found, Vsn}))
+            erlang:error(?RLX_ERROR({no_upfrom_release_found, Vsn}))
     end.
+
+vsn_lte({VsnA, _}, {VsnB, _}) ->
+    rlx_util:parsed_vsn_lte(VsnA, VsnB).

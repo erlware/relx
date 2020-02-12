@@ -14,18 +14,15 @@
 render(Release, State) ->
     case generate_overlay_vars(State, Release) of
         {error, Reason} ->
-            {error, Reason};
+            erlang:error(?RLX_ERROR(Reason));
         OverlayVars ->
             Files = rlx_util:template_files(),
-            do_overlay(State, Files, OverlayVars)
+            do_overlay(State, Release, Files, OverlayVars)
     end.
 
 -spec format_error(ErrorDetail::term()) -> iolist().
 format_error({unresolved_release, RelName, RelVsn}) ->
     io_lib:format("The release has not been resolved ~p-~s", [RelName, RelVsn]);
-format_error({ec_file_error, AppDir, TargetDir, E}) ->
-    io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
-                  [AppDir, TargetDir, E]);
 format_error({unable_to_read_varsfile, FileName, Reason}) ->
     io_lib:format("Unable to read vars file (~s) for overlay due to: ~p",
                   [FileName, Reason]);
@@ -82,7 +79,7 @@ format_errors(_, []) -> [].
 -spec generate_overlay_vars(rlx_state:t(), rlx_release:t()) ->
                                    proplists:proplist() | relx:error().
 generate_overlay_vars(State, Release) ->
-    StateVars = generate_state_vars(State),
+    StateVars = generate_state_vars(Release, State),
     ReleaseVars = generate_release_vars(Release),
     get_overlay_vars_from_file(State, StateVars ++ ReleaseVars).
 
@@ -201,10 +198,13 @@ generate_release_vars(Release) ->
      {rel_vsn, rlx_release:vsn(Release)},
      {release_version, rlx_release:vsn(Release)}].
 
--spec generate_state_vars(rlx_state:t()) -> proplists:proplist().
-generate_state_vars(State) ->
-    [{output_dir, rlx_state:output_dir(State)},
-     {target_dir, rlx_state:output_dir(State)},
+-spec generate_state_vars(rlx_release:t(), rlx_state:t()) -> proplists:proplist().
+generate_state_vars(Release, State) ->
+    %% TODO: pass the release so the output dirs can be correct
+    [{output_dir, filename:join(rlx_state:output_dir(State),
+                                rlx_release:name(Release))},
+     {target_dir, filename:join(rlx_state:base_output_dir(State),
+                                rlx_release:name(Release))},
      {overridden, [AppName || {AppName, _} <- rlx_state:overrides(State)]},
      {overrides, rlx_state:overrides(State)},
      {lib_dirs, rlx_state:lib_dirs(State)},
@@ -226,16 +226,19 @@ generate_state_vars(State) ->
                                erlang:atom_to_list(Name1) ++ "-" ++ Vsn1
                        end}].
 
--spec do_overlay(rlx_state:t(), list(), proplists:proplist()) ->
+-spec do_overlay(rlx_state:t(), rlx_release:t(), list(), proplists:proplist()) ->
                                    {ok, rlx_state:t()} | relx:error().
-do_overlay(State, Files, OverlayVars) ->
+do_overlay(State, Release, Files, OverlayVars) ->
     case rlx_state:get(State, overlay, undefined) of
         undefined ->
             {ok, State};
         Overlays ->
             handle_errors(State,
                           lists:map(fun(Overlay) ->
-                                            do_individual_overlay(State, Files, OverlayVars,
+                                            do_individual_overlay(State,
+                                                                  Release,
+                                                                  Files,
+                                                                  OverlayVars,
                                                                   Overlay)
                                     end, Overlays))
     end.
@@ -251,10 +254,10 @@ handle_errors(State, Result) ->
             {ok, State}
     end.
 
--spec do_individual_overlay(rlx_state:t(), list(), proplists:proplist(),
+-spec do_individual_overlay(rlx_state:t(), rlx_release:t(), list(), proplists:proplist(),
                             OverlayDirective::term()) ->
                                    {ok, rlx_state:t()} | relx:error().
-do_individual_overlay(State, _Files, OverlayVars, {chmod, Mode, Path}) ->
+do_individual_overlay(State, Release, _Files, OverlayVars, {chmod, Mode, Path}) ->
     % mode can be specified directly as an integer value, or if it is
     % not an integer we assume it's a template, which we render and convert
     % blindly to an integer.  So this will crash with an exception if for
@@ -269,17 +272,17 @@ do_individual_overlay(State, _Files, OverlayVars, {chmod, Mode, Path}) ->
 
     file_render_do(OverlayVars, Path,
                    fun(NewPath) ->
-                            Absolute = absolute_path_to(State, NewPath),
+                            Absolute = absolute_path_to(State, Release, NewPath),
                             case file:change_mode(Absolute, NewMode) of
                                 {error, Error} ->
                                     ?RLX_ERROR({unable_to_chmod, NewMode, NewPath, Error});
                                 ok -> ok
                             end
                    end);
-do_individual_overlay(State, _Files, OverlayVars, {mkdir, Dir}) ->
+do_individual_overlay(State, Release, _Files, OverlayVars, {mkdir, Dir}) ->
     file_render_do(OverlayVars, Dir,
                    fun(Dir0) ->
-                       Absolute = absolute_path_to(State, Dir0),
+                       Absolute = absolute_path_to(State, Release, Dir0),
                        case rlx_file_utils:mkdir_p(Absolute) of
                            {error, Error} ->
                                ?RLX_ERROR({unable_to_make_dir, Absolute, Error});
@@ -287,44 +290,44 @@ do_individual_overlay(State, _Files, OverlayVars, {mkdir, Dir}) ->
                                ok
                        end
                    end);
-do_individual_overlay(State, _Files, OverlayVars, {copy, From, To}) ->
+do_individual_overlay(State, Release, _Files, OverlayVars, {copy, From, To}) ->
     file_render_do(OverlayVars, From,
                    fun(FromFile) ->
                            file_render_do(OverlayVars, To,
                                           fun(ToFile) ->
-                                                  copy_to(State, FromFile, ToFile)
+                                                  copy_to(State, Release, FromFile, ToFile)
                                           end)
                    end);
-do_individual_overlay(State, Files, OverlayVars, {link, From, To}) ->
+do_individual_overlay(State, Release, Files, OverlayVars, {link, From, To}) ->
     case rlx_state:dev_mode(State) of
         false ->
-            do_individual_overlay(State, Files, OverlayVars, {copy, From, To});
+            do_individual_overlay(State, Release, Files, OverlayVars, {copy, From, To});
         true  ->
             file_render_do(OverlayVars, From,
                            fun(FromFile) ->
                                    file_render_do(OverlayVars, To,
                                                   fun(ToFile) ->
-                                                          link_to(State, FromFile, ToFile)
+                                                          link_to(State, Release, FromFile, ToFile)
                                                   end)
                            end)
     end;
-do_individual_overlay(State, _Files, OverlayVars, {template, From, To}) ->
+do_individual_overlay(State, Release, _Files, OverlayVars, {template, From, To}) ->
     file_render_do(OverlayVars, From,
                    fun(FromFile) ->
                            file_render_do(OverlayVars, To,
                                           fun(ToFile) ->
                                                   write_template(OverlayVars,
                                                                  absolute_path_from(State, FromFile),
-                                                                 absolute_path_to(State, ToFile))
+                                                                 absolute_path_to(State, Release, ToFile))
                                           end)
                    end).
 
--spec wildcard_copy(rlx_state:t(), file:filename_all(), file:filename_all(),
+-spec wildcard_copy(rlx_state:t(), rlx_release:t(), file:filename_all(), file:filename_all(),
       fun((file:filename_all(), file:filename_all()) -> ok | {error, term()}),
       ErrorTag :: atom()) -> ok | relx:error().
-wildcard_copy(State, FromFile0, ToFile0, CopyFun, ErrorTag) ->
+wildcard_copy(State, Release, FromFile0, ToFile0, CopyFun, ErrorTag) ->
     FromFile1 = absolute_path_from(State, FromFile0),
-    ToFile1 = absolute_path_to(State, ToFile0),
+    ToFile1 = absolute_path_to(State, Release, ToFile0),
 
     Res = case is_directory(ToFile0, ToFile1) of
               false ->
@@ -353,23 +356,23 @@ wildcard_copy(State, FromFile0, ToFile0, CopyFun, ErrorTag) ->
                         ToFile1, Err})
     end.
 
-
--spec copy_to(rlx_state:t(), file:name(), file:name()) -> ok | relx:error().
-copy_to(State, FromFile0, ToFile0) ->
-    wildcard_copy(State, FromFile0, ToFile0,
-                  fun(FromPath, ToPath) -> ec_file:copy(FromPath, ToPath, [recursive, {file_info, [mode, time]}]) end,
+-spec copy_to(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok | relx:error().
+copy_to(State, Release, FromFile0, ToFile0) ->
+    wildcard_copy(State, Release, FromFile0, ToFile0,
+                  fun(FromPath, ToPath) ->
+                          rlx_file_utils:copy(FromPath, ToPath, [recursive, {file_info, [mode, time]}]) end,
                   copy_failed).
 
--spec link_to(rlx_state:t(), file:name(), file:name()) -> ok | relx:error().
-link_to(State, FromFile0, ToFile0) ->
-    wildcard_copy(State, FromFile0, ToFile0,
+-spec link_to(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok | relx:error().
+link_to(State, Release, FromFile0, ToFile0) ->
+    wildcard_copy(State, Release, FromFile0, ToFile0,
                   fun make_link/2,
                   link_failed).
 
 make_link(FromFile, ToFile) ->
-    case ec_file:is_symlink(ToFile) of
+    case rlx_file_utils:is_symlink(ToFile) of
         true -> file:delete(ToFile);
-        false -> ec_file:remove(ToFile, [recursive])
+        false -> rlx_file_utils:remove(ToFile, [recursive])
     end,
     file:make_symlink(FromFile, ToFile).
 
@@ -379,8 +382,10 @@ get_relative_root(State) ->
 absolute_path_from(State, Path) ->
     absolutize(State, filename:join(get_relative_root(State), Path)).
 
-absolute_path_to(State, Path) ->
-    absolutize(State, filename:join(rlx_state:output_dir(State), Path)).
+absolute_path_to(State, Release, Path) ->
+    absolutize(State, filename:join([rlx_state:base_output_dir(State),
+                                     rlx_release:name(Release),
+                                     Path])).
 
 -spec is_directory(file:name(), file:name()) -> boolean().
 is_directory(ToFile0, ToFile1) ->
@@ -414,13 +419,13 @@ write_template(OverlayVars, FromFile, ToFile) ->
                             %% onto a symlink, this would cause an overwrite
                             %% of the original file, so we delete the symlink
                             %% and go ahead with the template render
-                            case ec_file:is_symlink(ToFile) of
-                                true -> ec_file:remove(ToFile);
+                            case rlx_file_utils:is_symlink(ToFile) of
+                                true -> rlx_file_utils:remove(ToFile);
                                 false -> ok
                             end,
                             case file:write_file(ToFile, IoData) of
                                 ok ->
-                                    ok = ec_file:copy_file_info(ToFile, FromFile, [mode, time]),
+                                    ok = rlx_file_utils:copy_file_info(ToFile, FromFile, [mode, time]),
                                     ok;
                                 {error, Reason} ->
                                     ?RLX_ERROR({unable_to_write, ToFile, Reason})

@@ -10,8 +10,7 @@ create_app(Dir, Name, Vsn, Deps, LibDeps) ->
     write_src_file(AppDir, Name),
     write_priv_file(AppDir),
     compile_src_files(AppDir),
-    rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
-                     Deps, []).
+    rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir, Deps, []).
 
 create_full_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
@@ -46,22 +45,29 @@ write_appup_file(AppInfo, DownVsn) ->
     Vsn = rlx_app_info:vsn(AppInfo),
     Filename = filename:join([Dir, "ebin", Name ++ ".appup"]),
     ok = filelib:ensure_dir(Filename),
-    ok = ec_file:write_term(Filename, {Vsn, [{DownVsn, []}], [{DownVsn, []}]}).
+    ok = rlx_file_utils:write_term(Filename, {Vsn, [{DownVsn, []}], [{DownVsn, []}]}).
 
 write_app_file(Dir, Name, Version, Modules, Deps, LibDeps) ->
     Filename = filename:join([Dir, "ebin", Name ++ ".app"]),
     ok = filelib:ensure_dir(Filename),
-    ok = ec_file:write_term(Filename, get_app_metadata(Name, Version, Modules,
+    ok = rlx_file_utils:write_term(Filename, get_app_metadata(Name, Version, Modules,
                                                        Deps, LibDeps)).
 
 compile_src_files(Dir) ->
     %% compile all *.erl files in src to ebin
     SrcDir = filename:join([Dir, "src"]),
     OutputDir = filename:join([Dir, "ebin"]),
-    lists:foreach(fun(SrcFile) ->
-                          {ok, _} = compile:file(SrcFile, [{outdir, OutputDir},
-                                                           return_errors])
-                  end, ec_file:find(SrcDir, "\\.erl")),
+    %% lists:foreach(fun(SrcFile) ->
+    %%                       {ok, _} = compile:file(SrcFile, [{outdir, OutputDir},
+    %%                                                        return_errors])
+    %%               end, rlx_file_utils:find(SrcDir, "\\.erl")),
+
+    filelib:fold_files(SrcDir, "\\.erl", true, fun(SrcFile, ok) ->
+                                                       {ok, _} = compile:file(SrcFile, [{outdir, OutputDir},
+                                                                                        return_errors]),
+                                                       ok
+                                               end, ok),
+
     ok.
 
 get_app_metadata(Name, Vsn, Modules, Deps, LibDeps) ->
@@ -77,7 +83,7 @@ write_full_app_files(Dir, Name, Vsn, Deps, LibDeps) ->
     %% write out the .app file
     AppFilename = filename:join([Dir, "ebin", Name ++ ".app"]),
     ok = filelib:ensure_dir(AppFilename),
-    ok = ec_file:write_term(AppFilename,
+    ok = rlx_file_utils:write_term(AppFilename,
                             get_full_app_metadata(Name, Vsn, Deps, LibDeps)),
     %% write out the _app.erl file
     ApplicationFilename = filename:join([Dir, "src", Name ++ "_app.erl"]),
@@ -164,7 +170,7 @@ create_random_vsn() ->
 
 write_config(Filename, Values) ->
     ok = filelib:ensure_dir(Filename),
-    ok = ec_file:write(Filename,
+    ok = rlx_file_utils:write(Filename,
                        [io_lib:format("~p.\n", [Val]) || Val <- Values]).
 
 beam_file_contents(Name) ->
@@ -301,7 +307,7 @@ gather_application_info(EbinDir, File) ->
     AppDir = filename:dirname(EbinDir),
     case file:consult(File) of
         {ok, [{application, AppName, AppDetail}]} ->
-            validate_application_info(EbinDir, AppName, AppDetail);
+            validate_application_info(EbinDir, AppName, maps:from_list(AppDetail));
         {error, Reason} ->
             {warning, {unable_to_load_app, AppDir, Reason}};
         _ ->
@@ -315,26 +321,19 @@ validate_application_info(EbinDir, AppName, AppDetail) ->
 -spec get_vsn(file:name(), atom(), proplists:proplist()) ->
                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
 get_vsn(AppDir, AppName, AppDetail) ->
-    case proplists:get_value(vsn, AppDetail) of
+    case maps:get(vsn, AppDetail, undefined) of
         undefined ->
             {error, {unversioned_app, AppDir, AppName}};
         AppVsn ->
-            case get_deps(AppDir, AppName, AppVsn, AppDetail) of
-                {ok, App} ->
-                    {ok, App};
-                {error, Detail} ->
-                    {error, {app_info_error, Detail}}
-            end
+            {ok, get_deps(AppDir, AppName, AppVsn, AppDetail)}
     end.
 
--spec get_deps(binary(), atom(), string(), proplists:proplist()) ->
-                      {ok, rlx_app_info:t()} | {error, Reason::term()}.
+-spec get_deps(binary(), atom(), string(), proplists:proplist()) -> rlx_app_info:t().
 get_deps(AppDir, AppName, AppVsn, AppDetail) ->
     %% ensure that at least stdlib and kernel are defined as application deps
-    ActiveApps = ensure_stdlib_kernel(AppName,
-                                      proplists:get_value(applications, AppDetail, [])),
-    LibraryApps = proplists:get_value(included_applications, AppDetail, []),
-    rlx_app_info:new(AppName, AppVsn, AppDir, ActiveApps, LibraryApps).
+    Apps = ensure_stdlib_kernel(AppName, maps:get(applications, AppDetail, [])),
+    IncApps = maps:get(included_applications, AppDetail, []),
+    rlx_app_info:new(AppName, AppVsn, AppDir, Apps, IncApps).
 
 -spec ensure_stdlib_kernel(AppName :: atom(),
                            Apps :: list(atom())) -> list(atom()).

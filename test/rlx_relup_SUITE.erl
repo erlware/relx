@@ -28,11 +28,11 @@ make_relup_release(Config) ->
 
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.2", [stdlib,kernel,non_goal_1], []),
-    {ok, GA1} = rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.3", [stdlib,kernel,non_goal_1], []),
+    GA1 = rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.3", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.2", [stdlib,kernel,goal_app_1,non_goal_2], []),
-    {ok, GA2} = rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.3", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    GA2 = rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.3", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
@@ -63,8 +63,8 @@ make_relup_release(Config) ->
 
     %% Goal apps are removed to simulate a users dev environment where the apps
     %% being used in an appup/relup are likely only under _rel/<release>/lib/
-    ec_file:remove(filename:join(LibDir1, "goal_app_1-0.0.1"), [recursive]),
-    ec_file:remove(filename:join(LibDir1, "goal_app_1-0.0.2"), [recursive]),
+    rlx_file_utils:remove(filename:join(LibDir1, "goal_app_1-0.0.1"), [recursive]),
+    rlx_file_utils:remove(filename:join(LibDir1, "goal_app_1-0.0.2"), [recursive]),
 
     {ok, State2} = relx:build_release({foo, "0.0.3"}, Apps, [{root_dir, LibDir1},
                                                               {output_dir, OutputDir} | RelxConfig]),
@@ -82,7 +82,7 @@ make_relup_release(Config) ->
 
     [{{foo, "0.0.3"}, Release}] = maps:to_list(rlx_state:realized_releases(State2)),
 
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -97,11 +97,11 @@ make_relup_release2(Config) ->
 
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.2", [stdlib,kernel,non_goal_1], []),
-    {ok, GA1} = rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.3", [stdlib,kernel,non_goal_1], []),
+    GA1 = rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.3", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.2", [stdlib,kernel,goal_app_1,non_goal_2], []),
-    {ok, GA2} = rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.3", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    GA2 = rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.3", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
@@ -145,7 +145,7 @@ make_relup_release2(Config) ->
     [{{foo, "0.0.3"}, Release}] = maps:to_list(rlx_state:realized_releases(State2)),
     ?assertMatch(foo, rlx_release:name(Release)),
     ?assertMatch("0.0.3", rlx_release:vsn(Release)),
-    AppSpecs = rlx_release:applications(Release),
+    AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
@@ -159,11 +159,11 @@ no_upfrom_release(Config) ->
 
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.1", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.2", [stdlib,kernel,non_goal_1], []),
-    {ok, GA1} = rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.3", [stdlib,kernel,non_goal_1], []),
+    GA1 = rlx_test_utils:create_app(LibDir1, "goal_app_1", "0.0.3", [stdlib,kernel,non_goal_1], []),
     rlx_test_utils:create_app(LibDir1, "lib_dep_1", "0.0.1", [stdlib,kernel], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.2", [stdlib,kernel,goal_app_1,non_goal_2], []),
-    {ok, GA2} = rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.3", [stdlib,kernel,goal_app_1,non_goal_2], []),
+    GA2 = rlx_test_utils:create_app(LibDir1, "goal_app_2", "0.0.3", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir1, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir1, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 

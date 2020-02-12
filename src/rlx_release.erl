@@ -23,8 +23,6 @@
 -module(rlx_release).
 
 -export([new/2,
-         new/3,
-         relfile/1,
          relfile/2,
          erts/2,
          erts/1,
@@ -35,9 +33,7 @@
          vsn/1,
          realize/2,
          applications/1,
-         application_details/1,
-         application_details/2,
-         realized/1,
+         app_specs/1,
          metadata/1,
          start_clean_metadata/1,
          no_dot_erlang_metadata/1,
@@ -53,19 +49,25 @@
               type/0,
               incl_apps/0,
               application_spec/0,
+              release_spec/0,
               parsed_goal/0]).
 
 -include("relx.hrl").
 
 -record(release_t, {name :: atom(),
-                    vsn :: ec_semver:any_version(),
-                    erts :: undefined | ec_semver:any_version(),
-                    goals = [] :: parsed_goals(),
+                    vsn :: string(),
+                    erts :: undefined | string(),
+                    goals = undefined :: parsed_goals() | undefined,
+
+                    %% when `realized' is true `applications' must be a list of all
+                    %% app_info's needed to fulfill the `goals' and `app_specs'
+                    %% must be the full list that goes in the `.rel' file.
                     realized = false :: boolean(),
-                    annotations = undefined :: annotations(),
-                    applications = [] ::  [rlx_app:t()],
+
+                    app_specs = [] ::  [application_spec()],
+                    applications = [] :: [rlx_app_info:t()],
+
                     relfile :: undefined | string(),
-                    app_detail = [] :: [rlx_app_info:t()],
                     config = []}).
 
 %%============================================================================
@@ -83,31 +85,24 @@
 
 -type parsed_goals() :: #{name() => parsed_goal()}.
 
--type annotations() ::  #{name() => {type(), incl_apps() | void}}.
-
 -type application_spec() :: {name(), vsn()} |
                             {name(), vsn(), type() | incl_apps()} |
                             {name(), vsn(), type(), incl_apps()}.
 
--opaque t() :: #release_t{}.
+-type release_spec() :: {release, {string(), vsn()}, {erts, vsn()},
+                         [application_spec()]}.
 
-%%============================================================================
-%% API
-%%============================================================================
+-type t() :: #release_t{}.
+
 -spec new(atom(), string(), undefined | file:name()) -> t().
 new(ReleaseName, ReleaseVsn, Relfile) ->
     #release_t{name=ReleaseName,
                vsn=ReleaseVsn,
-               relfile = Relfile,
-               annotations=#{}}.
+               relfile = Relfile}.
 
 -spec new(atom(), string()) -> t().
 new(ReleaseName, ReleaseVsn) ->
     new(ReleaseName, ReleaseVsn, undefined).
-
--spec relfile(t()) -> file:name() | undefined.
-relfile(#release_t{relfile=Relfile}) ->
-    Relfile.
 
 -spec relfile(t(), file:name()) -> t().
 relfile(Release, Relfile) ->
@@ -129,68 +124,49 @@ erts(Release, Vsn) ->
 erts(#release_t{erts=Vsn}) ->
     Vsn.
 
--spec goals(t(), [relx:goal()] | parsed_goals()) -> {ok, t()} | relx:error().
+-spec goals(t(), [relx:goal()] | parsed_goals()) -> t().
 goals(Release, ParsedGoals) when is_map(ParsedGoals) ->
-    {ok, Release#release_t{goals=ParsedGoals}};
+    Release#release_t{goals=ParsedGoals};
 goals(Release, ConfigGoals) ->
-    {ok, Release#release_t{goals=parse_goals(ConfigGoals)}}.
+    Release#release_t{goals=parse_goals(ConfigGoals)}.
 
 -spec goals(t()) -> parsed_goals().
 goals(#release_t{goals=Goals}) ->
     Goals.
 
--spec realize(t(), [rlx_app:t()]) ->
+-spec realize(t(), [rlx_app_info:t()]) ->
                      {ok, t()}.
 realize(Rel, Pkgs0) ->
     process_specs(realize_erts(Rel), Pkgs0).
 
-%% @doc this gives the application specs for the release. This can only be
-%% populated by the 'realize' call in this module.
--spec applications(t()) -> [rlx_app:t()].
 applications(#release_t{applications=Apps}) ->
     Apps.
 
-%% @doc this gives the rlx_app_info objects representing the applications in
-%% this release. These should only be populated by the 'realize' call in this
-%% module or by reading an existing rel file.
--spec application_details(t()) -> [rlx_app:t()].
-application_details(#release_t{app_detail=App}) ->
-    App.
+app_specs(#release_t{app_specs=AppSpecs}) ->
+    AppSpecs.
 
-%% @doc this is only expected to be called by a process building a new release
-%% from an existing rel file.
--spec application_details(t(), [rlx_app:t()]) -> t().
-application_details(Release, AppDetail) ->
-    Release#release_t{app_detail=AppDetail}.
-
--spec realized(t()) -> boolean().
-realized(#release_t{realized=Realized}) ->
-    Realized.
-
--spec metadata(t()) -> term().
+-spec metadata(t()) -> release_spec().
 metadata(#release_t{name=Name,
                     vsn=Vsn,
                     erts=ErtsVsn,
-                    applications=Apps,
+                    app_specs=Apps,
                     realized=Realized}) ->
     case Realized of
         true ->
-            {ok, {release, {rlx_util:to_string(Name), Vsn}, {erts, ErtsVsn},
-                  Apps}};
+            {release, {rlx_util:to_string(Name), Vsn}, {erts, ErtsVsn}, Apps};
         false ->
-            ?RLX_ERROR({not_realized, Name, Vsn})
+            erlang:error(?RLX_ERROR({not_realized, Name, Vsn}))
     end.
 
 %% Include all apps in the release as `none' type so they are not
 %% loaded or started but are available in the path when a the
 %% `start_clean' is used, like is done with command `console_clean'
--spec start_clean_metadata(t()) -> term().
+-spec start_clean_metadata(t()) -> release_spec().
 start_clean_metadata(#release_t{erts=ErtsVsn,
-                                applications=Apps}) ->
+                                app_specs=Apps}) ->
     {value, Kernel, Apps1} = lists:keytake(kernel, 1, Apps),
     {value, StdLib, Apps2} = lists:keytake(stdlib, 1, Apps1),
-    {ok, {release, {"start_clean", "1.0"}, {erts, ErtsVsn},
-          [Kernel, StdLib | none_type_apps(Apps2)]}}.
+    {release, {"start_clean", "1.0"}, {erts, ErtsVsn}, [Kernel, StdLib | none_type_apps(Apps2)]}.
 
 none_type_apps([]) ->
     [];
@@ -204,14 +180,12 @@ none_type_apps([{Name, Version, _, _} | Rest]) ->
 %% no_dot_erlang.boot goes in the root bin dir of the release_handler
 %% so should not have anything specific to the release version in it
 %% Here it only has kernel and stdlib.
--spec no_dot_erlang_metadata(t()) -> term().
+-spec no_dot_erlang_metadata(t()) -> release_spec().
 no_dot_erlang_metadata(#release_t{erts=ErtsVsn,
-                                  applications=Apps}) ->
+                                  app_specs=Apps}) ->
     {value, Kernel, Apps1} = lists:keytake(kernel, 1, Apps),
     {value, StdLib, _Apps2} = lists:keytake(stdlib, 1, Apps1),
-    {ok, {release, {"no_dot_erlang", "1.0"}, {erts, ErtsVsn},
-          [Kernel, StdLib]}}.
-
+    {release, {"no_dot_erlang", "1.0"}, {erts, ErtsVsn}, [Kernel, StdLib]}.
 
 %% @doc produce the canonical name (<name>-<vsn>) for this release
 -spec canonical_name(t()) -> string().
@@ -238,7 +212,7 @@ format(Indent, #release_t{name=Name,
                           erts=ErtsVsn,
                           realized=Realized,
                           goals = Goals,
-                          applications=Apps}) ->
+                          app_specs=Apps}) ->
     BaseIndent = rlx_util:indent(Indent),
     [BaseIndent, "release: ", rlx_util:to_string(Name), "-", Vsn, "\n",
      rlx_util:indent(Indent + 1), "erts: ", ErtsVsn, "\n",
@@ -280,29 +254,28 @@ realize_erts(Rel) ->
 
 -spec process_specs(t(), [rlx_app_info:t()]) -> {ok, t()}.
 process_specs(Rel=#release_t{goals=Goals}, World) ->
-    ActiveApps = lists:flatten([rlx_app_info:active_deps(El) || El <- World] ++ maps:keys(Goals)),
-    LibraryApps = lists:flatten([rlx_app_info:library_deps(El) || El <- World]),
-    Specs = [create_app_spec(App, Goals, ActiveApps, LibraryApps) || App <- World],
+    IncludedApps = lists:foldl(fun(#{included_applications := I}, Acc) ->
+                                       sets:union(sets:from_list(I), Acc)
+                               end, sets:new(), World),
+    Specs = [create_app_spec(App, Goals, IncludedApps) || App <- World],
     {ok, Rel#release_t{goals=Goals,
-                       applications=Specs,
-                       app_detail=World,
+                       app_specs=Specs,
+                       applications=World,
                        realized=true}}.
 
--spec create_app_spec(rlx_app:t(), parsed_goals(), [name()], [name()]) -> application_spec().
-create_app_spec(App, Goals, ActiveApps, LibraryApps) ->
-    %% If the app only exists as a dependency in a library app then it should
-    %% get the 'load' annotation unless the release spec has provided something
-    %% else
+-spec create_app_spec(rlx_app_info:t(), parsed_goals(), sets:set(atom())) -> application_spec().
+create_app_spec(App, Goals, WorldIncludedApps) ->
+    %% If the app only exists as a dependency in an included app then it should
+    %% get the 'load' annotation unless the release spec has set something
     AppName = rlx_app_info:name(App),
     Vsn = rlx_app_info:vsn(App),
-    TypeAnnot =
-        case (lists:member(AppName, LibraryApps) and
-              (not lists:member(AppName, ActiveApps))) of
-            true ->
-                load;
-            false ->
-                undefined
-        end,
+
+    TypeAnnot = case sets:is_element(AppName, WorldIncludedApps) of
+                true ->
+                    load;
+                false ->
+                    permanent
+            end,
 
     #{type := Type,
       included_applications := IncludedApplications} =
@@ -317,15 +290,22 @@ create_app_spec(App, Goals, ActiveApps, LibraryApps) ->
                                Type =:= temporary ;
                                Type =:= load ;
                                Type =:= none ->
-            {AppName, Vsn, Type};
+            maybe_with_type({AppName, Vsn}, Type);
         {undefined, IncludedApplications} ->
             {AppName, Vsn, IncludedApplications};
         {Type, IncludedApplications} ->
-            {AppName, Vsn, Type, IncludedApplications};
+            maybe_with_type({AppName, Vsn, Type, IncludedApplications}, Type);
         _ ->
             error(?RLX_ERROR({bad_app_goal, {AppName, Vsn, Type, IncludedApplications}}))
     end.
 
+%% keep a clean .rel file by only included non-defaults
+maybe_with_type(Tuple, permanent) ->
+    Tuple;
+maybe_with_type(Tuple, Type) ->
+    erlang:insert_element(3, Tuple, Type).
+
+-spec parse_goals([application_spec()]) -> parsed_goals().
 parse_goals(ConfigGoals) ->
     lists:foldl(fun(ConfigGoal, Acc) ->
                         Goal=#{name := Name} = parse_goal(ConfigGoal),

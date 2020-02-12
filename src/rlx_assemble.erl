@@ -7,43 +7,38 @@
 -include("rlx_log.hrl").
 
 do(Release, State) ->
-    OutputDir = rlx_state:output_dir(State),
-    case create_output_dir(OutputDir) of
-        ok ->
-            case copy_app_directories_to_output(Release, OutputDir, State) of
-                ok ->
-                    {ok, State1} = create_release_info(State, Release, OutputDir),
-                    case rlx_state:debug_info(State1) =:= strip
-                        andalso rlx_state:dev_mode(State1) =:= false of
-                        true ->
-                            case beam_lib:strip_release(OutputDir) of
-                                {ok, _} ->
-                                    {ok, State1};
-                                {error, _, Reason} ->
-                                    ?RLX_ERROR({strip_release, Reason})
-                            end;
-                        false ->
-                            {ok, State1}
-                    end;
-                E ->
-                    E
+    RelName = rlx_release:name(Release),
+    OutputDir = filename:join(rlx_state:base_output_dir(State), RelName),
+    ok = create_output_dir(OutputDir),
+    ok = copy_app_directories_to_output(Release, OutputDir, State),
+    {ok, State1} = create_release_info(State, Release, OutputDir),
+
+    %% don't strip the release in debug mode since that would strip
+    %% the beams symlinked to and no one wants that
+    case rlx_state:debug_info(State1) =:= strip
+        andalso rlx_state:dev_mode(State1) =:= false of
+        true ->
+            case beam_lib:strip_release(OutputDir) of
+                {ok, _} ->
+                    {ok, State1};
+                {error, _, Reason} ->
+                    erlang:error(?RLX_ERROR({strip_release, Reason}))
             end;
-        E ->
-            E
+        false ->
+            {ok, State1}
     end.
 
 %% internal functions
 
--spec create_output_dir(file:name()) ->
-                               ok | {error, Reason::term()}.
+-spec create_output_dir(file:name()) -> ok.
 create_output_dir(OutputDir) ->
-    case ec_file:is_dir(OutputDir) of
+    case rlx_file_utils:is_dir(OutputDir) of
         false ->
             case rlx_file_utils:mkdir_p(OutputDir) of
                 ok ->
                     ok;
                 {error, _} ->
-                    ?RLX_ERROR({unable_to_create_output_dir, OutputDir})
+                    erlang:error(?RLX_ERROR({unable_to_create_output_dir, OutputDir}))
             end;
         true ->
             ok
@@ -54,10 +49,8 @@ copy_app_directories_to_output(Release, OutputDir, State) ->
     ok = rlx_file_utils:mkdir_p(LibDir),
     IncludeSrc = rlx_state:include_src(State),
     IncludeSystemLibs = rlx_state:get(State, system_libs, rlx_state:get(State, include_erts, true)),
-    Apps = prepare_applications(State, rlx_release:application_details(Release)),
-    lists:map(fun(App) ->
-                      copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs)
-              end, Apps),
+    Apps = prepare_applications(State, rlx_release:applications(Release)),
+    [copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) || App <- Apps],
     ok.
 
 prepare_applications(State, Apps) ->
@@ -83,7 +76,7 @@ copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) ->
                 false ->
                     case is_system_lib(AppDir) of
                         true ->
-                            [];
+                            ok;
                         false ->
                             copy_app_(State, App, AppDir, TargetDir, IncludeSrc)
                     end;
@@ -109,11 +102,11 @@ copy_app_(State, App, AppDir, TargetDir, IncludeSrc) ->
 %% If excluded apps or modules exist in this App's applications list we must write a new .app
 rewrite_app_file(State, App, TargetDir) ->
     Name = rlx_app_info:name(App),
-    Applications = rlx_app_info:active_deps(App),
-    IncludedApplications = rlx_app_info:library_deps(App),
+    Applications = rlx_app_info:applications(App),
+    IncludedApplications = rlx_app_info:included_applications(App),
 
     %% TODO: should really read this in when creating rlx_app:t() and keep it
-    AppFile = filename:join([TargetDir, "ebin", ec_cnv:to_list(Name) ++ ".app"]),
+    AppFile = filename:join([TargetDir, "ebin", [Name, ".app"]]),
     {ok, [{application, AppName, AppData0}]} = file:consult(AppFile),
 
     %% maybe replace excluded apps
@@ -126,8 +119,10 @@ rewrite_app_file(State, App, TargetDir) ->
 
     Spec = [{application, AppName, AppData2}],
     case write_file_if_contents_differ(AppFile, Spec) of
-        ok -> ok;
-        Error -> throw(?RLX_ERROR({rewrite_app_file, AppFile, Error}))
+        ok ->
+            ok;
+        Error ->
+            erlang:error(?RLX_ERROR({rewrite_app_file, AppFile, Error}))
     end.
 
 maybe_exclude_apps(_Applications, _IncludedApplications, AppData, []) ->
@@ -163,13 +158,13 @@ write_file_if_contents_differ(Filename, Spec) ->
     end.
 
 remove_symlink_or_directory(TargetDir) ->
-    case ec_file:is_symlink(TargetDir) of
+    case rlx_file_utils:is_symlink(TargetDir) of
         true ->
-            ec_file:remove(TargetDir);
+            ok = rlx_file_utils:remove(TargetDir);
         false ->
-            case ec_file:is_dir(TargetDir) of
+            case rlx_file_utils:is_dir(TargetDir) of
                 true ->
-                    ok = ec_file:remove(TargetDir, [recursive]);
+                    ok = rlx_file_utils:remove(TargetDir, [recursive]);
                 false ->
                     ok
             end
@@ -178,7 +173,7 @@ remove_symlink_or_directory(TargetDir) ->
 link_directory(AppDir, TargetDir) ->
     case rlx_file_utils:symlink_or_copy(AppDir, TargetDir) of
         {error, Reason} ->
-            ?RLX_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason});
+            erlang:error(?RLX_ERROR({unable_to_make_symlink, AppDir, TargetDir, Reason}));
         ok ->
             ok
     end.
@@ -200,7 +195,7 @@ copy_directory(State, App, AppDir, TargetDir, IncludeSrc) ->
 copy_dir(State, App, AppDir, TargetDir, SubDir) ->
     SubSource = filename:join(AppDir, SubDir),
     SubTarget = filename:join(TargetDir, SubDir),
-    case ec_file:is_dir(SubSource) of
+    case rlx_file_utils:is_dir(SubSource) of
         true ->
             ok = rlx_file_utils:mkdir_p(SubTarget),
             %% get a list of the modules to be excluded from this app
@@ -212,7 +207,7 @@ copy_dir(State, App, AppDir, TargetDir, SubDir) ->
                                 M <- ExcludedModules],
             case copy_dir(SubSource, SubTarget, ExcludedFiles) of
                 {error, E} ->
-                    ?RLX_ERROR({ec_file_error, AppDir, SubTarget, E});
+                    erlang:error(?RLX_ERROR({rlx_file_utils_error, AppDir, SubTarget, E}));
                 ok ->
                     ok
             end;
@@ -222,7 +217,7 @@ copy_dir(State, App, AppDir, TargetDir, SubDir) ->
 
 %% no files are excluded, just copy the whole dir
 copy_dir(SourceDir, TargetDir, []) ->
-     case ec_file:copy(SourceDir, TargetDir, [recursive, {file_info, [mode, time]}]) of
+     case rlx_file_utils:copy(SourceDir, TargetDir, [recursive, {file_info, [mode, time]}]) of
         {error, E} -> {error, E};
         ok ->
             ok
@@ -231,7 +226,7 @@ copy_dir(SourceDir, TargetDir, ExcludeFiles) ->
     SourceFiles = filelib:wildcard(
                     filename:join([binary_to_list(SourceDir), "*"])),
     lists:foreach(fun(F) ->
-                    ok = ec_file:copy(F,
+                    ok = rlx_file_utils:copy(F,
                                       filename:join([TargetDir,
                                                      filename:basename(F)]), [recursive, {file_info, [mode, time]}])
                   end, SourceFiles -- ExcludeFiles).
@@ -245,24 +240,16 @@ create_release_info(State0, Release0, OutputDir) ->
     ok = rlx_file_utils:mkdir_p(ReleaseDir),
     Release1 = rlx_release:relfile(Release0, ReleaseFile),
     State1 = rlx_state:update_realized_release(State0, Release1),
-    case rlx_release:metadata(Release1) of
-        {ok, Meta} ->
-            case {rlx_release:start_clean_metadata(Release1),
-                  rlx_release:no_dot_erlang_metadata(Release1)} of
-                {{ok, StartCleanMeta}, {ok, NoDotErlMeta}} ->
-                    ok = ec_file:write_term(ReleaseFile, Meta),
-                    ok = ec_file:write_term(StartCleanFile, StartCleanMeta),
-                    ok = ec_file:write_term(NoDotErlFile, NoDotErlMeta),
-                    write_bin_file(State1, Release1, OutputDir, ReleaseDir),
-                    {ok, State1};
-                {{ok, _}, E} ->
-                    E;
-                {_, E} ->
-                    E
-            end;
-        E ->
-            E
-    end.
+
+    ReleaseSpec = rlx_release:metadata(Release1),
+
+    StartCleanMeta = rlx_release:start_clean_metadata(Release1),
+    NoDotErlMeta = rlx_release:no_dot_erlang_metadata(Release1),
+    ok = rlx_file_utils:write_term(ReleaseFile, ReleaseSpec),
+    ok = rlx_file_utils:write_term(StartCleanFile, StartCleanMeta),
+    ok = rlx_file_utils:write_term(NoDotErlFile, NoDotErlMeta),
+    write_bin_file(State1, Release1, OutputDir, ReleaseDir),
+    {ok, State1}.
 
 write_bin_file(State, Release, OutputDir, RelDir) ->
     RelName = erlang:atom_to_list(rlx_release:name(Release)),
@@ -322,13 +309,9 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     end,
     ReleasesDir = filename:join(OutputDir, "releases"),
     generate_start_erl_data_file(Release, ReleasesDir),
-    copy_or_generate_vmargs_file(State, Release, RelDir),
-    case copy_or_generate_sys_config_file(State, RelDir) of
-        ok ->
-            include_erts(State, Release, OutputDir, RelDir);
-        E ->
-            E
-    end.
+    ok = copy_or_generate_vmargs_file(State, Release, RelDir),
+    ok = copy_or_generate_sys_config_file(State, RelDir),
+    include_erts(State, Release, OutputDir, RelDir).
 
 expand_hooks(_Bindir, [], _State) -> [];
 expand_hooks(BinDir, Hooks, _State) ->
@@ -409,7 +392,7 @@ render_hook(TemplateName, Script, _State) ->
     ?log_info("rendering ~p hook to ~p", [TemplateName, Script]),
     Template = render(TemplateName),
     ok = filelib:ensure_dir(Script),
-    _ = ec_file:remove(Script),
+    _ = rlx_file_utils:remove(Script),
     ok = file:write_file(Script, Template),
     ok = file:change_mode(Script, 8#755).
 
@@ -431,9 +414,7 @@ generate_start_erl_data_file(Release, ReleasesDir) ->
     ok = file:write_file(filename:join(ReleasesDir, "start_erl.data"), Data).
 
 %% @doc copy vm.args or generate one to releases/VSN/vm.args
--spec copy_or_generate_vmargs_file(rlx_state:t(), rlx_release:t(), file:name()) ->
-                                              {ok, rlx_state:t()} | relx:error().
-
+-spec copy_or_generate_vmargs_file(rlx_state:t(), rlx_release:t(), file:name()) -> ok.
 copy_or_generate_vmargs_file(State, Release, RelDir) ->
     RelVmargsPath = filename:join([RelDir, "vm.args"]),
     RelVmargsSrcPath = filename:join([RelDir, "vm.args.src"]),
@@ -448,7 +429,7 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
                 ArgsPath ->
                     case filelib:is_regular(ArgsPath) of
                         false ->
-                            ?RLX_ERROR({vmargs_does_not_exist, ArgsPath});
+                            erlang:error(?RLX_ERROR({vmargs_does_not_exist, ArgsPath}));
                         true ->
                             copy_or_symlink_config_file(State, ArgsPath, RelVmargsPath)
                     end
@@ -464,15 +445,14 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
 
             case filelib:is_regular(ArgsSrcPath) of
                 false ->
-                    ?RLX_ERROR({vmargs_src_does_not_exist, ArgsSrcPath});
+                    erlang:error(?RLX_ERROR({vmargs_src_does_not_exist, ArgsSrcPath}));
                 true ->
                     copy_or_symlink_config_file(State, ArgsSrcPath, RelVmargsSrcPath)
             end
     end.
 
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
--spec copy_or_generate_sys_config_file(rlx_state:t(), file:name()) ->
-                                              {ok, rlx_state:t()} | relx:error().
+-spec copy_or_generate_sys_config_file(rlx_state:t(), file:name()) -> ok.
 copy_or_generate_sys_config_file(State, RelDir) ->
     RelSysConfPath = filename:join([RelDir, "sys.config"]),
     RelSysConfSrcPath = filename:join([RelDir, "sys.config.src"]),
@@ -486,14 +466,14 @@ copy_or_generate_sys_config_file(State, RelDir) ->
                 ConfigPath ->
                     case filelib:is_regular(ConfigPath) of
                         false ->
-                            ?RLX_ERROR({config_does_not_exist, ConfigPath});
+                            erlang:error(?RLX_ERROR({config_does_not_exist, ConfigPath}));
                         true ->
                             %% validate sys.config is valid Erlang terms
                             case file:consult(ConfigPath) of
                                 {ok, _} ->
                                     copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath);
                                 {error, Reason} ->
-                                    ?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason})
+                                    erlang:error(?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason}))
                             end
                     end
             end;
@@ -508,7 +488,7 @@ copy_or_generate_sys_config_file(State, RelDir) ->
 
             case filelib:is_regular(ConfigSrcPath) of
                 false ->
-                    ?RLX_ERROR({config_src_does_not_exist, ConfigSrcPath});
+                    erlang:error(?RLX_ERROR({config_src_does_not_exist, ConfigSrcPath}));
                 true ->
                     copy_or_symlink_config_file(State, ConfigSrcPath, RelSysConfSrcPath)
             end
@@ -523,12 +503,11 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
         true ->
             ok = rlx_file_utils:symlink_or_copy(ConfigPath, RelConfPath);
         _ ->
-            ok = ec_file:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}])
+            ok = rlx_file_utils:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}])
     end.
 
 %% @doc Optionally add erts directory to release, if defined.
--spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) ->
-                          {ok, rlx_state:t()} | relx:error().
+-spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) -> ok.
 include_erts(State, Release, OutputDir, RelDir) ->
     Prefix = case rlx_state:get(State, include_erts, true) of
                  false ->
@@ -548,21 +527,21 @@ include_erts(State, Release, OutputDir, RelDir) ->
             ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
             LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
             {OsFamily, _OsName} = rlx_util:os_type(State),
-            case ec_file:is_dir(ErtsDir) of
+            case rlx_file_utils:is_dir(ErtsDir) of
                 false ->
-                    ?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion});
+                    erlang:error(?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion}));
                 true ->
                     ok = rlx_file_utils:mkdir_p(LocalErts),
-                    ok = ec_file:copy(ErtsDir, LocalErts, [recursive, {file_info, [mode, time]}]),
+                    ok = rlx_file_utils:copy(ErtsDir, LocalErts, [recursive, {file_info, [mode, time]}]),
                     case OsFamily of
                         unix ->
                             Erl = filename:join([LocalErts, "bin", "erl"]),
-                            ok = ec_file:remove(Erl),
+                            ok = rlx_file_utils:remove(Erl),
                             ok = file:write_file(Erl, erl_script(ErtsVersion)),
                             ok = file:change_mode(Erl, 8#755);
                         win32 ->
                             ErlIni = filename:join([LocalErts, "bin", "erl.ini"]),
-                            ok = ec_file:remove(ErlIni),
+                            ok = rlx_file_utils:remove(ErlIni),
                             ok = file:write_file(ErlIni, erl_ini(OutputDir, ErtsVersion))
                     end,
 
@@ -572,8 +551,8 @@ include_erts(State, Release, OutputDir, RelDir) ->
                         false ->
                             SrcDir = filename:join([LocalErts, "src"]),
                             %% ensure the src folder exists before deletion
-                            case ec_file:exists(SrcDir) of
-                              true -> ok = ec_file:remove(SrcDir, [recursive]);
+                            case rlx_file_utils:exists(SrcDir) of
+                              true -> ok = rlx_file_utils:remove(SrcDir, [recursive]);
                               false -> ok
                             end
                     end,
@@ -596,21 +575,20 @@ include_erts(State, Release, OutputDir, RelDir) ->
             end
     end.
 
--spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) ->
-                              {ok, rlx_state:t()} | relx:error().
+-spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok.
 make_boot_script(State, Release, OutputDir, RelDir) ->
     WarningsAsErrors = rlx_state:warnings_as_errors(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
-               {variables, make_boot_script_variables(State)},
+               {variables, make_boot_script_variables(Release, State)},
                no_module_tests,
                silent | case WarningsAsErrors of
                             true -> [warnings_as_errors];
                             false -> []
                         end],
-    Name = erlang:atom_to_list(rlx_release:name(Release)),
-    ReleaseFile = filename:join([RelDir, Name ++ ".rel"]),
-    case systools:make_script(Name, Options) of
+    Name = atom_to_list(rlx_release:name(Release)),
+    ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
+    case make_script(Name, RelDir, Options) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
@@ -624,12 +602,41 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
     end.
 
+make_script(Name, RelDir, Options) ->
+    case rlx_util:relx_sasl_vsn() of
+        true ->
+            systools:make_script(Name, [{script_name, "start"} | Options]);
+        false ->
+            case systools:make_script(Name, Options) of
+                Result when Result =:= ok orelse (is_tuple(Result) andalso
+                                          element(1, Result) =:= ok) ->
+                    copy_to_start(RelDir, Name),
+                    Result;
+                Error ->
+                    Error
+            end
+    end.
+
+%% systools:make_script in sasl 3.6.1 and earlier do not support `script_name'
+%% so the `Name.boot' file must be manually copied to `start.boot'
+copy_to_start(RelDir, Name) ->
+    BootFile = [Name, ".boot"],
+    case rlx_file_utils:copy(filename:join([RelDir, BootFile]),
+                             filename:join(RelDir, "start.boot")) of
+        ok ->
+            ok;
+        {error, Reason} ->
+            %% it isn't absolutely necesary for start.boot to exist so just warn
+            ?log_warn("Unable to copy boot file ~s to start.boot: ~p", [BootFile, Reason]),
+            ok
+    end.
+
 maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
     ?log_warn("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
 maybe_print_warnings(_) ->
     ok.
 
-make_boot_script_variables(State) ->
+make_boot_script_variables(Release, State) ->
     % A boot variable is needed when {include_erts, false} and the application
     % directories are split between the release/lib directory and the erts/lib
     % directory.
@@ -644,7 +651,8 @@ make_boot_script_variables(State) ->
     % usage used in the start up scripts
     case {os:type(), rlx_state:get(State, include_erts, true)} of
         {{win32, _}, false} ->
-            [{"RELEASE_DIR", rlx_state:output_dir(State)}];
+            [{"RELEASE_DIR", filename:join(rlx_state:base_output_dir(State),
+                                           rlx_release:name(Release))}];
         {{win32, _}, true} ->
             [];
         _ ->
@@ -663,7 +671,6 @@ create_boot_file(RelDir, Options, Name) ->
                                      no_warn_sasl | Options]) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
-            maybe_print_warnings(Result),
             remove_rel_and_script(RelDir, Name);
         error ->
             erlang:error(?RLX_ERROR({boot_script_generation_error, Name}));
@@ -673,12 +680,18 @@ create_boot_file(RelDir, Options, Name) ->
 
 %% escript requires boot files in bin/ and not under the release dir
 copy_boot_to_bin(RelDir, OutputDir, Name) ->
-    Boot = filename:join([RelDir, Name++".boot"]),
-    ec_file:copy(Boot, filename:join([OutputDir, "bin", Name++".boot"])).
+    From = filename:join([RelDir, Name++".boot"]),
+    To = filename:join([OutputDir, "bin", Name++".boot"]),
+    case rlx_file_utils:copy(From, To) of
+        ok ->
+            ok;
+        {error, Reason} ->
+            erlang:error({failed_copy_boot_to_bin, From, To, Reason})
+    end.
 
 remove_rel_and_script(RelDir, Name) ->
-    ec_file:remove(filename:join([RelDir, Name++".rel"])),
-    ec_file:remove(filename:join([RelDir, Name++".script"])).
+    rlx_file_utils:remove(filename:join([RelDir, Name++".rel"])),
+    rlx_file_utils:remove(filename:join([RelDir, Name++".script"])).
 
 create_RELEASES(OutputDir, ReleaseFile) ->
     {ok, OldCWD} = file:get_cwd(),
@@ -690,7 +703,7 @@ create_RELEASES(OutputDir, ReleaseFile) ->
     file:set_cwd(OldCWD).
 
 unless_exists_write_default(Path, File) ->
-    case ec_file:exists(Path) of
+    case rlx_file_utils:exists(Path) of
         true ->
             ok;
         false ->
@@ -699,11 +712,11 @@ unless_exists_write_default(Path, File) ->
 
 -spec ensure_not_exist(file:name()) -> ok.
 ensure_not_exist(RelConfPath)     ->
-    case ec_file:exists(RelConfPath) of
+    case rlx_file_utils:exists(RelConfPath) of
         false ->
             ok;
         _ ->
-            ec_file:remove(RelConfPath)
+            rlx_file_utils:remove(RelConfPath)
     end.
 
 erl_script(ErtsVsn) ->
@@ -788,9 +801,11 @@ render(Template, Data) ->
 %%
 
 -spec format_error(ErrorDetail::term()) -> iolist().
+format_error({failed_copy_boot_to_bin, From, To, Reason}) ->
+    io_lib:format("Unable to copy ~s to ~s for reason: ~p", [From, To, Reason]);
 format_error({unresolved_release, RelName, RelVsn}) ->
     io_lib:format("The release has not been resolved ~p-~s", [RelName, RelVsn]);
-format_error({ec_file_error, AppDir, TargetDir, E}) ->
+format_error({rlx_file_utils_error, AppDir, TargetDir, E}) ->
     io_lib:format("Unable to copy OTP App from ~s to ~s due to ~p",
                   [AppDir, TargetDir, E]);
 format_error({vmargs_does_not_exist, Path}) ->
