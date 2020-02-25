@@ -133,7 +133,13 @@ format_error({strip_release, Reason}) ->
                   [beam_lib:format_error(Reason)]);
 format_error({rewrite_app_file, AppFile, Error}) ->
     io_lib:format("Unable to rewrite .app file ~s due to ~p",
-                  [AppFile, Error]).
+                  [AppFile, Error]);
+format_error({extended_script_hooks_dir_not_found, HooksDir}) ->
+    io_lib:format("Cannot find extended script's hooks directory '~s'", [HooksDir]);
+format_error({improperly_named_hook_files, HooksDir, BadFiles}) ->
+    io_lib:format("Directory '~s' contains improperly named extended script's hook files:\n  ~p",
+                  [HooksDir, BadFiles]).
+
 
 %%%===================================================================
 %%% Internal Functions
@@ -375,7 +381,11 @@ create_release_info(State0, Release0, OutputDir) ->
                     ok = ec_file:write_term(ReleaseFile, Meta),
                     ok = ec_file:write_term(StartCleanFile, StartCleanMeta),
                     ok = ec_file:write_term(NoDotErlFile, NoDotErlMeta),
-                    write_bin_file(State1, Release1, OutputDir, ReleaseDir);
+                    try
+                        write_bin_file(State1, Release1, OutputDir, ReleaseDir)
+                    catch _:{error, _What}=E ->
+                        E
+                    end;
                 {{ok, _}, E} ->
                     E;
                 {_, E} ->
@@ -441,6 +451,28 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
             ok = file:write_file(BareRelStartFile, StartFile),
             ok = file:change_mode(BareRelStartFile, 8#755)
     end,
+
+    %% Copy the extended script hooks directory if it's found
+    HookDirs = [D || {directory, D} <- rlx_state:get(State, extended_start_script_hooks, [])],
+    case HookDirs of
+        [] ->
+            ok;
+        _ ->
+            DstHooksDir = filename:join(BinDir, RelName) ++ ".d",
+            ec_cmd_log:debug(rlx_state:log(State),
+                             "Creating extended start script hooks directory '~s'\n", [DstHooksDir]),
+            ok = ec_file:mkdir_p(DstHooksDir),
+            lists:foreach(fun(SrcHooksDir) ->
+                lists:foreach(fun(F) ->
+                    SrcHookFile = filename:join(SrcHooksDir, F),
+                    ec_cmd_log:debug(rlx_state:log(State),
+                                     "Copying extended start script's hook file: ~s\n", [SrcHookFile]),
+                    ok = ec_file:copy(SrcHookFile,
+                                      filename:join(DstHooksDir, F), [{file_info, [mode, time]}])
+                end, filelib:wildcard("*", SrcHooksDir))
+            end, HookDirs)
+    end,
+
     ReleasesDir = filename:join(OutputDir, "releases"),
     generate_start_erl_data_file(Release, ReleasesDir),
     copy_or_generate_vmargs_file(State, Release, RelDir),
@@ -456,6 +488,18 @@ expand_hooks(BinDir, Hooks, _State) ->
     expand_hooks(BinDir, Hooks, [], _State).
 
 expand_hooks(_BinDir, [], Acc, _State) -> Acc;
+expand_hooks(BinDir, [{directory, HooksDir} | Rest], Acc, State) ->
+    filelib:is_dir(HooksDir) orelse throw(?RLX_ERROR({extended_script_hooks_dir_not_found, HooksDir})),
+    BadFiles = [F || F <- filelib:wildcard("*", HooksDir),
+                     string:prefix(F, "pre-start")    == nomatch andalso
+                     string:prefix(F, "post-start")   == nomatch andalso
+                     string:prefix(F, "pre-stop")     == nomatch andalso
+                     string:prefix(F, "post-stop")    == nomatch andalso
+                     string:prefix(F, "pre-install")  == nomatch andalso
+                     string:prefix(F, "post-install") == nomatch],
+    BadFiles /= [] andalso throw(?RLX_ERROR({improperly_named_hook_files, HooksDir, BadFiles})),
+    expand_hooks(BinDir, Rest, Acc, State);
+
 expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc, State) ->
     %% filter and expand hooks to their respective shell scripts
     Hooks =
