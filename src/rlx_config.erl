@@ -113,51 +113,58 @@ load(InvalidTerm, _) ->
 %%
 
 parse_vsn(Vsn) when Vsn =:= git ; Vsn =:= "git" ->
-    git_tag_vsn();
+    try_vsn(fun git_tag_vsn/0);
 parse_vsn({git, short}) ->
-    git_ref("--short");
+    try_vsn(fun() -> git_ref("--short") end);
 parse_vsn({git, long}) ->
-    git_ref("");
+    try_vsn(fun() -> git_ref("") end);
 parse_vsn({file, File}) ->
-    {ok, Vsn} = file:read_file(File),
-    rlx_util:to_string(rlx_string:trim(rlx_util:to_string(Vsn), both, "\n"));
+    try_vsn(fun() ->
+                    {ok, Vsn} = file:read_file(File),
+                    rlx_util:to_string(rlx_string:trim(rlx_util:to_string(Vsn), both, "\n"))
+            end);
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
-    git_tag_vsn();
+    try_vsn(fun git_tag_vsn/0);
 parse_vsn({semver, _}) ->
-    git_tag_vsn();
+    try_vsn(fun git_tag_vsn/0);
 parse_vsn({cmd, Command}) ->
-    V = os:cmd(Command),
-    V;
+    try_vsn(fun() -> rlx_util:sh(Command) end);
 parse_vsn(Vsn) ->
     Vsn.
 
+try_vsn(Fun) ->
+    try
+        Fun()
+    catch
+        error:_ ->
+            "0.0.0"
+    end.
+
 %% TODO: handle versions in rebar3 or whatever else is calling relx
 git_ref(Arg) ->
-    case os:cmd("git rev-parse " ++ Arg ++ " HEAD") of
-        String ->
-            Vsn = rlx_string:trim(String, both, "\n"),
-            case length(Vsn) =:= 40 orelse length(Vsn) =:= 7 of
-                true ->
-                    Vsn;
-                false ->
-                    %% if the result isn't exactly either 40 or 7 characters then
-                    %% it must have failed
-                    {ok, Dir} = file:get_cwd(),
-                    ?log_warn("Getting ref of git repo failed in directory ~ts. Falling back to version 0",
-                              [Dir]),
-                    {plain, "0"}
-            end
+    String = rlx_util:sh("git rev-parse " ++ Arg ++ " HEAD"),
+    Vsn = rlx_string:trim(String, both, "\n"),
+    case length(Vsn) =:= 40 orelse length(Vsn) =:= 7 of
+        true ->
+            Vsn;
+        false ->
+            %% if the result isn't exactly either 40 or 7 characters then
+            %% it must have failed
+            {ok, Dir} = file:get_cwd(),
+            ?log_warn("Getting ref of git repo failed in directory ~ts. Falling back to version 0",
+                      [Dir]),
+            "0.0.0"
     end.
 
 %% TODO: handle versions in rebar3 or whatever else is calling relx
 git_tag_vsn() ->
     {Vsn, RawRef, RawCount} = collect_default_refcount(),
-    {ok, build_vsn_string(Vsn, RawRef, RawCount)}.
+    build_vsn_string(Vsn, RawRef, RawCount).
 
 collect_default_refcount() ->
     %% Get the tag timestamp and minimal ref from the system. The
     %% timestamp is really important from an ordering perspective.
-    RawRef = os:cmd("git log -n 1 --pretty=format:'%h\n' "),
+    RawRef = rlx_util:sh("git log -n 1 --pretty=format:'%h\n' "),
 
     {Tag, Vsn} = parse_tags(),
     RawCount = get_patch_count(Tag),
@@ -166,7 +173,7 @@ collect_default_refcount() ->
 get_patch_count(RawRef) ->
     Ref = re:replace(RawRef, "\\s", "", [global]),
     Cmd = io_lib:format("git rev-list --count ~s..HEAD", [Ref]),
-    os:cmd(Cmd).
+    rlx_util:sh(Cmd).
 
 build_vsn_string(Vsn, RawRef, RawCount) ->
     %% Cleanup the tag and the Ref information. Basically leading 'v's and
@@ -183,7 +190,7 @@ build_vsn_string(Vsn, RawRef, RawCount) ->
     end.
 
 parse_tags() ->
-    Tag = os:cmd("git describe --abbrev=0 --tags"),
+    Tag = rlx_util:sh("git describe --abbrev=0 --tags"),
     Vsn = rlx_string:trim(rlx_string:trim(Tag, leading, "v"), leading, "\n"),
     {Tag, Vsn}.
 
