@@ -33,7 +33,8 @@
          indent/1,
          render/2,
          load_file/3,
-         template_files/0]).
+         template_files/0,
+         sh/1]).
 
 -export([os_type/1]).
 
@@ -215,4 +216,48 @@ is_win32_erts(Path) ->
       true
   end.
 
+sh(Command0) ->
+    Command = lists:flatten(patch_on_windows(Command0)),
+    PortSettings = [exit_status, {line, 16384}, use_stdio, stderr_to_stdout, hide, eof, binary],
+
+    Port = open_port({spawn, Command}, PortSettings),
+    try
+        case sh_loop(Port, []) of
+            {ok, Output} ->
+                Output;
+            {error, {_Rc, _Output}=Err} ->
+                error(Err)
+        end
+    after
+        port_close(Port)
+    end.
+
+sh_loop(Port, Acc) ->
+    receive
+        {Port, {data, {eol, Line}}} ->
+            sh_loop(Port, [unicode:characters_to_list(Line) ++ "\n" | Acc]);
+        {Port, {data, {noeol, Line}}} ->
+            sh_loop(Port, [unicode:characters_to_list(Line) | Acc]);
+        {Port, eof} ->
+            Data = lists:flatten(lists:reverse(Acc)),
+            receive
+                {Port, {exit_status, 0}} ->
+                    {ok, Data};
+                {Port, {exit_status, Rc}} ->
+                    {error, {Rc, Data}}
+            end
+    end.
+
+%% We do the shell variable substitution ourselves on Windows and hope that the
+%% command doesn't use any other shell magic.
+patch_on_windows(Cmd) ->
+    case os:type() of
+        {win32,nt} ->
+            Cmd1 = "cmd /q /c " ++ Cmd,
+            %% Remove left-over vars
+            re:replace(Cmd1, "\\\$\\w+|\\\${\\w+}", "",
+                       [global, {return, list}, unicode]);
+        _ ->
+            Cmd
+    end.
 
