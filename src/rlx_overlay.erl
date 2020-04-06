@@ -315,23 +315,25 @@ wildcard_copy(State, Release, FromFile0, ToFile0, CopyFun, ErrorTag) ->
     FromFile1 = absolute_path_from(State, FromFile0),
     ToFile1 = absolute_path_to(State, Release, ToFile0),
 
-    Res = case is_directory(ToFile0, ToFile1) of
+    Res = case is_directory(ToFile0) of
               false ->
                   filelib:ensure_dir(ToFile1),
                   CopyFun(FromFile1, ToFile1);
               true ->
                   Root = absolute_path_from(State, "."),
-                  FromFiles = if
-                      is_list(FromFile0) -> filelib:wildcard(FromFile0, Root);
-                      true -> [FromFile1]
-                  end,
+                  FromFiles = case is_list(FromFile0) of
+                                  true ->
+                                      filelib:wildcard(FromFile0, Root);
+                                  false ->
+                                      [FromFile1]
+                              end,
                   rlx_file_utils:mkdir_p(ToFile1),
-                  lists:foldl(fun
-                      (_, {error, _} = Error) -> Error;
-                      (FromFile, ok) ->
-                          CopyFun(filename:join(Root, FromFile), filename:join(ToFile1, filename:basename(FromFile)))
-                  end, ok, FromFiles)
-    end,
+                  lists:foldl(fun(_, {error, _} = Error) -> Error;
+                                 (FromFile, ok) ->
+                                      CopyFun(filename:join(Root, FromFile),
+                                              filename:join(ToFile1, filename:basename(FromFile)))
+                              end, ok, FromFiles)
+          end,
                   
     case Res of
         ok ->
@@ -373,11 +375,11 @@ absolute_path_to(State, Release, Path) ->
                                      rlx_release:name(Release),
                                      Path])).
 
--spec is_directory(file:name(), file:name()) -> boolean().
-is_directory(ToFile0, ToFile1) ->
+-spec is_directory(file:name()) -> boolean().
+is_directory(ToFile0) ->
     case re:run(ToFile0, ?DIRECTORY_RE) of
         nomatch ->
-            filelib:is_dir(ToFile1);
+            false;
         _ ->
             true
     end.
