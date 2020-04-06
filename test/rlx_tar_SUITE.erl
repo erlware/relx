@@ -205,7 +205,7 @@ overlay_archive(Config) ->
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"},
                              {template, Template,
-                              "bin/{{default_release_name}}-{{default_release_version}}"}]},
+                              "bin/{{release_name}}-{{release_version}}"}]},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}],

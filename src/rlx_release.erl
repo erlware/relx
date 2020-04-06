@@ -190,8 +190,7 @@ no_dot_erlang_metadata(#release_t{erts=ErtsVsn,
 %% @doc produce the canonical name (<name>-<vsn>) for this release
 -spec canonical_name(t()) -> string().
 canonical_name(#release_t{name=Name, vsn=Vsn}) ->
-    erlang:binary_to_list(erlang:iolist_to_binary([erlang:atom_to_list(Name), "-",
-                                                   Vsn])).
+    erlang:binary_to_list(erlang:iolist_to_binary([erlang:atom_to_list(Name), "-", Vsn])).
 
 
 -spec config(t(), list()) -> t().

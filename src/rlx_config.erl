@@ -15,9 +15,6 @@ to_state(Config, State) ->
     lists:foldl(fun load/2, {ok, State}, Config).
 
 -spec load(term(), {ok, rlx_state:t()} | relx:error()) -> {ok, rlx_state:t()} | relx:error().
-load({default_release, {RelName, RelVsn}}, {ok, State}) ->
-    NewVsn = parse_vsn(RelVsn),
-    {ok, rlx_state:default_configured_release(State, RelName, NewVsn)};
 load({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
     {ok, State};
