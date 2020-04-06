@@ -59,8 +59,8 @@
                     erts :: undefined | string(),
                     goals = undefined :: parsed_goals() | undefined,
 
-                    %% when `realized' is true `applications' must be a list of all
-                    %% app_info's needed to fulfill the `goals' and `app_specs'
+                    %% when `realized' is `true' `applications' must be a list of all
+                    %% `app_info's needed to fulfill the `goals' and `app_specs'
                     %% must be the full list that goes in the `.rel' file.
                     realized = false :: boolean(),
 

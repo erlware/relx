@@ -9,7 +9,7 @@
 -spec do(atom(), string(), string() | undefined, rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(RelName, ToVsn, undefined, State) ->
     OutputDir = rlx_state:base_output_dir(State),
-    ReleasesDir = filename:join([OutputDir, atom_to_list(RelName), "releases"]),
+    ReleasesDir = filename:join([OutputDir, RelName, "releases"]),
     LastRelVsn = get_version_before(RelName, ToVsn, ReleasesDir),
     make_upfrom_script(RelName, ToVsn, LastRelVsn, State);
 do(RelName, ToVsn, UpFromVsn, State) ->
