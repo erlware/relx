@@ -195,8 +195,8 @@ generate_release_vars(Release) ->
      {erts_dir, code:root_dir()},
      {release_erts_version, rlx_release:erts(Release)},
      {release_name, rlx_release:name(Release)},
-     {rel_vsn, rlx_release:vsn(Release)},
-     {release_version, rlx_release:vsn(Release)}].
+     {release_version, rlx_release:vsn(Release)},
+     {release, rlx_release:canonical_name(Release)}].
 
 -spec generate_state_vars(rlx_release:t(), rlx_state:t()) -> proplists:proplist().
 generate_state_vars(Release, State) ->
@@ -210,21 +210,7 @@ generate_state_vars(Release, State) ->
      {lib_dirs, rlx_state:lib_dirs(State)},
      {vm_args, rlx_state:vm_args(State)},
      {sys_config, rlx_state:sys_config(State)},
-     {root_dir, rlx_state:root_dir(State)},
-     {default_release_name, case rlx_state:default_configured_release(State) of
-                                {Name0, _} ->
-                                    Name0
-                            end},
-     {default_release_version, case rlx_state:default_configured_release(State) of
-                                   {_, Vsn0} ->
-                                       Vsn0
-                               end},
-     {default_release, case rlx_state:default_configured_release(State) of
-                           {Name1, undefined} ->
-                               erlang:atom_to_list(Name1);
-                           {Name1, Vsn1} ->
-                               erlang:atom_to_list(Name1) ++ "-" ++ Vsn1
-                       end}].
+     {root_dir, rlx_state:root_dir(State)}].
 
 -spec do_overlay(rlx_state:t(), rlx_release:t(), list(), proplists:proplist()) ->
                                    {ok, rlx_state:t()} | relx:error().
