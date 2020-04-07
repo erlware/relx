@@ -21,7 +21,8 @@
 %%% @doc Trivial utility file to help handle common tasks
 -module(rlx_util).
 
--export([relx_sasl_vsn/0,
+-export([is_sasl_gte/0,
+         is_sasl_gte/1,
          parse_vsn/1,
          parsed_vsn_lte/2,
          get_code_paths/2,
@@ -42,12 +43,17 @@
 
 -include("rlx_log.hrl").
 
-relx_sasl_vsn() ->
+is_sasl_gte() ->
+    %% default check is for sasl 3.5 and above
+    %% version 3.5 of sasl has systools with changes for relx
+    %% related to `make_script', `make_tar' and the extended start script
+    is_sasl_gte({{3, 5, 0}, {[], []}}).
+
+is_sasl_gte(Version) ->
     application:load(sasl),
     case application:get_key(sasl, vsn) of
         {ok, SaslVsn} ->
-            %% TODO: change to actual version of sasl with systools changes
-            parse_vsn(SaslVsn) > {{infinity, infinity, infinity}, [], []};
+            not(parsed_vsn_lt(parse_vsn(SaslVsn), Version));
         _ ->
             false
     end.
@@ -55,9 +61,14 @@ relx_sasl_vsn() ->
 %% parses a semver into a tuple {{Major, Minor, Patch}, {PreRelease, Build}}
 -spec parse_vsn(string()) -> {{integer(), integer(), integer()}, {string(), string()}}.
 parse_vsn(Vsn) ->
-    case re:run(Vsn, "^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
-                "(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?"
+    case re:run(Vsn, "^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.?(0|[1-9][0-9]*)?"
+                "(-(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*)?"
                 "(\\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$", [{capture, [1,2,3,5,7], list}]) of
+        %% OTP application's leave out patch version when it is .0
+        %% this regex currently drops prerelease and build if the patch version is left out
+        %% so 3.11-0+meta would reutrn {{3,11,0},{[], []}} intsead of {{3,1,0},{"0","meta"}}
+        {match, [Major, Minor, [], PreRelease, Build]} ->
+            {{list_to_integer(Major), list_to_integer(Minor), 0}, {PreRelease, Build}};
         {match, [Major, Minor, Patch, PreRelease, Build]} ->
             {{list_to_integer(Major), list_to_integer(Minor), list_to_integer(Patch)}, {PreRelease, Build}};
         _ ->

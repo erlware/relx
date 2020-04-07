@@ -68,7 +68,10 @@
          exclude_modules/1,
          exclude_modules/2,
          warnings_as_errors/1,
-         warnings_as_errors/2]).
+         warnings_as_errors/2,
+         src_tests/1,
+         src_tests/2,
+         is_relx_sasl/1]).
 
 -export_type([t/0,
               releases/0]).
@@ -94,7 +97,13 @@
                   include_src=true :: boolean(),
                   upfrom :: string() | binary() | undefined,
                   config_values :: #{atom() => term()},
-                  warnings_as_errors=false :: boolean()}).
+                  warnings_as_errors=false :: boolean(),
+                  src_tests=true :: boolean(),
+
+                  %% default check is for sasl 3.5 and above
+                  %% version 3.5 of sasl has systools with changes for relx
+                  %% related to `make_script', `make_tar' and the extended start script
+                  is_relx_sasl=false :: boolean()}).
 
 %%============================================================================
 %% types
@@ -114,7 +123,8 @@ new() ->
                       default_configured_release={undefined, undefined},
                       configured_releases=#{},
                       realized_releases=#{},
-                      config_values=#{}},
+                      config_values=#{},
+                      is_relx_sasl=rlx_util:is_sasl_gte()},
     State1 = rlx_state:put(State0, default_libs, true),
     State2 = rlx_state:put(State1, overlay_vars_values, []),
     rlx_state:put(State2, overlay_vars, []).
@@ -321,3 +331,14 @@ warnings_as_errors(#state_t{warnings_as_errors=WarningsAsErrors}) ->
 -spec warnings_as_errors(t(), boolean()) -> t().
 warnings_as_errors(State, WarningsAsErrors) ->
     State#state_t{warnings_as_errors=WarningsAsErrors}.
+
+-spec src_tests(t()) -> boolean().
+src_tests(#state_t{src_tests=SrcTests}) ->
+    SrcTests.
+
+-spec src_tests(t(), boolean()) -> t().
+src_tests(State, SrcTests) ->
+    State#state_t{src_tests=SrcTests}.
+
+is_relx_sasl(#state_t{is_relx_sasl=IsRelxSasl}) ->
+    IsRelxSasl.
