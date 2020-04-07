@@ -102,6 +102,8 @@ load({overlay_vars, OverlayVars}, {ok, State}) ->
     {ok, rlx_state:put(State, overlay_vars, NewOverlayVars1)};
 load({warnings_as_errors, WarningsAsErrors}, {ok, State}) ->
     {ok, rlx_state:warnings_as_errors(State, WarningsAsErrors)};
+load({src_tests, SrcTests}, {ok, State}) ->
+    {ok, rlx_state:src_tests(State, SrcTests)};
 load({Name, Value}, {ok, State})
   when erlang:is_atom(Name) ->
     {ok, rlx_state:put(State, Name, Value)};

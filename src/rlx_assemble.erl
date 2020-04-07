@@ -578,17 +578,20 @@ include_erts(State, Release, OutputDir, RelDir) ->
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok.
 make_boot_script(State, Release, OutputDir, RelDir) ->
     WarningsAsErrors = rlx_state:warnings_as_errors(State),
+    SrcTests = rlx_state:src_tests(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
                {variables, make_boot_script_variables(Release, State)},
-               no_module_tests,
-               silent | case WarningsAsErrors of
-                            true -> [warnings_as_errors];
-                            false -> []
+               silent | case {WarningsAsErrors, SrcTests} of
+                            {true, true} -> [warnings_as_errors, src_tests];
+                            {true, false} -> [warnings_as_errors];
+                            {false, true} -> [src_tests];
+                            {false, false} -> []
                         end],
     Name = atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
-    case make_script(Name, RelDir, Options) of
+    IsRelxSasl = rlx_state:is_relx_sasl(State),
+    case make_start_script(Name, RelDir, Options, IsRelxSasl) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
@@ -602,9 +605,10 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
     end.
 
-make_script(Name, RelDir, Options) ->
-    case rlx_util:relx_sasl_vsn() of
+make_start_script(Name, RelDir, Options, IsRelxSasl) ->
+    case IsRelxSasl of
         true ->
+            %% systools in sasl version 3.5 and above has the `script_name' option
             systools:make_script(Name, [{script_name, "start"} | Options]);
         false ->
             case systools:make_script(Name, Options) of
@@ -617,7 +621,7 @@ make_script(Name, RelDir, Options) ->
             end
     end.
 
-%% systools:make_script in sasl 3.6.1 and earlier do not support `script_name'
+%% systools:make_script in sasl <3.5 do not support `script_name'
 %% so the `Name.boot' file must be manually copied to `start.boot'
 copy_to_start(RelDir, Name) ->
     BootFile = [Name, ".boot"],

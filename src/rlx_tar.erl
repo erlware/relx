@@ -7,7 +7,7 @@
 -include("rlx_log.hrl").
 
 make_tar(Release, OutputDir, State) ->
-    IsRelxSaslVsn = rlx_util:relx_sasl_vsn(),
+    IsRelxSasl = rlx_state:is_relx_sasl(State),
 
     Name = rlx_release:name(Release),
     Vsn = rlx_release:vsn(Release),
@@ -40,7 +40,7 @@ make_tar(Release, OutputDir, State) ->
                     [];
                 ErtsDir ->
                     [{erts, ErtsDir}]
-            end] ++ case IsRelxSaslVsn of
+            end] ++ case IsRelxSasl of
                         true ->
                             %% file tuples for erl_tar:add are the reverse of erl_tar:create so swap them
                             [{extra_files, [{From, To} || {To, From} <- ExtraFiles]}];
@@ -51,9 +51,12 @@ make_tar(Release, OutputDir, State) ->
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
-            case IsRelxSaslVsn of
+            case IsRelxSasl of
                 true ->
-                    %% nothing more to do, we used extra_files to copy in the overlays
+                    %% we used extra_files to copy in the overlays
+                    %% nothing to do now but rename the tarball to <relname>-<vsn>.tar.gz
+                    TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
+                    file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
                     {ok, State};
                 false ->
                     %% unpack the tarball to a temporary directory and repackage it with
@@ -99,7 +102,7 @@ format_error({tar_generation_error, Module, Errors}) ->
 %% before the `extra_files' feature was added to `make_tar'
 update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     IncludeErts = rlx_state:get(State, include_erts, true),
-    SystemLibs = rlx_state:get(State, system_libs, IncludeErts),
+    SystemLibs = rlx_state:get(State, system_libs, true),
     TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
     file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
@@ -183,7 +186,7 @@ filter(_) ->
 
 %% if `include_src' is true then include the `src' and `include' directories of each application
 app_dirs(State) ->
-    case rlx_state:get(State, include_src, true) of
+    case rlx_state:include_src(Stateg) of
         false ->
             [];
         true ->
