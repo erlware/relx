@@ -8,6 +8,7 @@
 
 do(Release, State) ->
     RelName = rlx_release:name(Release),
+    ?log_debug("Assembling release ~p-~s", [RelName, rlx_release:vsn(Release)]),
     OutputDir = filename:join(rlx_state:base_output_dir(State), RelName),
     ok = create_output_dir(OutputDir),
     ok = copy_app_directories_to_output(Release, OutputDir, State),
@@ -583,7 +584,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
-            ?log_info("Release successfully created!"),
+            ?log_debug("release start script created"),
             create_RELEASES(OutputDir, ReleaseFile),
             create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
@@ -633,7 +634,9 @@ copy_to_start(RelDir, Name) ->
     end.
 
 maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
-    ?log_warn("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
+    FormattedWarnings = unicode:characters_to_list(Module:format_warning(Warnings)),
+    Trimmed = rlx_string:trim(FormattedWarnings, trailing, "\n"),
+    ?log_warn("Warnings generating release:~n~s", [Trimmed]);
 maybe_print_warnings(_) ->
     ok.
 
