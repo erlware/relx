@@ -31,6 +31,8 @@ make_tar(Release, OutputDir, State) ->
           filename:join([OutputDir, "releases", "RELEASES"])},
          {"bin", filename:join([OutputDir, "bin"])}],
 
+    SystemLibs = rlx_state:get(State, system_libs, true),
+
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
             {dirs, app_dirs(State)},
             silent,
@@ -57,7 +59,13 @@ make_tar(Release, OutputDir, State) ->
                             [{extra_files, [{From, To} || {To, From} <- ExtraFiles]}];
                         false ->
                             []
-                    end,
+                    end ++ case SystemLibs of
+                               true ->
+                                   [];
+                               false ->
+                                   [{variables, [{"SYSTEM_LIB_DIR", code:lib_dir()}]},
+                                    {var_tar, omit}]
+                           end,
     try systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]), Opts) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
@@ -116,7 +124,6 @@ update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
     ?log_debug("updating tarball ~s with extra files ~p", [TarFile, ExtraFiles]),
     IncludeErts = rlx_state:get(State, include_erts, true),
-    SystemLibs = rlx_state:get(State, system_libs, true),
     file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
     ok =
@@ -129,16 +136,7 @@ update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                         {"bin", filename:join([OutputDir, "bin"])} |
                         case IncludeErts of
                             false ->
-                                %% Remove system libs from tarball
-                                case SystemLibs of
-                                    false ->
-                                        Libs = filelib:wildcard("*", filename:join(TempDir, "lib")),
-                                        AllSystemLibs = filelib:wildcard("*", code:lib_dir()),
-                                        [{filename:join("lib", LibDir), filename:join([TempDir, "lib", LibDir])} ||
-                                            LibDir <- lists:subtract(Libs, AllSystemLibs)];
-                                    _ ->
-                                        [{"lib", filename:join(TempDir, "lib")}]
-                                end;
+                                [{"lib", filename:join(TempDir, "lib")}];
                             _ ->
                                 [{"lib", filename:join(TempDir, "lib")},
                                  {"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)}]
