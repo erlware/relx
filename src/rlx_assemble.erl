@@ -47,10 +47,9 @@ create_output_dir(OutputDir) ->
 copy_app_directories_to_output(Release, OutputDir, State) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = rlx_file_utils:mkdir_p(LibDir),
-    IncludeSrc = rlx_state:include_src(State),
     IncludeSystemLibs = rlx_state:get(State, system_libs, rlx_state:get(State, include_erts, true)),
     Apps = prepare_applications(State, rlx_release:applications(Release)),
-    [copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) || App <- Apps],
+    [copy_app(State, LibDir, App, IncludeSystemLibs) || App <- Apps],
     ok.
 
 prepare_applications(State, Apps) ->
@@ -61,7 +60,7 @@ prepare_applications(State, Apps) ->
             Apps
     end.
 
-copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) ->
+copy_app(State, LibDir, App, IncludeSystemLibs) ->
     AppName = erlang:atom_to_list(rlx_app_info:name(App)),
     AppVsn = rlx_app_info:vsn(App),
     AppDir = rlx_app_info:dir(App),
@@ -78,24 +77,24 @@ copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) ->
                         true ->
                             ok;
                         false ->
-                            copy_app_(State, App, AppDir, TargetDir, IncludeSrc)
+                            copy_app_(State, App, AppDir, TargetDir)
                     end;
                 _ ->
-                    copy_app_(State, App, AppDir, TargetDir, IncludeSrc)
+                    copy_app_(State, App, AppDir, TargetDir)
             end
     end.
 
 is_system_lib(Dir) ->
     lists:prefix(filename:split(list_to_binary(code:lib_dir())), filename:split(Dir)).
 
-copy_app_(State, App, AppDir, TargetDir, IncludeSrc) ->
+copy_app_(State, App, AppDir, TargetDir) ->
     remove_symlink_or_directory(TargetDir),
     case rlx_app_info:link(App) of
         true ->
             link_directory(AppDir, TargetDir),
             rewrite_app_file(State, App, AppDir);
         false ->
-            copy_directory(State, App, AppDir, TargetDir, IncludeSrc),
+            copy_directory(State, App, AppDir, TargetDir),
             rewrite_app_file(State, App, TargetDir)
     end.
 
@@ -178,15 +177,15 @@ link_directory(AppDir, TargetDir) ->
             ok
     end.
 
-copy_directory(State, App, AppDir, TargetDir, IncludeSrc) ->
+copy_directory(State, App, AppDir, TargetDir) ->
     [copy_dir(State, App, AppDir, TargetDir, SubDir)
     || SubDir <- ["ebin",
                   "include",
-                  "priv",
-                  "lib" |
-                  case IncludeSrc of
+                  "priv" |
+                  case include_src_or_default(State) of
                       true ->
                           ["src",
+                           "lib",
                            "c_src"];
                       false ->
                           []
@@ -524,37 +523,25 @@ include_erts(State, Release, OutputDir, RelDir) ->
         _ ->
             ?log_info("Including Erts from ~s", [Prefix]),
             ErtsVersion = rlx_release:erts(Release),
-            ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
-            LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
+            ErtsBinDir = filename:join([Prefix, "erts-" ++ ErtsVersion, "bin"]),
+            LocalErtsBin = filename:join([OutputDir, "erts-" ++ ErtsVersion, "bin"]),
             {OsFamily, _OsName} = rlx_util:os_type(State),
-            case rlx_file_utils:is_dir(ErtsDir) of
+            case rlx_file_utils:is_dir(ErtsBinDir) of
                 false ->
                     erlang:error(?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion}));
                 true ->
-                    ok = rlx_file_utils:mkdir_p(LocalErts),
-                    ok = rlx_file_utils:copy(ErtsDir, LocalErts, [recursive, {file_info, [mode, time]}]),
+                    ok = rlx_file_utils:mkdir_p(LocalErtsBin),
+                    ok = rlx_file_utils:copy(ErtsBinDir, LocalErtsBin, [recursive, {file_info, [mode, time]}]),
                     case OsFamily of
                         unix ->
-                            Erl = filename:join([LocalErts, "bin", "erl"]),
+                            Erl = filename:join([LocalErtsBin, "erl"]),
                             ok = rlx_file_utils:remove(Erl),
                             ok = file:write_file(Erl, erl_script(ErtsVersion)),
                             ok = file:change_mode(Erl, 8#755);
                         win32 ->
-                            ErlIni = filename:join([LocalErts, "bin", "erl.ini"]),
+                            ErlIni = filename:join([LocalErtsBin, "erl.ini"]),
                             ok = rlx_file_utils:remove(ErlIni),
                             ok = file:write_file(ErlIni, erl_ini(OutputDir, ErtsVersion))
-                    end,
-
-                    %% delete erts src if the user requested it not be included
-                    case rlx_state:include_src(State) of
-                        true -> ok;
-                        false ->
-                            SrcDir = filename:join([LocalErts, "src"]),
-                            %% ensure the src folder exists before deletion
-                            case rlx_file_utils:exists(SrcDir) of
-                              true -> ok = rlx_file_utils:remove(SrcDir, [recursive]);
-                              false -> ok
-                            end
                     end,
 
                     case rlx_state:get(State, extended_start_script, false) of
@@ -562,8 +549,8 @@ include_erts(State, Release, OutputDir, RelDir) ->
 
                             NodeToolFile = nodetool_contents(),
                             InstallUpgradeFile = install_upgrade_escript_contents(),
-                            NodeTool = filename:join([LocalErts, "bin", "nodetool"]),
-                            InstallUpgrade = filename:join([LocalErts, "bin", "install_upgrade.escript"]),
+                            NodeTool = filename:join([LocalErtsBin, "nodetool"]),
+                            InstallUpgrade = filename:join([LocalErtsBin, "install_upgrade.escript"]),
                             ok = file:write_file(NodeTool, NodeToolFile),
                             ok = file:write_file(InstallUpgrade, InstallUpgradeFile),
                             ok = file:change_mode(NodeTool, 8#755),
@@ -577,12 +564,13 @@ include_erts(State, Release, OutputDir, RelDir) ->
 
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok.
 make_boot_script(State, Release, OutputDir, RelDir) ->
+    IncludeSrc = include_src_or_default(State),
     WarningsAsErrors = rlx_state:warnings_as_errors(State),
     SrcTests = rlx_state:src_tests(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
                {variables, make_boot_script_variables(Release, State)},
-               silent | case {WarningsAsErrors, SrcTests} of
+               silent | case {WarningsAsErrors, SrcTests andalso IncludeSrc} of
                             {true, true} -> [warnings_as_errors, src_tests];
                             {true, false} -> [warnings_as_errors];
                             {false, true} -> [src_tests];
@@ -603,6 +591,15 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
             erlang:error(?RLX_ERROR({release_script_generation_error, ReleaseFile}));
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
+    end.
+
+%% when running `release' the default is to include src so `src_tests' can do checks
+include_src_or_default(State) ->
+    case rlx_state:include_src(State) of
+        undefined ->
+            true;
+        IncludeSrc ->
+            IncludeSrc
     end.
 
 make_start_script(Name, RelDir, Options, IsRelxSasl) ->

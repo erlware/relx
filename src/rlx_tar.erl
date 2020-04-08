@@ -32,6 +32,7 @@ make_tar(Release, OutputDir, State) ->
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
             {dirs, app_dirs(State)},
             silent,
+            src_tests,
             {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
                 true ->
@@ -186,9 +187,18 @@ filter(_) ->
 
 %% if `include_src' is true then include the `src' and `include' directories of each application
 app_dirs(State) ->
-    case rlx_state:include_src(Stateg) of
+    case include_src_or_default(State) of
         false ->
             [];
         true ->
             [include, src]
+    end.
+
+%% when running `tar' the default is to exclude src
+include_src_or_default(State) ->
+    case rlx_state:include_src(State) of
+        undefined ->
+            false;
+        IncludeSrc ->
+            IncludeSrc
     end.

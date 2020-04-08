@@ -792,9 +792,9 @@ make_src_release(Config) ->
     AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
-    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "bin"]))),
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "lib",
-                                          "goal_app_1-0.0.1", "src"]))).
+                                                 "goal_app_1-0.0.1", "src"]))).
 
 make_excluded_src_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
