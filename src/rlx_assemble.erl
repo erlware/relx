@@ -563,6 +563,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
     SrcTests = rlx_state:src_tests(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
+               %% TODO: if dev_mode -> local,
                {variables, make_boot_script_variables(Release, State)},
                silent | case {WarningsAsErrors, SrcTests andalso IncludeSrc} of
                             {true, true} -> [warnings_as_errors, src_tests];
@@ -634,9 +635,9 @@ maybe_print_warnings(_) ->
     ok.
 
 make_boot_script_variables(Release, State) ->
-    % A boot variable is needed when {include_erts, false} and the application
-    % directories are split between the release/lib directory and the erts/lib
-    % directory.
+    % A boot variable is needed when {system_libs, false} and the application
+    % directories are split between the release/lib directory and the erlang
+    % install directory on the target host.
     % The built-in $ROOT variable points to the erts directory on Windows
     % (dictated by erl.ini [erlang] Rootdir=) and so a boot variable is made
     % pointing to the release directory
@@ -646,14 +647,14 @@ make_boot_script_variables(Release, State) ->
     % NOTE the boot variable can point to either the release/erts root directory
     % or the release/erts lib directory, as long as the usage here matches the
     % usage used in the start up scripts
-    case {os:type(), rlx_state:get(State, include_erts, true)} of
+    case {os:type(), rlx_state:get(State, system_libs, true)} of
         {{win32, _}, false} ->
             [{"RELEASE_DIR", filename:join(rlx_state:base_output_dir(State),
                                            rlx_release:name(Release))}];
         {{win32, _}, true} ->
             [];
         _ ->
-            [{"ERTS_LIB_DIR", code:lib_dir()}]
+            [{"SYSTEM_LIB_DIR", code:lib_dir()}]
     end.
 
 create_no_dot_erlang(RelDir, OutputDir, Options, _State) ->
