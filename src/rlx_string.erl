@@ -2,7 +2,7 @@
 %% OTP-19 and OTP-21, where Unicode support means the deprecation
 %% of a lot of string functions.
 -module(rlx_string).
--export([concat/2, lexemes/2, join/2, trim/3]).
+-export([concat/2, lexemes/2, join/2, trim/3, to_list/1]).
 
 -ifdef(unicode_str).
 concat(Str1, Str2) -> unicode:characters_to_list([Str1,Str2]).
@@ -29,3 +29,9 @@ join([], Sep) when is_list(Sep) ->
     [];
 join([H|T], Sep) ->
     H ++ lists:append([Sep ++ X || X <- T]).
+
+-spec to_list(binary() | list()) -> list().
+to_list(String) when is_binary(String) ->
+    binary_to_list(String);
+to_list(String) when is_list(String) ->
+    String.

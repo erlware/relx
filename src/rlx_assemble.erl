@@ -58,6 +58,8 @@ prepare_applications(State, Apps) ->
         true ->
             [rlx_app_info:link(App, true) || App <- Apps];
         false ->
+            %% TODO: since system libs are versioned, maybe we can always use symlinks for them
+            %% [rlx_app_info:link(App, is_system_lib(rlx_app_info:dir(App))) || App <- Apps]
             Apps
     end.
 
@@ -85,8 +87,9 @@ copy_app(State, LibDir, App, IncludeSystemLibs) ->
             end
     end.
 
+%% TODO: support override system lib dir that isn't code:lib_dir/0
 is_system_lib(Dir) ->
-    lists:prefix(filename:split(list_to_binary(code:lib_dir())), filename:split(Dir)).
+    lists:prefix(filename:split(code:lib_dir()), filename:split(rlx_string:to_list(Dir))).
 
 copy_app_(State, App, AppDir, TargetDir) ->
     remove_symlink_or_directory(TargetDir),
@@ -533,32 +536,22 @@ include_erts(State, Release, OutputDir, RelDir) ->
                 true ->
                     ok = rlx_file_utils:mkdir_p(LocalErtsBin),
                     ok = rlx_file_utils:copy(ErtsBinDir, LocalErtsBin, [recursive, {file_info, [mode, time]}]),
+
                     case OsFamily of
                         unix ->
+                            DynErl = filename:join([LocalErtsBin, "dyn_erl"]),
                             Erl = filename:join([LocalErtsBin, "erl"]),
-                            ok = rlx_file_utils:remove(Erl),
-                            ok = file:write_file(Erl, erl_script(ErtsVersion)),
-                            ok = file:change_mode(Erl, 8#755);
+                            rlx_file_utils:copy(DynErl, Erl);
                         win32 ->
-                            ErlIni = filename:join([LocalErtsBin, "erl.ini"]),
-                            ok = rlx_file_utils:remove(ErlIni),
-                            ok = file:write_file(ErlIni, erl_ini(OutputDir, ErtsVersion))
+                            DynErl = filename:join([LocalErtsBin, "dyn_erl.ini"]),
+                            Erl = filename:join([LocalErtsBin, "erl.ini"]),
+                            rlx_file_utils:copy(DynErl, Erl)
                     end,
 
-                    case rlx_state:get(State, extended_start_script, false) of
-                        true ->
+                    %% drop yielding_c_fun binary if it exists
+                    %% it is large (1.1MB) and only used at compile time
+                    _ = rlx_file_utils:remove(filename:join([LocalErtsBin, "yielding_c_fun"])),
 
-                            NodeToolFile = nodetool_contents(),
-                            InstallUpgradeFile = install_upgrade_escript_contents(),
-                            NodeTool = filename:join([LocalErtsBin, "nodetool"]),
-                            InstallUpgrade = filename:join([LocalErtsBin, "install_upgrade.escript"]),
-                            ok = file:write_file(NodeTool, NodeToolFile),
-                            ok = file:write_file(InstallUpgrade, InstallUpgradeFile),
-                            ok = file:change_mode(NodeTool, 8#755),
-                            ok = file:change_mode(InstallUpgrade, 8#755);
-                        false ->
-                            ok
-                    end,
                     make_boot_script(State, Release, OutputDir, RelDir)
             end
     end.
@@ -723,9 +716,6 @@ ensure_not_exist(RelConfPath)     ->
             rlx_file_utils:remove(RelConfPath)
     end.
 
-erl_script(ErtsVsn) ->
-    render(erl_script, [{erts_vsn, ErtsVsn}]).
-
 bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
     Template = case OsFamily of
         unix -> bin;
@@ -775,11 +765,6 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, E
                       {status_hook, StatusHook},
                       {extensions, ExtensionsList},
                       {extension_declarations, ExtensionDeclarations}]).
-
-erl_ini(OutputDir, ErtsVsn) ->
-    ErtsDirName = rlx_string:concat("erts-", ErtsVsn),
-    BinDir = filename:join([OutputDir, ErtsDirName, bin]),
-    render(erl_ini, [{bin_dir, BinDir}, {output_dir, OutputDir}]).
 
 install_upgrade_escript_contents() ->
     render(install_upgrade_escript).
