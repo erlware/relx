@@ -7,10 +7,12 @@
 -include("rlx_log.hrl").
 
 make_tar(Release, OutputDir, State) ->
-    IsRelxSasl = rlx_state:is_relx_sasl(State),
-
     Name = rlx_release:name(Release),
     Vsn = rlx_release:vsn(Release),
+
+    ?log_debug("beginning make_tar for release ~p-~s", [Name, Vsn]),
+    IsRelxSasl = rlx_state:is_relx_sasl(State),
+
     ErtsVersion = rlx_release:erts(Release),
 
     OverlayVars = rlx_overlay:generate_overlay_vars(State, Release),
@@ -35,7 +37,16 @@ make_tar(Release, OutputDir, State) ->
             {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
                 true ->
-                    [{erts, code:root_dir()}];
+                    ErtsVersion = rlx_release:erts(Release),
+                    ErtsDir = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
+                    case filelib:is_dir(ErtsDir) of
+                        true ->
+                            %% systools:make_tar looks for directory erts-vsn in
+                            %% the dir passed to `erts'
+                            [{erts, OutputDir}];
+                        false ->
+                            [{erts, code:root_dir()}]
+                    end;
                 false ->
                     [];
                 ErtsDir ->
@@ -74,12 +85,12 @@ make_tar(Release, OutputDir, State) ->
                     end
             end;
         error ->
-            ?RLX_ERROR({tar_unknown_generation_error, Name, Vsn});
+            erlang:error(?RLX_ERROR({tar_unknown_generation_error, Name, Vsn}));
         {error, Module, Errors} ->
-            ?RLX_ERROR({tar_generation_error, Module, Errors})
+            erlang:error(?RLX_ERROR({tar_generation_error, Module, Errors}))
     catch
         _:{badarg, Args} ->
-            erlang:exit(?RLX_ERROR({make_tar, {badarg, Args}}))
+            erlang:error(?RLX_ERROR({make_tar, {badarg, Args}}))
     end.
 
 %% since we print the warnings already in `rlx_assemble' we just print these as debug logs
@@ -95,7 +106,7 @@ format_error({tar_unknown_generation_error, Module, Vsn}) ->
 format_error({tar_update_error, Type, Exception}) ->
     io_lib:format("Exception updating contents of release tarball ~s:~s", [Type, Exception]);
 format_error({tar_generation_error, Module, Errors}) ->
-    io_lib:format("Tarball generation error for ~p", [Module:format_error(Errors)]).
+    io_lib:format("Tarball generation errors:~n~s", [Module:format_error(Errors)]).
 
 %%
 
