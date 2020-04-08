@@ -94,7 +94,7 @@
                   configured_releases :: releases(),
                   realized_releases :: releases(),
                   dev_mode=false :: boolean(),
-                  include_src=true :: boolean(),
+                  include_src :: boolean() | undefined,
                   upfrom :: string() | binary() | undefined,
                   config_values :: #{atom() => term()},
                   warnings_as_errors=false :: boolean(),
