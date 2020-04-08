@@ -62,7 +62,7 @@ subset([Goal | Rest], World, Seen, Acc) ->
 set_resolved(Release0, Pkgs, State) ->
     case rlx_release:realize(Release0, Pkgs) of
         {ok, Release1} ->
-            ?log_info("Resolved ~p-~s", [rlx_release:name(Release1), rlx_release:vsn(Release1)]),
+            ?log_debug("Resolved ~p-~s", [rlx_release:name(Release1), rlx_release:vsn(Release1)]),
             ?log_debug("~s", [rlx_release:format(Release1)]),
             case rlx_state:get(State, include_erts, undefined) of
                 IncludeErts when is_atom(IncludeErts) ->

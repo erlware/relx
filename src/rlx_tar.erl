@@ -32,7 +32,6 @@ make_tar(Release, OutputDir, State) ->
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
             {dirs, app_dirs(State)},
             silent,
-            src_tests,
             {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
                 true ->
@@ -83,8 +82,9 @@ make_tar(Release, OutputDir, State) ->
             erlang:exit(?RLX_ERROR({make_tar, {badarg, Args}}))
     end.
 
+%% since we print the warnings already in `rlx_assemble' we just print these as debug logs
 maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
-    ?log_warn("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
+    ?log_debug("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
 maybe_print_warnings(_) ->
     ok.
 
@@ -102,9 +102,10 @@ format_error({tar_generation_error, Module, Errors}) ->
 %% used to add additional files to the release tarball when using systools
 %% before the `extra_files' feature was added to `make_tar'
 update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
+    TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
+    ?log_debug("updating tarball ~s with extra files ~p", [TarFile, ExtraFiles]),
     IncludeErts = rlx_state:get(State, include_erts, true),
     SystemLibs = rlx_state:get(State, system_libs, true),
-    TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
     file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
     ok =
@@ -131,7 +132,7 @@ update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                                 [{"lib", filename:join(TempDir, "lib")},
                                  {"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)}]
                         end]++ExtraFiles, [dereference,compressed]),
-    ?log_info("tarball ~s successfully created!", [TarFile]),
+    ?log_debug("update tarball ~s completed", [TarFile]),
     {ok, State}.
 
 %% include each of these config files if they exist
