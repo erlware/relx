@@ -294,7 +294,7 @@ dev_mode(#state_t{dev_mode=DevMode}) ->
 dev_mode(S, DevMode) ->
     S#state_t{dev_mode=DevMode}.
 
--spec include_src(t()) -> boolean().
+-spec include_src(t()) -> boolean() | undefined.
 include_src(#state_t{include_src=IncludeSrc}) ->
     IncludeSrc.
 
