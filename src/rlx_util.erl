@@ -22,7 +22,6 @@
 -module(rlx_util).
 
 -export([is_sasl_gte/0,
-         is_sasl_gte/1,
          parse_vsn/1,
          parsed_vsn_lte/2,
          get_code_paths/2,

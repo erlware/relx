@@ -24,7 +24,6 @@
 -module(rlx_state).
 
 -export([new/0,
-         output_dir/1,
          base_output_dir/1,
          base_output_dir/2,
          lib_dirs/1,
@@ -51,8 +50,6 @@
          add_realized_release/2,
          realized_releases/1,
          update_realized_release/2,
-         default_configured_release/1,
-         default_configured_release/3,
          available_apps/1,
          available_apps/2,
          get/2,
@@ -120,7 +117,6 @@ new() ->
     {ok, Root} = file:get_cwd(),
     State0 = #state_t{root_dir=Root,
                       output_dir=filename:join(Root, "_rel"),
-                      default_configured_release={undefined, undefined},
                       configured_releases=#{},
                       realized_releases=#{},
                       config_values=#{},
@@ -164,11 +160,6 @@ debug_info(#state_t{debug_info=DebugInfo}) ->
 -spec debug_info(t(), keep | strip) -> t().
 debug_info(State, DebugInfo) ->
     State#state_t{debug_info=DebugInfo}.
-
--spec output_dir(t()) -> file:name().
-output_dir(State=#state_t{output_dir=OutDir}) ->
-    {RelName, _RelVsn} = default_configured_release(State),
-    filename:join(OutDir, RelName).
 
 -spec base_output_dir(t()) -> file:name().
 base_output_dir(#state_t{output_dir=OutDir}) ->
@@ -253,15 +244,6 @@ add_realized_release(State = #state_t{realized_releases=Releases}, Release) ->
 update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
     M#state_t{realized_releases=Releases#{{rlx_release:name(Release),
                                            rlx_release:vsn(Release)} => Release}}.
-
--spec default_configured_release(t()) -> {rlx_release:name() | undefined,
-                                         rlx_release:vsn() | undefined} | default.
-default_configured_release(#state_t{default_configured_release=Def}) ->
-    Def.
-
--spec default_configured_release(t(), rlx_release:name(), rlx_release:vsn()) -> t().
-default_configured_release(M, Name, Vsn) ->
-    M#state_t{default_configured_release={Name, Vsn}}.
 
 -spec available_apps(t()) -> [rlx_app_info:t()].
 available_apps(#state_t{available_apps=Apps}) ->
