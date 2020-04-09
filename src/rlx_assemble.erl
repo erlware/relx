@@ -264,21 +264,22 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     ErlOpts = rlx_state:get(State, erl_opts, ""),
     {OsFamily, _OsName} = rlx_util:os_type(State),
 
+    %% erl_call is a bin in erl_interface that we must make a copy of
+    %% so it is usable in release scripts from the release main bin dir
+    Bin = code:lib_dir(erl_interface, bin),
+    ErlCall = filename:join(Bin, "erl_call"),
+    LocalErlCall = filename:join(BinDir, "erl_call"),
+    ec_file:copy(ErlCall, LocalErlCall),
+
+    %% always include the install_upgrade.escript tool
+    install_upgrade_escript(BinDir),
+
     StartFile = case rlx_state:get(State, extended_start_script, false) of
                     false ->
-                        case rlx_state:get(State, include_nodetool, false) of
-                            true ->
-                                include_nodetool(BinDir);
-                            false ->
-                                ok
-                        end,
                         bin_file_contents(OsFamily, RelName, RelVsn,
                                           rlx_release:erts(Release),
                                           ErlOpts);
                     true ->
-                        %% extended start script needs nodetool so it's
-                        %% always included
-                        include_nodetool(BinDir),
                         Hooks = expand_hooks(BinDir,
                                              rlx_state:get(State,
                                                            extended_start_script_hooks,
@@ -399,12 +400,9 @@ render_hook(TemplateName, Script, _State) ->
     ok = file:write_file(Script, Template),
     ok = file:change_mode(Script, 8#755).
 
-include_nodetool(BinDir) ->
-    NodeToolFile = nodetool_contents(),
+install_upgrade_escript(BinDir) ->
     InstallUpgradeFile = install_upgrade_escript_contents(),
-    NodeTool = filename:join([BinDir, "nodetool"]),
     InstallUpgrade = filename:join([BinDir, "install_upgrade.escript"]),
-    ok = file:write_file(NodeTool, NodeToolFile),
     ok = file:write_file(InstallUpgrade, InstallUpgradeFile).
 
 %% @doc generate a start_erl.data file
@@ -769,9 +767,6 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, E
 
 install_upgrade_escript_contents() ->
     render(install_upgrade_escript).
-
-nodetool_contents() ->
-    render(nodetool).
 
 sys_config_file() ->
     render(sys_config).

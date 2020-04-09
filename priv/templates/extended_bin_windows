@@ -46,7 +46,7 @@
 @set escript="%bindir%\escript.exe"
 @set werl="%bindir%\werl.exe"
 @set erl="%bindir%\erl.exe"
-@set nodetool="%release_root_dir%\bin\nodetool"
+@set erl_call="%release_root_dir%\bin\erl_call"
 @set "extensions0={{ extensions }}"
 @set "extensions1=%extensions0:|= %"
 @set "extensions=%extensions1: undefined=%"
@@ -320,7 +320,7 @@ set description=Erlang node %node_name%%hostname% in %rootdir%
 
 :: Ping the running node
 :ping
-@%escript% %nodetool% ping %node_type% %node_name%%hostname% -setcookie %cookie%
+@%erl_call% %node_type% %node_name%%hostname% -c %cookie% -a "erlang is_alive"
 @goto :eof
 
 :: List installed Erlang services

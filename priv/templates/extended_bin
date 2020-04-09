@@ -134,13 +134,20 @@ find_erts_dir() {
 
 # Get node pid
 relx_get_pid() {
-    if output="$(relx_nodetool rpcterms os getpid)"
+    if output="$(erl_call 'os getpid')"
     then
         echo "$output" | sed -e 's/"//g'
         return 0
     else
         echo "$output"
         return 1
+    fi
+}
+
+ping_or_exit() {
+    if ! erl_call 'erlang is_alive' > /dev/null; then
+        echo "Node is not running!"
+        exit 1
     fi
 }
 
@@ -172,7 +179,7 @@ relx_rem_sh() {
     id="remsh$(relx_gen_id)-${NAME}"
 
     # Get the node's ticktime so that we use the same thing.
-    TICKTIME="$(relx_nodetool rpcterms net_kernel get_net_ticktime)"
+    TICKTIME="$(erl_call 'net_kernel get_net_ticktime')"
 
     # Setup remote shell command to control node
     # -dist_listen is new in OTP-23. It keeps the remote node from binding to a listen port
@@ -184,31 +191,26 @@ relx_rem_sh() {
          "$MAYBE_DIST_ARGS"
 }
 
+erl_call() {
+    command=$*
+
+    "$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -a "${command}"
+}
+
+erl_eval() {
+    command=$*
+
+    echo ${command} | "$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -e | sed 's/^{ok, \(.*\)}$/\1/'
+    echo
+
+    # /^{ok, .*}$/ { print gensub("^{ok, (.*)}$", "\\1"); exit;}
+    # /^{error, .*}$/ { print "RPC to ", $NODE, "failed: ", gensub("^{error, (.*)}$", "\\1"), "; exit;}
+}
+
+
 # Generate a random id
 relx_gen_id() {
     od -t x -N 4 /dev/urandom | head -n1 | awk '{print $2}'
-}
-
-# Control a node
-relx_nodetool() {
-    command="$1"; shift
-
-    # Generate a unique id used to allow multiple nodetool calls to the
-    # same node transparently
-    nodetool_id="maint$(relx_gen_id)-${NAME}"
-
-    if [ -z "${START_EPMD}" ]; then
-        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
-                 "$ERTS_DIR/bin/escript" \
-                 "$ROOTDIR/bin/nodetool" \
-                 "$NAME_TYPE" "$NAME" \
-                 "$command" "$@"
-    else
-        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
-                 "$ERTS_DIR/bin/escript" \
-                 "$ROOTDIR/bin/nodetool" \
-                 "$START_EPMD" "$NAME_TYPE" "$NAME" "$command" "$@"
-    fi
 }
 
 # Run an escript in the node's environment
@@ -559,7 +561,7 @@ case "$1" in
         relx_run_hooks "$PRE_STOP_HOOKS"
         # Wait for the node to completely stop...
         PID="$(relx_get_pid)"
-        if ! relx_nodetool "stop"; then
+        if ! erl_call 'init stop' > /dev/null; then
             exit 1
         fi
         while kill -s 0 "$PID" 2>/dev/null;
@@ -571,14 +573,14 @@ case "$1" in
 
     restart)
         ## Restart the VM without exiting the process
-        if ! relx_nodetool "restart"; then
+        if ! erl_call 'init restart' > /dev/null; then
             exit 1
         fi
         ;;
 
     reboot)
         ## Restart the VM completely (uses heart to restart it)
-        if ! relx_nodetool "reboot"; then
+        if ! erl_call 'init reboot' > /dev/null; then
             exit 1
         fi
         ;;
@@ -592,9 +594,9 @@ case "$1" in
 
     ping)
         ## See if the VM is alive
-        if ! relx_nodetool "ping"; then
-            exit 1
-        fi
+        ping_or_exit
+
+        echo "pong"
         ;;
 
     escript)
@@ -607,10 +609,7 @@ case "$1" in
 
     attach)
         # Make sure a node IS running
-        if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
-            exit 1
-        fi
+        ping_or_exit
 
         if [ ! -w "$PIPE_DIR" ]
         then
@@ -624,10 +623,7 @@ case "$1" in
 
     remote_console)
         # Make sure a node IS running
-        if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
-            exit 1
-        fi
+        ping_or_exit
 
         shift
         relx_rem_sh
@@ -643,10 +639,7 @@ case "$1" in
         COMMAND="$1"; shift
 
         # Make sure a node IS running
-        if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
-            exit 1
-        fi
+        ping_or_exit
 
         relx_run_hooks "$PRE_INSTALL_UPGRADE_HOOKS"
 
@@ -658,10 +651,7 @@ case "$1" in
 
     versions)
         # Make sure a node IS running
-        if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
-            exit 1
-        fi
+        ping_or_exit
 
         COMMAND="$1"; shift
 
@@ -724,7 +714,7 @@ case "$1" in
 
         # Log the startup
         echo "$RELEASE_ROOT_DIR"
-        logger -t "$REL_NAME[$$]" "Starting up"
+        logger -t "${REL_NAME}[$$]" "Starting up"
 
         relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
@@ -739,42 +729,23 @@ case "$1" in
         ;;
     rpc)
         # Make sure a node IS running
-        if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
-            exit 1
-        fi
+        ping_or_exit
 
         shift
 
-        relx_nodetool rpc "$@"
-        ;;
-    rpcterms)
-        # Make sure a node IS running
-        if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
-            exit 1
-        fi
-
-        shift
-
-        relx_nodetool rpcterms "$@"
+        erl_call "$@"
         ;;
     eval)
         # Make sure a node IS running
-        if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
-            exit 1
-        fi
+        ping_or_exit
 
         shift
-        relx_nodetool "eval" "$@"
+
+        erl_eval "$@"
         ;;
     status)
         # Make sure a node IS running
-        if ! relx_nodetool "ping" > /dev/null; then
-            echo "Node is not running!"
-            exit 1
-        fi
+        ping_or_exit
 
         [ -n "${STATUS_HOOK}" ] && [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" "$@"
         ;;

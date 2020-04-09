@@ -61,7 +61,7 @@ groups() ->
                   builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
                   builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks]},
      {custom_setup, [], [start_sname_in_other_argsfile, start_preserves_arguments,
-                         start_nodetool_with_data_from_argsfile, start_upgrade_escript_with_argsfile_data,
+                         start_upgrade_escript_with_argsfile_data,
                          builtin_status_script, custom_status_script]}].
 
 init_per_suite(Config) ->
@@ -263,13 +263,14 @@ os_var_timeouts(Config) ->
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
     timer:sleep(?SLEEP_TIME),
     ?assertEqual({ok, "ok"}, sh(filename:join([OutputDir, "foo", "bin",
-                                               "foo rpcterms timer sleep 2000."]))),
+                                               "foo rpc timer sleep 2000."]))),
     ?assertEqual({ok, "ok"}, sh(filename:join([OutputDir, "foo", "bin",
-                                               "foo rpcterms  timer sleep 2000."]),
-                                [{"NODETOOL_TIMEOUT", "5asdnkajef"}])),
+                                               "foo rpc  timer sleep 2000."]),
+                                [])),
+    %% TODO: add back TIMEOUT
     {error,1,"RPC to " ++ _Rest} = sh(filename:join([OutputDir, "foo", "bin",
-                                                    "foo rpcterms timer sleep 2000."]),
-                                     [{"NODETOOL_TIMEOUT", "500"}]).
+                                                     "foo rpc timer sleep 2000."]),
+                                      []).
 
 remote_console(Config) ->
     OutputDir = ?config(out_dir, Config),
@@ -1539,39 +1540,6 @@ start_preserves_arguments(Config) ->
     {ok, Bin} = file:read_file(BinFile),
     "bat zing" = binary_to_term(Bin),
     file:delete(BinFile),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
-    %% a ping should fail after stopping a node
-    {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
-
-start_nodetool_with_data_from_argsfile(Config) ->
-    Apps = ?config(apps, Config),
-    PrivDir = ?config(priv_dir, Config),
-    DirName = rlx_test_utils:create_random_name("start-fail-testcase-output"),
-    OutputDir = filename:join(PrivDir, DirName),
-    ok = rlx_file_utils:mkdir_p(OutputDir),
-
-    rlx_test_utils:create_full_app(OutputDir, "goal_app", "0.0.1", [stdlib,kernel], []),
-
-    VmArgs = filename:join([OutputDir, "vm.args"]),
-    rlx_file_utils:write(VmArgs, "-setcookie cookie\n"
-                          "-sname foo@localhost\n\n"
-                          "-proto_dist inet_tcp\n\n"),
-
-    RelxConfig = [{release, {foo, "0.0.1"},
-                   [goal_app]},
-                  {vm_args, VmArgs},
-                  {generate_start_script, true},
-                  {extended_start_script, true}
-                 ],
-
-    Apps1 = rlx_test_utils:all_apps([OutputDir]),
-    {ok, _State} = relx:build_release(foo, Apps1++Apps, [{root_dir, OutputDir},
-                                                         {output_dir, OutputDir} | RelxConfig]),
-
-    %% now start/stop the release to make sure the extended script is working
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
-    timer:sleep(?SLEEP_TIME),
-    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% a ping should fail after stopping a node
     {error, 1, _} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).

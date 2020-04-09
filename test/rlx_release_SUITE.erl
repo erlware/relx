@@ -35,11 +35,11 @@ groups() ->
       [make_release, make_config_release, overlay_release,
        make_extend_release, make_extend_release_versioned, make_extend_config_release,
        make_scriptless_release, make_app_type_none_release,
-       make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
+       make_src_release, make_excluded_src_release,
        make_exclude_modules_release, make_release_with_sys_config_vm_args_src,
        make_exclude_app_release, make_overridden_release, make_goalless_release,
        make_one_app_top_level_release, make_release_twice, make_erts_release,
-       make_erts_config_release, make_included_nodetool_release]},
+       make_erts_config_release]},
      {dev_mode, [shuffle], [make_dev_mode_template_release,
                             make_dev_mode_release,
                             make_release_twice_dev_mode]}].
@@ -727,50 +727,6 @@ make_erts_config_release(Config) ->
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assertEqual(ErtsVsn, rlx_release:erts(Release)),
     ?assertEqual([{some, config}], rlx_release:config(Release)).
-
-make_included_nodetool_release(Config) ->
-    LibDir1 = ?config(lib_dir, Config),
-    OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
-
-    ErtsVsn = erlang:system_info(version),
-    RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
-                   [goal_app_1]},
-                  {extended_start_script, true},
-                  {include_nodetool, true}],
-
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
-
-    [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:app_specs(Release),
-    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
-    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
-    ?assert(lists:keymember(kernel, 1, AppSpecs)),
-    ?assertEqual(ErtsVsn, rlx_release:erts(Release)).
-
-make_not_included_nodetool_release(Config) ->
-    LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
-    OutputDir = ?config(out_dir, Config),
-
-    ErtsVsn = erlang:system_info(version),
-    RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
-                   [goal_app_1]},
-                  {extended_start_script, true},
-                  {include_nodetool, false}],
-
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
-
-    [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
-    AppSpecs = rlx_release:app_specs(Release),
-    %% extended start script needs nodetool to work, so the
-    %% {include_nodetool, false} option is simply ignored
-    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "nodetool"]))),
-    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
-    ?assert(lists:keymember(kernel, 1, AppSpecs)),
-    ?assertEqual(ErtsVsn, rlx_release:erts(Release)).
 
 make_src_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
