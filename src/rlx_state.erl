@@ -24,7 +24,6 @@
 -module(rlx_state).
 
 -export([new/0,
-         output_dir/1,
          base_output_dir/1,
          base_output_dir/2,
          lib_dirs/1,
@@ -51,8 +50,6 @@
          add_realized_release/2,
          realized_releases/1,
          update_realized_release/2,
-         default_configured_release/1,
-         default_configured_release/3,
          available_apps/1,
          available_apps/2,
          get/2,
@@ -68,7 +65,10 @@
          exclude_modules/1,
          exclude_modules/2,
          warnings_as_errors/1,
-         warnings_as_errors/2]).
+         warnings_as_errors/2,
+         src_tests/1,
+         src_tests/2,
+         is_relx_sasl/1]).
 
 -export_type([t/0,
               releases/0]).
@@ -91,10 +91,16 @@
                   configured_releases :: releases(),
                   realized_releases :: releases(),
                   dev_mode=false :: boolean(),
-                  include_src=true :: boolean(),
+                  include_src :: boolean() | undefined,
                   upfrom :: string() | binary() | undefined,
                   config_values :: #{atom() => term()},
-                  warnings_as_errors=false :: boolean()}).
+                  warnings_as_errors=false :: boolean(),
+                  src_tests=true :: boolean(),
+
+                  %% default check is for sasl 3.5 and above
+                  %% version 3.5 of sasl has systools with changes for relx
+                  %% related to `make_script', `make_tar' and the extended start script
+                  is_relx_sasl=false :: boolean()}).
 
 %%============================================================================
 %% types
@@ -111,10 +117,10 @@ new() ->
     {ok, Root} = file:get_cwd(),
     State0 = #state_t{root_dir=Root,
                       output_dir=filename:join(Root, "_rel"),
-                      default_configured_release={undefined, undefined},
                       configured_releases=#{},
                       realized_releases=#{},
-                      config_values=#{}},
+                      config_values=#{},
+                      is_relx_sasl=rlx_util:is_sasl_gte()},
     State1 = rlx_state:put(State0, default_libs, true),
     State2 = rlx_state:put(State1, overlay_vars_values, []),
     rlx_state:put(State2, overlay_vars, []).
@@ -154,11 +160,6 @@ debug_info(#state_t{debug_info=DebugInfo}) ->
 -spec debug_info(t(), keep | strip) -> t().
 debug_info(State, DebugInfo) ->
     State#state_t{debug_info=DebugInfo}.
-
--spec output_dir(t()) -> file:name().
-output_dir(State=#state_t{output_dir=OutDir}) ->
-    {RelName, _RelVsn} = default_configured_release(State),
-    filename:join(OutDir, RelName).
 
 -spec base_output_dir(t()) -> file:name().
 base_output_dir(#state_t{output_dir=OutDir}) ->
@@ -244,15 +245,6 @@ update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
     M#state_t{realized_releases=Releases#{{rlx_release:name(Release),
                                            rlx_release:vsn(Release)} => Release}}.
 
--spec default_configured_release(t()) -> {rlx_release:name() | undefined,
-                                         rlx_release:vsn() | undefined} | default.
-default_configured_release(#state_t{default_configured_release=Def}) ->
-    Def.
-
--spec default_configured_release(t(), rlx_release:name(), rlx_release:vsn()) -> t().
-default_configured_release(M, Name, Vsn) ->
-    M#state_t{default_configured_release={Name, Vsn}}.
-
 -spec available_apps(t()) -> [rlx_app_info:t()].
 available_apps(#state_t{available_apps=Apps}) ->
     Apps.
@@ -284,7 +276,7 @@ dev_mode(#state_t{dev_mode=DevMode}) ->
 dev_mode(S, DevMode) ->
     S#state_t{dev_mode=DevMode}.
 
--spec include_src(t()) -> boolean().
+-spec include_src(t()) -> boolean() | undefined.
 include_src(#state_t{include_src=IncludeSrc}) ->
     IncludeSrc.
 
@@ -321,3 +313,14 @@ warnings_as_errors(#state_t{warnings_as_errors=WarningsAsErrors}) ->
 -spec warnings_as_errors(t(), boolean()) -> t().
 warnings_as_errors(State, WarningsAsErrors) ->
     State#state_t{warnings_as_errors=WarningsAsErrors}.
+
+-spec src_tests(t()) -> boolean().
+src_tests(#state_t{src_tests=SrcTests}) ->
+    SrcTests.
+
+-spec src_tests(t(), boolean()) -> t().
+src_tests(State, SrcTests) ->
+    State#state_t{src_tests=SrcTests}.
+
+is_relx_sasl(#state_t{is_relx_sasl=IsRelxSasl}) ->
+    IsRelxSasl.

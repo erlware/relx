@@ -108,8 +108,9 @@ exclude_erts(Config) ->
 
     TarFile = filename:join([OutputDir, "foo", "foo-0.0.3.tar.gz"]),
     {ok, Files} = erl_tar:table(TarFile, [compressed]),
-    ?assert(lists:all(fun(X) -> re:run(X, "lib/stdlib-.*/ebin/.*") =:= nomatch end, Files)),
-    ?assert(lists:all(fun(X) -> re:run(X, "lib/kernel-.*/ebin/.*") =:= nomatch end, Files)),
+    %% include_erts being false no longer excludes stdlib and kernel or any other OTP app
+    ?assert(lists:any(fun(X) -> re:run(X, "lib/stdlib-.*/ebin/.*") =/= nomatch end, Files)),
+    ?assert(lists:any(fun(X) -> re:run(X, "lib/kernel-.*/ebin/.*") =/= nomatch end, Files)),
     ?assert(filelib:is_regular(TarFile)).
 
 exclude_src(Config) ->
@@ -147,7 +148,8 @@ include_src(Config) ->
 
     RelxConfig = [{release, {foo, "0.0.2"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {include_src, true}],
 
     {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
                                                {output_dir, OutputDir} | RelxConfig]),
@@ -205,7 +207,7 @@ overlay_archive(Config) ->
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"},
                              {template, Template,
-                              "bin/{{default_release_name}}-{{default_release_version}}"}]},
+                              "bin/{{release_name}}-{{release_version}}"}]},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}],
@@ -266,6 +268,6 @@ overlay_archive(Config) ->
 
     TarFile = filename:join([OutputDir, "foo", "foo-0.0.1.tar.gz"]),
     {ok, Files} = erl_tar:table(TarFile, [compressed]),
-    ?assert(lists:any(fun(X) -> re:run(X, "lib/stdlib-.*/src/.*") =/= nomatch end, Files)),
-    ?assert(lists:any(fun(X) -> re:run(X, "lib/kernel-.*/src/.*") =/= nomatch end, Files)),
+    ?assert(lists:any(fun(X) -> re:run(X, "lib/stdlib-.*/ebin/.*") =/= nomatch end, Files)),
+    ?assert(lists:any(fun(X) -> re:run(X, "lib/kernel-.*/ebin/.*") =/= nomatch end, Files)),
     ?assert(filelib:is_regular(TarFile)).

@@ -150,7 +150,7 @@ relx_get_nodename() {
     if [ -z "$COOKIE" ]; then
         "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
-                      -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+                      -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
                       ${START_EPMD} \
                       -noshell ${NAME_TYPE} $id
@@ -158,7 +158,7 @@ relx_get_nodename() {
         # running with setcookie prevents a ~/.erlang.cookie from being created
         "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
-                      -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+                      -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
                       -setcookie ${COOKIE} \
                       ${START_EPMD} \
@@ -177,7 +177,7 @@ relx_rem_sh() {
 
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
-         -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" $MAYBE_DIST_ARGS \
+         -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" $MAYBE_DIST_ARGS \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
 }
 
@@ -387,7 +387,7 @@ export BINDIR="$ERTS_DIR/bin"
 export EMU="beam"
 export PROGNAME="erl"
 export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
-ERTS_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
+SYSTEM_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
 
 VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
 
@@ -715,7 +715,7 @@ case "$1" in
         # Dump environment info for logging purposes
         echo "Exec: $BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
-            -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+            -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" -- "$@"
         echo "Root: $ROOTDIR"
@@ -728,7 +728,7 @@ case "$1" in
         # Start the VM
         exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
-            -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" \
+            -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" -- "$@"
         # exec will replace the current image and nothing else gets

@@ -21,7 +21,7 @@
 %%% @doc Trivial utility file to help handle common tasks
 -module(rlx_util).
 
--export([relx_sasl_vsn/0,
+-export([is_sasl_gte/0,
          parse_vsn/1,
          parsed_vsn_lte/2,
          get_code_paths/2,
@@ -33,7 +33,8 @@
          indent/1,
          render/2,
          load_file/3,
-         template_files/0]).
+         template_files/0,
+         sh/1]).
 
 -export([os_type/1]).
 
@@ -41,12 +42,17 @@
 
 -include("rlx_log.hrl").
 
-relx_sasl_vsn() ->
+is_sasl_gte() ->
+    %% default check is for sasl 3.5 and above
+    %% version 3.5 of sasl has systools with changes for relx
+    %% related to `make_script', `make_tar' and the extended start script
+    is_sasl_gte({{3, 5, 0}, {[], []}}).
+
+is_sasl_gte(Version) ->
     application:load(sasl),
     case application:get_key(sasl, vsn) of
         {ok, SaslVsn} ->
-            %% TODO: change to actual version of sasl with systools changes
-            parse_vsn(SaslVsn) > {{infinity, infinity, infinity}, [], []};
+            not(parsed_vsn_lt(parse_vsn(SaslVsn), Version));
         _ ->
             false
     end.
@@ -54,9 +60,14 @@ relx_sasl_vsn() ->
 %% parses a semver into a tuple {{Major, Minor, Patch}, {PreRelease, Build}}
 -spec parse_vsn(string()) -> {{integer(), integer(), integer()}, {string(), string()}}.
 parse_vsn(Vsn) ->
-    case re:run(Vsn, "^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
-                "(-(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*)?"
-                "(\\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$", [{capture, [1,2,3,5,7], list}]) of
+    case re:run(Vsn, "^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))?"
+                "(-(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*)?"
+                "(\\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$", [{capture, [1,2,4,6,8], list}]) of
+        %% OTP application's leave out patch version when it is .0
+        %% this regex currently drops prerelease and build if the patch version is left out
+        %% so 3.11-0+meta would reutrn {{3,11,0},{[], []}} intsead of {{3,1,0},{"0","meta"}}
+        {match, [Major, Minor, [], PreRelease, Build]} ->
+            {{list_to_integer(Major), list_to_integer(Minor), 0}, {PreRelease, Build}};
         {match, [Major, Minor, Patch, PreRelease, Build]} ->
             {{list_to_integer(Major), list_to_integer(Minor), list_to_integer(Patch)}, {PreRelease, Build}};
         _ ->
@@ -215,4 +226,48 @@ is_win32_erts(Path) ->
       true
   end.
 
+sh(Command0) ->
+    Command = lists:flatten(patch_on_windows(Command0)),
+    PortSettings = [exit_status, {line, 16384}, use_stdio, stderr_to_stdout, hide, eof, binary],
+
+    Port = open_port({spawn, Command}, PortSettings),
+    try
+        case sh_loop(Port, []) of
+            {ok, Output} ->
+                Output;
+            {error, {_Rc, _Output}=Err} ->
+                error(Err)
+        end
+    after
+        port_close(Port)
+    end.
+
+sh_loop(Port, Acc) ->
+    receive
+        {Port, {data, {eol, Line}}} ->
+            sh_loop(Port, [unicode:characters_to_list(Line) ++ "\n" | Acc]);
+        {Port, {data, {noeol, Line}}} ->
+            sh_loop(Port, [unicode:characters_to_list(Line) | Acc]);
+        {Port, eof} ->
+            Data = lists:flatten(lists:reverse(Acc)),
+            receive
+                {Port, {exit_status, 0}} ->
+                    {ok, Data};
+                {Port, {exit_status, Rc}} ->
+                    {error, {Rc, Data}}
+            end
+    end.
+
+%% We do the shell variable substitution ourselves on Windows and hope that the
+%% command doesn't use any other shell magic.
+patch_on_windows(Cmd) ->
+    case os:type() of
+        {win32,nt} ->
+            Cmd1 = "cmd /q /c " ++ Cmd,
+            %% Remove left-over vars
+            re:replace(Cmd1, "\\\$\\w+|\\\${\\w+}", "",
+                       [global, {return, list}, unicode]);
+        _ ->
+            Cmd
+    end.
 

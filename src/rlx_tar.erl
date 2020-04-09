@@ -7,10 +7,12 @@
 -include("rlx_log.hrl").
 
 make_tar(Release, OutputDir, State) ->
-    IsRelxSaslVsn = rlx_util:relx_sasl_vsn(),
-
     Name = rlx_release:name(Release),
     Vsn = rlx_release:vsn(Release),
+
+    ?log_debug("beginning make_tar for release ~p-~s", [Name, Vsn]),
+    IsRelxSasl = rlx_state:is_relx_sasl(State),
+
     ErtsVersion = rlx_release:erts(Release),
 
     OverlayVars = rlx_overlay:generate_overlay_vars(State, Release),
@@ -29,31 +31,51 @@ make_tar(Release, OutputDir, State) ->
           filename:join([OutputDir, "releases", "RELEASES"])},
          {"bin", filename:join([OutputDir, "bin"])}],
 
+    SystemLibs = rlx_state:get(State, system_libs, true),
+
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
             {dirs, app_dirs(State)},
             silent,
             {outdir, OutputDir} |
             case rlx_state:get(State, include_erts, true) of
                 true ->
-                    [{erts, code:root_dir()}];
+                    ErtsVersion = rlx_release:erts(Release),
+                    ErtsDir = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
+                    case filelib:is_dir(ErtsDir) of
+                        true ->
+                            %% systools:make_tar looks for directory erts-vsn in
+                            %% the dir passed to `erts'
+                            [{erts, OutputDir}];
+                        false ->
+                            [{erts, code:root_dir()}]
+                    end;
                 false ->
                     [];
                 ErtsDir ->
                     [{erts, ErtsDir}]
-            end] ++ case IsRelxSaslVsn of
+            end] ++ case IsRelxSasl of
                         true ->
                             %% file tuples for erl_tar:add are the reverse of erl_tar:create so swap them
                             [{extra_files, [{From, To} || {To, From} <- ExtraFiles]}];
                         false ->
                             []
-                    end,
+                    end ++ case SystemLibs of
+                               true ->
+                                   [];
+                               false ->
+                                   [{variables, [{"SYSTEM_LIB_DIR", code:lib_dir()}]},
+                                    {var_tar, omit}]
+                           end,
     try systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]), Opts) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
-            case IsRelxSaslVsn of
+            case IsRelxSasl of
                 true ->
-                    %% nothing more to do, we used extra_files to copy in the overlays
+                    %% we used extra_files to copy in the overlays
+                    %% nothing to do now but rename the tarball to <relname>-<vsn>.tar.gz
+                    TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
+                    file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
                     {ok, State};
                 false ->
                     %% unpack the tarball to a temporary directory and repackage it with
@@ -71,16 +93,17 @@ make_tar(Release, OutputDir, State) ->
                     end
             end;
         error ->
-            ?RLX_ERROR({tar_unknown_generation_error, Name, Vsn});
+            erlang:error(?RLX_ERROR({tar_unknown_generation_error, Name, Vsn}));
         {error, Module, Errors} ->
-            ?RLX_ERROR({tar_generation_error, Module, Errors})
+            erlang:error(?RLX_ERROR({tar_generation_error, Module, Errors}))
     catch
         _:{badarg, Args} ->
-            erlang:exit(?RLX_ERROR({make_tar, {badarg, Args}}))
+            erlang:error(?RLX_ERROR({make_tar, {badarg, Args}}))
     end.
 
+%% since we print the warnings already in `rlx_assemble' we just print these as debug logs
 maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
-    ?log_warn("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
+    ?log_debug("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
 maybe_print_warnings(_) ->
     ok.
 
@@ -91,16 +114,16 @@ format_error({tar_unknown_generation_error, Module, Vsn}) ->
 format_error({tar_update_error, Type, Exception}) ->
     io_lib:format("Exception updating contents of release tarball ~s:~s", [Type, Exception]);
 format_error({tar_generation_error, Module, Errors}) ->
-    io_lib:format("Tarball generation error for ~p", [Module:format_error(Errors)]).
+    io_lib:format("Tarball generation errors:~n~s", [Module:format_error(Errors)]).
 
 %%
 
 %% used to add additional files to the release tarball when using systools
 %% before the `extra_files' feature was added to `make_tar'
 update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
-    IncludeErts = rlx_state:get(State, include_erts, true),
-    SystemLibs = rlx_state:get(State, system_libs, IncludeErts),
     TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
+    ?log_debug("updating tarball ~s with extra files ~p", [TarFile, ExtraFiles]),
+    IncludeErts = rlx_state:get(State, include_erts, true),
     file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
     ok =
@@ -113,21 +136,12 @@ update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
                         {"bin", filename:join([OutputDir, "bin"])} |
                         case IncludeErts of
                             false ->
-                                %% Remove system libs from tarball
-                                case SystemLibs of
-                                    false ->
-                                        Libs = filelib:wildcard("*", filename:join(TempDir, "lib")),
-                                        AllSystemLibs = filelib:wildcard("*", code:lib_dir()),
-                                        [{filename:join("lib", LibDir), filename:join([TempDir, "lib", LibDir])} ||
-                                            LibDir <- lists:subtract(Libs, AllSystemLibs)];
-                                    _ ->
-                                        [{"lib", filename:join(TempDir, "lib")}]
-                                end;
+                                [{"lib", filename:join(TempDir, "lib")}];
                             _ ->
                                 [{"lib", filename:join(TempDir, "lib")},
                                  {"erts-"++ErtsVersion, filename:join(TempDir, "erts-"++ErtsVersion)}]
                         end]++ExtraFiles, [dereference,compressed]),
-    ?log_info("tarball ~s successfully created!", [TarFile]),
+    ?log_debug("update tarball ~s completed", [TarFile]),
     {ok, State}.
 
 %% include each of these config files if they exist
@@ -157,6 +171,8 @@ overlay_files(OverlayVars, Overlay, OutputDir) ->
 
 to({link, _, To}) ->
     To;
+to({copy, From, "./"}) ->
+    filename:basename(From);
 to({copy, From, "."}) ->
     filename:basename(From);
 to({copy, _, To}) ->
@@ -181,9 +197,18 @@ filter(_) ->
 
 %% if `include_src' is true then include the `src' and `include' directories of each application
 app_dirs(State) ->
-    case rlx_state:get(State, include_src, true) of
+    case include_src_or_default(State) of
         false ->
             [];
         true ->
             [include, src]
+    end.
+
+%% when running `tar' the default is to exclude src
+include_src_or_default(State) ->
+    case rlx_state:include_src(State) of
+        undefined ->
+            false;
+        IncludeSrc ->
+            IncludeSrc
     end.

@@ -195,13 +195,12 @@ generate_release_vars(Release) ->
      {erts_dir, code:root_dir()},
      {release_erts_version, rlx_release:erts(Release)},
      {release_name, rlx_release:name(Release)},
-     {rel_vsn, rlx_release:vsn(Release)},
-     {release_version, rlx_release:vsn(Release)}].
+     {release_version, rlx_release:vsn(Release)},
+     {release, rlx_release:canonical_name(Release)}].
 
 -spec generate_state_vars(rlx_release:t(), rlx_state:t()) -> proplists:proplist().
 generate_state_vars(Release, State) ->
-    %% TODO: pass the release so the output dirs can be correct
-    [{output_dir, filename:join(rlx_state:output_dir(State),
+    [{output_dir, filename:join(rlx_state:base_output_dir(State),
                                 rlx_release:name(Release))},
      {target_dir, filename:join(rlx_state:base_output_dir(State),
                                 rlx_release:name(Release))},
@@ -210,21 +209,7 @@ generate_state_vars(Release, State) ->
      {lib_dirs, rlx_state:lib_dirs(State)},
      {vm_args, rlx_state:vm_args(State)},
      {sys_config, rlx_state:sys_config(State)},
-     {root_dir, rlx_state:root_dir(State)},
-     {default_release_name, case rlx_state:default_configured_release(State) of
-                                {Name0, _} ->
-                                    Name0
-                            end},
-     {default_release_version, case rlx_state:default_configured_release(State) of
-                                   {_, Vsn0} ->
-                                       Vsn0
-                               end},
-     {default_release, case rlx_state:default_configured_release(State) of
-                           {Name1, undefined} ->
-                               erlang:atom_to_list(Name1);
-                           {Name1, Vsn1} ->
-                               erlang:atom_to_list(Name1) ++ "-" ++ Vsn1
-                       end}].
+     {root_dir, rlx_state:root_dir(State)}].
 
 -spec do_overlay(rlx_state:t(), rlx_release:t(), list(), proplists:proplist()) ->
                                    {ok, rlx_state:t()} | relx:error().
@@ -329,23 +314,25 @@ wildcard_copy(State, Release, FromFile0, ToFile0, CopyFun, ErrorTag) ->
     FromFile1 = absolute_path_from(State, FromFile0),
     ToFile1 = absolute_path_to(State, Release, ToFile0),
 
-    Res = case is_directory(ToFile0, ToFile1) of
+    Res = case is_directory(ToFile0) of
               false ->
                   filelib:ensure_dir(ToFile1),
                   CopyFun(FromFile1, ToFile1);
               true ->
                   Root = absolute_path_from(State, "."),
-                  FromFiles = if
-                      is_list(FromFile0) -> filelib:wildcard(FromFile0, Root);
-                      true -> [FromFile1]
-                  end,
+                  FromFiles = case is_list(FromFile0) of
+                                  true ->
+                                      filelib:wildcard(FromFile0, Root);
+                                  false ->
+                                      [FromFile1]
+                              end,
                   rlx_file_utils:mkdir_p(ToFile1),
-                  lists:foldl(fun
-                      (_, {error, _} = Error) -> Error;
-                      (FromFile, ok) ->
-                          CopyFun(filename:join(Root, FromFile), filename:join(ToFile1, filename:basename(FromFile)))
-                  end, ok, FromFiles)
-    end,
+                  lists:foldl(fun(_, {error, _} = Error) -> Error;
+                                 (FromFile, ok) ->
+                                      CopyFun(filename:join(Root, FromFile),
+                                              filename:join(ToFile1, filename:basename(FromFile)))
+                              end, ok, FromFiles)
+          end,
                   
     case Res of
         ok ->
@@ -387,11 +374,11 @@ absolute_path_to(State, Release, Path) ->
                                      rlx_release:name(Release),
                                      Path])).
 
--spec is_directory(file:name(), file:name()) -> boolean().
-is_directory(ToFile0, ToFile1) ->
+-spec is_directory(file:name()) -> boolean().
+is_directory(ToFile0) ->
     case re:run(ToFile0, ?DIRECTORY_RE) of
         nomatch ->
-            filelib:is_dir(ToFile1);
+            false;
         _ ->
             true
     end.

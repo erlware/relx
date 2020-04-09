@@ -8,6 +8,7 @@
 
 do(Release, State) ->
     RelName = rlx_release:name(Release),
+    ?log_debug("Assembling release ~p-~s", [RelName, rlx_release:vsn(Release)]),
     OutputDir = filename:join(rlx_state:base_output_dir(State), RelName),
     ok = create_output_dir(OutputDir),
     ok = copy_app_directories_to_output(Release, OutputDir, State),
@@ -47,10 +48,9 @@ create_output_dir(OutputDir) ->
 copy_app_directories_to_output(Release, OutputDir, State) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = rlx_file_utils:mkdir_p(LibDir),
-    IncludeSrc = rlx_state:include_src(State),
     IncludeSystemLibs = rlx_state:get(State, system_libs, rlx_state:get(State, include_erts, true)),
     Apps = prepare_applications(State, rlx_release:applications(Release)),
-    [copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) || App <- Apps],
+    [copy_app(State, LibDir, App, IncludeSystemLibs) || App <- Apps],
     ok.
 
 prepare_applications(State, Apps) ->
@@ -58,10 +58,12 @@ prepare_applications(State, Apps) ->
         true ->
             [rlx_app_info:link(App, true) || App <- Apps];
         false ->
+            %% TODO: since system libs are versioned, maybe we can always use symlinks for them
+            %% [rlx_app_info:link(App, is_system_lib(rlx_app_info:dir(App))) || App <- Apps]
             Apps
     end.
 
-copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) ->
+copy_app(State, LibDir, App, IncludeSystemLibs) ->
     AppName = erlang:atom_to_list(rlx_app_info:name(App)),
     AppVsn = rlx_app_info:vsn(App),
     AppDir = rlx_app_info:dir(App),
@@ -78,24 +80,25 @@ copy_app(State, LibDir, App, IncludeSrc, IncludeSystemLibs) ->
                         true ->
                             ok;
                         false ->
-                            copy_app_(State, App, AppDir, TargetDir, IncludeSrc)
+                            copy_app_(State, App, AppDir, TargetDir)
                     end;
                 _ ->
-                    copy_app_(State, App, AppDir, TargetDir, IncludeSrc)
+                    copy_app_(State, App, AppDir, TargetDir)
             end
     end.
 
+%% TODO: support override system lib dir that isn't code:lib_dir/0
 is_system_lib(Dir) ->
-    lists:prefix(filename:split(list_to_binary(code:lib_dir())), filename:split(Dir)).
+    lists:prefix(filename:split(code:lib_dir()), filename:split(rlx_string:to_list(Dir))).
 
-copy_app_(State, App, AppDir, TargetDir, IncludeSrc) ->
+copy_app_(State, App, AppDir, TargetDir) ->
     remove_symlink_or_directory(TargetDir),
     case rlx_app_info:link(App) of
         true ->
             link_directory(AppDir, TargetDir),
             rewrite_app_file(State, App, AppDir);
         false ->
-            copy_directory(State, App, AppDir, TargetDir, IncludeSrc),
+            copy_directory(State, App, AppDir, TargetDir),
             rewrite_app_file(State, App, TargetDir)
     end.
 
@@ -178,15 +181,15 @@ link_directory(AppDir, TargetDir) ->
             ok
     end.
 
-copy_directory(State, App, AppDir, TargetDir, IncludeSrc) ->
+copy_directory(State, App, AppDir, TargetDir) ->
     [copy_dir(State, App, AppDir, TargetDir, SubDir)
     || SubDir <- ["ebin",
                   "include",
-                  "priv",
-                  "lib" |
-                  case IncludeSrc of
+                  "priv" |
+                  case include_src_or_default(State) of
                       true ->
                           ["src",
+                           "lib",
                            "c_src"];
                       false ->
                           []
@@ -524,75 +527,58 @@ include_erts(State, Release, OutputDir, RelDir) ->
         _ ->
             ?log_info("Including Erts from ~s", [Prefix]),
             ErtsVersion = rlx_release:erts(Release),
-            ErtsDir = filename:join([Prefix, "erts-" ++ ErtsVersion]),
-            LocalErts = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
+            ErtsBinDir = filename:join([Prefix, "erts-" ++ ErtsVersion, "bin"]),
+            LocalErtsBin = filename:join([OutputDir, "erts-" ++ ErtsVersion, "bin"]),
             {OsFamily, _OsName} = rlx_util:os_type(State),
-            case rlx_file_utils:is_dir(ErtsDir) of
+            case rlx_file_utils:is_dir(ErtsBinDir) of
                 false ->
                     erlang:error(?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion}));
                 true ->
-                    ok = rlx_file_utils:mkdir_p(LocalErts),
-                    ok = rlx_file_utils:copy(ErtsDir, LocalErts, [recursive, {file_info, [mode, time]}]),
+                    ok = rlx_file_utils:mkdir_p(LocalErtsBin),
+                    ok = rlx_file_utils:copy(ErtsBinDir, LocalErtsBin, [recursive, {file_info, [mode, time]}]),
+
                     case OsFamily of
                         unix ->
-                            Erl = filename:join([LocalErts, "bin", "erl"]),
-                            ok = rlx_file_utils:remove(Erl),
-                            ok = file:write_file(Erl, erl_script(ErtsVersion)),
-                            ok = file:change_mode(Erl, 8#755);
+                            DynErl = filename:join([LocalErtsBin, "dyn_erl"]),
+                            Erl = filename:join([LocalErtsBin, "erl"]),
+                            rlx_file_utils:copy(DynErl, Erl);
                         win32 ->
-                            ErlIni = filename:join([LocalErts, "bin", "erl.ini"]),
-                            ok = rlx_file_utils:remove(ErlIni),
-                            ok = file:write_file(ErlIni, erl_ini(OutputDir, ErtsVersion))
+                            DynErl = filename:join([LocalErtsBin, "dyn_erl.ini"]),
+                            Erl = filename:join([LocalErtsBin, "erl.ini"]),
+                            rlx_file_utils:copy(DynErl, Erl)
                     end,
 
-                    %% delete erts src if the user requested it not be included
-                    case rlx_state:include_src(State) of
-                        true -> ok;
-                        false ->
-                            SrcDir = filename:join([LocalErts, "src"]),
-                            %% ensure the src folder exists before deletion
-                            case rlx_file_utils:exists(SrcDir) of
-                              true -> ok = rlx_file_utils:remove(SrcDir, [recursive]);
-                              false -> ok
-                            end
-                    end,
+                    %% drop yielding_c_fun binary if it exists
+                    %% it is large (1.1MB) and only used at compile time
+                    _ = rlx_file_utils:remove(filename:join([LocalErtsBin, "yielding_c_fun"])),
 
-                    case rlx_state:get(State, extended_start_script, false) of
-                        true ->
-
-                            NodeToolFile = nodetool_contents(),
-                            InstallUpgradeFile = install_upgrade_escript_contents(),
-                            NodeTool = filename:join([LocalErts, "bin", "nodetool"]),
-                            InstallUpgrade = filename:join([LocalErts, "bin", "install_upgrade.escript"]),
-                            ok = file:write_file(NodeTool, NodeToolFile),
-                            ok = file:write_file(InstallUpgrade, InstallUpgradeFile),
-                            ok = file:change_mode(NodeTool, 8#755),
-                            ok = file:change_mode(InstallUpgrade, 8#755);
-                        false ->
-                            ok
-                    end,
                     make_boot_script(State, Release, OutputDir, RelDir)
             end
     end.
 
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok.
 make_boot_script(State, Release, OutputDir, RelDir) ->
+    IncludeSrc = include_src_or_default(State),
     WarningsAsErrors = rlx_state:warnings_as_errors(State),
+    SrcTests = rlx_state:src_tests(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
+               %% TODO: if dev_mode -> local,
                {variables, make_boot_script_variables(Release, State)},
-               no_module_tests,
-               silent | case WarningsAsErrors of
-                            true -> [warnings_as_errors];
-                            false -> []
+               silent | case {WarningsAsErrors, SrcTests andalso IncludeSrc} of
+                            {true, true} -> [warnings_as_errors, src_tests];
+                            {true, false} -> [warnings_as_errors];
+                            {false, true} -> [src_tests];
+                            {false, false} -> []
                         end],
     Name = atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
-    case make_script(Name, RelDir, Options) of
+    IsRelxSasl = rlx_state:is_relx_sasl(State),
+    case make_start_script(Name, RelDir, Options, IsRelxSasl) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
-            ?log_info("Release successfully created!"),
+            ?log_debug("release start script created"),
             create_RELEASES(OutputDir, ReleaseFile),
             create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
@@ -602,9 +588,19 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
     end.
 
-make_script(Name, RelDir, Options) ->
-    case rlx_util:relx_sasl_vsn() of
+%% when running `release' the default is to include src so `src_tests' can do checks
+include_src_or_default(State) ->
+    case rlx_state:include_src(State) of
+        undefined ->
+            true;
+        IncludeSrc ->
+            IncludeSrc
+    end.
+
+make_start_script(Name, RelDir, Options, IsRelxSasl) ->
+    case IsRelxSasl of
         true ->
+            %% systools in sasl version 3.5 and above has the `script_name' option
             systools:make_script(Name, [{script_name, "start"} | Options]);
         false ->
             case systools:make_script(Name, Options) of
@@ -617,7 +613,7 @@ make_script(Name, RelDir, Options) ->
             end
     end.
 
-%% systools:make_script in sasl 3.6.1 and earlier do not support `script_name'
+%% systools:make_script in sasl <3.5 do not support `script_name'
 %% so the `Name.boot' file must be manually copied to `start.boot'
 copy_to_start(RelDir, Name) ->
     BootFile = [Name, ".boot"],
@@ -632,14 +628,16 @@ copy_to_start(RelDir, Name) ->
     end.
 
 maybe_print_warnings({ok, Module, Warnings}) when Warnings =/= [] ->
-    ?log_warn("Warnings generating release:~n~s", [Module:format_warning(Warnings)]);
+    FormattedWarnings = unicode:characters_to_list(Module:format_warning(Warnings)),
+    Trimmed = rlx_string:trim(FormattedWarnings, trailing, "\n"),
+    ?log_warn("Warnings generating release:~n~s", [Trimmed]);
 maybe_print_warnings(_) ->
     ok.
 
 make_boot_script_variables(Release, State) ->
-    % A boot variable is needed when {include_erts, false} and the application
-    % directories are split between the release/lib directory and the erts/lib
-    % directory.
+    % A boot variable is needed when {system_libs, false} and the application
+    % directories are split between the release/lib directory and the erlang
+    % install directory on the target host.
     % The built-in $ROOT variable points to the erts directory on Windows
     % (dictated by erl.ini [erlang] Rootdir=) and so a boot variable is made
     % pointing to the release directory
@@ -649,14 +647,14 @@ make_boot_script_variables(Release, State) ->
     % NOTE the boot variable can point to either the release/erts root directory
     % or the release/erts lib directory, as long as the usage here matches the
     % usage used in the start up scripts
-    case {os:type(), rlx_state:get(State, include_erts, true)} of
+    case {os:type(), rlx_state:get(State, system_libs, true)} of
         {{win32, _}, false} ->
             [{"RELEASE_DIR", filename:join(rlx_state:base_output_dir(State),
                                            rlx_release:name(Release))}];
         {{win32, _}, true} ->
             [];
         _ ->
-            [{"ERTS_LIB_DIR", code:lib_dir()}]
+            [{"SYSTEM_LIB_DIR", code:lib_dir()}]
     end.
 
 create_no_dot_erlang(RelDir, OutputDir, Options, _State) ->
@@ -719,9 +717,6 @@ ensure_not_exist(RelConfPath)     ->
             rlx_file_utils:remove(RelConfPath)
     end.
 
-erl_script(ErtsVsn) ->
-    render(erl_script, [{erts_vsn, ErtsVsn}]).
-
 bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
     Template = case OsFamily of
         unix -> bin;
@@ -771,11 +766,6 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, E
                       {status_hook, StatusHook},
                       {extensions, ExtensionsList},
                       {extension_declarations, ExtensionDeclarations}]).
-
-erl_ini(OutputDir, ErtsVsn) ->
-    ErtsDirName = rlx_string:concat("erts-", ErtsVsn),
-    BinDir = filename:join([OutputDir, ErtsDirName, bin]),
-    render(erl_ini, [{bin_dir, BinDir}, {output_dir, OutputDir}]).
 
 install_upgrade_escript_contents() ->
     render(install_upgrade_escript).

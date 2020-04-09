@@ -114,8 +114,7 @@ make_config_release(Config) ->
                    [{goal_app_1, "0.0.2"},
                     goal_app_2],
                    [{some, config2}]},
-                  {lib_dirs, [LibDir1]},
-                  {default_release, {foo, "0.0.2"}}],
+                  {lib_dirs, [LibDir1]}],
 
     Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
     {ok, State} = relx:build_release(foo, Apps1++Apps, [{root_dir, LibDir1},
@@ -362,7 +361,7 @@ overlay_release(Config) ->
                              {template, Template,
                               "{{target_dir}}/test_template_resolved"},
                              {template, Template,
-                              "bin/{{default_release_name}}-{{default_release_version}}"},
+                              "bin/{{release_name}}-{{release_version}}"},
                              {copy, "{{erts_dir}}/bin/erl", "bin/copy.erl"}]},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
@@ -793,9 +792,9 @@ make_src_release(Config) ->
     AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
-    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "bin"]))),
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "lib",
-                                          "goal_app_1-0.0.1", "src"]))).
+                                                 "goal_app_1-0.0.1", "src"]))).
 
 make_excluded_src_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
