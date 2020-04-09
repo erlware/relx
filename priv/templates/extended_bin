@@ -13,7 +13,7 @@ set -e
 RUN_ERL_DISABLE_FLOWCNTRL=${RUN_ERL_DISABLE_FLOWCNTRL:-true}
 export RUN_ERL_DISABLE_FLOWCNTRL
 
-if [ "$TERM" = "dumb" -o -z "$TERM" ]; then
+if [ "$TERM" = "dumb" ] || [ -z "$TERM" ]; then
   export TERM=screen
 fi
 
@@ -21,21 +21,20 @@ fi
 # around that
 case $OSTYPE in
     darwin*)
-        SCRIPT=$(readlink $0 || true)
+        SCRIPT=$(readlink "$0" || true)
     ;;
     *)
-        SCRIPT=$(readlink -f $0 || true)
+        SCRIPT=$(readlink -f "$0" || true)
     ;;
 esac
-[ -z $SCRIPT ] && SCRIPT=$0
-SCRIPT_DIR="$(cd `dirname "$SCRIPT"` && pwd -P)"
+[ -z "$SCRIPT" ] && SCRIPT=$0
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT")" && pwd -P)"
 RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 # Make the value available to variable substitution calls below
 export REL_NAME="{{ rel_name }}"
 REL_VSN="{{ rel_vsn }}"
 ERTS_VSN="{{ erts_vsn }}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
-ERL_OPTS="{{ erl_opts }}"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 export ESCRIPT_NAME="${ESCRIPT_NAME-$SCRIPT}"
 
@@ -109,12 +108,12 @@ relx_usage() {
             ;;
         *)
             # check for extension
-            IS_EXTENSION=$(relx_is_extension $command)
+            IS_EXTENSION=$(relx_is_extension "$command")
             if [ "$IS_EXTENSION" = "1" ]; then
-                EXTENSION_SCRIPT=$(relx_get_extension_script $command)
-                relx_run_extension $EXTENSION_SCRIPT help
+                EXTENSION_SCRIPT=$(relx_get_extension_script "$command")
+                relx_run_extension "$EXTENSION_SCRIPT" help
             else
-                EXTENSIONS=`echo $EXTENSIONS | sed -e 's/|undefined//g'`
+                EXTENSIONS=$(echo $EXTENSIONS | sed -e 's/|undefined//g')
                 echo "Usage: $REL_NAME {start|start_boot <file>|foreground|stop|restart|reboot|pid|ping|console|console_clean|console_boot <file>|attach|remote_console|upgrade|downgrade|install|uninstall|versions|escript|rpc|rpcterms|eval|status|$EXTENSIONS}"
             fi
             ;;
@@ -152,17 +151,17 @@ relx_get_nodename() {
                       -mode interactive \
                       -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
-                      ${START_EPMD} \
-                      -noshell ${NAME_TYPE} $id
+                      "${START_EPMD}" \
+                      -noshell "${NAME_TYPE}" "$id"
     else
         # running with setcookie prevents a ~/.erlang.cookie from being created
         "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
                       -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
-                      -setcookie ${COOKIE} \
-                      ${START_EPMD} \
-                      -noshell ${NAME_TYPE} $id
+                      -setcookie "${COOKIE}" \
+                      "${START_EPMD}" \
+                      -noshell "${NAME_TYPE}" "$id"
     fi
 }
 
@@ -177,8 +176,8 @@ relx_rem_sh() {
 
     # Setup remote shell command to control node
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
-         -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" $MAYBE_DIST_ARGS \
-         -setcookie "$COOKIE" -hidden -kernel net_ticktime $TICKTIME
+         -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" "$MAYBE_DIST_ARGS" \
+         -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME"
 }
 
 # Generate a random id
@@ -199,12 +198,12 @@ relx_nodetool() {
                  "$ERTS_DIR/bin/escript" \
                  "$ROOTDIR/bin/nodetool" \
                  "$NAME_TYPE" "$NAME" \
-                 "$command" $@
+                 "$command" "$@"
     else
         ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
                  "$ERTS_DIR/bin/escript" \
                  "$ROOTDIR/bin/nodetool" \
-                 $START_EPMD "$NAME_TYPE" "$NAME" "$command" $@
+                 "$START_EPMD" "$NAME_TYPE" "$NAME" "$command" "$@"
     fi
 }
 
@@ -213,20 +212,20 @@ relx_escript() {
     scriptpath="$1"; shift
     export RELEASE_ROOT_DIR
 
-    "$ERTS_DIR/bin/escript" "$ROOTDIR/$scriptpath" $@
+    "$ERTS_DIR/bin/escript" "$ROOTDIR/$scriptpath" "$@"
 }
 
 make_out_file_path() {
     # Use output directory provided in the RELX_OUT_FILE_PATH environment variable
     # (default to the current location of vm.args and sys.config)
-    DIR=$(dirname $1)
+    DIR=$(dirname "$1")
     [ -d "${RELX_OUT_FILE_PATH}" ] && DIR="${RELX_OUT_FILE_PATH}"
-    FILE=$(basename $1)
+    FILE=$(basename "$1")
     IN="${DIR}/${FILE}"
 
-    PFX=$(echo $IN   | awk '{sub(/\.[^.]+$/, "", $0)}1')
-    SFX=$(echo $FILE | awk -F . '{if (NF>1) print $NF}')
-    if [ $RELX_MULTI_NODE ]; then
+    PFX=$(echo "$IN"   | awk '{sub(/\.[^.]+$/, "", $0)}1')
+    SFX=$(echo "$FILE" | awk -F . '{if (NF>1) print $NF}')
+    if [ "$RELX_MULTI_NODE" ]; then
         echo "${PFX}.${NAME}.${SFX}"
     else
         echo "${PFX}.${SFX}"
@@ -262,19 +261,19 @@ add_path() {
             IN_FILE_PATH="$REL_DIR/$1"
         fi
     fi
-    echo $IN_FILE_PATH
+    echo "$IN_FILE_PATH"
 }
 
 check_replace_os_vars() {
-    IN_FILE_PATH=$(add_path $1 $2)
+    IN_FILE_PATH=$(add_path "$1" "$2")
     OUT_FILE_PATH="$IN_FILE_PATH"
     SRC_FILE_PATH="$IN_FILE_PATH.src"
     ORIG_FILE_PATH="$IN_FILE_PATH.orig"
     if [ -f "$SRC_FILE_PATH" ]; then
-        OUT_FILE_PATH=$(make_out_file_path $IN_FILE_PATH)
+        OUT_FILE_PATH=$(make_out_file_path "$IN_FILE_PATH")
         replace_os_vars "$SRC_FILE_PATH" "$OUT_FILE_PATH"
-    elif [ $RELX_REPLACE_OS_VARS ]; then
-        OUT_FILE_PATH=$(make_out_file_path $IN_FILE_PATH)
+    elif [ "$RELX_REPLACE_OS_VARS" ]; then
+        OUT_FILE_PATH=$(make_out_file_path "$IN_FILE_PATH")
         # If vm.args.orig or sys.config.orig is present then use that
         if [ -f "$ORIG_FILE_PATH" ]; then
            IN_FILE_PATH="$ORIG_FILE_PATH"
@@ -293,11 +292,11 @@ check_replace_os_vars() {
     else
         # If vm.arg.orig or sys.config.orig is present then use that
         if [ -f "$ORIG_FILE_PATH" ]; then
-            OUT_FILE_PATH=$(make_out_file_path $IN_FILE_PATH)
+            OUT_FILE_PATH=$(make_out_file_path "$IN_FILE_PATH")
             cp "$ORIG_FILE_PATH" "$OUT_FILE_PATH"
         fi
     fi
-    echo $OUT_FILE_PATH
+    echo "$OUT_FILE_PATH"
 }
 
 relx_run_hooks() {
@@ -309,11 +308,11 @@ relx_run_hooks() {
         # by empty spaces and give them to the `set`
         # command in order to be able to extract them
         # separately
-        set `echo "$hook" | sed -e 's/|/ /g'`
+        set $(echo "$hook" | sed -e 's/|/ /g')
         HOOK_SCRIPT=$1; shift
         # all hook locations are expected to be
         # relative to the start script location
-        [ "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" $@
+        [ "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" "$@"
     done
 }
 
@@ -348,7 +347,7 @@ relx_get_extension_script() {
     # get the command extension (eg. foo) and
     # obtain the actual script filename that it
     # refers to (eg. "path/to/foo_script"
-    eval echo "$"${EXTENSION}_extension""
+    eval echo "$""${EXTENSION}_extension"
 }
 
 relx_run_extension() {
@@ -365,7 +364,7 @@ relx_run_extension() {
 #   --relx-disable-hooks
 # and process them accordingly
 process_internal_args() {
-    for arg in $@
+    for arg in "$@"
     do
       shift
       case "$arg" in
@@ -379,7 +378,7 @@ process_internal_args() {
 }
 
 # process internal arguments
-process_internal_args $@
+process_internal_args "$@"
 
 find_erts_dir
 export ROOTDIR="$RELEASE_ROOT_DIR"
@@ -389,10 +388,10 @@ export PROGNAME="erl"
 export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
 SYSTEM_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
 
-VMARGS_PATH=$(add_path vm.args $VMARGS_PATH)
+VMARGS_PATH=$(add_path vm.args "$VMARGS_PATH")
 
-VMARGS_PATH=$(check_replace_os_vars vm.args $VMARGS_PATH)
-RELX_CONFIG_PATH=$(check_replace_os_vars sys.config $RELX_CONFIG_PATH)
+VMARGS_PATH=$(check_replace_os_vars vm.args "$VMARGS_PATH")
+RELX_CONFIG_PATH=$(check_replace_os_vars sys.config "$RELX_CONFIG_PATH")
 
 # Check vm.args and other files referenced via -args_file parameters for:
 #    - nonexisting -args_files
@@ -489,7 +488,7 @@ COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
 DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
 if [ -z "$COOKIE_ARG" ]; then
     if [ -f "$DEFAULT_COOKIE_FILE" ]; then
-        COOKIE="$(cat $DEFAULT_COOKIE_FILE)"
+        COOKIE="$(cat "$DEFAULT_COOKIE_FILE")"
     else
         echo "No cookie is set or found. This limits the scripts functionality, installing, upgrading, rpc and getting a list of versions will not work."
     fi
@@ -559,7 +558,7 @@ case "$1" in
         if ! relx_nodetool "stop"; then
             exit 1
         fi
-        while $(kill -s 0 "$PID" 2>/dev/null);
+        while kill -s 0 "$PID" 2>/dev/null;
         do
             sleep 1
         done
@@ -597,7 +596,7 @@ case "$1" in
     escript)
         ## Run an escript under the node's environment
         shift
-        if ! relx_escript $@; then
+        if ! relx_escript "$@"; then
             exit 1
         fi
         ;;
@@ -667,7 +666,6 @@ case "$1" in
         ;;
 
     console|console_clean|console_boot|foreground)
-        __code_paths=""
         FOREGROUNDOPTIONS=""
         # .boot file typically just $REL_NAME (ie, the app name)
         # however, for debugging, sometimes start_clean.boot is useful.
@@ -713,7 +711,7 @@ case "$1" in
         export PROGNAME
 
         # Dump environment info for logging purposes
-        echo "Exec: $BINDIR/erlexec" $FOREGROUNDOPTIONS \
+        echo "Exec: $BINDIR/erlexec" "$FOREGROUNDOPTIONS" \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
@@ -726,7 +724,7 @@ case "$1" in
 
         relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
-        exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
+        exec "$BINDIR/erlexec" "$FOREGROUNDOPTIONS" \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
@@ -744,7 +742,7 @@ case "$1" in
 
         shift
 
-        relx_nodetool rpc $@
+        relx_nodetool rpc "$@"
         ;;
     rpcterms)
         # Make sure a node IS running
@@ -755,7 +753,7 @@ case "$1" in
 
         shift
 
-        relx_nodetool rpcterms $@
+        relx_nodetool rpcterms "$@"
         ;;
     eval)
         # Make sure a node IS running
@@ -765,7 +763,7 @@ case "$1" in
         fi
 
         shift
-        relx_nodetool "eval" $@
+        relx_nodetool "eval" "$@"
         ;;
     status)
         # Make sure a node IS running
@@ -774,7 +772,7 @@ case "$1" in
             exit 1
         fi
 
-        [ ! -z "${STATUS_HOOK}" ] && [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" $@
+        [ -n "${STATUS_HOOK}" ] && [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" "$@"
         ;;
     help)
         if [ -z "$2" ]; then
@@ -783,18 +781,18 @@ case "$1" in
         fi
 
         TOPIC="$2"; shift
-        relx_usage $TOPIC
+        relx_usage "$TOPIC"
         ;;
     *)
         # check for extension
-        IS_EXTENSION=$(relx_is_extension $1)
+        IS_EXTENSION=$(relx_is_extension "$1")
         if [ "$IS_EXTENSION" = "1" ]; then
-            EXTENSION_SCRIPT=$(relx_get_extension_script $1)
+            EXTENSION_SCRIPT=$(relx_get_extension_script "$1")
             shift
-            relx_run_extension $EXTENSION_SCRIPT "$@"
+            relx_run_extension "$EXTENSION_SCRIPT" "$@"
             # all extension scripts are expected to exit
         else
-            relx_usage $1
+            relx_usage "$1"
         fi
         exit 1
         ;;
