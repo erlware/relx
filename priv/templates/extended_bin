@@ -175,9 +175,13 @@ relx_rem_sh() {
     TICKTIME="$(relx_nodetool rpcterms net_kernel get_net_ticktime)"
 
     # Setup remote shell command to control node
+    # -dist_listen is new in OTP-23. It keeps the remote node from binding to a listen port
+    # and implies the optoin -hidden
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
-         -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" "$MAYBE_DIST_ARGS" \
-         -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME"
+         -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
+         -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME" \
+         -dist_listen false \
+         "$MAYBE_DIST_ARGS"
 }
 
 # Generate a random id
