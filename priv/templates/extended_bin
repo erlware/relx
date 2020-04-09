@@ -11,7 +11,7 @@ set -e
 # when writing log message to terminal, leaving the heart process unable
 # to do its work.
 RUN_ERL_DISABLE_FLOWCNTRL=${RUN_ERL_DISABLE_FLOWCNTRL:-true}
-export $RUN_ERL_DISABLE_FLOWCNTRL
+export RUN_ERL_DISABLE_FLOWCNTRL
 
 if [ "$TERM" = "dumb" -o -z "$TERM" ]; then
   export TERM=screen
