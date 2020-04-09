@@ -2,11 +2,11 @@
 
 set -e
 
-SCRIPT=$(readlink $0 || true)
-if [ -z $SCRIPT ]; then
+SCRIPT=$(readlink "$0" || true)
+if [ -z "$SCRIPT" ]; then
     SCRIPT=$0
 fi;
-SCRIPT_DIR="$(cd `dirname "$SCRIPT"` && pwd -P)"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT")" && pwd -P)"
 RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 REL_NAME="{{ rel_name }}"
 REL_VSN="{{ rel_vsn }}"
@@ -64,7 +64,7 @@ ERTS_LIB_DIR="$ERTS_DIR/../lib"
 cd "$ROOTDIR"
 
 # Save extra arguments
-ARGS="$@"
+ARGS=$*
 
 # Build arguments for erlexec
 set -- "$ERL_OPTS"
@@ -73,4 +73,4 @@ set -- "$ERL_OPTS"
 set -- "$@" -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" -boot "$REL_DIR/$BOOTFILE" "$ARGS"
 
 # Boot the release
-exec $BINDIR/erlexec $@
+exec "$BINDIR/erlexec" "$@"
