@@ -200,8 +200,7 @@ generate_release_vars(Release) ->
 
 -spec generate_state_vars(rlx_release:t(), rlx_state:t()) -> proplists:proplist().
 generate_state_vars(Release, State) ->
-    %% TODO: pass the release so the output dirs can be correct
-    [{output_dir, filename:join(rlx_state:output_dir(State),
+    [{output_dir, filename:join(rlx_state:base_output_dir(State),
                                 rlx_release:name(Release))},
      {target_dir, filename:join(rlx_state:base_output_dir(State),
                                 rlx_release:name(Release))},
