@@ -264,13 +264,6 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     ErlOpts = rlx_state:get(State, erl_opts, ""),
     {OsFamily, _OsName} = rlx_util:os_type(State),
 
-    %% erl_call is a bin in erl_interface that we must make a copy of
-    %% so it is usable in release scripts from the release main bin dir
-    Bin = code:lib_dir(erl_interface, bin),
-    ErlCall = filename:join(Bin, "erl_call"),
-    LocalErlCall = filename:join(BinDir, "erl_call"),
-    ec_file:copy(ErlCall, LocalErlCall),
-
     %% always include the install_upgrade.escript tool
     install_upgrade_escript(BinDir),
 
@@ -523,7 +516,16 @@ include_erts(State, Release, OutputDir, RelDir) ->
         false ->
             make_boot_script(State, Release, OutputDir, RelDir);
         _ ->
-            ?log_info("Including Erts from ~s", [Prefix]),
+            ?log_debug("Including Erts from ~s", [Prefix]),
+
+            %% erl_call is a bin in erl_interface that we must make a copy of
+            %% so it is usable in release scripts from the release main bin dir
+            Bin = code:lib_dir(erl_interface, bin),
+            ErlCall = filename:join(Bin, "erl_call"),
+            BinDir = filename:join([OutputDir, "bin"]),
+            LocalErlCall = filename:join(BinDir, "erl_call"),
+            ec_file:copy(ErlCall, LocalErlCall),
+
             ErtsVersion = rlx_release:erts(Release),
             ErtsBinDir = filename:join([Prefix, "erts-" ++ ErtsVersion, "bin"]),
             LocalErtsBin = filename:join([OutputDir, "erts-" ++ ErtsVersion, "bin"]),
