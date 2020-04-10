@@ -524,7 +524,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
             ErlCall = filename:join(Bin, "erl_call"),
             BinDir = filename:join([OutputDir, "bin"]),
             LocalErlCall = filename:join(BinDir, "erl_call"),
-            ec_file:copy(ErlCall, LocalErlCall),
+            _ = rlx_file_utils:copy(ErlCall, LocalErlCall),
 
             ErtsVersion = rlx_release:erts(Release),
             ErtsBinDir = filename:join([Prefix, "erts-" ++ ErtsVersion, "bin"]),
