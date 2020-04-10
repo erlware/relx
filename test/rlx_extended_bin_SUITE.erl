@@ -1300,7 +1300,7 @@ builtin_wait_for_vm_start_script_hook(Config) ->
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
     % this run doesn't need the sleep because the wait_for_vm_start
     % start script makes it unnecessary
-    %timer:sleep(?SLEEP_TIME),
+    timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     ok.

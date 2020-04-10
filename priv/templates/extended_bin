@@ -202,7 +202,7 @@ erl_call() {
     if [ $code -eq 0 ]; then
         echo "$result" | tr -d "\n"
     else
-        exit $code
+        return $code
     fi
 }
 
@@ -212,9 +212,9 @@ erl_eval() {
     result=$(echo "${command}" | "$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -e)
     code=$?
     if [ $code -eq 0 ]; then
-        echo "$result" | sed 's/^{ok, \(.*\)}$/\1/'
+        echo "$result" | sed 's/^{ok, \(.*\)}$/\1/' | tr -d "\n"
     else
-        exit $code
+        return $code
     fi
 }
 
@@ -569,7 +569,14 @@ case "$1" in
 
         relx_run_hooks "$PRE_START_HOOKS"
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
-            "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS --relx-disable-hooks"
+                          "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS --relx-disable-hooks"
+
+        # wait for node to be up before running hooks
+        while ! erl_call 'erlang is_alive' > /dev/null 2>&1
+        do
+            sleep 1
+        done
+
         relx_run_hooks "$POST_START_HOOKS"
         ;;
 
