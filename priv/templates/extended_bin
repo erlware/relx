@@ -330,8 +330,8 @@ relx_run_hooks() {
         HOOK_SCRIPT=$1; shift
         # all hook locations are expected to be
         # relative to the start script location
-        # shellcheck disable=SC2157,SC1090,SC2240
-        [ "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" "$@"
+        # shellcheck disable=SC1090,SC2240
+        [ -f "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" "$@"
     done
 }
 
@@ -376,8 +376,8 @@ relx_run_extension() {
     shift
     # all extension script locations are expected to be
     # relative to the start script location
-    # shellcheck disable=SC2157,SC1090,SC2240
-    [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" "$@"
+    # shellcheck disable=SC1090,SC2240
+    [ -f "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" "$@"
 }
 
 # given a list of arguments, identify the internal ones
@@ -763,8 +763,8 @@ case "$1" in
         # Make sure a node IS running
         ping_or_exit
 
-        # shellcheck disable=SC2157,SC1090,SC2240
-        [ -n "${STATUS_HOOK}" ] && [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" "$@"
+        # shellcheck disable=SC1090,SC2240
+        [ -n "${STATUS_HOOK}" ] && [ -f "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" "$@"
         ;;
     help)
         if [ -z "$2" ]; then
