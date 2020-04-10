@@ -19,6 +19,7 @@ fi
 
 # OSX does not support readlink '-f' flag, work
 # around that
+# shellcheck disable=SC2039
 case $OSTYPE in
     darwin*)
         SCRIPT=$(readlink "$0" || true)
@@ -194,17 +195,27 @@ relx_rem_sh() {
 erl_call() {
     command=$*
 
-    "$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -a "${command}"
+    # TODO: find erl_call in erl_interface app if erts isn't included in release
+
+    result=$("$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -a "${command}")
+    code=$?
+    if [ $code -eq 0 ]; then
+        echo "$result" | tr -d "\n"
+    else
+        exit $code
+    fi
 }
 
 erl_eval() {
     command=$*
 
-    echo ${command} | "$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -e | sed 's/^{ok, \(.*\)}$/\1/'
-    echo
-
-    # /^{ok, .*}$/ { print gensub("^{ok, (.*)}$", "\\1"); exit;}
-    # /^{error, .*}$/ { print "RPC to ", $NODE, "failed: ", gensub("^{error, (.*)}$", "\\1"), "; exit;}
+    result=$(echo "${command}" | "$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -e)
+    code=$?
+    if [ $code -eq 0 ]; then
+        echo "$result" | sed 's/^{ok, \(.*\)}$/\1/'
+    else
+        exit $code
+    fi
 }
 
 
@@ -314,10 +325,12 @@ relx_run_hooks() {
         # by empty spaces and give them to the `set`
         # command in order to be able to extract them
         # separately
+        # shellcheck disable=SC2046
         set $(echo "$hook" | sed -e 's/|/ /g')
         HOOK_SCRIPT=$1; shift
         # all hook locations are expected to be
         # relative to the start script location
+        # shellcheck disable=SC2157,SC1090,SC2240
         [ "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" "$@"
     done
 }
@@ -363,6 +376,7 @@ relx_run_extension() {
     shift
     # all extension script locations are expected to be
     # relative to the start script location
+    # shellcheck disable=SC2157,SC1090,SC2240
     [ "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" "$@"
 }
 
@@ -536,10 +550,12 @@ case "$1" in
         esac
         ARGS="$(printf "'%s' " "$@")"
 
-        # Export the HEART_COMMAND
+        # shellcheck disable=SC2090,SC2089
         HEART_COMMAND="\"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$HEART_OPTION\" $ARGS"
+        # shellcheck disable=SC2090
         export HEART_COMMAND
 
+        # shellcheck disable=SC2174
         test -z "$PIPE_BASE_DIR" || mkdir -m 1777 -p "$PIPE_BASE_DIR"
         mkdir -p "$PIPE_DIR"
         if [ ! -w "$PIPE_DIR" ]
@@ -596,7 +612,7 @@ case "$1" in
         ## See if the VM is alive
         ping_or_exit
 
-        echo "pong"
+        printf "pong"
         ;;
 
     escript)
@@ -747,6 +763,7 @@ case "$1" in
         # Make sure a node IS running
         ping_or_exit
 
+        # shellcheck disable=SC2157,SC1090,SC2240
         [ -n "${STATUS_HOOK}" ] && [ "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" "$@"
         ;;
     help)
