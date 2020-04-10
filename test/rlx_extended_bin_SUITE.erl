@@ -42,8 +42,8 @@ all() ->
     end.
 
 groups() ->
-    [{shortname, [], [ping, remote_console, pid, restart, reboot, attach]},
-     {longname, [], [ping, remote_console, pid]},
+    [{shortname, [], [ping, remote_console, pid, restart, reboot, attach, rpc_tests]},
+     {longname, [], [ping, remote_console, pid, rpc_tests]},
      {custom_replace_vars, [], [replace_os_vars_twice,
                                 replace_os_vars_included_config,
                                 replace_os_vars_sys_config_vm_args_src,
@@ -231,46 +231,19 @@ escript(Config) ->
     {ok, Output} = sh(filename:join([OutputDir, "foo", "bin", "foo escript script.erl"])),
     ?assertEqual(ExpectedOutput, Output).
 
-os_var_timeouts(Config) ->
-    LibDir1 = proplists:get_value(lib1, Config),
-
-    rlx_test_utils:create_app(LibDir1, "goal_app", "0.0.1", [stdlib,kernel], []),
-
-    ConfigFile = filename:join([LibDir1, "relx.config"]),
-    rlx_test_utils:write_config(ConfigFile,
-                 [{release, {foo, "0.0.1"},
-                   [goal_app]},
-                  {lib_dirs, [filename:join(LibDir1, "*")]},
-                  {generate_start_script, true},
-                  {extended_start_script, true}
-                 ]),
-
-    OutputDir = filename:join([proplists:get_value(priv_dir, Config),
-                               rlx_test_utils:create_random_name("relx-output")]),
-
-    {ok, _State} = relx:do([{relname, foo},
-                           {relvsn, "0.0.1"},
-
-                           {lib_dirs, [LibDir1]},
-                           {log_level, 3},
-                           {output_dir, OutputDir},
-                           {config, ConfigFile}], ["release"]),
-
-    ok = rlx_file_utils:write(filename:join([OutputDir, "foo", "script.erl"]),
-                       [rlx_test_utils:escript_contents()]),
+rpc_tests(Config) ->
+    OutputDir = ?config(out_dir, Config),
 
     %% now start/stop the release to make sure the extended script is working
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
     timer:sleep(?SLEEP_TIME),
     ?assertEqual({ok, "ok"}, sh(filename:join([OutputDir, "foo", "bin",
-                                               "foo rpc timer sleep 2000."]))),
+                                               "foo rpc 'timer sleep [100]'"]))),
     ?assertEqual({ok, "ok"}, sh(filename:join([OutputDir, "foo", "bin",
-                                               "foo rpc  timer sleep 2000."]),
-                                [])),
-    %% TODO: add back TIMEOUT
-    {error,1,"RPC to " ++ _Rest} = sh(filename:join([OutputDir, "foo", "bin",
-                                                     "foo rpc timer sleep 2000."]),
-                                      []).
+                                               "foo rpc 'timer sleep [100]'"]))).
+    %% TODO: add back TIMEOUT?
+    %% {error, 1, "RPC to " ++ _Rest} = sh(filename:join([OutputDir, "foo", "bin",
+    %%                                                    "foo rpc 'timer sleep [2000]'"])).
 
 remote_console(Config) ->
     OutputDir = ?config(out_dir, Config),
@@ -313,6 +286,11 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
                                                            {output_dir, OutputDir} | RelxConfig]),
 
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"},
+            {"VAR1", "101"}]),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
@@ -346,10 +324,11 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
     %% check that the replaced files have been created in the right place
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
-                [{"RELX_REPLACE_OS_VARS", "1"},
-                 {"NODENAME", "node1"},
-                 {"COOKIE", "cookie1"}]),
+
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
@@ -385,10 +364,10 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
     %% check that the replaced files have been created in the right place
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
-                         [{"RELX_REPLACE_OS_VARS", "1"},
-                          {"NODENAME", "node2"},
-                          {"COOKIE", "cookie2"}]),
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"NODENAME", "node2"},
+            {"COOKIE", "cookie2"}]),
     ok.
 
 replace_os_vars_multi_node(Config) ->
@@ -422,6 +401,12 @@ replace_os_vars_multi_node(Config) ->
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
                                                            {output_dir, OutputDir} | RelxConfig]),
 
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"RELX_MULTI_NODE", "1"},
+                  {"NODENAME", "node1"},
+                  {"COOKIE", "cookie1"},
+                  {"VAR1", "v1"}]),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"RELX_MULTI_NODE", "1"},
@@ -461,13 +446,14 @@ replace_os_vars_multi_node(Config) ->
     %% check that the replaced files have been created in the right place
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys." ++
-                                          rlx_test_utils:unescape_string(Node1) ++
+                                          rlx_test_utils:unescape_string(rlx_string:trim(Node1, trailing, "\n")) ++
                                           ".config"]))),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
-                [{"RELX_REPLACE_OS_VARS", "1"},
-                 {"RELX_MULTI_NODE", "1"},
-                 {"NODENAME", "node1"},
-                 {"COOKIE", "cookie1"}]),
+
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"RELX_MULTI_NODE", "1"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
@@ -509,7 +495,7 @@ replace_os_vars_multi_node(Config) ->
     %% check that the replaced files have been created in the right place
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys." ++
-                                          rlx_test_utils:unescape_string(Node2) ++
+                                          rlx_test_utils:unescape_string(rlx_string:trim(Node2, trailing, "\n")) ++
                                           ".config"]))),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
                          [{"RELX_REPLACE_OS_VARS", "1"},
@@ -563,6 +549,11 @@ replace_os_vars_included_config(Config) ->
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
                                                            {output_dir, OutputDir} | RelxConfig]),
 
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"},
+            {"VAR1", "v1"}]),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
@@ -596,10 +587,11 @@ replace_os_vars_included_config(Config) ->
     %% check that the replaced files have been created in the right place
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
-                [{"RELX_REPLACE_OS_VARS", "1"},
-                 {"NODENAME", "node1"},
-                 {"COOKIE", "cookie1"}]),
+
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
@@ -686,7 +678,12 @@ replace_os_vars_custom_location(Config) ->
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
                                                            {output_dir, OutputDir} | RelxConfig]),
 
-
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"RELX_OUT_FILE_PATH", "/tmp"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"},
+            {"VAR1", "v1"}]),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"RELX_OUT_FILE_PATH", "/tmp"},
@@ -726,13 +723,19 @@ replace_os_vars_custom_location(Config) ->
     %% check that the replaced files have been created in the right place
     ?assert(rlx_file_utils:exists(filename:join(["/", "tmp",
                                           "sys.config"]))),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
-                [{"RELX_REPLACE_OS_VARS", "1"},
-                 {"RELX_OUT_FILE_PATH", "/tmp"},
-                 {"NODENAME", "node1"},
-                 {"COOKIE", "cookie1"}]),
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"RELX_OUT_FILE_PATH", "/tmp"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"RELX_OUT_FILE_PATH", "/tmp"},
+                  {"NODENAME", "node2"},
+                  {"COOKIE", "cookie2"},
+                  {"VAR1", "v2"}]),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"RELX_OUT_FILE_PATH", "/tmp"},
@@ -746,11 +749,11 @@ replace_os_vars_custom_location(Config) ->
                        {"NODENAME", "node2"},
                        {"COOKIE", "cookie2"}]),
     {ok, "\"v2\""} = sh(filename:join([OutputDir, "foo", "bin",
-                                       "foo eval '{ok, V} = application:get_env(goal_app_3, var1), V.'"]),
-                        [{"RELX_REPLACE_OS_VARS", "1"},
-                         {"RELX_OUT_FILE_PATH", "/tmp"},
-                         {"NODENAME", "node2"},
-                         {"COOKIE", "cookie2"}]),
+                                         "foo eval '{ok, V} = application:get_env(goal_app_3, var1), V.'"]),
+                          [{"RELX_REPLACE_OS_VARS", "1"},
+                           {"RELX_OUT_FILE_PATH", "/tmp"},
+                           {"NODENAME", "node2"},
+                           {"COOKIE", "cookie2"}]),
     {ok, "\"node2\""} = sh(filename:join([OutputDir, "foo", "bin",
                                      "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
                           [{"RELX_REPLACE_OS_VARS", "1"},
@@ -811,15 +814,16 @@ replace_os_vars_twice(Config) ->
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
                                                            {output_dir, OutputDir} | RelxConfig]),
 
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]), []),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"VAR9", "v10"}]),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"]),
-                      [{"RELX_REPLACE_OS_VARS", "1"}]),
+                      []),
     {ok, "\"v10\""} = sh(filename:join([OutputDir, "foo", "bin",
-                      "foo eval '{ok, V} = application:get_env(goal_app_3, var9), V.'"]),
-                       [{"RELX_REPLACE_OS_VARS", "1"}]),
+                                          "foo eval '{ok, V} = application:get_env(goal_app_3, var9), V.'"]),
+                           [{"RELX_REPLACE_OS_VARS", "1"}]),
     {ok, "\"node\""} = sh(filename:join([OutputDir, "foo", "bin",
                                      "foo eval '[Node,_] = re:split(atom_to_list(node()), \"@\"),binary_to_list(Node).'"]),
                           [{"RELX_REPLACE_OS_VARS", "1"}]),
@@ -888,6 +892,11 @@ replace_os_vars_dev_mode(Config) ->
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
                                                            {output_dir, OutputDir} | RelxConfig]),
 
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"},
+            {"VAR1", "v1"}]),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
@@ -921,10 +930,10 @@ replace_os_vars_dev_mode(Config) ->
     %% check that the replaced files have been created in the right place
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
-                 [{"RELX_REPLACE_OS_VARS", "1"},
-                  {"NODENAME", "node1"},
-                  {"COOKIE", "cookie1"}]),
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+           [{"RELX_REPLACE_OS_VARS", "1"},
+            {"NODENAME", "node1"},
+            {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
@@ -1006,6 +1015,10 @@ replace_os_vars_default_env(Config) ->
     {ok, _State} = relx:build_release(foo, Apps1 ++ Apps, [{root_dir, OutputDir},
                                                            {output_dir, OutputDir} | RelxConfig]),
 
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"NODENAME", "node1"},
+                  {"VAR5", "test5"}]),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
@@ -1016,7 +1029,7 @@ replace_os_vars_default_env(Config) ->
                   {"VAR5", ""}]),
 
     {ok, "222"} = sh(filename:join([OutputDir, "foo", "bin",
-                                       "foo eval '{ok, V} = application:get_env(goal_app_3, var1), V.'"]),
+                                      "foo eval '{ok, V} = application:get_env(goal_app_3, var1), V.'"]),
                         [{"RELX_REPLACE_OS_VARS", "1"},
                          {"VAR5", "test5"}]),
     {ok, "\"201:-test2\""} = sh(filename:join([OutputDir, "foo", "bin",
@@ -1059,14 +1072,12 @@ replace_os_vars_default_env(Config) ->
     %% check that the replaced files have been created in the right place
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                           "sys.config"]))),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
-                [{"RELX_REPLACE_OS_VARS", "1"},
-                 {"NODENAME", "node1"},
-                 {"COOKIE", "cookie1"}]),
-
-    timer:sleep(?SLEEP_TIME),
 
     %% start the node again but this time with overriding all default env values
+    _ = sh(filename:join([OutputDir, "foo", "bin", "foo stop"]),
+                 [{"RELX_REPLACE_OS_VARS", "1"},
+                  {"NODENAME", "node1"},
+                  {"COOKIE", "cookie1"}]),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
@@ -1653,7 +1664,7 @@ extension_script(Config) ->
     rlx_file_utils:write(filename:join([OutputDir, "bar.txt"]), Str),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {ok, [Term]} = file:consult(filename:join([OutputDir, "bar.txt"])),
-    {ok, {bar, foo, _, foo} = Term}.
+    ?assertMatch({bar, foo, _, foo}, Term).
 
 extension_script_exit_code(Config) ->
     ExtensionScript =
@@ -1664,7 +1675,7 @@ extension_script_exit_code(Config) ->
     %% check that the invocation exit code is the expected one
     {error, 42, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
     %% check that the extension script ran
-    {ok, "teststring" = Str}.
+    ?assertEqual("teststring\n", Str).
 
 extension_script_fail_when_no_exit(Config) ->
     ExtensionScript =
@@ -1674,7 +1685,7 @@ extension_script_fail_when_no_exit(Config) ->
     %% check that the invocation exit code is non-zero
     {error, 1, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
     %% check that the extension script ran
-    {ok, "teststring" = Str}.
+    ?assertEqual("teststring\n", Str).
 
 %%-------------------------------------------------------------------
 %% Helper Function for start_fail_when_* tests
@@ -1749,30 +1760,39 @@ sh(Command, Env) ->
     sh(Command, Env, get_cwd()).
 
 sh(Command, Env, Dir) ->
+    %% [os:putenv(X, Y) || {X, Y} <- Env],
     Port = open_port({spawn, lists:flatten(Command)},
                      [{cd, Dir},
                       {env, Env},
                       exit_status,
                       {line, 16384},
-                      use_stdio, stderr_to_stdout]),
+                      use_stdio,
+                      stderr_to_stdout,
+                      eof]),
     case sh_loop(Port) of
         {ok, Ret} ->
             {ok, Ret};
-        {error, Rc, Msg} ->
+        {error, {Rc, Msg}} ->
             {error, Rc, Msg}
     end.
 
 sh_loop(Port) ->
-    sh_loop(Port, "").
+    sh_loop(Port, []).
 
 sh_loop(Port, Acc) ->
     receive
-        {Port, {data, {_, Line}}} ->
-            sh_loop(Port, Acc ++ Line);
-        {Port, {exit_status, 0}} ->
-            {ok, Acc};
-        {Port, {exit_status, Rc}} ->
-            {error, Rc, Acc}
+        {Port, {data, {eol, Line}}} ->
+            sh_loop(Port, [unicode:characters_to_list(Line) ++ "\n" | Acc]);
+        {Port, {data, {noeol, Line}}} ->
+            sh_loop(Port, [unicode:characters_to_list(Line) | Acc]);
+        {Port, eof} ->
+            Data = lists:flatten(lists:reverse(Acc)),
+            receive
+                {Port, {exit_status, 0}} ->
+                    {ok, Data};
+                {Port, {exit_status, Rc}} ->
+                    {error, {Rc, Data}}
+            end
     end.
 
 get_cwd() ->
