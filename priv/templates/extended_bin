@@ -133,6 +133,29 @@ find_erts_dir() {
     fi
 }
 
+find_erl_call() {
+    __erl_call="$ROOTDIR/bin/erl_call"
+    if [ -f "$__erl_call" ]; then
+        ERL_CALL="$__erl_call";
+    else
+        if __erl_call="$(command -v erl_call)" ; then
+            ERL_CALL="$__erl_call"
+        else
+            # erl_call isn't in the PATH
+            # try looking it up in the Erlang code path
+            __erl="$(command -v erl)"
+            code="io:format(\"~s\", [code:lib_dir(erl_interface, bin)]), halt()."
+            __erl_interface_bin="$("$__erl" -boot no_dot_erlang -sasl errlog_type error -noshell -eval "$code")"
+            if [ -f "$__erl_interface_bin/erl_call" ]; then
+                ERL_CALL="$__erl_interface_bin/erl_call"
+            else
+                echo "The erl_call command from the erl_interface OTP application was not found in the PATH, some of this scripts functionality will not be available."
+                exit 1
+            fi
+        fi
+    fi
+}
+
 # Get node pid
 relx_get_pid() {
     if output="$(erl_call_rpc 'os getpid')"
@@ -146,7 +169,7 @@ relx_get_pid() {
 }
 
 ping_or_exit() {
-    if ! erl_call_rpc 'erlang is_alive' 2> /dev/null; then
+    if ! erl_call_rpc 'erlang is_alive' > /dev/null 2>&1; then
         echo "Node is not running!"
         exit 1
     fi
@@ -195,18 +218,7 @@ relx_rem_sh() {
 erl_call_rpc() {
     command=$*
 
-    # TODO: find erl_call in erl_interface app if erts isn't included in release
-    if [ -f "$ROOTDIR/bin/erl_call" ]; then
-        __erl_call="$ROOTDIR/bin/erl_call"
-    else
-        __erl_call="$(command -v erl_call)"
-        if [ ! $? -eq 0 ]; then
-            echo "The erl_call command from the erl_interface OTP application was not found in the PATH, some of this scripts functionality will not be available."
-            exit 1
-        fi
-    fi
-
-    result=$("$__erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -a "${command}")
+    result=$("$ERL_CALL" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -a "${command}")
     code=$?
     if [ $code -eq 0 ]; then
         echo "$result" | tr -d "\n"
@@ -218,7 +230,7 @@ erl_call_rpc() {
 erl_call_eval() {
     command=$*
 
-    result=$(echo "${command}" | "$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -e)
+    result=$(echo "${command}" | "$ERL_CALL" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -e)
     code=$?
     if [ $code -eq 0 ]; then
         echo "$result" | sed 's/^{ok, \(.*\)}$/\1/' | tr -d "\n"
@@ -410,6 +422,7 @@ process_internal_args() {
 process_internal_args "$@"
 
 find_erts_dir
+find_erl_call
 export ROOTDIR="$RELEASE_ROOT_DIR"
 export BINDIR="$ERTS_DIR/bin"
 export EMU="beam"
@@ -773,7 +786,7 @@ case "$1" in
 
         shift
 
-        erl_eval "$@"
+        erl_call_eval "$@"
         ;;
     status)
         # Make sure a node IS running
