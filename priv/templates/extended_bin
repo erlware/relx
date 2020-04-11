@@ -135,7 +135,7 @@ find_erts_dir() {
 
 # Get node pid
 relx_get_pid() {
-    if output="$(erl_call 'os getpid')"
+    if output="$(erl_call_rpc 'os getpid')"
     then
         echo "$output" | sed -e 's/"//g'
         return 0
@@ -146,7 +146,7 @@ relx_get_pid() {
 }
 
 ping_or_exit() {
-    if ! erl_call 'erlang is_alive' > /dev/null; then
+    if ! erl_call_rpc 'erlang is_alive' 2> /dev/null; then
         echo "Node is not running!"
         exit 1
     fi
@@ -180,11 +180,11 @@ relx_rem_sh() {
     id="remsh$(relx_gen_id)-${NAME}"
 
     # Get the node's ticktime so that we use the same thing.
-    TICKTIME="$(erl_call 'net_kernel get_net_ticktime')"
+    TICKTIME="$(erl_call_rpc 'net_kernel get_net_ticktime')"
 
     # Setup remote shell command to control node
     # -dist_listen is new in OTP-23. It keeps the remote node from binding to a listen port
-    # and implies the optoin -hidden
+    # and implies the option -hidden
     exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
          -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME" \
@@ -192,12 +192,21 @@ relx_rem_sh() {
          "$MAYBE_DIST_ARGS"
 }
 
-erl_call() {
+erl_call_rpc() {
     command=$*
 
     # TODO: find erl_call in erl_interface app if erts isn't included in release
+    if [ -f "$ROOTDIR/bin/erl_call" ]; then
+        __erl_call="$ROOTDIR/bin/erl_call"
+    else
+        __erl_call="$(command -v erl_call)"
+        if [ ! $? -eq 0 ]; then
+            echo "The erl_call command from the erl_interface OTP application was not found in the PATH, some of this scripts functionality will not be available."
+            exit 1
+        fi
+    fi
 
-    result=$("$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -a "${command}")
+    result=$("$__erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -a "${command}")
     code=$?
     if [ $code -eq 0 ]; then
         echo "$result" | tr -d "\n"
@@ -206,7 +215,7 @@ erl_call() {
     fi
 }
 
-erl_eval() {
+erl_call_eval() {
     command=$*
 
     result=$(echo "${command}" | "$ROOTDIR/bin/erl_call" "$NAME_TYPE" "$NAME" -c "${COOKIE}" -e)
@@ -572,7 +581,7 @@ case "$1" in
                           "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS --relx-disable-hooks"
 
         # wait for node to be up before running hooks
-        while ! erl_call 'erlang is_alive' > /dev/null 2>&1
+        while ! erl_call_rpc 'erlang is_alive' > /dev/null 2>&1
         do
             sleep 1
         done
@@ -584,7 +593,7 @@ case "$1" in
         relx_run_hooks "$PRE_STOP_HOOKS"
         # Wait for the node to completely stop...
         PID="$(relx_get_pid)"
-        if ! erl_call 'init stop' > /dev/null; then
+        if ! erl_call_rpc 'init stop' > /dev/null; then
             exit 1
         fi
         while kill -s 0 "$PID" 2>/dev/null;
@@ -596,14 +605,14 @@ case "$1" in
 
     restart)
         ## Restart the VM without exiting the process
-        if ! erl_call 'init restart' > /dev/null; then
+        if ! erl_call_rpc 'init restart' > /dev/null; then
             exit 1
         fi
         ;;
 
     reboot)
         ## Restart the VM completely (uses heart to restart it)
-        if ! erl_call 'init reboot' > /dev/null; then
+        if ! erl_call_rpc 'init reboot' > /dev/null; then
             exit 1
         fi
         ;;
@@ -756,7 +765,7 @@ case "$1" in
 
         shift
 
-        erl_call "$@"
+        erl_call_rpc "$@"
         ;;
     eval)
         # Make sure a node IS running
