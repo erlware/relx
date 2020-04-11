@@ -14,7 +14,9 @@
          type/1,
          symlink_or_copy/2,
          remove/1,
-         remove/2]).
+         remove/2,
+         print_path/1,
+         path_from_ancestor/2]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -316,3 +318,47 @@ remove_recursive(Path, Options) ->
                           end, sub_files(Path)),
             file:del_dir(Path)
     end.
+
+%% returns the path for printing to logs. if get_cwd succeeds it
+%% attempts to return the relative path. It falls back on juts
+%% returning the original path.
+print_path(OriginalPath) ->
+   case file:get_cwd() of
+       {ok, Cwd} ->
+           case rlx_file_utils:path_from_ancestor(OriginalPath, Cwd) of
+               {ok, ""} ->
+                   OriginalPath;
+               {ok, Path} ->
+                   Path;
+               _ ->
+                   OriginalPath
+           end;
+       _ ->
+           OriginalPath
+   end.
+
+%% for a given path return the path relative to a base directory
+-spec path_from_ancestor(string(), string()) -> {ok, string()} | {error, badparent}.
+
+path_from_ancestor(Target, To) ->
+    path_from_ancestor_(filename:split(canonical_path(Target)),
+                        filename:split(canonical_path(To))).
+
+path_from_ancestor_([Part|Target], [Part|To]) -> path_from_ancestor_(Target, To);
+path_from_ancestor_([], [])                   -> {ok, ""};
+path_from_ancestor_(Target, [])               -> {ok, filename:join(Target)};
+path_from_ancestor_(_, _)                     -> {error, badparent}.
+
+%% reduce a filepath by removing all incidences of `.' and `..'
+-spec canonical_path(string()) -> string().
+
+canonical_path(Dir) ->
+    Canon = canonical_path([], filename:split(filename:absname(Dir))),
+    filename:nativename(Canon).
+
+canonical_path([], [])                -> filename:absname("/");
+canonical_path(Acc, [])               -> filename:join(lists:reverse(Acc));
+canonical_path(Acc, ["."|Rest])       -> canonical_path(Acc, Rest);
+canonical_path([_|Acc], [".."|Rest])  -> canonical_path(Acc, Rest);
+canonical_path([], [".."|Rest])       -> canonical_path([], Rest);
+canonical_path(Acc, [Component|Rest]) -> canonical_path([Component|Acc], Rest).
