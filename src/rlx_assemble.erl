@@ -48,7 +48,7 @@ create_output_dir(OutputDir) ->
 copy_app_directories_to_output(Release, OutputDir, State) ->
     LibDir = filename:join([OutputDir, "lib"]),
     ok = rlx_file_utils:mkdir_p(LibDir),
-    IncludeSystemLibs = rlx_state:get(State, system_libs, rlx_state:get(State, include_erts, true)),
+    IncludeSystemLibs = rlx_state:system_libs(State),
     Apps = prepare_applications(State, rlx_release:applications(Release)),
     [copy_app(State, LibDir, App, IncludeSystemLibs) || App <- Apps],
     ok.
@@ -261,39 +261,33 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     ok = rlx_file_utils:mkdir_p(BinDir),
     VsnRel = filename:join(BinDir, rlx_release:canonical_name(Release)),
     BareRel = filename:join(BinDir, RelName),
-    ErlOpts = rlx_state:get(State, erl_opts, ""),
     {OsFamily, _OsName} = rlx_util:os_type(State),
 
-    StartFile = case rlx_state:get(State, extended_start_script, false) of
+    StartFile = case rlx_state:extended_start_script(State) of
                     false ->
-                        case rlx_state:get(State, include_nodetool, false) of
+                        case rlx_state:include_nodetool(State) of
                             true ->
                                 include_nodetool(BinDir);
                             false ->
                                 ok
                         end,
                         bin_file_contents(OsFamily, RelName, RelVsn,
-                                          rlx_release:erts(Release),
-                                          ErlOpts);
+                                          rlx_release:erts(Release));
                     true ->
                         %% extended start script needs nodetool so it's
                         %% always included
                         include_nodetool(BinDir),
                         Hooks = expand_hooks(BinDir,
-                                             rlx_state:get(State,
-                                                           extended_start_script_hooks,
-                                                           []),
+                                             rlx_state:extended_start_script_hooks(State),
                                              State),
-                        Extensions = rlx_state:get(State,
-                                                   extended_start_script_extensions,
-                                                   []),
+                        Extensions = rlx_state:extended_start_script_extensions(State),
                         extended_bin_file_contents(OsFamily, RelName, RelVsn,
-                                                   rlx_release:erts(Release), ErlOpts,
+                                                   rlx_release:erts(Release),
                                                    Hooks, Extensions)
                 end,
     %% We generate the start script by default, unless the user
     %% tells us not too
-    case rlx_state:get(State, generate_start_script, true) of
+    case rlx_state:generate_start_script(State) of
         false ->
             ok;
         _ ->
@@ -512,7 +506,7 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
 %% @doc Optionally add erts directory to release, if defined.
 -spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) -> ok.
 include_erts(State, Release, OutputDir, RelDir) ->
-    Prefix = case rlx_state:get(State, include_erts, true) of
+    Prefix = case rlx_state:include_erts(State) of
                  false ->
                      false;
                  true ->
@@ -532,7 +526,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
             {OsFamily, _OsName} = rlx_util:os_type(State),
             case rlx_file_utils:is_dir(ErtsBinDir) of
                 false ->
-                    erlang:error(?RLX_ERROR({specified_erts_does_not_exist, ErtsVersion}));
+                    erlang:error(?RLX_ERROR({specified_erts_does_not_exist, Prefix, ErtsVersion}));
                 true ->
                     ok = rlx_file_utils:mkdir_p(LocalErtsBin),
                     ok = rlx_file_utils:copy(ErtsBinDir, LocalErtsBin, [recursive, {file_info, [mode, time]}]),
@@ -647,7 +641,7 @@ make_boot_script_variables(Release, State) ->
     % NOTE the boot variable can point to either the release/erts root directory
     % or the release/erts lib directory, as long as the usage here matches the
     % usage used in the start up scripts
-    case {os:type(), rlx_state:get(State, system_libs, true)} of
+    case {os:type(), rlx_state:system_libs(State)} of
         {{win32, _}, false} ->
             [{"RELEASE_DIR", filename:join(rlx_state:base_output_dir(State),
                                            rlx_release:name(Release))}];
@@ -717,15 +711,15 @@ ensure_not_exist(RelConfPath)     ->
             rlx_file_utils:remove(RelConfPath)
     end.
 
-bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts) ->
+bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn) ->
     Template = case OsFamily of
         unix -> bin;
         win32 -> bin_windows
     end,
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
-                      {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts}]).
+                      {erts_vsn, ErtsVsn}]).
 
-extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, Extensions) ->
+extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, Hooks, Extensions) ->
     Template = case OsFamily of
         unix -> extended_bin;
         win32 -> extended_bin_windows
@@ -756,7 +750,7 @@ extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, ErlOpts, Hooks, E
     % (eg. foo_extension="path/to/foo_script")
     ExtensionDeclarations = rlx_string:join(ExtensionDeclarations1, ";"),
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
-                      {erts_vsn, ErtsVsn}, {erl_opts, ErlOpts},
+                      {erts_vsn, ErtsVsn},
                       {pre_start_hooks, PreStartHooks},
                       {post_start_hooks, PostStartHooks},
                       {pre_stop_hooks, PreStopHooks},
@@ -813,9 +807,9 @@ format_error({config_src_does_not_exist, Path}) ->
 format_error({sys_config_parse_error, ConfigPath, Reason}) ->
     io_lib:format("The config file (~s) specified for this release could not be opened or parsed: ~s",
                   [ConfigPath, file:format_error(Reason)]);
-format_error({specified_erts_does_not_exist, ErtsVersion}) ->
-    io_lib:format("Specified version of erts (~s) does not exist",
-                  [ErtsVersion]);
+format_error({specified_erts_does_not_exist, Prefix, ErtsVersion}) ->
+    io_lib:format("Specified version of erts (~s) does not exist under configured directory ~s",
+                  [ErtsVersion, Prefix]);
 format_error({release_script_generation_error, RelFile}) ->
     io_lib:format("Unknown internal release error generating the release file to ~s",
                   [RelFile]);

@@ -16,7 +16,7 @@ make_tar(Release, OutputDir, State) ->
     ErtsVersion = rlx_release:erts(Release),
 
     OverlayVars = rlx_overlay:generate_overlay_vars(State, Release),
-    OverlayFiles = overlay_files(OverlayVars, rlx_state:get(State, overlay, undefined), OutputDir),
+    OverlayFiles = overlay_files(OverlayVars, rlx_state:overlay(State), OutputDir),
     ConfigFiles = config_files(Vsn, OutputDir),
 
     StartClean = filename:join(["releases", Vsn, "start_clean.boot"]),
@@ -31,13 +31,13 @@ make_tar(Release, OutputDir, State) ->
           filename:join([OutputDir, "releases", "RELEASES"])},
          {"bin", filename:join([OutputDir, "bin"])}],
 
-    SystemLibs = rlx_state:get(State, system_libs, true),
+    SystemLibs = rlx_state:system_libs(State),
 
     Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
             {dirs, app_dirs(State)},
             silent,
             {outdir, OutputDir} |
-            case rlx_state:get(State, include_erts, true) of
+            case rlx_state:include_erts(State) of
                 true ->
                     ErtsVersion = rlx_release:erts(Release),
                     ErtsDir = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
@@ -123,7 +123,7 @@ format_error({tar_generation_error, Module, Errors}) ->
 update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
     ?log_debug("updating tarball ~s with extra files ~p", [TarFile, ExtraFiles]),
-    IncludeErts = rlx_state:get(State, include_erts, true),
+    IncludeErts = rlx_state:include_erts(State),
     file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
     ok =
@@ -160,8 +160,6 @@ config_files(Vsn, OutputDir) ->
                                   filelib:is_file(Filename)].
 
 %% convert overlays to a list of {NameInArchive, Filename} tuples to pass to `erl_tar' or `make_tar'
-overlay_files(_, undefined, _) ->
-    [];
 overlay_files(OverlayVars, Overlay, OutputDir) ->
     [begin
          To = to(O),
