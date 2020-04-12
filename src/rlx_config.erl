@@ -1,7 +1,8 @@
 -module(rlx_config).
 
 -export([to_state/2,
-         load/2]).
+         load/2,
+         format_error/1]).
 
 -include("relx.hrl").
 -include("rlx_log.hrl").
@@ -12,15 +13,15 @@
 -export_type([t/0]).
 
 to_state(Config, State) ->
-    lists:foldl(fun load/2, {ok, State}, Config).
+    %% setup warnings_as_errors before loading the rest so we can error on
+    %% any warning during the load
+    State1 = rlx_state:warnings_as_errors(State, proplists:get_bool(warnings_as_errors, Config)),
+    lists:foldl(fun load/2, {ok, State1}, Config).
 
 -spec load(term(), {ok, rlx_state:t()} | relx:error()) -> {ok, rlx_state:t()} | relx:error().
 load({paths, Paths}, {ok, State}) ->
     code:add_pathsa([filename:absname(Path) || Path <- Paths]),
     {ok, State};
-load({default_libs, DefaultLibs}, {ok, State}) ->
-    State2 = rlx_state:put(State, default_libs, DefaultLibs),
-    {ok, State2};
 load({lib_dirs, Dirs}, {ok, State}) ->
     LibDirs = [list_to_binary(Dir) || Dir <- rlx_file_utils:wildcard_paths(Dirs)],
     State1 = rlx_state:add_lib_dirs(State, LibDirs),
@@ -92,25 +93,48 @@ load({root_dir, Root}, {ok, State}) ->
 load({output_dir, OutputDir}, {ok, State}) ->
     {ok, rlx_state:base_output_dir(State, filename:absname(OutputDir))};
 load({overlay_vars_values, OverlayVarsValues}, {ok, State}) ->
-    CurrentOverlayVarsValues = rlx_state:get(State, overlay_vars_values),
+    CurrentOverlayVarsValues = rlx_state:overlay_vars_values(State),
     NewOverlayVarsValues = CurrentOverlayVarsValues ++ OverlayVarsValues,
-    {ok, rlx_state:put(State, overlay_vars_values, NewOverlayVarsValues)};
+    {ok, rlx_state:overlay_vars_values(State, NewOverlayVarsValues)};
 load({overlay_vars, OverlayVars}, {ok, State}) ->
-    CurrentOverlayVars = rlx_state:get(State, overlay_vars),
+    CurrentOverlayVars = rlx_state:overlay_vars(State),
     NewOverlayVars0 = list_of_overlay_vars_files(OverlayVars),
     NewOverlayVars1 = CurrentOverlayVars ++ NewOverlayVars0,
-    {ok, rlx_state:put(State, overlay_vars, NewOverlayVars1)};
+    {ok, rlx_state:overlay_vars(State, NewOverlayVars1)};
 load({warnings_as_errors, WarningsAsErrors}, {ok, State}) ->
     {ok, rlx_state:warnings_as_errors(State, WarningsAsErrors)};
 load({src_tests, SrcTests}, {ok, State}) ->
     {ok, rlx_state:src_tests(State, SrcTests)};
-load({Name, Value}, {ok, State})
-  when erlang:is_atom(Name) ->
-    {ok, rlx_state:put(State, Name, Value)};
+load({include_erts, IncludeErts}, {ok, State}) ->
+    {ok, rlx_state:include_erts(State, IncludeErts)};
+load({system_libs, SystemLibs}, {ok, State}) ->
+    {ok, rlx_state:system_libs(State, SystemLibs)};
+load({overlay, Overlay}, {ok, State}) ->
+    {ok, rlx_state:overlay(State, Overlay)};
+load({extended_start_script_hooks, ExtendedStartScriptHooks}, {ok, State}) ->
+    {ok, rlx_state:extended_start_script_hooks(State, ExtendedStartScriptHooks)};
+load({extended_start_script, ExtendedStartScript}, {ok, State}) ->
+    {ok, rlx_state:extended_start_script(State, ExtendedStartScript)};
+load({extended_start_script_extensions, ExtendedStartScriptExtensions}, {ok, State}) ->
+    {ok, rlx_state:extended_start_script_extensions(State, ExtendedStartScriptExtensions)};
+load({generate_start_script, GenerateStartScript}, {ok, State}) ->
+    {ok, rlx_state:generate_start_script(State, GenerateStartScript)};
+load({include_nodetool, IncludeNodetool}, {ok, State}) ->
+    {ok, rlx_state:include_nodetool(State, IncludeNodetool)};
 load(_, Error={error, _}) ->
-    Error;
-load(InvalidTerm, _) ->
-    ?RLX_ERROR({invalid_term, InvalidTerm}).
+    erlang:error(?RLX_ERROR(Error));
+load(InvalidTerm, {ok, State}) ->
+    Warning = {invalid_term, InvalidTerm},
+    case rlx_state:warnings_as_errors(State) of
+        true ->
+            erlang:error(?RLX_ERROR(Warning));
+        false ->
+            ?log_warn(format_error(Warning)),
+            {ok, State}
+    end.
+
+format_error({invalid_term, InvalidTerm}) ->
+    io_lib:format("Unknown term found in relx configuration: ~p", [InvalidTerm]).
 
 %%
 

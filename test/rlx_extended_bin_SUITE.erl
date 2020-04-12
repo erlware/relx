@@ -1159,7 +1159,7 @@ custom_start_script_hooks(Config) ->
                                                               {custom, "hooks/post_stop"}
                                                              ]}
                                                 ]},
-                  {mkdir, "scripts"},
+
                   {overlay, [{copy, "./{pre,post}_{start,stop}", "bin/hooks/"}]}
                  ],
 
@@ -1239,7 +1239,7 @@ custom_start_script_hooks_console(Config) ->
                                                               {custom, "hooks/pre_start"}
                                                              ]}
                                                 ]},
-                  {mkdir, "scripts"},
+
                   {overlay, [{copy, "./pre_start", "bin/hooks/pre_start"}]}
                  ],
 
@@ -1361,7 +1361,7 @@ mixed_custom_and_builtin_start_script_hooks(Config) ->
                                                               {custom, "hooks/post_stop"}
                                                              ]}
                                                 ]},
-                  {mkdir, "scripts"},
+
                   {overlay, [{copy, "./pre_start", "bin/hooks/pre_start"},
                              {copy, "./post_start", "bin/hooks/post_start"},
                              {copy, "./pre_stop", "bin/hooks/pre_stop"},

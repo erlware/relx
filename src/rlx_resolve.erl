@@ -64,7 +64,7 @@ set_resolved(Release0, Pkgs, State) ->
         {ok, Release1} ->
             ?log_debug("Resolved ~p-~s", [rlx_release:name(Release1), rlx_release:vsn(Release1)]),
             ?log_debug("~s", [rlx_release:format(Release1)]),
-            case rlx_state:get(State, include_erts, undefined) of
+            case rlx_state:include_erts(State) of
                 IncludeErts when is_atom(IncludeErts) ->
                     {ok, Release1, rlx_state:add_realized_release(State, Release1)};
                 ErtsDir ->

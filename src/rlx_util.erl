@@ -211,7 +211,7 @@ os_type(State) ->
   end.
 
 include_erts_is_win32(State) ->
-  case rlx_state:get(State, include_erts, true) of
+  case rlx_state:include_erts(State) of
     true -> false;
     false -> false;
     Path -> is_win32_erts(Path)
