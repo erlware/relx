@@ -142,7 +142,7 @@ format_error({no_release_name, Vsn}) ->
     io_lib:format("A target release version was specified (~s) but no name", [Vsn]);
 format_error({invalid_release_info, Info}) ->
     io_lib:format("Target release information is in an invalid format ~p", [Info]);
-format_error(multiple_release_names) ->
+format_error({multiple_release_names, _, _}) ->
     "Must specify the name of the release to build when there are multiple releases in the config";
 format_error(no_releases_in_system) ->
     "No releases have been specified in the system!";
@@ -195,9 +195,9 @@ pick_release_version(RelName, State) ->
 release_sort({{RelName, RelVsnA}, _},
              {{RelName, RelVsnB}, _}) ->
     rlx_util:parsed_vsn_lte(rlx_util:parse_vsn(RelVsnB), rlx_util:parse_vsn(RelVsnA));
-release_sort({{_RelA, _}, _}, {{_RelB, _}, _}) ->
+release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
     %% The release names are different. When the releases are named differently
     %% we can not just take the lastest version. You *must* provide a default
     %% release name at least. So we throw an error here that the top can catch
     %% and return
-    error(?RLX_ERROR(multiple_release_names)).
+    error(?RLX_ERROR({multiple_release_names, RelA, RelB})).
