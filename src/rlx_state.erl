@@ -52,13 +52,30 @@
          update_realized_release/2,
          available_apps/1,
          available_apps/2,
-         get/2,
-         get/3,
-         put/3,
          dev_mode/1,
          dev_mode/2,
          include_src/1,
          include_src/2,
+         include_erts/1,
+         include_erts/2,
+         include_nodetool/1,
+         include_nodetool/2,
+         system_libs/1,
+         system_libs/2,
+         extended_start_script/1,
+         extended_start_script/2,
+         extended_start_script_hooks/1,
+         extended_start_script_hooks/2,
+         extended_start_script_extensions/1,
+         extended_start_script_extensions/2,
+         overlay/1,
+         overlay/2,
+         overlay_vars_values/1,
+         overlay_vars_values/2,
+         overlay_vars/1,
+         overlay_vars/2,
+         generate_start_script/1,
+         generate_start_script/2,
          upfrom/2,
          format/1,
          format/2,
@@ -78,8 +95,6 @@
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
                   available_apps=[] :: [rlx_app_info:t()],
-                  default_configured_release :: {rlx_release:name() | undefined,
-                                                 rlx_release:vsn() |undefined} | undefined,
                   vm_args :: file:filename() | false | undefined,
                   vm_args_src :: file:filename() | undefined,
                   sys_config :: file:filename() | false | undefined,
@@ -92,10 +107,19 @@
                   realized_releases :: releases(),
                   dev_mode=false :: boolean(),
                   include_src :: boolean() | undefined,
+                  include_erts=false :: boolean() | file:filename(),
+                  system_libs=true :: boolean(),
                   upfrom :: string() | binary() | undefined,
-                  config_values :: #{atom() => term()},
                   warnings_as_errors=false :: boolean(),
                   src_tests=true :: boolean(),
+                  overlay=[] :: list(),
+                  include_nodetool=true :: boolean(),
+                  overlay_vars_values=[] :: list(),
+                  overlay_vars=[] :: list(),
+                  extended_start_script=true :: boolean(),
+                  extended_start_script_hooks=[] :: list(),
+                  extended_start_script_extensions=[] :: list(),
+                  generate_start_script=true :: boolean(),
 
                   %% default check is for sasl 3.5 and above
                   %% version 3.5 of sasl has systools with changes for relx
@@ -115,15 +139,13 @@
 
 new() ->
     {ok, Root} = file:get_cwd(),
-    State0 = #state_t{root_dir=Root,
-                      output_dir=filename:join(Root, "_rel"),
-                      configured_releases=#{},
-                      realized_releases=#{},
-                      config_values=#{},
-                      is_relx_sasl=rlx_util:is_sasl_gte()},
-    State1 = rlx_state:put(State0, default_libs, true),
-    State2 = rlx_state:put(State1, overlay_vars_values, []),
-    rlx_state:put(State2, overlay_vars, []).
+    #state_t{root_dir=Root,
+             output_dir=filename:join(Root, "_rel"),
+             configured_releases=#{},
+             realized_releases=#{},
+             is_relx_sasl=rlx_util:is_sasl_gte(),
+             overlay_vars_values=[],
+             overlay_vars=[]}.
 
 %% @doc the application overrides for the system
 -spec overrides(t()) -> [{AppName::atom(), Directory::file:filename()}].
@@ -253,21 +275,6 @@ available_apps(#state_t{available_apps=Apps}) ->
 available_apps(M, NewApps) ->
     M#state_t{available_apps=NewApps}.
 
--spec get(t(), atom()) -> term().
-get(#state_t{config_values=Config}, Key)
-  when erlang:is_atom(Key) ->
-    maps:get(Key, Config).
-
--spec get(t(), atom(), DefaultValue::term()) -> term().
-get(#state_t{config_values=Config}, Key, DefaultValue)
-  when erlang:is_atom(Key) ->
-    maps:get(Key, Config, DefaultValue).
-
--spec put(t(), atom(), term()) ->t().
-put(M=#state_t{config_values=Config}, Key, Value)
-  when erlang:is_atom(Key) ->
-    M#state_t{config_values=Config#{Key => Value}}.
-
 -spec dev_mode(t()) -> boolean().
 dev_mode(#state_t{dev_mode=DevMode}) ->
     DevMode.
@@ -276,6 +283,74 @@ dev_mode(#state_t{dev_mode=DevMode}) ->
 dev_mode(S, DevMode) ->
     S#state_t{dev_mode=DevMode}.
 
+-spec include_erts(t()) -> boolean() | file:filename() | undefined.
+include_erts(#state_t{include_erts=IncludeErts}) ->
+    IncludeErts.
+
+-spec include_erts(t(), boolean() | file:filename()) -> t().
+include_erts(S, IncludeErts) ->
+    S#state_t{include_erts=IncludeErts}.
+
+-spec include_nodetool(t()) -> boolean() | file:filename() | undefined.
+include_nodetool(#state_t{include_nodetool=IncludeNodetool}) ->
+    IncludeNodetool.
+
+-spec include_nodetool(t(), boolean() | file:filename()) -> t().
+include_nodetool(S, IncludeNodetool) ->
+    S#state_t{include_nodetool=IncludeNodetool}.
+
+-spec overlay(t()) -> list() | undefined.
+overlay(#state_t{overlay=Overlay}) ->
+    Overlay.
+
+-spec overlay(t(), list()) -> t().
+overlay(S, Overlay) ->
+    S#state_t{overlay=Overlay}.
+
+overlay_vars_values(#state_t{overlay_vars_values=OverlayVarsValues}) ->
+    OverlayVarsValues.
+
+overlay_vars_values(S, OverlayVarsValues) ->
+    S#state_t{overlay_vars_values=OverlayVarsValues}.
+
+overlay_vars(#state_t{overlay_vars=OverlayVars}) ->
+    OverlayVars.
+
+overlay_vars(S, OverlayVars) ->
+    S#state_t{overlay_vars=OverlayVars}.
+
+-spec extended_start_script_hooks(t()) -> list() | undefined.
+extended_start_script_hooks(#state_t{extended_start_script_hooks=ExtendedStartScriptHooks}) ->
+    ExtendedStartScriptHooks.
+
+-spec extended_start_script_hooks(t(), list()) -> t().
+extended_start_script_hooks(S, ExtendedStartScriptHooks) ->
+    S#state_t{extended_start_script_hooks=ExtendedStartScriptHooks}.
+
+-spec extended_start_script_extensions(t()) -> list() | undefined.
+extended_start_script_extensions(#state_t{extended_start_script_extensions=ExtendedStartScriptExtensions}) ->
+    ExtendedStartScriptExtensions.
+
+-spec extended_start_script_extensions(t(), list()) -> t().
+extended_start_script_extensions(S, ExtendedStartScriptExtensions) ->
+    S#state_t{extended_start_script_extensions=ExtendedStartScriptExtensions}.
+
+-spec extended_start_script(t()) -> boolean() | undefined.
+extended_start_script(#state_t{extended_start_script=ExtendedStartScript}) ->
+    ExtendedStartScript.
+
+-spec extended_start_script(t(), boolean()) -> t().
+extended_start_script(S, ExtendedStartScript) ->
+    S#state_t{extended_start_script=ExtendedStartScript}.
+
+-spec generate_start_script(t()) -> boolean() | undefined.
+generate_start_script(#state_t{generate_start_script=GenerateStartScript}) ->
+    GenerateStartScript.
+
+-spec generate_start_script(t(), boolean()) -> t().
+generate_start_script(S, GenerateStartScript) ->
+    S#state_t{generate_start_script=GenerateStartScript}.
+
 -spec include_src(t()) -> boolean() | undefined.
 include_src(#state_t{include_src=IncludeSrc}) ->
     IncludeSrc.
@@ -283,6 +358,14 @@ include_src(#state_t{include_src=IncludeSrc}) ->
 -spec include_src(t(), boolean()) -> t().
 include_src(S, IncludeSrc) ->
     S#state_t{include_src=IncludeSrc}.
+
+-spec system_libs(t()) -> boolean() | undefined.
+system_libs(#state_t{system_libs=SystemLibs}) ->
+    SystemLibs.
+
+-spec system_libs(t(), boolean()) -> t().
+system_libs(S, SystemLibs) ->
+    S#state_t{system_libs=SystemLibs}.
 
 -spec upfrom(t(), string() | binary() | undefined) -> t().
 upfrom(State, UpFrom) ->
@@ -294,17 +377,13 @@ format(Mod) ->
 
 -spec format(t(), non_neg_integer()) -> iolist().
 format(#state_t{output_dir=OutDir, 
-                lib_dirs=LibDirs,
-                config_values=Values0},
+                lib_dirs=LibDirs},
        Indent) ->
-    Values1 = maps:to_list(Values0),
     [rlx_util:indent(Indent),
      <<"state:\n">>,
      rlx_util:indent(Indent + 2), "output_dir: ", OutDir, "\n",
      rlx_util:indent(Indent + 2), "lib_dirs: \n",
-     [[rlx_util:indent(Indent + 3), LibDir, ",\n"] || LibDir <- LibDirs],
-     rlx_util:indent(Indent + 2), "config values: \n",
-     [[rlx_util:indent(Indent + 3), io_lib:format("~p", [Value]), ",\n"] || Value <- Values1]].
+     [[rlx_util:indent(Indent + 3), LibDir, ",\n"] || LibDir <- LibDirs]].
 
 -spec warnings_as_errors(t()) -> boolean().
 warnings_as_errors(#state_t{warnings_as_errors=WarningsAsErrors}) ->

@@ -11,31 +11,27 @@ format_error({no_goals_specified, {RelName, RelVsn}}) ->
     io_lib:format("No applications configured to be included in release ~s-~s", [RelName, RelVsn]);
 format_error({release_erts_error, Dir}) ->
     io_lib:format("Unable to find erts in ~s", [Dir]);
-format_error({release_not_found, {RelName, RelVsn}}) ->
-    io_lib:format("No release named ~s of version ~s found in configuration", [RelName, RelVsn]);
-format_error({app_not_found, App}) ->
-    io_lib:format("Application needed for release not found: ~p", [App]).
+format_error({app_not_found, AppName, AppVsn}) ->
+    io_lib:format("Application needed for release not found: ~p-~s", [AppName, AppVsn]);
+format_error({app_not_found, AppName}) ->
+    io_lib:format("Application needed for release not found: ~p", [AppName]).
 
 solve_release(Release, State0) ->
     RelName = rlx_release:name(Release),
     RelVsn = rlx_release:vsn(Release),
     ?log_debug("Solving Release ~p-~s", [RelName, RelVsn]),
     AllApps = rlx_state:available_apps(State0),
-    try
-        %% get per release config values and override the State with them
-        Config = rlx_release:config(Release),
-        {ok, State1} = lists:foldl(fun rlx_config:load/2, {ok, State0}, Config),
-        case rlx_release:goals(Release) of
-            Goals when map_size(Goals) =:= 0 ->
-                erlang:error(?RLX_ERROR({no_goals_specified, {RelName, RelVsn}}));
-            Goals ->
-                Pkgs = subset(maps:to_list(Goals), AllApps),
-                Pkgs1 = remove_exclude_apps(Pkgs, State1),
-                set_resolved(Release, Pkgs1, State1)
-        end
-    catch
-        throw:not_found ->
-            erlang:error(?RLX_ERROR({release_not_found, {RelName, RelVsn}}))
+
+    %% get per release config values and override the State with them
+    Config = rlx_release:config(Release),
+    {ok, State1} = lists:foldl(fun rlx_config:load/2, {ok, State0}, Config),
+    case rlx_release:goals(Release) of
+        Goals when map_size(Goals) =:= 0 ->
+            erlang:error(?RLX_ERROR({no_goals_specified, {RelName, RelVsn}}));
+        Goals ->
+            Pkgs = subset(maps:to_list(Goals), AllApps),
+            Pkgs1 = remove_exclude_apps(Pkgs, State1),
+            set_resolved(Release, Pkgs1, State1)
     end.
 
 %% find the app_info records for each application and its deps needed for the release
@@ -64,7 +60,7 @@ set_resolved(Release0, Pkgs, State) ->
         {ok, Release1} ->
             ?log_debug("Resolved ~p-~s", [rlx_release:name(Release1), rlx_release:vsn(Release1)]),
             ?log_debug("~s", [rlx_release:format(Release1)]),
-            case rlx_state:get(State, include_erts, undefined) of
+            case rlx_state:include_erts(State) of
                 IncludeErts when is_atom(IncludeErts) ->
                     {ok, Release1, rlx_state:add_realized_release(State, Release1)};
                 ErtsDir ->
@@ -76,7 +72,7 @@ set_resolved(Release0, Pkgs, State) ->
                         {ok, Release2, rlx_state:add_realized_release(State, Release2)}
                     catch
                         _:_ ->
-                            ?RLX_ERROR({release_erts_error, ErtsDir})
+                            erlang:error(?RLX_ERROR({release_erts_error, ErtsDir}))
                     end
             end
     end.
@@ -99,8 +95,13 @@ find_and_remove(ExcludeName, [#{name := Name} | Rest]) when ExcludeName =:= Name
 find_and_remove(ExcludeName, [H | Rest]) ->
     [H | find_and_remove(ExcludeName, Rest)].
 
-find_app(Name, _Vsn, []) ->
-    error(?RLX_ERROR({app_not_found, Name}));
+find_app(Name, Vsn, []) ->
+    case code:lib_dir(Name) of
+        {error, bad_name} ->
+            erlang:error(?RLX_ERROR({app_not_found, Name}));
+        Dir ->
+            to_app(Name, Vsn, Dir)
+    end;
 find_app(Name, Vsn, [App | Rest]) ->
     case check_app(Name, Vsn, App) of
         true ->
@@ -115,13 +116,25 @@ check_app(Name, Vsn, App) ->
     rlx_app_info:name(App) =:= Name
         andalso rlx_app_info:vsn(App) =:= Vsn.
 
+to_app(Name, Vsn, Dir) ->
+    %% TODO: Support overriding the dirs to search
+    %% precedence: apps > deps > erl_libs > system
+    AppFile = code:where_is_file(filename:join([[Name, ".app"]])),
+    {ok, [{application, _AppName, AppData}]} = file:consult(AppFile),
+    Applications = proplists:get_value(applications, AppData, []),
+    IncludedApplications = proplists:get_value(included_applications, AppData, []),
 
-%% TODO: Support overriding the dirs to search
-%% precedence: apps > deps > erl_libs > system
-%% Dir = code:lib_dir(Name),
-%% case rebar_app_discover:find_app(Dir, valid) of
-%%     {true, A} ->
-%%         A;
-%%     _ ->
-%%         throw({app_not_found, Name})
-%% end
+    case lists:keyfind(vsn, 1, AppData) of
+        {_, Vsn1} when Vsn =:= undefined ;
+                       Vsn =:= Vsn1 ->
+            #{name => Name,
+              vsn => Vsn1,
+
+              applications => Applications,
+              included_applications => IncludedApplications,
+
+              dir => Dir,
+              link => false};
+        _ ->
+            erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}))
+    end.

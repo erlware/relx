@@ -86,9 +86,7 @@ generate_overlay_vars(State, Release) ->
 -spec get_overlay_vars_from_file(rlx_state:t(), proplists:proplist()) ->
                                         proplists:proplist() | relx:error().
 get_overlay_vars_from_file(State, OverlayVars) ->
-    case rlx_state:get(State, overlay_vars, undefined) of
-        undefined ->
-            OverlayVars;
+    case rlx_state:overlay_vars(State) of
         [] ->
             OverlayVars;
         [H | _]=FileNames when is_list(H) ;
@@ -101,12 +99,12 @@ get_overlay_vars_from_file(State, OverlayVars) ->
 -spec read_overlay_vars(rlx_state:t(), proplists:proplist(), [file:name()]) ->
                                proplists:proplist() | relx:error().
 read_overlay_vars(State, OverlayVars, FileNames) ->
-    OverlayVarsValues = rlx_state:get(State, overlay_vars_values),
+    OverlayVarsValues = rlx_state:overlay_vars_values(State),
     Terms = merge_overlay_vars(State, FileNames),
     case render_overlay_vars(OverlayVars ++ OverlayVarsValues, Terms, []) of
         {ok, NewTerms} ->
-            % We place `OverlayVarsvalues' at the end on purpose; their
-            % definitions should be overwrittenable by both internal
+            % We place `OverlayVarsValues' at the end on purpose; their
+            % definitions should be able to be overwritten by both internal
             % and rendered vars, as not to change behaviour in
             % setups preceding the support for overlays from the caller.
             OverlayVars ++ NewTerms ++ OverlayVarsValues;
@@ -214,8 +212,8 @@ generate_state_vars(Release, State) ->
 -spec do_overlay(rlx_state:t(), rlx_release:t(), list(), proplists:proplist()) ->
                                    {ok, rlx_state:t()} | relx:error().
 do_overlay(State, Release, Files, OverlayVars) ->
-    case rlx_state:get(State, overlay, undefined) of
-        undefined ->
+    case rlx_state:overlay(State) of
+        [] ->
             {ok, State};
         Overlays ->
             handle_errors(State,
