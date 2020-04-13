@@ -1,6 +1,6 @@
 -module(rlx_config).
 
--export([to_state/2,
+-export([to_state/1,
          load/2,
          format_error/1]).
 
@@ -11,6 +11,9 @@
 -type t() :: [{atom(), term()}].
 
 -export_type([t/0]).
+
+to_state(Config) ->
+    to_state(Config, rlx_state:new()).
 
 to_state(Config, State) ->
     %% setup warnings_as_errors before loading the rest so we can error on
@@ -166,7 +169,6 @@ try_vsn(Fun) ->
             "0.0.0"
     end.
 
-%% TODO: handle versions in rebar3 or whatever else is calling relx
 git_ref(Arg) ->
     String = rlx_util:sh("git rev-parse " ++ Arg ++ " HEAD"),
     Vsn = rlx_string:trim(String, both, "\n"),
@@ -182,7 +184,6 @@ git_ref(Arg) ->
             "0.0.0"
     end.
 
-%% TODO: handle versions in rebar3 or whatever else is calling relx
 git_tag_vsn() ->
     {Vsn, RawRef, RawCount} = collect_default_refcount(),
     build_vsn_string(Vsn, RawRef, RawCount).

@@ -120,7 +120,7 @@ to_app(Name, Vsn, Dir) ->
     AppFile = code:where_is_file(filename:join([[Name, ".app"]])),
     {ok, [{application, _AppName, AppData}]} = file:consult(AppFile),
     Applications = proplists:get_value(applications, AppData, []),
-    IncludedApplications = proplists:get_value(included_applicationsp, AppData, []),
+    IncludedApplications = proplists:get_value(included_applications, AppData, []),
 
     case lists:keyfind(vsn, 1, AppData) of
         {_, Vsn1} when Vsn =:= undefined ;
