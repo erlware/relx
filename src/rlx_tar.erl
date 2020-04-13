@@ -27,9 +27,14 @@ make_tar(Release, OutputDir, State) ->
          {NoDotErlang, filename:join([OutputDir, NoDotErlang])},
          {filename:join(["releases", "start_erl.data"]),
           filename:join([OutputDir, "releases", "start_erl.data"])},
-         {filename:join(["releases", "RELEASES"]),
-          filename:join([OutputDir, "releases", "RELEASES"])},
-         {"bin", filename:join([OutputDir, "bin"])}],
+         {"bin", filename:join([OutputDir, "bin"])}
+         | case filelib:is_file(filename:join([OutputDir, "releases", "RELEASES"])) of
+               true ->
+                   [{filename:join(["releases", "RELEASES"]),
+                     filename:join([OutputDir, "releases", "RELEASES"])}];
+               false ->
+                   []
+           end],
 
     SystemLibs = rlx_state:system_libs(State),
 
@@ -111,8 +116,12 @@ format_error({make_tar, {badarg, Args}}) ->
     io_lib:format("Unknown args given to systools:make_tar/2: ~p", [Args]);
 format_error({tar_unknown_generation_error, Module, Vsn}) ->
     io_lib:format("Tarball generation error of ~s ~s", [Module, Vsn]);
-format_error({tar_update_error, Type, Exception}) ->
+format_error({tar_update_error, error, {badmatch, {error, {File, enoent}}}}) ->
+    io_lib:format("Exception updating contents of release tarball:~n     File ~s does not exist", [File]);
+format_error({tar_update_error, Type, Exception}) when is_list(Exception) ->
     io_lib:format("Exception updating contents of release tarball ~s:~s", [Type, Exception]);
+format_error({tar_update_error, Type, Exception}) ->
+    io_lib:format("Exception updating contents of release tarball ~s:~p", [Type, Exception]);
 format_error({tar_generation_error, Module, Errors}) ->
     io_lib:format("Tarball generation errors:~n~s", [Module:format_error(Errors)]).
 
@@ -128,12 +137,7 @@ update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion) ->
     erl_tar:extract(TarFile, [{cwd, TempDir}, compressed]),
     ok =
         erl_tar:create(TarFile,
-                       [{"releases", filename:join(TempDir, "releases")},
-                        {filename:join(["releases", "start_erl.data"]),
-                         filename:join([OutputDir, "releases", "start_erl.data"])},
-                        {filename:join(["releases", "RELEASES"]),
-                         filename:join([OutputDir, "releases", "RELEASES"])},
-                        {"bin", filename:join([OutputDir, "bin"])} |
+                       [{"releases", filename:join(TempDir, "releases")} |
                         case IncludeErts of
                             false ->
                                 [{"lib", filename:join(TempDir, "lib")}];
