@@ -12,13 +12,15 @@ do(Release, State) ->
     OutputDir = filename:join(rlx_state:base_output_dir(State), RelName),
     ok = create_output_dir(OutputDir),
     ok = copy_app_directories_to_output(Release, OutputDir, State),
-    {ok, State1} = create_release_info(State, Release, OutputDir),
+
+    {ok, State1} = create_release(State, Release, OutputDir),
 
     %% don't strip the release in debug mode since that would strip
     %% the beams symlinked to and no one wants that
     case rlx_state:debug_info(State1) =:= strip
         andalso rlx_state:dev_mode(State1) =:= false of
         true ->
+            ?log_debug("Stripping release beam files", []),
             case beam_lib:strip_release(OutputDir) of
                 {ok, _} ->
                     {ok, State1};
@@ -234,10 +236,9 @@ copy_dir(SourceDir, TargetDir, ExcludeFiles) ->
                                                      filename:basename(F)]), [recursive, {file_info, [mode, time]}])
                   end, SourceFiles -- ExcludeFiles).
 
-create_release_info(State0, Release0, OutputDir) ->
-    RelName = atom_to_list(rlx_release:name(Release0)),
+create_release(State0, Release0, OutputDir) ->
     ReleaseDir = rlx_util:release_output_dir(State0, Release0),
-    ReleaseFile = filename:join([ReleaseDir, RelName ++ ".rel"]),
+    ReleaseFile = filename:join([ReleaseDir, [rlx_release:name(Release0), ".rel"]]),
     StartCleanFile = filename:join([ReleaseDir, "start_clean.rel"]),
     NoDotErlFile = filename:join([ReleaseDir, "no_dot_erlang.rel"]),
     ok = rlx_file_utils:mkdir_p(ReleaseDir),
@@ -364,15 +365,15 @@ hook_invocation({custom, CustomScript}) -> CustomScript;
 %% the pid builtin hook with no arguments writes to pid file
 %% at /var/run/{{ rel_name }}.pid
 hook_invocation(pid) -> rlx_string:join(["hooks/builtin/pid",
-                                     "/var/run/$REL_NAME.pid"], "|");
+                                         "/var/run/$REL_NAME.pid"], "|");
 hook_invocation({pid, PidFile}) -> rlx_string:join(["hooks/builtin/pid",
-                                                PidFile], "|");
+                                                    PidFile], "|");
 hook_invocation(wait_for_vm_start) -> "hooks/builtin/wait_for_vm_start";
 hook_invocation({wait_for_process, Name}) ->
     %% wait_for_process takes an atom as argument
     %% which is the process name to wait for
     rlx_string:join(["hooks/builtin/wait_for_process",
-                 atom_to_list(Name)], "|");
+                     atom_to_list(Name)], "|");
 hook_invocation(builtin_status) -> "hooks/builtin/status".
 
 hook_template({custom, _}) -> custom;
@@ -491,7 +492,7 @@ copy_or_generate_sys_config_file(State, RelDir) ->
             end
     end.
 
-%% @doc copy config/sys.config or generate one to releases/VSN/sys.config
+%% @doc copy config/sys.config[.src] or generate one to releases/VSN/sys.config[.src]
 -spec copy_or_symlink_config_file(rlx_state:t(), file:name(), file:name()) ->
                                          ok.
 copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
@@ -529,7 +530,8 @@ include_erts(State, Release, OutputDir, RelDir) ->
                     erlang:error(?RLX_ERROR({specified_erts_does_not_exist, Prefix, ErtsVersion}));
                 true ->
                     ok = rlx_file_utils:mkdir_p(LocalErtsBin),
-                    ok = rlx_file_utils:copy(ErtsBinDir, LocalErtsBin, [recursive, {file_info, [mode, time]}]),
+                    ok = rlx_file_utils:copy(ErtsBinDir, LocalErtsBin,
+                                             [recursive, {file_info, [mode, time]}]),
 
                     case OsFamily of
                         unix ->
@@ -652,24 +654,28 @@ make_boot_script_variables(Release, State) ->
     end.
 
 create_no_dot_erlang(RelDir, OutputDir, Options, _State) ->
-    create_boot_file(RelDir, [no_dot_erlang | Options], "no_dot_erlang"),
+    create_other_boot_file(RelDir, [no_dot_erlang | Options], "no_dot_erlang"),
     copy_boot_to_bin(RelDir, OutputDir, "no_dot_erlang").
 
 create_start_clean(RelDir, _OutputDir, Options, _State) ->
-    create_boot_file(RelDir, Options, "start_clean").
+    create_other_boot_file(RelDir, Options, "start_clean").
 
-create_boot_file(RelDir, Options, Name) ->
+%% function for creating .boot files for no_dot_erlang and start_clean
+create_other_boot_file(RelDir, Options, Name) ->
     case systools:make_script(Name, [{outdir, RelDir},
                                      no_warn_sasl | Options]) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
-            remove_rel_and_script(RelDir, Name);
+            %% don't need to leave the .rel and .script for these boot files
+            rlx_file_utils:remove(filename:join([RelDir, [Name, ".rel"]])),
+            rlx_file_utils:remove(filename:join([RelDir, [Name, ".script"]]));
         error ->
             erlang:error(?RLX_ERROR({boot_script_generation_error, Name}));
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({boot_script_generation_error, Name, Module, Error}))
     end.
 
+%% TODO: What escript is this talking about?
 %% escript requires boot files in bin/ and not under the release dir
 copy_boot_to_bin(RelDir, OutputDir, Name) ->
     From = filename:join([RelDir, Name++".boot"]),
@@ -681,19 +687,25 @@ copy_boot_to_bin(RelDir, OutputDir, Name) ->
             erlang:error({failed_copy_boot_to_bin, From, To, Reason})
     end.
 
-remove_rel_and_script(RelDir, Name) ->
-    rlx_file_utils:remove(filename:join([RelDir, Name++".rel"])),
-    rlx_file_utils:remove(filename:join([RelDir, Name++".script"])).
-
+%% this file must exist for release_handler functions to work
 create_RELEASES(OutputDir, ReleaseFile) ->
     {ok, OldCWD} = file:get_cwd(),
-    file:set_cwd(OutputDir),
-    release_handler:create_RELEASES("./",
-                                    "releases",
-                                    ReleaseFile,
-                                    []),
-    file:set_cwd(OldCWD).
+    try
+        file:set_cwd(OutputDir),
+        case release_handler:create_RELEASES("./",
+                                             "releases",
+                                             ReleaseFile,
+                                             []) of
+            ok ->
+                ok;
+            {error, Reason} ->
+                erlang:error(?RLX_ERROR({create_RELEASES, Reason}))
+        end
+    after
+        file:set_cwd(OldCWD)
+    end.
 
+%% write a default file unless the file at Path already exists
 unless_exists_write_default(Path, File) ->
     case rlx_file_utils:exists(Path) of
         true ->
@@ -825,11 +837,13 @@ format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
 format_error({boot_script_generation_error, Name}) ->
     io_lib:format("Unknown internal release error generating ~s.boot", [Name]);
 format_error({boot_script_generation_error, Name, Module, Errors}) ->
-    [io_lib:format("Errors generating ~s.boot: \n", [Name]),
+    [io_lib:format("Errors generating ~s.boot: ~n", [Name]),
      rlx_util:indent(2), Module:format_error(Errors)];
 format_error({strip_release, Reason}) ->
-    io_lib:format("Stripping debug info from release beam files failed becuase ~s",
+    io_lib:format("Stripping debug info from release beam files failed: ~s",
                   [beam_lib:format_error(Reason)]);
 format_error({rewrite_app_file, AppFile, Error}) ->
     io_lib:format("Unable to rewrite .app file ~s due to ~p",
-                  [AppFile, Error]).
+                  [AppFile, Error]);
+format_error({create_RELEASES, Reason}) ->
+    io_lib:format("Unable to create RELEASES file needed by release_handler: ~p", [Reason]).
