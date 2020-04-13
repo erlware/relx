@@ -60,8 +60,6 @@ prepare_applications(State, Apps) ->
         true ->
             [rlx_app_info:link(App, true) || App <- Apps];
         false ->
-            %% TODO: since system libs are versioned, maybe we can always use symlinks for them
-            %% [rlx_app_info:link(App, is_system_lib(rlx_app_info:dir(App))) || App <- Apps]
             Apps
     end.
 
