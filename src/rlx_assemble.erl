@@ -691,7 +691,8 @@ copy_boot_to_bin(RelDir, OutputDir, Name) ->
 create_RELEASES(OutputDir, ReleaseFile) ->
     {ok, OldCWD} = file:get_cwd(),
     try
-        file:set_cwd(OutputDir),
+        ok = filelib:ensure_dir(filename:join([OutputDir, "releases", "RELEASES"])),
+        ok = file:set_cwd(OutputDir),
         case release_handler:create_RELEASES("./",
                                              "releases",
                                              ReleaseFile,
