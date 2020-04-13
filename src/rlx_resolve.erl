@@ -117,6 +117,8 @@ check_app(Name, Vsn, App) ->
         andalso rlx_app_info:vsn(App) =:= Vsn.
 
 to_app(Name, Vsn, Dir) ->
+    %% TODO: Support overriding the dirs to search
+    %% precedence: apps > deps > erl_libs > system
     AppFile = code:where_is_file(filename:join([[Name, ".app"]])),
     {ok, [{application, _AppName, AppData}]} = file:consult(AppFile),
     Applications = proplists:get_value(applications, AppData, []),
@@ -136,13 +138,3 @@ to_app(Name, Vsn, Dir) ->
         _ ->
             erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}))
     end.
-
-%% TODO: Support overriding the dirs to search
-%% precedence: apps > deps > erl_libs > system
-%% Dir = code:lib_dir(Name),
-%% case rebar_app_discover:find_app(Dir, valid) of
-%%     {true, A} ->
-%%         A;
-%%     _ ->
-%%         throw({app_not_found, Name})
-%% end
