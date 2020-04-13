@@ -707,8 +707,11 @@ create_RELEASES(State, OutputDir, ReleaseFile) ->
                                                      []) of
                     ok ->
                         ok;
-                    {error, Reason} ->
-                        erlang:error(?RLX_ERROR({create_RELEASES, Reason}))
+                    {error, _Reason} ->
+                        ?log_debug("*WARNING* Creating RELEASES file failed. "
+                                   "The RELEASES file is required before release_handler can be used "
+                                   "to install a release."),
+                        ok
                 end
             after
                 file:set_cwd(OldCWD)
