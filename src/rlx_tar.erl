@@ -9,73 +9,16 @@
 make_tar(Release, OutputDir, State) ->
     Name = rlx_release:name(Release),
     Vsn = rlx_release:vsn(Release),
-
     ?log_debug("beginning make_tar for release ~p-~s", [Name, Vsn]),
-    IsRelxSasl = rlx_state:is_relx_sasl(State),
 
-    ErtsVersion = rlx_release:erts(Release),
+    ExtraFiles = extra_files(Release, OutputDir, State),
+    Opts = make_tar_opts(ExtraFiles, Release, OutputDir, State),
 
-    OverlayVars = rlx_overlay:generate_overlay_vars(State, Release),
-    OverlayFiles = overlay_files(OverlayVars, rlx_state:overlay(State), OutputDir),
-    ConfigFiles = config_files(Vsn, OutputDir),
-
-    StartClean = filename:join(["releases", Vsn, "start_clean.boot"]),
-    NoDotErlang = filename:join(["releases", Vsn, "no_dot_erlang.boot"]),
-
-    ExtraFiles = OverlayFiles ++ ConfigFiles ++
-        [{StartClean, filename:join([OutputDir, StartClean])},
-         {NoDotErlang, filename:join([OutputDir, NoDotErlang])},
-         {filename:join(["releases", "start_erl.data"]),
-          filename:join([OutputDir, "releases", "start_erl.data"])},
-         {"bin", filename:join([OutputDir, "bin"])}
-         | case filelib:is_file(filename:join([OutputDir, "releases", "RELEASES"])) of
-               true ->
-                   [{filename:join(["releases", "RELEASES"]),
-                     filename:join([OutputDir, "releases", "RELEASES"])}];
-               false ->
-                   []
-           end],
-
-    SystemLibs = rlx_state:system_libs(State),
-
-    Opts = [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
-            {dirs, app_dirs(State)},
-            silent,
-            {outdir, OutputDir} |
-            case rlx_state:include_erts(State) of
-                true ->
-                    ErtsVersion = rlx_release:erts(Release),
-                    ErtsDir = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
-                    case filelib:is_dir(ErtsDir) of
-                        true ->
-                            %% systools:make_tar looks for directory erts-vsn in
-                            %% the dir passed to `erts'
-                            [{erts, OutputDir}];
-                        false ->
-                            [{erts, code:root_dir()}]
-                    end;
-                false ->
-                    [];
-                ErtsDir ->
-                    [{erts, ErtsDir}]
-            end] ++ case IsRelxSasl of
-                        true ->
-                            %% file tuples for erl_tar:add are the reverse of erl_tar:create so swap them
-                            [{extra_files, [{From, To} || {To, From} <- ExtraFiles]}];
-                        false ->
-                            []
-                    end ++ case SystemLibs of
-                               true ->
-                                   [];
-                               false ->
-                                   [{variables, [{"SYSTEM_LIB_DIR", code:lib_dir()}]},
-                                    {var_tar, omit}]
-                           end,
     try systools:make_tar(filename:join([OutputDir, "releases", Vsn, Name]), Opts) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
-            case IsRelxSasl of
+            case rlx_state:is_relx_sasl(State) of
                 true ->
                     %% we used extra_files to copy in the overlays
                     %% nothing to do now but rename the tarball to <relname>-<vsn>.tar.gz
@@ -83,19 +26,8 @@ make_tar(Release, OutputDir, State) ->
                     file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
                     {ok, State};
                 false ->
-                    %% unpack the tarball to a temporary directory and repackage it with
-                    %% the overlays and other files we need to complete the target system
-                    TempDir = rlx_file_utils:mkdtemp(),
-                    try
-                        update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion)
-                    catch
-                        ?WITH_STACKTRACE(Type, Exception, Stacktrace)
-                           ?log_debug("exception updating tarball ~p:~p stacktrace=~p",
-                                      [Type, Exception, Stacktrace]),
-                           erlang:error(?RLX_ERROR({tar_update_error, Type, Exception}))
-                    after
-                        rlx_file_utils:remove(TempDir, [recursive])
-                    end
+                    %% have to manually add the extra files to the tarball
+                    update_tar(ExtraFiles, State, OutputDir, Name, Vsn, rlx_release:erts(Release))
             end;
         error ->
             erlang:error(?RLX_ERROR({tar_unknown_generation_error, Name, Vsn}));
@@ -126,6 +58,96 @@ format_error({tar_generation_error, Module, Errors}) ->
     io_lib:format("Tarball generation errors:~n~s", [Module:format_error(Errors)]).
 
 %%
+
+%% list of options to pass to `systools:make_tar'
+make_tar_opts(ExtraFiles, Release, OutputDir, State) ->
+    [{path, [filename:join([OutputDir, "lib", "*", "ebin"])]},
+     {dirs, app_dirs(State)},
+     silent,
+     {outdir, OutputDir}
+     | lists:flatmap(fun(Fun) ->
+                             Fun(ExtraFiles, Release, OutputDir, State)
+                     end, [fun maybe_include_erts/4,
+                           fun maybe_extra_files/4,
+                           fun maybe_system_libs/4])].
+
+maybe_include_erts(_ExtraFiles, Release, OutputDir, State) ->
+     case rlx_state:include_erts(State) of
+         true ->
+             ErtsVersion = rlx_release:erts(Release),
+             ErtsDir = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
+             case filelib:is_dir(ErtsDir) of
+                 true ->
+                     %% systools:make_tar looks for directory erts-vsn in
+                     %% the dir passed to `erts'
+                     [{erts, OutputDir}];
+                 false ->
+                     [{erts, code:root_dir()}]
+             end;
+         false ->
+             [];
+         ErtsDir ->
+             [{erts, ErtsDir}]
+     end.
+
+maybe_extra_files(ExtraFiles, _Release, _OutputDir, State) ->
+    case rlx_state:is_relx_sasl(State) of
+        true ->
+            %% file tuples for erl_tar:add are the reverse of erl_tar:create so swap them
+            [{extra_files, [{From, To} || {To, From} <- ExtraFiles]}];
+        false ->
+            []
+    end.
+
+maybe_system_libs(_ExtraFiles, _Release, _OutputDir, State) ->
+    case rlx_state:system_libs(State) of
+        true ->
+            [];
+        false ->
+            [{variables, [{"SYSTEM_LIB_DIR", code:lib_dir()}]},
+             {var_tar, omit}]
+    end.
+
+%% additional files to add to the release tarball that
+%% systools:make_tar does not include by default
+extra_files(Release, OutputDir, State) ->
+    Vsn = rlx_release:vsn(Release),
+
+    OverlayVars = rlx_overlay:generate_overlay_vars(State, Release),
+    OverlayFiles = overlay_files(OverlayVars, rlx_state:overlay(State), OutputDir),
+    ConfigFiles = config_files(Vsn, OutputDir),
+
+    StartClean = filename:join(["releases", Vsn, "start_clean.boot"]),
+    NoDotErlang = filename:join(["releases", Vsn, "no_dot_erlang.boot"]),
+
+    OverlayFiles ++ ConfigFiles ++
+        [{StartClean, filename:join([OutputDir, StartClean])},
+         {NoDotErlang, filename:join([OutputDir, NoDotErlang])},
+         {filename:join(["releases", "start_erl.data"]),
+          filename:join([OutputDir, "releases", "start_erl.data"])},
+         {"bin", filename:join([OutputDir, "bin"])}
+         | case filelib:is_file(filename:join([OutputDir, "releases", "RELEASES"])) of
+               true ->
+                   [{filename:join(["releases", "RELEASES"]),
+                     filename:join([OutputDir, "releases", "RELEASES"])}];
+               false ->
+                   []
+           end].
+
+%% unpack the tarball to a temporary directory and repackage it with
+%% the overlays and other files we need to complete the target system
+update_tar(ExtraFiles, State, OutputDir, Name, Vsn, ErtsVersion) ->
+    TempDir = rlx_file_utils:mkdtemp(),
+    try
+        update_tar(ExtraFiles, State, TempDir, OutputDir, Name, Vsn, ErtsVersion)
+    catch
+        ?WITH_STACKTRACE(Type, Exception, Stacktrace)
+        ?log_debug("exception updating tarball ~p:~p stacktrace=~p",
+                   [Type, Exception, Stacktrace]),
+        erlang:error(?RLX_ERROR({tar_update_error, Type, Exception}))
+    after
+        rlx_file_utils:remove(TempDir, [recursive])
+    end.
 
 %% used to add additional files to the release tarball when using systools
 %% before the `extra_files' feature was added to `make_tar'
