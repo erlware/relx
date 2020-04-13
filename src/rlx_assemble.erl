@@ -575,7 +575,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
             ?log_debug("release start script created"),
-            create_RELEASES(OutputDir, ReleaseFile),
+            create_RELEASES(State, OutputDir, ReleaseFile),
             create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
         error ->
@@ -688,22 +688,33 @@ copy_boot_to_bin(RelDir, OutputDir, Name) ->
     end.
 
 %% this file must exist for release_handler functions to work
-create_RELEASES(OutputDir, ReleaseFile) ->
-    {ok, OldCWD} = file:get_cwd(),
-    try
-        ok = filelib:ensure_dir(filename:join([OutputDir, "releases", "RELEASES"])),
-        ok = file:set_cwd(OutputDir),
-        case release_handler:create_RELEASES("./",
-                                             "releases",
-                                             ReleaseFile,
-                                             []) of
-            ok ->
-                ok;
-            {error, Reason} ->
-                erlang:error(?RLX_ERROR({create_RELEASES, Reason}))
-        end
-    after
-        file:set_cwd(OldCWD)
+create_RELEASES(State, OutputDir, ReleaseFile) ->
+    case rlx_state:system_libs(State) of
+        false ->
+            ?log_debug("*WARNING* Not creating RELEASES file because system libs are not included "
+                       "in the release. The RELEASES file is required before release_handler can be used "
+                       "to install a release."),
+            %% remove the RELEASES file in case it exists from a previous release build
+            _ = rlx_file_utils:remove(filename:join([OutputDir, "releases", "RELEASES"]));
+        _ ->
+            {ok, OldCWD} = file:get_cwd(),
+            try
+                %% set cwd to the outputdir so that the paths used for applications
+                %% in RELEASES start with ./lib/ and not the path of the output dir
+                %% which is a development path only.
+                ok = file:set_cwd(OutputDir),
+                case release_handler:create_RELEASES("./",
+                                                     "releases",
+                                                     ReleaseFile,
+                                                     []) of
+                    ok ->
+                        ok;
+                    {error, Reason} ->
+                        erlang:error(?RLX_ERROR({create_RELEASES, Reason}))
+                end
+            after
+                file:set_cwd(OldCWD)
+            end
     end.
 
 %% write a default file unless the file at Path already exists
