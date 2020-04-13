@@ -103,8 +103,8 @@ read_overlay_vars(State, OverlayVars, FileNames) ->
     Terms = merge_overlay_vars(State, FileNames),
     case render_overlay_vars(OverlayVars ++ OverlayVarsValues, Terms, []) of
         {ok, NewTerms} ->
-            % We place `OverlayVarsvalues' at the end on purpose; their
-            % definitions should be overwrittenable by both internal
+            % We place `OverlayVarsValues' at the end on purpose; their
+            % definitions should be able to be overwritten by both internal
             % and rendered vars, as not to change behaviour in
             % setups preceding the support for overlays from the caller.
             OverlayVars ++ NewTerms ++ OverlayVarsValues;

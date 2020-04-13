@@ -95,8 +95,6 @@
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
                   available_apps=[] :: [rlx_app_info:t()],
-                  default_configured_release :: {rlx_release:name() | undefined,
-                                                 rlx_release:vsn() |undefined} | undefined,
                   vm_args :: file:filename() | false | undefined,
                   vm_args_src :: file:filename() | undefined,
                   sys_config :: file:filename() | false | undefined,
