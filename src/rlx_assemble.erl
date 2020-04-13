@@ -392,7 +392,7 @@ hook_template(builtin_status) -> builtin_hook_status.
 %% be copied by the release overlays
 render_hook(custom, _, _) -> ok;
 render_hook(TemplateName, Script, _State) ->
-    ?log_info("rendering ~p hook to ~p", [TemplateName, Script]),
+    ?log_info("rendering ~p hook to ~s", [TemplateName, rlx_file_utils:print_path(Script)]),
     Template = render(TemplateName),
     ok = filelib:ensure_dir(Script),
     _ = rlx_file_utils:remove(Script),
