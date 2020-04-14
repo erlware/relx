@@ -22,10 +22,7 @@ init_per_suite(Config) ->
     rlx_test_utils:create_app(LibDir, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
-    Apps = rlx_test_utils:all_apps([LibDir]),
-
-    [{lib_dir, LibDir},
-     {apps, Apps} | Config].
+    [{lib_dir, LibDir} | Config].
 
 end_per_suite(_Config) ->
     ok.
@@ -41,7 +38,6 @@ end_per_testcase(_, _) ->
 
 basic_tar(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     SysConfigSrc = filename:join([LibDir1, "config", "sys.config.src"]),
@@ -56,8 +52,8 @@ basic_tar(Config) ->
                   {sys_config_src, SysConfigSrc},
                   {vm_args_src, VmArgsSrc}],
 
-    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                               {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                         {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -86,7 +82,6 @@ basic_tar(Config) ->
 
 exclude_erts(Config) ->
     LibDir1 = proplists:get_value(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     RelxConfig = [{release, {foo, "0.0.3"},
@@ -94,8 +89,8 @@ exclude_erts(Config) ->
                     goal_app_2]},
                   {include_erts, false}
                  ],
-    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                               {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                         {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -115,7 +110,6 @@ exclude_erts(Config) ->
 
 exclude_src(Config) ->
     LibDir1 = proplists:get_value(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     RelxConfig = [{release, {foo, "0.0.1"},
@@ -123,8 +117,8 @@ exclude_src(Config) ->
                     goal_app_2]},
                   {include_src, false}],
 
-    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                               {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                         {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -143,7 +137,6 @@ exclude_src(Config) ->
 
 include_src(Config) ->
     LibDir1 = proplists:get_value(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     RelxConfig = [{release, {foo, "0.0.2"},
@@ -151,8 +144,8 @@ include_src(Config) ->
                     goal_app_2]},
                   {include_src, true}],
 
-    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                               {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                         {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -171,7 +164,6 @@ include_src(Config) ->
 
 overlay_archive(Config) ->
     LibDir1 = proplists:get_value(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     OverlayVars1 = filename:join([LibDir1, "vars1.config"]),
@@ -241,8 +233,8 @@ overlay_archive(Config) ->
     {ok, FileInfo} = file:read_file_info(TemplateFile),
     ok = file:write_file_info(TemplateFile, FileInfo#file_info{mode=8#00777}),
 
-    {ok, Release} = relx:build_tar(foo, Apps, [{root_dir, LibDir1},
-                                               {output_dir, OutputDir} | RelxConfig]),
+    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                         {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),

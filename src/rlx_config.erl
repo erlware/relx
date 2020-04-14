@@ -22,11 +22,8 @@ to_state(Config, State) ->
     lists:foldl(fun load/2, {ok, State1}, Config).
 
 -spec load(term(), {ok, rlx_state:t()} | relx:error()) -> {ok, rlx_state:t()} | relx:error().
-load({paths, Paths}, {ok, State}) ->
-    code:add_pathsa([filename:absname(Path) || Path <- Paths]),
-    {ok, State};
 load({lib_dirs, Dirs}, {ok, State}) ->
-    LibDirs = [list_to_binary(Dir) || Dir <- rlx_file_utils:wildcard_paths(Dirs)],
+    LibDirs = rlx_file_utils:wildcard_paths(Dirs),
     State1 = rlx_state:add_lib_dirs(State, LibDirs),
     {ok, State1};
 load({exclude_apps, ExcludeApps0}, {ok, State0}) ->

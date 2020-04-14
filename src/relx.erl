@@ -24,7 +24,10 @@
 -export([release/3,
          build_release/2,
          build_release/3,
+
+         build_tar/2,
          build_tar/3,
+
          build_relup/4,
          format_error/1]).
 
@@ -56,50 +59,47 @@ release(Name, Vsn, Goals) ->
       goals => Goals,
       relfile_path => undefined}.
 
--spec build_release(Apps, Config) -> {ok, rlx_state:t()} | {error, term()} when
-      Apps :: [rlx_app_info:t()],
-      Config :: rlx_config:t().
-build_release(Apps, Config) ->
-    {ok, State} = rlx_config:to_state(Config),
-    {RelName, RelVsn} = pick_release(State),
-    Release = #{name => RelName,
-                vsn  => RelVsn},
-    RealizedRelease = build_release_(Release, Apps, State),
-    {ok, rlx_state:add_realized_release(State, RealizedRelease)}.
-
--spec build_release(Release, Apps, Config) -> {ok, rlx_state:t()} | {error, term()} when
+-spec build_release(Release, Config) -> {ok, rlx_state:t()} | {error, term()} when
       Release :: atom() | {atom(), string()} | release(),
-      Apps :: [rlx_app_info:t()],
       Config :: rlx_config:t().
-build_release(RelName, Apps, Config) when is_atom(RelName) ->
+build_release(Release, Config) ->
     {ok, State} = rlx_config:to_state(Config),
-    {RelName, RelVsn} = pick_release_version(RelName, State),
+    build_release(Release, #{}, State).
+
+-spec build_release(Release, Apps, State) -> {ok, rlx_state:t()} | {error, term()} when
+      Release :: atom() | {atom(), string()} | release() | undefined,
+      Apps :: #{atom() => rlx_app_info:t()},
+      State :: rlx_state:t().
+build_release(RelNameOrUndefined, Apps, State) when is_atom(RelNameOrUndefined) ->
+    {RelName, RelVsn} = pick_release_version(RelNameOrUndefined, State),
     Release = #{name => RelName,
                 vsn  => RelVsn},
     RealizedRelease = build_release_(Release, Apps, State),
     {ok, rlx_state:add_realized_release(State, RealizedRelease)};
-build_release({RelName, RelVsn}, Apps, Config) when is_atom(RelName) ,
-                                                    is_list(RelVsn) ->
-    {ok, State} = rlx_config:to_state(Config),
+build_release({RelName, RelVsn}, Apps, State) when is_atom(RelName) ,
+                                                   is_list(RelVsn) ->
     Release = #{name => RelName,
                 vsn => RelVsn},
     RealizedRelease = build_release_(Release, Apps, State),
     {ok, rlx_state:add_realized_release(State, RealizedRelease)};
 build_release(Release=#{name := _RelName,
-                        vsn  := _RelVsn}, Apps, Config) ->
-    {ok, State} = rlx_config:to_state(Config),
+                        vsn  := _RelVsn}, Apps, State) ->
     RealizedRelease = build_release_(Release, Apps, State),
     {ok, rlx_state:add_realized_release(State, RealizedRelease)};
 build_release(Release, _, _) ->
     ?RLX_ERROR({unrecognized_release, Release}).
 
--spec build_tar(Release, Apps, Config) -> {ok, rlx_release:t()} when
+-spec build_tar(Release, Config) -> {ok, rlx_release:t()} when
       Release :: atom() | {atom(), string()} | release() | undefined,
-      Apps :: [rlx_app_info:t()],
       Config :: rlx_config:t().
-build_tar(Release, Apps, Config) when is_list(Config) ->
+build_tar(Release, Config) when is_list(Config) ->
     {ok, State} = rlx_config:to_state(Config),
-    build_tar(Release, Apps, State);
+    build_tar(Release, #{}, State).
+
+-spec build_tar(Release, Apps, State) -> {ok, rlx_release:t()} when
+      Release :: atom() | {atom(), string()} | release() | undefined,
+      Apps :: #{atom() => rlx_app_info:t()},
+      State :: rlx_state:t().
 build_tar(undefined, Apps, State) ->
     {RelName, RelVsn} = pick_release(State),
     Release = #{name => RelName,
@@ -127,10 +127,9 @@ build_tar(RelName, Apps, State) when is_atom(RelName) ->
     build_tar_(RealizedRelease, State),
     {ok, RealizedRelease}.
 
--spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_config:t())
+-spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_state:t())
                  -> {ok, rlx_state:t()} | {error, term()}.
-build_relup(RelName, ToVsn, UpFromVsn, Config) ->
-    {ok, State} = rlx_config:to_state(Config),
+build_relup(RelName, ToVsn, UpFromVsn, State) ->
     rlx_relup:do(RelName, ToVsn, UpFromVsn, State).
 
 -spec format_error(Reason::term()) -> string().
@@ -178,6 +177,8 @@ pick_release(State) ->
             erlang:error(?RLX_ERROR(no_releases_in_system))
     end.
 
+pick_release_version(undefined, State) ->
+    pick_release(State);
 pick_release_version(RelName, State) ->
     %% Here we will just get the lastest version for name RelName and run that.
     AllReleases = maps:to_list(rlx_state:configured_releases(State)),
