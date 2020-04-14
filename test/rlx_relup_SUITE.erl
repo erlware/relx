@@ -54,26 +54,25 @@ make_relup_release(Config) ->
     OutputDir = filename:join([?config(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
 
-    Apps = rlx_test_utils:all_apps([LibDir1]),
-    {ok, _State} = relx:build_release({foo, "0.0.1"}, Apps, [{root_dir, LibDir1},
-                                                             {output_dir, OutputDir} | RelxConfig]),
+    {ok, _State} = relx:build_release({foo, "0.0.1"}, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                       {output_dir, OutputDir} | RelxConfig]),
 
-    {ok, _State1} = relx:build_release({foo, "0.0.2"}, Apps, [{root_dir, LibDir1},
-                                                              {output_dir, OutputDir} | RelxConfig]),
+    {ok, _State1} = relx:build_release({foo, "0.0.2"}, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                        {output_dir, OutputDir} | RelxConfig]),
 
     %% Goal apps are removed to simulate a users dev environment where the apps
     %% being used in an appup/relup are likely only under _rel/<release>/lib/
     rlx_file_utils:remove(filename:join(LibDir1, "goal_app_1-0.0.1"), [recursive]),
     rlx_file_utils:remove(filename:join(LibDir1, "goal_app_1-0.0.2"), [recursive]),
 
-    {ok, State2} = relx:build_release({foo, "0.0.3"}, Apps, [{root_dir, LibDir1},
-                                                              {output_dir, OutputDir} | RelxConfig]),
+    {ok, State2} = relx:build_release({foo, "0.0.3"}, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                       {output_dir, OutputDir} | RelxConfig]),
 
     %% `undefined' means automatically find last release version
     %% in this case `0.0.2'
     {ok, _State3} = relx:build_relup(foo, "0.0.3", undefined,
-                                     [{root_dir, LibDir1},
-                                            {output_dir, OutputDir} | RelxConfig]),
+                                     [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                      {output_dir, OutputDir} | RelxConfig]),
 
     ?assertMatch({ok, [{"0.0.3",
                         [{"0.0.2",[],[point_of_no_return]}],
@@ -123,18 +122,17 @@ make_relup_release2(Config) ->
     OutputDir = filename:join([proplists:get_value(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
 
-    Apps = rlx_test_utils:all_apps([LibDir1]),
-    {ok, _} = relx:build_release({foo, "0.0.1"}, Apps, [{root_dir, LibDir1},
-                                                        {output_dir, OutputDir} | RelxConfig]),
+    {ok, _} = relx:build_release({foo, "0.0.1"}, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                  {output_dir, OutputDir} | RelxConfig]),
 
-    {ok, _} = relx:build_release({foo, "0.0.2"}, Apps, [{root_dir, LibDir1},
-                                                              {output_dir, OutputDir} | RelxConfig]),
+    {ok, _} = relx:build_release({foo, "0.0.2"}, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                  {output_dir, OutputDir} | RelxConfig]),
 
-    {ok, State2} = relx:build_release({foo, "0.0.3"}, Apps, [{root_dir, LibDir1},
-                                                             {output_dir, OutputDir} | RelxConfig]),
+    {ok, State2} = relx:build_release({foo, "0.0.3"}, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                       {output_dir, OutputDir} | RelxConfig]),
 
     {ok, _State3} = relx:build_relup(foo, "0.0.3", "0.0.1",
-                                     [{root_dir, LibDir1},
+                                     [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                       {output_dir, OutputDir} | RelxConfig]),
 
     ?assertMatch({ok, [{"0.0.3",
@@ -185,12 +183,11 @@ no_upfrom_release(Config) ->
     OutputDir = filename:join([?config(priv_dir, Config),
                                rlx_test_utils:create_random_name("relx-output")]),
 
-    Apps = rlx_test_utils:all_apps([LibDir1]),
-    {ok, _} = relx:build_release({foo, "0.0.3"}, Apps, [{root_dir, LibDir1},
-                                                        {output_dir, OutputDir} | RelxConfig]),
+    {ok, _} = relx:build_release({foo, "0.0.3"}, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                  {output_dir, OutputDir} | RelxConfig]),
 
     %% no release to build relup from leads to an error
     ?assertError({error, {rlx_relup, {no_upfrom_release_found, "0.0.3"}}},
                  relx:build_relup(foo, "0.0.3", undefined,
-                                  [{root_dir, LibDir1},
+                                  [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                    {output_dir, OutputDir} | RelxConfig])).

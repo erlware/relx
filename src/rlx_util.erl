@@ -26,6 +26,7 @@
          parsed_vsn_lte/2,
          get_code_paths/2,
          release_output_dir/2,
+         list_search/2,
          to_binary/1,
          to_string/1,
          is_error/1,
@@ -116,6 +117,15 @@ release_output_dir(State, Release) ->
 -spec indent(non_neg_integer()) -> iolist().
 indent(Amount) when erlang:is_integer(Amount) ->
     [?ONE_LEVEL_INDENT || _ <- lists:seq(1, Amount)].
+
+list_search(Pred, [Hd|Tail]) ->
+    case Pred(Hd) of
+        {true, Value} -> {value, Value};
+        true -> {value, Hd};
+        false -> list_search(Pred, Tail)
+    end;
+list_search(Pred, []) when is_function(Pred, 1) ->
+    false.
 
 -spec to_binary(iolist() | binary()) -> binary().
 to_binary(String) when erlang:is_list(String) ->

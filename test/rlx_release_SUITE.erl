@@ -55,9 +55,7 @@ init_per_suite(Config) ->
     rlx_test_utils:create_app(LibDir, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir, "non_goal_2", "0.0.1", [stdlib,kernel], []),
 
-    Apps = rlx_test_utils:all_apps([LibDir]),
-
-    [{lib_dir, LibDir}, {apps, Apps} | Config].
+    [{lib_dir, LibDir} | Config].
 
 end_per_suite(_Config) ->
     ok.
@@ -73,7 +71,6 @@ end_per_testcase(_, _) ->
 
 make_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     RelxConfig = [{release, {foo, "0.0.1"},
@@ -83,8 +80,8 @@ make_release(Config) ->
                    [goal_app_1,
                     goal_app_2]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -99,7 +96,7 @@ make_release(Config) ->
 make_config_release(Config) ->
     DataDir = ?config(priv_dir, Config),
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
+    _Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
     OtherAppsDir = filename:join([DataDir, rlx_test_utils:create_random_name("other_apps_")]),
 
@@ -116,9 +113,9 @@ make_config_release(Config) ->
                    [{some, config2}]},
                   {lib_dirs, [LibDir1]}],
 
-    Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
-    {ok, State} = relx:build_release(foo, Apps1++Apps, [{root_dir, LibDir1},
-                                                        {output_dir, OutputDir} | RelxConfig]),
+    _Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.2"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -133,23 +130,17 @@ make_config_release(Config) ->
 
 make_extend_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]},
                   {release, {foo_test, "0.0.1", {extend, foo}},
-                  [goal_app_2]},
+                   [goal_app_2]},
                   {lib_dirs, [filename:join(LibDir1, "*")]}],
 
-
-    ?assertError({error, {relx, {multiple_release_names,foo,foo_test}}},
-                 relx:build_release(Apps, [{root_dir, LibDir1},
-                                           {output_dir, OutputDir} | RelxConfig])),
-
-    {ok, State} = relx:build_release(foo_test, Apps, [{root_dir, LibDir1},
-                                                      {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo_test, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo_test, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -163,23 +154,17 @@ make_extend_release(Config) ->
 
 make_extend_release_versioned(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     RelxConfig = [{release, {foo, "0.0.2"},
                    [goal_app_1,
                     goal_app_2]},
                   {release, {foo_test, "0.0.3", {extend, {foo, "0.0.2"}}},
-                  [goal_app_2]},
+                   [goal_app_2]},
                   {lib_dirs, [filename:join(LibDir1, "*")]}],
 
-
-    ?assertError({error, {relx, {multiple_release_names, foo, foo_test}}},
-                 relx:build_release(Apps, [{root_dir, LibDir1},
-                                           {output_dir, OutputDir} | RelxConfig])),
-
-    {ok, State} = relx:build_release(foo_test, Apps, [{root_dir, LibDir1},
-                                                      {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo_test, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo_test, "0.0.3"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -193,23 +178,17 @@ make_extend_release_versioned(Config) ->
 
 make_extend_config_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]},
                   {release, {foo_test, "0.0.1", {extend, foo}},
-                    [goal_app_2],
-                    [{some, config}]},
+                   [goal_app_2],
+                   [{some, config}]},
                   {lib_dirs, [filename:join(LibDir1, "*")]}],
 
-
-    ?assertError({error, {relx, {multiple_release_names, foo, foo_test}}},
-                 relx:build_release(Apps, [{root_dir, LibDir1},
-                                           {output_dir, OutputDir} | RelxConfig])),
-
-    {ok, State} = relx:build_release(foo_test, Apps, [{root_dir, LibDir1},
-                                                      {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo_test, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                                {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo_test, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -224,15 +203,14 @@ make_extend_config_release(Config) ->
 
 make_scriptless_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
     RelxConfig = [{generate_start_script, false},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "bin", "foo"]))),
     ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "bin", "foo-0.0.1"]))),
@@ -251,7 +229,6 @@ make_overridden_release(Config) ->
     DataDir = ?config(priv_dir, Config),
     OverrideDir1 = filename:join([DataDir, rlx_test_utils:create_random_name("override_dir_")]),
     LibDir = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     OverrideApp = rlx_test_utils:create_random_name("override_app"),
@@ -267,9 +244,9 @@ make_overridden_release(Config) ->
                     goal_app_2]},
                   {dev_mode, true}],
 
-    MoreApps = rlx_test_utils:all_apps([OverrideAppDir]),
-    {ok, State} = relx:build_release(foo, MoreApps ++ Apps, [{root_dir, LibDir},
-                                                             {output_dir, OutputDir} | RelxConfig]),
+    %% MoreApps = rlx_test_utils:all_apps([OverrideAppDir]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir}, {lib_dirs, [OverrideDir1, LibDir]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -284,7 +261,7 @@ make_overridden_release(Config) ->
     case os:type() of
         {win32, _} ->
             filelib:is_file(filename:join([OutputDir, "foo", "lib",
-                                               OverrideApp ++ "-" ++ OverrideVsn]));
+                                           OverrideApp ++ "-" ++ OverrideVsn]));
         _ ->
             {ok, Real} = file:read_link(filename:join([OutputDir, "foo", "lib",
                                                        OverrideApp ++ "-" ++ OverrideVsn])),
@@ -295,14 +272,13 @@ make_overridden_release(Config) ->
 make_exclude_app_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1]},
                   {exclude_apps, [non_goal_1]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -313,14 +289,13 @@ make_exclude_app_release(Config) ->
 
 make_app_type_none_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     {goal_app_2, none}]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
     ?assert(lists:keymember(stdlib, 1, AppSpecs)),
@@ -333,7 +308,6 @@ make_app_type_none_release(Config) ->
 
 overlay_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     OverlayVars1 = filename:join([LibDir1, "vars1.config"]),
@@ -411,9 +385,9 @@ overlay_release(Config) ->
          {release_name, ApiCallerReleaseNameValue},
          {yahoo, ApiCallerYahooValue}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {overlay_vars_values, ApiCallerOverlays},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {overlay_vars_values, ApiCallerOverlays},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -467,9 +441,9 @@ overlay_release(Config) ->
 
     ?assertEqual(ApiCallerVarValue,
                  proplists:get_value(api_caller_var, TemplateData)),
-    % The following complements a few of the assertions above
-    % by ensuring that the values of the overwritten API caller
-    % overlays were distinct from their internal values.
+                                                % The following complements a few of the assertions above
+                                                % by ensuring that the values of the overwritten API caller
+                                                % overlays were distinct from their internal values.
     ?assertNotEqual(ApiCallerReleaseNameValue,
                     proplists:get_value(release_name, TemplateData)),
     ?assertNotEqual(ApiCallerConfigFileValue,
@@ -480,28 +454,26 @@ overlay_release(Config) ->
 make_goalless_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
     RelxConfig = [{release, {foo, "0.0.1"},
                    []}],
 
     ?assertError({error, {rlx_resolve, {no_goals_specified, {foo, "0.0.1"}}}},
-                 relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                {output_dir, OutputDir} | RelxConfig])),
+                 relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                          {output_dir, OutputDir} | RelxConfig])),
 
     ok.
 
 make_one_app_top_level_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
 
     %% Use non_goal_2 here because this is to test when a top level app
     %% has no dependencies of its own
     RelxConfig = [{release, {foo, "0.0.1"},
                    [{non_goal_2, "0.0.1"}]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -511,7 +483,6 @@ make_one_app_top_level_release(Config) ->
 
 make_dev_mode_release(Config) ->
     LibDir1 = proplists:get_value(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     SysConfig = filename:join([LibDir1, "config", "sys.config"]),
@@ -527,8 +498,8 @@ make_dev_mode_release(Config) ->
                    [goal_app_1,
                     goal_app_2]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
 
@@ -540,9 +511,9 @@ make_dev_mode_release(Config) ->
             ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
             ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
             ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "sys.config"]))),
+                                                             "sys.config"]))),
             ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "vm.args"])));
+                                                             "vm.args"])));
         {win32, _} ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
@@ -550,14 +521,13 @@ make_dev_mode_release(Config) ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
             ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "sys.config"]))),
+                                                   "sys.config"]))),
             ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "vm.args"])))
+                                                   "vm.args"])))
     end.
 
 make_dev_mode_template_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     SysConfig = filename:join([LibDir1, "config", "sys.config"]),
@@ -586,8 +556,8 @@ make_dev_mode_template_release(Config) ->
                     goal_app_2]}],
 
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
 
@@ -597,9 +567,9 @@ make_dev_mode_template_release(Config) ->
     ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
     ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
     ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                  "sys.config"]))),
+                                                         "sys.config"]))),
     ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                  "vm.args"]))),
+                                                         "vm.args"]))),
     %% ensure that the original sys.config didn't get overwritten
     ?assertMatch({ok, SysConfigTerm}, file:consult(SysConfig)),
     %% ensure that the original vm.args didn't get overwritten
@@ -611,15 +581,14 @@ make_release_twice(Config) ->
     PrivDir = ?config(priv_dir, Config),
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
     OtherAppsDir = filename:join([PrivDir, rlx_test_utils:create_random_name("other_apps_")]),
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]}],
 
-    {ok, State1} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State1} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
+                                            {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State1)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -633,10 +602,10 @@ make_release_twice(Config) ->
 
 
     rlx_test_utils:create_app(OtherAppsDir, "non_goal_1", "0.0.3", [stdlib,kernel], [lib_dep_1]),
-    Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
+    _Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
 
-    {ok, State2} = relx:build_release(foo, Apps1++Apps, [{root_dir, LibDir1},
-                                                         {output_dir, OutputDir} | RelxConfig]),
+    {ok, State2} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
+                                            {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release1}] = maps:to_list(rlx_state:realized_releases(State2)),
     AppSpecs1 = rlx_release:app_specs(Release1),
@@ -654,7 +623,6 @@ make_release_twice_dev_mode(Config) ->
     PrivDir = ?config(priv_dir, Config),
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
     OtherAppsDir = filename:join([PrivDir, rlx_test_utils:create_random_name("other_apps_")]),
 
     RelxConfig = [{release, {foo, "0.0.1"},
@@ -662,8 +630,8 @@ make_release_twice_dev_mode(Config) ->
                     goal_app_2]},
                   {dev_mode, true}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -676,9 +644,9 @@ make_release_twice_dev_mode(Config) ->
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
     rlx_test_utils:create_app(OtherAppsDir, "non_goal_1", "0.0.3", [stdlib,kernel], [lib_dep_1]),
-    Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
-    {ok, State2} = relx:build_release(foo, Apps1++Apps, [{root_dir, LibDir1},
-                                                         {output_dir, OutputDir} | RelxConfig]),
+    _Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
+    {ok, State2} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
+                                            {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release1}] = maps:to_list(rlx_state:realized_releases(State2)),
     AppSpecs1 = rlx_release:app_specs(Release1),
@@ -693,14 +661,13 @@ make_release_twice_dev_mode(Config) ->
 make_erts_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
 
     ErtsVsn = erlang:system_info(version),
     RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
                    [goal_app_1]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -711,15 +678,14 @@ make_erts_release(Config) ->
 make_erts_config_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
 
     ErtsVsn = erlang:system_info(version),
     RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
                    [goal_app_1],
                    [{some, config}]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -731,7 +697,6 @@ make_erts_config_release(Config) ->
 make_included_nodetool_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
-    Apps = ?config(apps, Config),
 
     ErtsVsn = erlang:system_info(version),
     RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
@@ -739,8 +704,8 @@ make_included_nodetool_release(Config) ->
                   {extended_start_script, true},
                   {include_nodetool, true}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -751,7 +716,6 @@ make_included_nodetool_release(Config) ->
 
 make_not_included_nodetool_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     ErtsVsn = erlang:system_info(version),
@@ -760,8 +724,8 @@ make_not_included_nodetool_release(Config) ->
                   {extended_start_script, true},
                   {include_nodetool, false}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -774,7 +738,6 @@ make_not_included_nodetool_release(Config) ->
 
 make_src_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     ErtsVsn = erlang:system_info(version),
@@ -785,8 +748,8 @@ make_src_release(Config) ->
                   {include_src, true}],
 
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -798,7 +761,6 @@ make_src_release(Config) ->
 
 make_excluded_src_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     ErtsVsn = erlang:system_info(version),
@@ -808,8 +770,8 @@ make_excluded_src_release(Config) ->
                   {include_erts, true},
                   {include_src, false}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -817,20 +779,19 @@ make_excluded_src_release(Config) ->
     ?assert(lists:keymember(kernel, 1, AppSpecs)),
     ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "erts-"++ErtsVsn, "src"]))),
     ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "lib",
-                                              "goal_app_1-0.0.1", "src"]))).
+                                                     "goal_app_1-0.0.1", "src"]))).
 
 %% Test to ensure that excluded modules don't end up in the release 
 make_exclude_modules_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1]},
                   {exclude_modules, [{non_goal_1, [a_real_beamnon_goal_1]}]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -839,8 +800,8 @@ make_exclude_modules_release(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     %% ensure that the excluded module beam file didn't get copied
     ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "lib",
-                                              "non_goal_1-0.0.1", "ebin",
-                                              "a_real_beamnon_goal_1.beam"]))),
+                                                     "non_goal_1-0.0.1", "ebin",
+                                                     "a_real_beamnon_goal_1.beam"]))),
 
     ?assertMatch({ok, [{application,non_goal_1,
                         [{description,_},
@@ -855,7 +816,6 @@ make_exclude_modules_release(Config) ->
 
 make_release_with_sys_config_vm_args_src(Config) ->
     LibDir1 = ?config(lib_dir, Config),
-    Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
 
     %% the .src versions should take precedence and the others are not copied
@@ -878,8 +838,8 @@ make_release_with_sys_config_vm_args_src(Config) ->
                    [goal_app_1,
                     goal_app_2]}],
 
-    {ok, State} = relx:build_release(foo, Apps, [{root_dir, LibDir1},
-                                                 {output_dir, OutputDir} | RelxConfig]),
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
 
@@ -891,13 +851,13 @@ make_release_with_sys_config_vm_args_src(Config) ->
             ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
             ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
             ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "sys.config.src"]))),
+                                                             "sys.config.src"]))),
             ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "vm.args.src"]))),
+                                                             "vm.args.src"]))),
             ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                          "sys.config"]))),
+                                                                 "sys.config"]))),
             ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                          "sys.config"])));
+                                                                 "sys.config"])));
         {win32, _} ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
@@ -905,7 +865,7 @@ make_release_with_sys_config_vm_args_src(Config) ->
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
             ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
             ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
-                                                      "sys.config.src"]))),
+                                                   "sys.config.src"]))),
             ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                    "vm.args.src"]))),
             ?assert(not filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
