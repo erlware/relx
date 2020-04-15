@@ -205,7 +205,7 @@ copy_dir(State, App, AppDir, TargetDir, SubDir) ->
             AppName = rlx_app_info:name(App),
             ExcludedModules = proplists:get_value(AppName, rlx_state:exclude_modules(State),
                                                   []),
-            ExcludedFiles = [filename:join([binary_to_list(SubSource),
+            ExcludedFiles = [filename:join([rlx_util:to_string(SubSource),
                                             atom_to_list(M) ++ ".beam"]) ||
                                 M <- ExcludedModules],
             case copy_dir(SubSource, SubTarget, ExcludedFiles) of
@@ -227,7 +227,7 @@ copy_dir(SourceDir, TargetDir, []) ->
     end;
 copy_dir(SourceDir, TargetDir, ExcludeFiles) ->
     SourceFiles = filelib:wildcard(
-                    filename:join([binary_to_list(SourceDir), "*"])),
+                    filename:join([rlx_util:to_string(SourceDir), "*"])),
     lists:foreach(fun(F) ->
                     ok = rlx_file_utils:copy(F,
                                       filename:join([TargetDir,

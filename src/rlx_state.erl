@@ -94,7 +94,7 @@
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
-                  available_apps=[] :: [rlx_app_info:t()],
+                  available_apps=#{} :: #{atom() => rlx_app_info:t()},
                   vm_args :: file:filename() | false | undefined,
                   vm_args_src :: file:filename() | undefined,
                   sys_config :: file:filename() | false | undefined,
@@ -196,8 +196,12 @@ lib_dirs(#state_t{lib_dirs=LibDir}) ->
     LibDir.
 
 -spec add_lib_dirs(t(), [file:name()]) -> t().
-add_lib_dirs(State=#state_t{lib_dirs=LibDir}, Dirs) ->
-    State#state_t{lib_dirs=lists:umerge(lists:sort(LibDir), lists:sort(Dirs))}.
+add_lib_dirs(State=#state_t{lib_dirs=LibDirs}, Dirs) ->
+    %% remove from existing list `LibDirs' any duplicate directory in `Dirs'
+    %% and prepend the new list of directories
+    State#state_t{lib_dirs=Dirs ++ lists:filter(fun(Dir) ->
+                                                        lists:member(Dir, LibDirs)
+                                                end, LibDirs)}.
 
 -spec vm_args(t()) -> file:filename() | false | undefined.
 vm_args(#state_t{vm_args=VmArgs}) ->
@@ -267,11 +271,11 @@ update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
     M#state_t{realized_releases=Releases#{{rlx_release:name(Release),
                                            rlx_release:vsn(Release)} => Release}}.
 
--spec available_apps(t()) -> [rlx_app_info:t()].
+-spec available_apps(t()) -> #{atom() => rlx_app_info:t()}.
 available_apps(#state_t{available_apps=Apps}) ->
     Apps.
 
--spec available_apps(t(), [rlx_app_info:t()]) -> t().
+-spec available_apps(t(), #{atom() => rlx_app_info:t()}) -> t().
 available_apps(M, NewApps) ->
     M#state_t{available_apps=NewApps}.
 
