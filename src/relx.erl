@@ -130,6 +130,7 @@ build_tar(RelName, Apps, State) when is_atom(RelName) ->
 -spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_state:t())
                  -> {ok, rlx_state:t()} | {error, term()}.
 build_relup(RelName, ToVsn, UpFromVsn, State) ->
+    {RelName, ToVsn} = pick_release_version(RelName, State),
     rlx_relup:do(RelName, ToVsn, UpFromVsn, State).
 
 -spec format_error(Reason::term()) -> string().
