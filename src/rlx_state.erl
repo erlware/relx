@@ -94,7 +94,7 @@
                   output_dir :: file:name(),
                   lib_dirs=[] :: [file:name()],
                   config_file=[] :: file:filename() | undefined,
-                  available_apps=[] :: [rlx_app_info:t()],
+                  available_apps=#{} :: #{atom() => rlx_app_info:t()},
                   vm_args :: file:filename() | false | undefined,
                   vm_args_src :: file:filename() | undefined,
                   sys_config :: file:filename() | false | undefined,
@@ -271,11 +271,11 @@ update_realized_release(M=#state_t{realized_releases=Releases}, Release) ->
     M#state_t{realized_releases=Releases#{{rlx_release:name(Release),
                                            rlx_release:vsn(Release)} => Release}}.
 
--spec available_apps(t()) -> [rlx_app_info:t()].
+-spec available_apps(t()) -> #{atom() => rlx_app_info:t()}.
 available_apps(#state_t{available_apps=Apps}) ->
     Apps.
 
--spec available_apps(t(), [rlx_app_info:t()]) -> t().
+-spec available_apps(t(), #{atom() => rlx_app_info:t()}) -> t().
 available_apps(M, NewApps) ->
     M#state_t{available_apps=NewApps}.
 
