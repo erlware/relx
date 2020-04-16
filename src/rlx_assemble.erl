@@ -518,7 +518,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
         false ->
             make_boot_script(State, Release, OutputDir, RelDir);
         _ ->
-            ?log_info("Including Erts from ~s", [Prefix]),
+            ?log_debug("Including Erts from ~s", [Prefix]),
             ErtsVersion = rlx_release:erts(Release),
             ErtsBinDir = filename:join([Prefix, "erts-" ++ ErtsVersion, "bin"]),
             LocalErtsBin = filename:join([OutputDir, "erts-" ++ ErtsVersion, "bin"]),

@@ -5,6 +5,10 @@
 %%
 %% nodetool: Helper Script for interacting with live nodes
 %%
+%% On releases running with OTP-23+ this escript is not used. Instead,
+%% the `erl_call' command is used. This escript will be removed from
+%% relx when OTP-23 becomes the earliest support version of OTP.
+%%
 %% -------------------------------------------------------------------
 
 main(Args) ->
@@ -18,7 +22,7 @@ main(Args) ->
         {true, pong} ->
             ok;
         {_, pang} ->
-            io:format("Node ~p not responding to pings.\n", [TargetNode]),
+            io:format("Node ~p not responding to pings.~n", [TargetNode]),
             halt(1)
     end,
 
@@ -35,35 +39,22 @@ main(Args) ->
         end,
 
     case RestArgs of
-        ["ping"] ->
-            %% If we got this far, the node already responsed to a ping, so just dump
-            %% a "pong"
-            io:format("pong\n");
-        ["stop"] ->
-            io:format("~p\n", [rpc:call(TargetNode, init, stop, [], Timeout)]);
-        ["restart"] ->
-            io:format("~p\n", [rpc:call(TargetNode, init, restart, [], Timeout)]);
-        ["reboot"] ->
-            io:format("~p\n", [rpc:call(TargetNode, init, reboot, [], Timeout)]);
-        ["rpc", Module, Function | RpcArgs] ->
-            case rpc:call(TargetNode, list_to_atom(Module), list_to_atom(Function),
-                          [RpcArgs], Timeout) of
-                ok ->
-                    ok;
-                {badrpc, Reason} ->
-                    io:format("RPC to ~p failed: ~p\n", [TargetNode, Reason]),
-                    halt(1);
-                _ ->
-                    halt(1)
-            end;
-        ["rpcterms", Module, Function | ArgsAsString] ->
-            case rpc:call(TargetNode, list_to_atom(Module), list_to_atom(Function),
-                          consult(lists:flatten(ArgsAsString)), Timeout) of
-                {badrpc, Reason} ->
-                    io:format("RPC to ~p failed: ~p\n", [TargetNode, Reason]),
-                    halt(1);
-                Other ->
-                    io:format("~p\n", [Other])
+        ["rpc", Module, Function | ArgsAsString] ->
+            case consult(lists:flatten(ArgsAsString)) of
+                {error, Reason} ->
+                    io:format("Error parsing arguments `~s`, failed with reason: ~s~n", [ArgsAsString, Reason]);
+                {ok, ParsedArgs} when is_list(ParsedArgs) ->
+                    case rpc:call(TargetNode, list_to_atom(Module),
+                                  list_to_atom(Function), ParsedArgs, Timeout) of
+                        {badrpc, Reason} ->
+                            io:format("RPC to ~p failed: ~p~n", [TargetNode, Reason]),
+                            halt(1);
+                        Other ->
+                            io:format("~p~n", [Other])
+                    end;
+                {ok, ParsedArgs} ->
+                    io:format("Error: args `~p` not a list.~n"
+                              "Example to call `foo:bar(1,2,3)` pass `foo bar \"[1, 2, 3].\"`~n", [ParsedArgs])
             end;
         ["eval" | ListOfArgs] ->
             % shells may process args into more than one, and end up stripping
@@ -89,14 +80,14 @@ main(Args) ->
             % and evaluate it on the remote node
             case rpc:call(TargetNode, erl_eval, exprs, [Parsed, [] ]) of
                 {value, Value, _} ->
-                    io:format ("~p\n",[Value]);
+                    io:format ("~p~n",[Value]);
                 {badrpc, Reason} ->
-                    io:format("RPC to ~p failed: ~p\n", [TargetNode, Reason]),
+                    io:format("RPC to ~p failed: ~p~n", [TargetNode, Reason]),
                     halt(1)
             end;
         Other ->
-            io:format("Other: ~p\n", [Other]),
-            io:format("Usage: nodetool {ping|stop|restart|reboot|rpc|rpcterms|eval [Terms]} [RPC]\n")
+            io:format("Other: ~p~n", [Other]),
+            io:format("Usage: nodetool {ping|stop|restart|reboot|rpc|rpcterms|eval [Terms]} [RPC]~n")
     end,
     net_kernel:stop().
 
@@ -165,28 +156,22 @@ append_node_suffix(Name, Suffix) ->
             list_to_atom(lists:concat([Node, Suffix, os:getpid()]))
     end.
 
-%%
-%% Given a string or binary, parse it into a list of terms, ala file:consult/0
-%%
-consult(Str) when is_list(Str) ->
-    consult([], Str, []);
+%% convert string to erlang term
+consult([]) ->
+    {ok, []};
 consult(Bin) when is_binary(Bin)->
-    consult([], binary_to_list(Bin), []).
-
-consult(Cont, Str, Acc) ->
-    case erl_scan:tokens(Cont, Str, 0) of
-        {done, Result, Remaining} ->
-            case Result of
-                {ok, Tokens, _} ->
-                    {ok, Term} = erl_parse:parse_term(Tokens),
-                    consult([], Remaining, [Term | Acc]);
-                {eof, _Other} ->
-                    lists:reverse(Acc);
-                {error, Info, _} ->
-                    {error, Info}
+    consult(binary_to_list(Bin));
+consult(Str) when is_list(Str) ->
+    case erl_scan:string(Str) of
+        {ok, Tokens, _} ->
+            case erl_parse:parse_term(Tokens) of
+                {ok, Args} ->
+                    {ok, Args};
+                {error, {_, _, ErrorDescriptor}} ->
+                    {error, erl_parse:format_error(ErrorDescriptor)}
             end;
-        {more, Cont1} ->
-            consult(Cont1, eof, Acc)
+        {error, {_, _, ErrorDescriptor}} ->
+            {error, erl_scan:format_error(ErrorDescriptor)}
     end.
 
 %% string:join/2 copy; string:join/2 is getting obsoleted
