@@ -29,7 +29,7 @@
 all() ->
     case erlang:system_info(otp_release) of
         %% make them never run for now
-        "22" ->
+        V when V =:= "22" ; V =:= "23" ->
             [{group, shortname},
              {group, longname},
              {group, custom_replace_vars},
@@ -109,7 +109,6 @@ init_per_group(shortname, Config) ->
 
     {ok, _State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
-
 
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
     timer:sleep(?SLEEP_TIME),
