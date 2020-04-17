@@ -18,7 +18,7 @@ do(Release, State) ->
     %% don't strip the release in debug mode since that would strip
     %% the beams symlinked to and no one wants that
     case rlx_state:debug_info(State1) =:= strip
-        andalso rlx_state:dev_mode(State1) =:= false of
+        andalso rlx_state:mode(State1) =/= dev of
         true ->
             ?log_debug("Stripping release beam files", []),
             case beam_lib:strip_release(OutputDir) of
@@ -56,10 +56,10 @@ copy_app_directories_to_output(Release, OutputDir, State) ->
     ok.
 
 prepare_applications(State, Apps) ->
-    case rlx_state:dev_mode(State) of
-        true ->
+    case rlx_state:mode(State) of
+        dev ->
             [rlx_app_info:link(App, true) || App <- Apps];
-        false ->
+        _ ->
             Apps
     end.
 
@@ -450,8 +450,9 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
 -spec copy_or_generate_sys_config_file(rlx_state:t(), file:name()) -> ok.
 copy_or_generate_sys_config_file(State, RelDir) ->
-    DefaultConfigSrcPath = filename:join(["config", "sys.config.src"]),
-    DefaultConfigPath = filename:join(["config", "sys.config"]),
+    RootDir = rlx_state:root_dir(State),
+    DefaultConfigSrcPath = filename:join([RootDir, "config", "sys.config.src"]),
+    DefaultConfigPath = filename:join([RootDir, "config", "sys.config"]),
     RelSysConfPath = filename:join([RelDir, "sys.config"]),
     RelSysConfSrcPath = filename:join([RelDir, "sys.config.src"]),
     case rlx_state:sys_config_src(State) of
@@ -520,11 +521,21 @@ include_sys_config_src(ConfigSrcPath, RelSysConfSrcPath, State) ->
                                          ok.
 copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
     ensure_not_exist(RelConfPath),
-    case rlx_state:dev_mode(State) of
-        true ->
-            ok = rlx_file_utils:symlink_or_copy(ConfigPath, RelConfPath);
+    case rlx_state:mode(State) of
+        dev ->
+            case rlx_file_utils:symlink_or_copy(ConfigPath, RelConfPath) of
+                ok ->
+                    ok;
+                {error, Reason} ->
+                    erlang:error({error, {rlx_file_utils, Reason}})
+            end;
         _ ->
-            ok = rlx_file_utils:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}])
+            case rlx_file_utils:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}]) of
+                ok ->
+                    ok;
+                {error, Reason} ->
+                    erlang:error({error, {rlx_file_utils, Reason}})
+            end
     end.
 
 %% @doc Optionally add erts directory to release, if defined.
