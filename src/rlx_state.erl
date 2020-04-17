@@ -87,6 +87,8 @@
          warnings_as_errors/2,
          src_tests/1,
          src_tests/2,
+         exref/1,
+         exref/2,
          is_relx_sasl/1]).
 
 -type mode() :: dev | prod | minimal.
@@ -116,6 +118,7 @@
                   upfrom :: string() | binary() | undefined,
                   warnings_as_errors=false :: boolean(),
                   src_tests=true :: boolean(),
+                  exref=false :: boolean() | [atom()],
                   overlay=[] :: list(),
                   include_nodetool=true :: boolean(),
                   overlay_vars_values=[] :: list(),
@@ -421,6 +424,14 @@ src_tests(#state_t{src_tests=SrcTests}) ->
 -spec src_tests(t(), boolean()) -> t().
 src_tests(State, SrcTests) ->
     State#state_t{src_tests=SrcTests}.
+
+-spec exref(t()) -> boolean() | [atom()].
+exref(#state_t{exref=ExRef}) ->
+    ExRef.
+
+-spec exref(t(), boolean() | [atom()]) -> t().
+exref(State, ExRef) ->
+    State#state_t{exref=ExRef}.
 
 is_relx_sasl(#state_t{is_relx_sasl=IsRelxSasl}) ->
     IsRelxSasl.

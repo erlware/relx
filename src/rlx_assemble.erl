@@ -591,20 +591,10 @@ include_erts(State, Release, OutputDir, RelDir) ->
 
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok.
 make_boot_script(State, Release, OutputDir, RelDir) ->
-    IncludeSrc = include_src_or_default(State),
-    WarningsAsErrors = rlx_state:warnings_as_errors(State),
-    SrcTests = rlx_state:src_tests(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
-               %% TODO: if dev_mode -> local,
-               %% {exref, [relx_overlays]},
                {variables, make_boot_script_variables(Release, State)},
-               silent | case {WarningsAsErrors, SrcTests andalso IncludeSrc} of
-                            {true, true} -> [warnings_as_errors, src_tests];
-                            {true, false} -> [warnings_as_errors];
-                            {false, true} -> [src_tests];
-                            {false, false} -> []
-                        end],
+               silent | make_script_options(State)],
     Name = atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
     IsRelxSasl = rlx_state:is_relx_sasl(State),
@@ -621,6 +611,22 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
     end.
+
+%% setup options for warnings as errors, src_tests and exref
+make_script_options(State) ->
+    IncludeSrc = include_src_or_default(State),
+    WarningsAsErrors = rlx_state:warnings_as_errors(State),
+    SrcTests = rlx_state:src_tests(State),
+    [Key || {Key, true} <- [{warnings_as_errors, WarningsAsErrors},
+                            {src_tests, SrcTests andalso IncludeSrc}]]
+        ++ case rlx_state:exref(State) of
+               true ->
+                   [exref];
+               Apps when is_list(Apps) ->
+                   [{exref, Apps}];
+               _ ->
+                   []
+           end.
 
 %% when running `release' the default is to include src so `src_tests' can do checks
 include_src_or_default(State) ->
