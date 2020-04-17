@@ -8,12 +8,15 @@
 
 do(Release, State) ->
     RelName = rlx_release:name(Release),
-    ?log_debug("Assembling release ~p-~s", [RelName, rlx_release:vsn(Release)]),
+    ?log_info("Assembling release... ~p-~s", [RelName, rlx_release:vsn(Release)]),
     OutputDir = filename:join(rlx_state:base_output_dir(State), RelName),
+    ?log_debug("Release output dir ~s", [OutputDir]),
     ok = create_output_dir(OutputDir),
     ok = copy_app_directories_to_output(Release, OutputDir, State),
 
     {ok, State1} = create_release(State, Release, OutputDir),
+
+    ?log_info("Release successfully assembled: ~s", [rlx_file_utils:print_path(OutputDir)]),
 
     %% don't strip the release in debug mode since that would strip
     %% the beams symlinked to and no one wants that
