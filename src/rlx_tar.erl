@@ -9,7 +9,7 @@
 make_tar(Release, OutputDir, State) ->
     Name = rlx_release:name(Release),
     Vsn = rlx_release:vsn(Release),
-    ?log_debug("beginning make_tar for release ~p-~s", [Name, Vsn]),
+    ?log_info("Building release tarball...", []),
 
     ExtraFiles = extra_files(Release, OutputDir, State),
     Opts = make_tar_opts(ExtraFiles, Release, OutputDir, State),
@@ -18,17 +18,20 @@ make_tar(Release, OutputDir, State) ->
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
-            case rlx_state:is_relx_sasl(State) of
-                true ->
-                    %% we used extra_files to copy in the overlays
-                    %% nothing to do now but rename the tarball to <relname>-<vsn>.tar.gz
-                    TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
-                    file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
-                    {ok, State};
-                false ->
-                    %% have to manually add the extra files to the tarball
-                    update_tar(ExtraFiles, State, OutputDir, Name, Vsn, rlx_release:erts(Release))
-            end;
+            TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
+            {ok, State1} = case rlx_state:is_relx_sasl(State) of
+                               true ->
+                                   %% we used extra_files to copy in the overlays
+                                   %% nothing to do now but rename the tarball to <relname>-<vsn>.tar.gz
+                                   file:rename(filename:join(OutputDir, [Name, ".tar.gz"]), TarFile),
+                                   {ok, State};
+                               false ->
+                                   %% have to manually add the extra files to the tarball
+                                   update_tar(ExtraFiles, State, OutputDir, Name, Vsn, rlx_release:erts(Release))
+                           end,
+            ?log_info("Tarball successfully created: ~s",
+                      [rlx_file_utils:print_path(TarFile)]),
+            {ok, State1};
         error ->
             erlang:error(?RLX_ERROR({tar_unknown_generation_error, Name, Vsn}));
         {error, Module, Errors} ->
