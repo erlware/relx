@@ -110,7 +110,7 @@ init_per_group(shortname, Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
 
@@ -139,7 +139,7 @@ init_per_group(longname, Config) ->
                                             {output_dir, OutputDir} | RelxConfig]),
 
 
-    ?assertMatch({ok, _}, sh(filename:join([OutputDir, "foo", "bin", "foo start"]))),
+    ?assertMatch({ok, _}, sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]))),
     timer:sleep(?SLEEP_TIME),
     ?assertMatch({ok, "pong"}, sh(filename:join([OutputDir, "foo", "bin", "foo ping"]))),
 
@@ -205,7 +205,7 @@ reboot(Config) ->
     {ok, Pid1} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo reboot"])),
     timer:sleep(?SLEEP_TIME),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
     ?assertNotEqual(Pid1, Pid2).
@@ -217,7 +217,7 @@ escript(Config) ->
                               [rlx_test_utils:escript_contents()]),
 
     %% now start/stop the release to make sure the extended script is working
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     [ExpectedOutput] = io_lib:format("~s",
@@ -254,7 +254,7 @@ os_var_timeouts(Config) ->
                               [rlx_test_utils:escript_contents()]),
 
     %% now start/stop the release to make sure the extended script is working
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     ?assertEqual({ok, "ok"}, sh(filename:join([OutputDir, "foo", "bin",
                                                "foo rpcterms timer sleep 2000."]))),
@@ -305,7 +305,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
@@ -344,7 +344,7 @@ replace_os_vars_sys_config_vm_args_src(Config) ->
                   {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
@@ -412,7 +412,7 @@ replace_os_vars_multi_node(Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"RELX_MULTI_NODE", "1"},
                   {"NODENAME", "node1"},
@@ -460,7 +460,7 @@ replace_os_vars_multi_node(Config) ->
                   {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"RELX_MULTI_NODE", "1"},
                   {"NODENAME", "node2"},
@@ -553,7 +553,7 @@ replace_os_vars_included_config(Config) ->
 
     ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1", "config", "included.config"]))),
 
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
@@ -592,7 +592,7 @@ replace_os_vars_included_config(Config) ->
                   {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
@@ -675,7 +675,7 @@ replace_os_vars_custom_location(Config) ->
                                             {output_dir, OutputDir} | RelxConfig]),
 
 
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"RELX_OUT_FILE_PATH", "/tmp"},
                   {"NODENAME", "node1"},
@@ -721,7 +721,7 @@ replace_os_vars_custom_location(Config) ->
                   {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"RELX_OUT_FILE_PATH", "/tmp"},
                   {"NODENAME", "node2"},
@@ -798,7 +798,7 @@ replace_os_vars_twice(Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"VAR9", "v10"}]),
     timer:sleep(?SLEEP_TIME),
@@ -828,7 +828,7 @@ replace_os_vars_twice(Config) ->
     os:unset_env_var("VAR9"),
 
     %% start the node again but this time don't replace env variables
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]), []),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]), []),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, "\"${VAR9}\""} = sh(filename:join([OutputDir, "foo", "bin",
@@ -873,7 +873,7 @@ replace_os_vars_dev_mode(Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node1"},
                   {"COOKIE", "cookie1"},
@@ -912,7 +912,7 @@ replace_os_vars_dev_mode(Config) ->
                   {"COOKIE", "cookie1"}]),
 
     %% start the node again but this time with different env variables to replace
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                  [{"RELX_REPLACE_OS_VARS", "1"},
                   {"NODENAME", "node2"},
                   {"COOKIE", "cookie2"},
@@ -989,7 +989,7 @@ replace_os_vars_default_env(Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
-                                              {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                                              {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                                                            [{"RELX_REPLACE_OS_VARS", "1"},
                                                             {"NODENAME", "node1"},
                                                             {"VAR5", "test5"}]),
@@ -1050,7 +1050,7 @@ replace_os_vars_default_env(Config) ->
                                               timer:sleep(?SLEEP_TIME),
 
     %% start the node again but this time with overriding all default env values
-                                              {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"]),
+                                              {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]),
                                                            [{"RELX_REPLACE_OS_VARS", "1"},
                                                             {"NODENAME", "node1"},
                                                             {"COOKIE", "cookie1"},
@@ -1164,7 +1164,7 @@ custom_start_script_hooks(Config) ->
 
     %% now start/stop the release to make sure the script hooks are really getting
     %% executed
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     %% now check that the output file contains the expected format
@@ -1199,7 +1199,7 @@ builtin_pid_start_script_hook(Config) ->
 
     %% now start/stop the release to make sure the script hooks are really getting
     %% executed
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     %% check that the pid file really was created
     ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo.pid"]))),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
@@ -1269,7 +1269,7 @@ builtin_wait_for_vm_start_script_hook(Config) ->
 
     %% now start/stop the release to make sure the script hooks are really getting
     %% executed
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
                                                 % this run doesn't need the sleep because the wait_for_vm_start
                                                 % start script makes it unnecessary
                                                 %timer:sleep(?SLEEP_TIME),
@@ -1307,7 +1307,7 @@ builtin_wait_for_process_start_script_hook(Config) ->
     %% start, it must be at least 3 seconds which is the time it takes the
     %% goal_app_srv to register the signal
     T1 = os:timestamp(),
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     T2 = timer:now_diff(os:timestamp(), T1),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
@@ -1373,7 +1373,7 @@ mixed_custom_and_builtin_start_script_hooks(Config) ->
     %% start, it must be at least 3 seconds which is the time it takes the
     %% goal_app_srv to register the signal
     T1 = os:timestamp(),
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
                                                 % this run doesn't need the sleep because the wait_for_vm_start
                                                 % start script makes it unnecessary
     T2 = timer:now_diff(os:timestamp(), T1),
@@ -1408,7 +1408,7 @@ builtin_status_script(Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the status to a file
@@ -1445,7 +1445,7 @@ custom_status_script(Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the status to a file
@@ -1484,7 +1484,7 @@ start_sname_in_other_argsfile(Config) ->
     {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
     %% now start/stop the release to make sure the extended script is working
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
@@ -1513,7 +1513,7 @@ start_preserves_arguments(Config) ->
     %% now start/stop the release to make sure the extended script is working
     %% and preserving the "tricky" argument that contains a string with a space
     %% in it
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start -goal_app baz '\"bat zing\"'"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon -goal_app baz '\"bat zing\"'"])),
     timer:sleep(?SLEEP_TIME),
     BinFile = filename:join([PrivDir, "goal_app.bin"]),
     Eval = io_lib:format("{ok,Env}=application:get_env(goal_app,baz),file:write_file(\"~s\",term_to_binary(Env)).",
@@ -1553,7 +1553,7 @@ start_nodetool_with_data_from_argsfile(Config) ->
                                             {output_dir, OutputDir} | RelxConfig]),
 
     %% now start/stop the release to make sure the extended script is working
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
@@ -1586,7 +1586,7 @@ start_upgrade_escript_with_argsfile_data(Config) ->
                                             {output_dir, OutputDir} | RelxConfig]),
 
     %% now start/stop the release to make sure the extended script is working
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, _Ver} = sh(filename:join([OutputDir, "foo", "bin", "foo versions"])),
     {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo stop"])),
@@ -1661,7 +1661,7 @@ extension_script(Config) ->
         "echo \\{bar, $REL_NAME, \\'$NAME\\', $COOKIE\\}.\n"
         "exit 0",
     OutputDir = setup_extension_script(Config, ExtensionScript),
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo start"])),
+    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
     timer:sleep(?SLEEP_TIME),
     {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
     %% write the extension script output to a file
@@ -1713,7 +1713,7 @@ start_fail_with_vmargs(Config, VmArgs, ExpectedCode) ->
 
 
     %% now start/stop the release to make sure the extended script is working
-    ?assertMatch({error, ExpectedCode, _}, sh(filename:join([OutputDir, "foo", "bin", "foo start"]))).
+    ?assertMatch({error, ExpectedCode, _}, sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]))).
 
 %%-------------------------------------------------------------------
 %% Helper Functions for extension_script* tests
