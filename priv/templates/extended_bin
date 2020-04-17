@@ -156,9 +156,9 @@ Commands:
   console                 Start the release with an interactive shell
   console_clean           Start an interactive shell without the release's applications
   console_boot [File]     Start an interactive shell for boot script [File]
-  daemon                  Start release in the background with run_erl
-  daemon_boot [File]      Start boot script [File] in the background with run_erl
-  daemon_attach           Connect to node started as daemon with to_erl
+  daemon                  Start release in the background with run_erl (named pipes)
+  daemon_boot [File]      Start boot script [File] in the background with run_erl (named pipes)
+  daemon_attach           Connect to node started as daemon with to_erl (named pipes)
   upgrade [Version]       Upgrade the running release to a new version
   downgrade [Version]     Downgrade the running release to a new version
   install [Version]       Install a release
