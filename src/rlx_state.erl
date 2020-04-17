@@ -54,6 +54,8 @@
          available_apps/2,
          dev_mode/1,
          dev_mode/2,
+         mode/1,
+         mode/2,
          include_src/1,
          include_src/2,
          include_erts/1,
@@ -87,8 +89,11 @@
          src_tests/2,
          is_relx_sasl/1]).
 
+-type mode() :: dev | prod | minimal.
+
 -export_type([t/0,
-              releases/0]).
+              releases/0,
+              mode/0]).
 
 -record(state_t, {root_dir :: file:name(),
                   output_dir :: file:name(),
@@ -105,7 +110,6 @@
                   debug_info=keep :: keep | strip,
                   configured_releases :: releases(),
                   realized_releases :: releases(),
-                  dev_mode=false :: boolean(),
                   include_src :: boolean() | undefined,
                   include_erts=false :: boolean() | file:filename(),
                   system_libs=true :: boolean(),
@@ -120,6 +124,11 @@
                   extended_start_script_hooks=[] :: list(),
                   extended_start_script_extensions=[] :: list(),
                   generate_start_script=true :: boolean(),
+
+                  %% `dev_mode' is for backwards compatibility
+                  dev_mode=false :: boolean(),
+                  %% mode toggles multiple configuration values at once
+                  mode=prod :: mode(),
 
                   %% default check is for sasl 3.5 and above
                   %% version 3.5 of sasl has systools with changes for relx
@@ -286,6 +295,14 @@ dev_mode(#state_t{dev_mode=DevMode}) ->
 -spec dev_mode(t(), boolean()) -> t().
 dev_mode(S, DevMode) ->
     S#state_t{dev_mode=DevMode}.
+
+-spec mode(t()) -> mode().
+mode(#state_t{mode=Mode}) ->
+    Mode.
+
+-spec mode(t(), mode()) -> t().
+mode(S, Mode) ->
+    S#state_t{mode=Mode}.
 
 -spec include_erts(t()) -> boolean() | file:filename() | undefined.
 include_erts(#state_t{include_erts=IncludeErts}) ->
