@@ -113,6 +113,8 @@ load({warnings_as_errors, WarningsAsErrors}, {ok, State}) ->
     {ok, rlx_state:warnings_as_errors(State, WarningsAsErrors)};
 load({src_tests, SrcTests}, {ok, State}) ->
     {ok, rlx_state:src_tests(State, SrcTests)};
+load({exref, ExRef}, {ok, State}) ->
+    {ok, rlx_state:exref(State, ExRef)};
 load({include_erts, IncludeErts}, {ok, State}) ->
     {ok, rlx_state:include_erts(State, IncludeErts)};
 load({system_libs, SystemLibs}, {ok, State}) ->

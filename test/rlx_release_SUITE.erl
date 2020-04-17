@@ -884,6 +884,8 @@ make_prod_mode_release(Config) ->
     rlx_file_utils:write(VmArgs, ""),
 
     RelxConfig = [{mode, prod},
+                  %% osx test fails if debug_info is strip
+                  {debug_info, keep},
                   {sys_config, SysConfig},
                   {vm_args, VmArgs},
                   {release, {foo, "0.0.1"},
@@ -929,6 +931,8 @@ make_minimal_mode_release(Config) ->
     rlx_file_utils:write(VmArgs, ""),
 
     RelxConfig = [{mode, minimal},
+                  %% osx test fails if debug_info is strip
+                  {debug_info, keep},
                   {sys_config, SysConfig},
                   {vm_args, VmArgs},
                   {release, {foo, "0.0.1"},
