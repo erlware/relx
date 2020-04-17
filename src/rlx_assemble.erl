@@ -450,26 +450,39 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
 -spec copy_or_generate_sys_config_file(rlx_state:t(), file:name()) -> ok.
 copy_or_generate_sys_config_file(State, RelDir) ->
+    DefaultConfigSrcPath = filename:join(["config", "sys.config.src"]),
+    DefaultConfigPath = filename:join(["config", "sys.config"]),
     RelSysConfPath = filename:join([RelDir, "sys.config"]),
     RelSysConfSrcPath = filename:join([RelDir, "sys.config.src"]),
     case rlx_state:sys_config_src(State) of
-        undefined ->
-            case rlx_state:sys_config(State) of
+        SysConfigSrc when SysConfigSrc =:= undefined ; SysConfigSrc =:= false ->
+            SysConfig = rlx_state:sys_config(State),
+
+            %% include config/sys.config.src if it exists and sys_config_src is not set to `false'
+            case SysConfig =:= undefined andalso
+                SysConfigSrc =:= undefined andalso
+                filelib:is_regular(DefaultConfigSrcPath)
+            of
+                true ->
+                    include_sys_config_src(DefaultConfigSrcPath, RelSysConfSrcPath, State);
                 false ->
-                    ok;
-                undefined ->
-                    unless_exists_write_default(RelSysConfPath, sys_config_file());
-                ConfigPath ->
-                    case filelib:is_regular(ConfigPath) of
+                    case SysConfig of
                         false ->
-                            erlang:error(?RLX_ERROR({config_does_not_exist, ConfigPath}));
-                        true ->
-                            %% validate sys.config is valid Erlang terms
-                            case file:consult(ConfigPath) of
-                                {ok, _} ->
-                                    copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath);
-                                {error, Reason} ->
-                                    erlang:error(?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason}))
+                            ok;
+                        undefined ->
+                            %% if config/sys.config exists include it automatically
+                            case filelib:is_regular(DefaultConfigPath)of
+                                true ->
+                                    include_sys_config(DefaultConfigPath, RelSysConfPath, State);
+                                false ->
+                                    unless_exists_write_default(RelSysConfPath, sys_config_file())
+                            end;
+                        ConfigPath ->
+                            case filelib:is_regular(ConfigPath) of
+                                false ->
+                                    erlang:error(?RLX_ERROR({config_does_not_exist, ConfigPath}));
+                                true ->
+                                    include_sys_config(ConfigPath, RelSysConfPath, State)
                             end
                     end
             end;
@@ -482,12 +495,24 @@ copy_or_generate_sys_config_file(State, RelDir) ->
                     ?log_warn("Both sys_config_src and sys_config are set, sys_config will be ignored")
             end,
 
-            case filelib:is_regular(ConfigSrcPath) of
-                false ->
-                    erlang:error(?RLX_ERROR({config_src_does_not_exist, ConfigSrcPath}));
-                true ->
-                    copy_or_symlink_config_file(State, ConfigSrcPath, RelSysConfSrcPath)
-            end
+            include_sys_config_src(ConfigSrcPath, RelSysConfSrcPath, State)
+    end.
+
+include_sys_config(ConfigPath, RelSysConfPath, State) ->
+    %% validate sys.config is valid Erlang terms
+    case file:consult(ConfigPath) of
+        {ok, _} ->
+            copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath);
+        {error, Reason} ->
+            erlang:error(?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason}))
+    end.
+
+include_sys_config_src(ConfigSrcPath, RelSysConfSrcPath, State) ->
+    case filelib:is_regular(ConfigSrcPath) of
+        false ->
+            erlang:error(?RLX_ERROR({config_src_does_not_exist, ConfigSrcPath}));
+        true ->
+            copy_or_symlink_config_file(State, ConfigSrcPath, RelSysConfSrcPath)
     end.
 
 %% @doc copy config/sys.config[.src] or generate one to releases/VSN/sys.config[.src]
@@ -558,6 +583,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
                %% TODO: if dev_mode -> local,
+               %% {exref, [relx_overlays]},
                {variables, make_boot_script_variables(Release, State)},
                silent | case {WarningsAsErrors, SrcTests andalso IncludeSrc} of
                             {true, true} -> [warnings_as_errors, src_tests];
