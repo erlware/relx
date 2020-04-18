@@ -182,6 +182,18 @@ find_erts_dir() {
         code="io:format(\"~s\", [code:root_dir()]), halt()."
         __erl_root="$("$__erl" -boot no_dot_erlang -sasl errlog_type error -noshell -eval "$code")"
         ERTS_DIR="$__erl_root/erts-$ERTS_VSN"
+        if [ ! -d "$ERTS_DIR" ]; then
+            erts_version_code="io:format(\"~s\", [erlang:system_info(version)]), halt()."
+            __erts_version="$("$__erl" -boot no_dot_erlang -sasl errlog_type error -noshell -eval "$erts_version_code")"
+            ERTS_DIR="${__erl_root}/erts-${__erts_version}"
+            if [ -d "$ERTS_DIR" ]; then
+                ERTS_VSN=${__erts_version}
+                echo "Exact ERTS version (${ERTS_VSN}) match not found, instead using ${__erts_version}. The release may fail to run." 1>&2
+            else
+                echo "Can not run the release. There is no ERTS bundled with the release or found on the system."
+                exit 1
+            fi
+        fi
     fi
 }
 
