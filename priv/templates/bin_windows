@@ -60,8 +60,7 @@ cd %rootdir%
 @for /f "delims=" %%i in ('where erl') do (
   set erl=%%i
 )
-@set dir_cmd="%erl%" -boot no_dot_erlang -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop
-@for /f "delims=" %%i in ('%%dir_cmd%%') do (
+@for /f "delims=" %%i in ('call "%erl%" -boot no_dot_erlang -boot_var RELEASE_DIR "%release_root_dir%" -noshell -eval "io:format(\"~s\", [filename:nativename(code:root_dir())])." -s init stop') do (
   set erl_root=%%i
 )
 @set "erts_dir=%erl_root%\erts-%erts_vsn%"
