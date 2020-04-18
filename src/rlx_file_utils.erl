@@ -16,7 +16,8 @@
          remove/1,
          remove/2,
          print_path/1,
-         path_from_ancestor/2]).
+         path_from_ancestor/2,
+         format_error/1]).
 
 -include_lib("kernel/include/file.hrl").
 
@@ -193,7 +194,7 @@ copy_(From, To, Options) ->
         {ok, _} ->
             copy_file_info(To, From, proplists:get_value(file_info, Options, []));
         {error, Error} ->
-            {error, {copy_failed, Error}}
+            {error, {copy_failed, From, To, Error}}
     end.
 
 copy_file_info(To, From, FileInfoToKeep) ->
@@ -203,10 +204,10 @@ copy_file_info(To, From, FileInfoToKeep) ->
                 [] ->
                     ok;
                 Errors ->
-                    {error, {write_file_info_failed_for, Errors}}
+                    {error, {write_file_info_failed_for, From, To, Errors}}
             end;
         {error, RFError} ->
-            {error, {read_file_info_failed, RFError}}
+            {error, {read_file_info_failed, From, To, RFError}}
     end.
 
 write_file_info(To, FileInfo, FileInfoToKeep) ->
@@ -362,3 +363,12 @@ canonical_path(Acc, ["."|Rest])       -> canonical_path(Acc, Rest);
 canonical_path([_|Acc], [".."|Rest])  -> canonical_path(Acc, Rest);
 canonical_path([], [".."|Rest])       -> canonical_path([], Rest);
 canonical_path(Acc, [Component|Rest]) -> canonical_path([Component|Acc], Rest).
+
+format_error({write_file_info_failed_for, From, To, Errors}) ->
+    io_lib:format("Writing file info during copy of ~s to ~s failed with reasons:~n~s",
+                  [From, To, [[file:format_error(Error), "\n"] || Error <- Errors]]);
+format_error({copy_failed, From, To, Reason}) ->
+    io_lib:format("Copying ~s to ~s failed with reason: ~s", [From, To, file:format_error(Reason)]);
+format_error({read_file_info_failed, From, To, Reason}) ->
+    io_lib:format("Reading file info failed during copy of ~s ~s with reason: ~s",
+                  [From, To, file:format_error(Reason)]).

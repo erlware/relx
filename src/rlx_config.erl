@@ -22,6 +22,11 @@ to_state(Config, State) ->
     lists:foldl(fun load/2, {ok, State1}, Config).
 
 -spec load(term(), {ok, rlx_state:t()} | relx:error()) -> {ok, rlx_state:t()} | relx:error().
+load({mode, Mode}, {ok, State}) ->
+    State1 = rlx_state:mode(State, Mode),
+    Expanded = expand_mode(Mode),
+    {ok, State2} = lists:foldl(fun load/2, {ok, State1}, Expanded),
+    {ok, State2};
 load({lib_dirs, Dirs}, {ok, State}) ->
     LibDirs = rlx_file_utils:wildcard_paths(Dirs),
     State1 = rlx_state:add_lib_dirs(State, LibDirs),
@@ -34,8 +39,11 @@ load({debug_info, DebugInfo}, {ok, State0}) ->
     {ok, rlx_state:debug_info(State0, DebugInfo)};
 load({overrides, Overrides0}, {ok, State0}) ->
     {ok, rlx_state:overrides(State0, Overrides0)};
-load({dev_mode, DevMode}, {ok, State0}) ->
-    {ok, rlx_state:dev_mode(State0, DevMode)};
+load({dev_mode, false}, {ok, State0}) ->
+    {ok, rlx_state:dev_mode(State0, false)};
+load({dev_mode, true}, {ok, State0}) ->
+    {ok, State1} = load({mode, dev}, {ok, State0}),
+    {ok, rlx_state:dev_mode(State1, true)};
 load({upfrom, UpFrom}, {ok, State0}) ->
     {ok, rlx_state:upfrom(State0, UpFrom)};
 load({include_src, IncludeSrc}, {ok, State0}) ->
@@ -105,6 +113,8 @@ load({warnings_as_errors, WarningsAsErrors}, {ok, State}) ->
     {ok, rlx_state:warnings_as_errors(State, WarningsAsErrors)};
 load({src_tests, SrcTests}, {ok, State}) ->
     {ok, rlx_state:src_tests(State, SrcTests)};
+load({exref, ExRef}, {ok, State}) ->
+    {ok, rlx_state:exref(State, ExRef)};
 load({include_erts, IncludeErts}, {ok, State}) ->
     {ok, rlx_state:include_erts(State, IncludeErts)};
 load({system_libs, SystemLibs}, {ok, State}) ->
@@ -137,6 +147,15 @@ format_error({invalid_term, InvalidTerm}) ->
     io_lib:format("Unknown term found in relx configuration: ~p", [InvalidTerm]).
 
 %%
+
+-spec expand_mode(rlx_state:mode()) -> [term()].
+expand_mode(dev) ->
+    [{include_src, true}, {debug_info, keep}, {include_erts, false}];
+expand_mode(prod) ->
+    [{include_src, false}, {debug_info, strip}, {include_erts, true}, {dev_mode, false}];
+expand_mode(minimal) ->
+    %% minimal is prod without the erts
+    [{include_src, false}, {debug_info, strip}, {include_erts, false}, {dev_mode, false}].
 
 parse_vsn(Vsn) when Vsn =:= git ; Vsn =:= "git" ->
     try_vsn(fun git_tag_vsn/0);

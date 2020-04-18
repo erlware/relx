@@ -27,7 +27,9 @@
 
 all() ->
     [{group, regular_mode},
-     {group, dev_mode}].
+     {group, dev_mode},
+     {group, prod_mode},
+     {group, minimal_mode}].
 
 %% Tests using dev_mode can't run in parallel because they write to the same directories
 groups() ->
@@ -42,7 +44,9 @@ groups() ->
        make_erts_config_release, make_included_nodetool_release]},
      {dev_mode, [shuffle], [make_dev_mode_template_release,
                             make_dev_mode_release,
-                            make_release_twice_dev_mode]}].
+                            make_release_twice_dev_mode]},
+     {prod_mode, [shuffle], [make_prod_mode_release]},
+     {minimal_mode, [shuffle], [make_minimal_mode_release]}].
 
 init_per_suite(Config) ->
     DataDir = filename:join(?config(data_dir, Config), ?MODULE),
@@ -96,7 +100,6 @@ make_release(Config) ->
 make_config_release(Config) ->
     DataDir = ?config(priv_dir, Config),
     LibDir1 = ?config(lib_dir, Config),
-    _Apps = ?config(apps, Config),
     OutputDir = ?config(out_dir, Config),
     OtherAppsDir = filename:join([DataDir, rlx_test_utils:create_random_name("other_apps_")]),
 
@@ -113,7 +116,6 @@ make_config_release(Config) ->
                    [{some, config2}]},
                   {lib_dirs, [LibDir1]}],
 
-    _Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
 
@@ -244,7 +246,6 @@ make_overridden_release(Config) ->
                     goal_app_2]},
                   {dev_mode, true}],
 
-    %% MoreApps = rlx_test_utils:all_apps([OverrideAppDir]),
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir}, {lib_dirs, [OverrideDir1, LibDir]},
                                            {output_dir, OutputDir} | RelxConfig]),
 
@@ -543,6 +544,7 @@ make_dev_mode_template_release(Config) ->
                                             {nodename, "testnode"}]),
 
     RelxConfig = [{dev_mode, true},
+                  {mode, dev},
                   {sys_config, SysConfig},
                   {vm_args, VmArgs},
                   {overlay_vars, [VarsFile1]},
@@ -602,8 +604,6 @@ make_release_twice(Config) ->
 
 
     rlx_test_utils:create_app(OtherAppsDir, "non_goal_1", "0.0.3", [stdlib,kernel], [lib_dep_1]),
-    _Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
-
     {ok, State2} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
@@ -644,7 +644,6 @@ make_release_twice_dev_mode(Config) ->
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
 
     rlx_test_utils:create_app(OtherAppsDir, "non_goal_1", "0.0.3", [stdlib,kernel], [lib_dep_1]),
-    _Apps1 = rlx_test_utils:all_apps([OtherAppsDir]),
     {ok, State2} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
 
@@ -872,6 +871,100 @@ make_release_with_sys_config_vm_args_src(Config) ->
                                                        "sys.config"]))),
             ?assert(not filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                        "vm.args"])))
+    end.
+
+make_prod_mode_release(Config) ->
+    LibDir1 = proplists:get_value(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    SysConfig = filename:join([LibDir1, "config", "sys.config"]),
+    rlx_test_utils:write_config(SysConfig, [{this_is_a_test, "yup it is"}]),
+
+    VmArgs = filename:join([LibDir1, "config", "vm.args"]),
+    rlx_file_utils:write(VmArgs, ""),
+
+    RelxConfig = [{mode, prod},
+                  %% osx test fails if debug_info is strip
+                  {debug_info, keep},
+                  {sys_config, SysConfig},
+                  {vm_args, VmArgs},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]}],
+
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
+
+    [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
+
+    case os:type() of
+        {unix, _} ->
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                                 "sys.config"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                                 "vm.args"])));
+        {win32, _} ->
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+            ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                   "sys.config"]))),
+            ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                   "vm.args"])))
+    end.
+
+make_minimal_mode_release(Config) ->
+    LibDir1 = proplists:get_value(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    SysConfig = filename:join([LibDir1, "config", "sys.config"]),
+    rlx_test_utils:write_config(SysConfig, [{this_is_a_test, "yup it is"}]),
+
+    VmArgs = filename:join([LibDir1, "config", "vm.args"]),
+    rlx_file_utils:write(VmArgs, ""),
+
+    RelxConfig = [{mode, minimal},
+                  %% osx test fails if debug_info is strip
+                  {debug_info, keep},
+                  {sys_config, SysConfig},
+                  {vm_args, VmArgs},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]}],
+
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
+
+    [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
+
+    case os:type() of
+        {unix, _} ->
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                                 "sys.config"]))),
+            ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                                 "vm.args"])));
+        {win32, _} ->
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+            ?assert(filelib:is_dir(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+            ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                   "sys.config"]))),
+            ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                   "vm.args"])))
     end.
 
 %%%===================================================================

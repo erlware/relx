@@ -282,17 +282,17 @@ do_individual_overlay(State, Release, _Files, OverlayVars, {copy, From, To}) ->
                                           end)
                    end);
 do_individual_overlay(State, Release, Files, OverlayVars, {link, From, To}) ->
-    case rlx_state:dev_mode(State) of
-        false ->
-            do_individual_overlay(State, Release, Files, OverlayVars, {copy, From, To});
-        true  ->
+    case rlx_state:mode(State) of
+        dev  ->
             file_render_do(OverlayVars, From,
                            fun(FromFile) ->
                                    file_render_do(OverlayVars, To,
                                                   fun(ToFile) ->
                                                           link_to(State, Release, FromFile, ToFile)
                                                   end)
-                           end)
+                           end);
+        _ ->
+            do_individual_overlay(State, Release, Files, OverlayVars, {copy, From, To})
     end;
 do_individual_overlay(State, Release, _Files, OverlayVars, {template, From, To}) ->
     file_render_do(OverlayVars, From,

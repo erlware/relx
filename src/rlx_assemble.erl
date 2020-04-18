@@ -8,17 +8,20 @@
 
 do(Release, State) ->
     RelName = rlx_release:name(Release),
-    ?log_debug("Assembling release ~p-~s", [RelName, rlx_release:vsn(Release)]),
+    ?log_info("Assembling release... ~p-~s", [RelName, rlx_release:vsn(Release)]),
     OutputDir = filename:join(rlx_state:base_output_dir(State), RelName),
+    ?log_debug("Release output dir ~s", [OutputDir]),
     ok = create_output_dir(OutputDir),
     ok = copy_app_directories_to_output(Release, OutputDir, State),
 
     {ok, State1} = create_release(State, Release, OutputDir),
 
+    ?log_info("Release successfully assembled: ~s", [rlx_file_utils:print_path(OutputDir)]),
+
     %% don't strip the release in debug mode since that would strip
     %% the beams symlinked to and no one wants that
     case rlx_state:debug_info(State1) =:= strip
-        andalso rlx_state:dev_mode(State1) =:= false of
+        andalso rlx_state:mode(State1) =/= dev of
         true ->
             ?log_debug("Stripping release beam files", []),
             case beam_lib:strip_release(OutputDir) of
@@ -56,10 +59,10 @@ copy_app_directories_to_output(Release, OutputDir, State) ->
     ok.
 
 prepare_applications(State, Apps) ->
-    case rlx_state:dev_mode(State) of
-        true ->
+    case rlx_state:mode(State) of
+        dev ->
             [rlx_app_info:link(App, true) || App <- Apps];
-        false ->
+        _ ->
             Apps
     end.
 
@@ -450,26 +453,40 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
 %% @doc copy config/sys.config or generate one to releases/VSN/sys.config
 -spec copy_or_generate_sys_config_file(rlx_state:t(), file:name()) -> ok.
 copy_or_generate_sys_config_file(State, RelDir) ->
+    RootDir = rlx_state:root_dir(State),
+    DefaultConfigSrcPath = filename:join([RootDir, "config", "sys.config.src"]),
+    DefaultConfigPath = filename:join([RootDir, "config", "sys.config"]),
     RelSysConfPath = filename:join([RelDir, "sys.config"]),
     RelSysConfSrcPath = filename:join([RelDir, "sys.config.src"]),
     case rlx_state:sys_config_src(State) of
-        undefined ->
-            case rlx_state:sys_config(State) of
+        SysConfigSrc when SysConfigSrc =:= undefined ; SysConfigSrc =:= false ->
+            SysConfig = rlx_state:sys_config(State),
+
+            %% include config/sys.config.src if it exists and sys_config_src is not set to `false'
+            case SysConfig =:= undefined andalso
+                SysConfigSrc =:= undefined andalso
+                filelib:is_regular(DefaultConfigSrcPath)
+            of
+                true ->
+                    include_sys_config_src(DefaultConfigSrcPath, RelSysConfSrcPath, State);
                 false ->
-                    ok;
-                undefined ->
-                    unless_exists_write_default(RelSysConfPath, sys_config_file());
-                ConfigPath ->
-                    case filelib:is_regular(ConfigPath) of
+                    case SysConfig of
                         false ->
-                            erlang:error(?RLX_ERROR({config_does_not_exist, ConfigPath}));
-                        true ->
-                            %% validate sys.config is valid Erlang terms
-                            case file:consult(ConfigPath) of
-                                {ok, _} ->
-                                    copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath);
-                                {error, Reason} ->
-                                    erlang:error(?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason}))
+                            ok;
+                        undefined ->
+                            %% if config/sys.config exists include it automatically
+                            case filelib:is_regular(DefaultConfigPath)of
+                                true ->
+                                    include_sys_config(DefaultConfigPath, RelSysConfPath, State);
+                                false ->
+                                    unless_exists_write_default(RelSysConfPath, sys_config_file())
+                            end;
+                        ConfigPath ->
+                            case filelib:is_regular(ConfigPath) of
+                                false ->
+                                    erlang:error(?RLX_ERROR({config_does_not_exist, ConfigPath}));
+                                true ->
+                                    include_sys_config(ConfigPath, RelSysConfPath, State)
                             end
                     end
             end;
@@ -482,12 +499,24 @@ copy_or_generate_sys_config_file(State, RelDir) ->
                     ?log_warn("Both sys_config_src and sys_config are set, sys_config will be ignored")
             end,
 
-            case filelib:is_regular(ConfigSrcPath) of
-                false ->
-                    erlang:error(?RLX_ERROR({config_src_does_not_exist, ConfigSrcPath}));
-                true ->
-                    copy_or_symlink_config_file(State, ConfigSrcPath, RelSysConfSrcPath)
-            end
+            include_sys_config_src(ConfigSrcPath, RelSysConfSrcPath, State)
+    end.
+
+include_sys_config(ConfigPath, RelSysConfPath, State) ->
+    %% validate sys.config is valid Erlang terms
+    case file:consult(ConfigPath) of
+        {ok, _} ->
+            copy_or_symlink_config_file(State, ConfigPath, RelSysConfPath);
+        {error, Reason} ->
+            erlang:error(?RLX_ERROR({sys_config_parse_error, ConfigPath, Reason}))
+    end.
+
+include_sys_config_src(ConfigSrcPath, RelSysConfSrcPath, State) ->
+    case filelib:is_regular(ConfigSrcPath) of
+        false ->
+            erlang:error(?RLX_ERROR({config_src_does_not_exist, ConfigSrcPath}));
+        true ->
+            copy_or_symlink_config_file(State, ConfigSrcPath, RelSysConfSrcPath)
     end.
 
 %% @doc copy config/sys.config[.src] or generate one to releases/VSN/sys.config[.src]
@@ -495,11 +524,21 @@ copy_or_generate_sys_config_file(State, RelDir) ->
                                          ok.
 copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
     ensure_not_exist(RelConfPath),
-    case rlx_state:dev_mode(State) of
-        true ->
-            ok = rlx_file_utils:symlink_or_copy(ConfigPath, RelConfPath);
+    case rlx_state:mode(State) of
+        dev ->
+            case rlx_file_utils:symlink_or_copy(ConfigPath, RelConfPath) of
+                ok ->
+                    ok;
+                {error, Reason} ->
+                    erlang:error({error, {rlx_file_utils, Reason}})
+            end;
         _ ->
-            ok = rlx_file_utils:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}])
+            case rlx_file_utils:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}]) of
+                ok ->
+                    ok;
+                {error, Reason} ->
+                    erlang:error({error, {rlx_file_utils, Reason}})
+            end
     end.
 
 %% @doc Optionally add erts directory to release, if defined.
@@ -552,19 +591,10 @@ include_erts(State, Release, OutputDir, RelDir) ->
 
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok.
 make_boot_script(State, Release, OutputDir, RelDir) ->
-    IncludeSrc = include_src_or_default(State),
-    WarningsAsErrors = rlx_state:warnings_as_errors(State),
-    SrcTests = rlx_state:src_tests(State),
     Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
                {outdir, RelDir},
-               %% TODO: if dev_mode -> local,
                {variables, make_boot_script_variables(Release, State)},
-               silent | case {WarningsAsErrors, SrcTests andalso IncludeSrc} of
-                            {true, true} -> [warnings_as_errors, src_tests];
-                            {true, false} -> [warnings_as_errors];
-                            {false, true} -> [src_tests];
-                            {false, false} -> []
-                        end],
+               silent | make_script_options(State)],
     Name = atom_to_list(rlx_release:name(Release)),
     ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
     IsRelxSasl = rlx_state:is_relx_sasl(State),
@@ -581,6 +611,22 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
     end.
+
+%% setup options for warnings as errors, src_tests and exref
+make_script_options(State) ->
+    IncludeSrc = include_src_or_default(State),
+    WarningsAsErrors = rlx_state:warnings_as_errors(State),
+    SrcTests = rlx_state:src_tests(State),
+    [Key || {Key, true} <- [{warnings_as_errors, WarningsAsErrors},
+                            {src_tests, SrcTests andalso IncludeSrc}]]
+        ++ case rlx_state:exref(State) of
+               true ->
+                   [exref];
+               Apps when is_list(Apps) ->
+                   [{exref, Apps}];
+               _ ->
+                   []
+           end.
 
 %% when running `release' the default is to include src so `src_tests' can do checks
 include_src_or_default(State) ->
