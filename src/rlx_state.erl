@@ -131,7 +131,7 @@
                   %% `dev_mode' is for backwards compatibility
                   dev_mode=false :: boolean(),
                   %% mode toggles multiple configuration values at once
-                  mode=prod :: mode(),
+                  mode=prod :: mode() | undefined,
 
                   %% default check is for sasl 3.5 and above
                   %% version 3.5 of sasl has systools with changes for relx
@@ -296,6 +296,12 @@ dev_mode(#state_t{dev_mode=DevMode}) ->
     DevMode.
 
 -spec dev_mode(t(), boolean()) -> t().
+dev_mode(S=#state_t{mode=dev}, false) ->
+    S#state_t{dev_mode=false,
+              mode=undefined};
+dev_mode(S, true) ->
+    S#state_t{dev_mode=false,
+              mode=dev};
 dev_mode(S, DevMode) ->
     S#state_t{dev_mode=DevMode}.
 
