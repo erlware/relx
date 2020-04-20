@@ -1,0 +1,6 @@
+-sname extended_script_tests
+
+## Cookie for distributed erlang
+-setcookie extended_script_tests
+
+-heart
