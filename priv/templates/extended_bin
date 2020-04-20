@@ -271,7 +271,6 @@ relx_rem_sh() {
 erl_rpc() {
     case "$ERL_RPC" in
         "relx_nodetool")
-            echo "relx_nodetool rpc $@"
             relx_nodetool rpc "$@"
             ;;
         *)
@@ -647,26 +646,23 @@ cd "$ROOTDIR"
 
 # Check the first argument for instructions
 case "$1" in
-    daemon)
+    daemon|daemon_boot)
         case "$1" in
             daemon)
                 shift
                 START_OPTION="console"
-                HEART_OPTION="start"
+                HEART_OPTION="daemon"
                 ;;
             daemon_boot)
                 shift
                 START_OPTION="console_boot"
-                HEART_OPTION="start_boot"
+                HEART_OPTION="daemon_boot"
                 ;;
         esac
 
         ARGS="$(printf "'%s' " "$@")"
 
-        # shellcheck disable=SC2090,SC2089
-        HEART_COMMAND="\"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$HEART_OPTION\" $ARGS"
-        # shellcheck disable=SC2090
-        export HEART_COMMAND
+        export HEART_COMMAND="\"${RELEASE_ROOT_DIR}/bin/${REL_NAME}\" \"${HEART_OPTION}\" ${ARGS}"
 
         # shellcheck disable=SC2174
         test -z "$PIPE_BASE_DIR" || mkdir -m 1777 -p "$PIPE_BASE_DIR"
