@@ -1,0 +1,35 @@
+name: ShellTestRunner
+
+on:
+  pull_request:
+    branches:
+      - '4.0.0'
+      - 'master'
+  push:
+    branches:
+      - '4.0.0'
+      - 'master'
+
+jobs:
+  build:
+    name: Test relx generated shell scripts
+    runs-on: [ubuntu-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: gleam-lang/setup-erlang@v1.0.0
+      with:
+        otp-version: 22.3.2
+
+    - uses: actions/setup-haskell@v1
+      with:
+        ghc-version: '8.6.5'
+        cabal-version: '3.0'
+
+    - name: Update cabal
+      run: cabal update
+    - name: Install shelltestrunner
+      run: cabal install shelltestrunner-1.9
+
+    - name: Run shell tests
+      run: shelltests/run_tests.sh
