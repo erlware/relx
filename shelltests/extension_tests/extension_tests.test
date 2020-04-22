@@ -1,0 +1,21 @@
+$ rebar3 release
+> /===> Release successfully assembled:/
+>= 0
+
+$ ./_build/default/rel/extension_tests/bin/extension_tests daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ ./_build/default/rel/extension_tests/bin/extension_tests ping
+>
+pong
+>= 0
+
+$ _build/default/rel/extension_tests/bin/extension_tests bar
+> /{bar, extension_tests, 'extension_tests@.*', extension_tests}./
+>= 0
+
+$ ./_build/default/rel/extension_tests/bin/extension_tests stop
+>= 0
