@@ -42,8 +42,8 @@ all() ->
     end.
 
 groups() ->
-    [{shortname, [], [ping, remote_console, pid, restart, attach]},
-     {longname, [], [ping, remote_console, pid]},
+    [{shortname, [], [remote_console]},
+     {longname, [], [remote_console]},
      {custom_replace_vars, [], [replace_os_vars_twice,
                                 replace_os_vars_included_config,
                                 replace_os_vars_sys_config_vm_args_src,
@@ -60,7 +60,7 @@ groups() ->
      {hooks, [], [custom_start_script_hooks, custom_start_script_hooks_console,
                   builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
                   builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks]},
-     {custom_setup, [], [reboot, start_sname_in_other_argsfile, start_preserves_arguments,
+     {custom_setup, [], [start_sname_in_other_argsfile, start_preserves_arguments,
                          start_nodetool_with_data_from_argsfile, start_upgrade_escript_with_argsfile_data,
                          builtin_status_script, custom_status_script]}].
 
@@ -173,29 +173,6 @@ init_per_testcase(_, Config) ->
 
 end_per_testcase(_, _) ->
     ok.
-
-ping(Config) ->
-    OutputDir = ?config(out_dir, Config),
-    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])).
-
-attach(Config) ->
-    OutputDir = ?config(out_dir, Config),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo attach", "&"])).
-
-pid(Config) ->
-    OutputDir = ?config(out_dir, Config),
-    {ok, _Pid} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])).
-
-restart(Config) ->
-    OutputDir = ?config(out_dir, Config),
-
-    %% a restart is a gracious operation that does not involve the
-    %% death of the VM, so the pid should be the same
-    {ok, Pid1} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo restart"])),
-    timer:sleep(?LONG_SLEEP_TIME),
-    {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
-    ?assertEqual(Pid1, Pid2).
 
 escript(Config) ->
     OutputDir = ?config(out_dir, Config),
@@ -1441,41 +1418,6 @@ custom_status_script(Config) ->
     os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
     {ok, [Status]} = file:consult(filename:join([OutputDir, "status.txt"])),
     {ok, {status, foo, _, foo} = Status}.
-
-reboot(Config) ->
-    PrivDir = ?config(priv_dir, Config),
-    LibDir1 = ?config(lib_dir, Config),
-
-    DirName = rlx_test_utils:create_random_name("reboot-testcase-output"),
-    OutputDir = filename:join(PrivDir, DirName),
-    ok = rlx_file_utils:mkdir_p(OutputDir),
-
-    rlx_test_utils:create_full_app(OutputDir, "goal_app", "0.0.1", [stdlib,kernel], []),
-
-    VmArgs = filename:join([OutputDir, "vm.args"]),
-
-    RelxConfig = [{release, {foo, "0.0.1"},
-                   [goal_app]},
-                  {vm_args, VmArgs},
-                  {generate_start_script, true},
-                  {extended_start_script, true}
-                 ],
-
-    rlx_file_utils:write(VmArgs, "-sname foo@localhost\n\n"
-                         "-setcookie cookie\n"
-                         "-heart\n"),
-
-    {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir1]},
-                                            {output_dir, OutputDir} | RelxConfig]),
-
-    %% a reboot involves stopping the emulator, it needs to be restarted
-    %% though
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
-    {ok, Pid1} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo reboot"])),
-    timer:sleep(?SLEEP_TIME),
-    {ok, Pid2} = sh(filename:join([OutputDir, "foo", "bin", "foo pid"])),
-    ?assertNotEqual(Pid1, Pid2).
 
 start_sname_in_other_argsfile(Config) ->
     PrivDir = ?config(priv_dir, Config),
