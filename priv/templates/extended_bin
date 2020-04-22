@@ -844,6 +844,7 @@ case "$1" in
         export PROGNAME
 
         # Dump environment info for logging purposes
+        # shellcheck disable=SC2086
         echo "Exec: $BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
@@ -858,6 +859,7 @@ case "$1" in
         relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
         # The variabre FOREGROUNDOPTIONS must NOT be quoted.
+        # shellcheck disable=SC2086
         exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
