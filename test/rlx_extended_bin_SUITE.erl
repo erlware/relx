@@ -30,11 +30,8 @@ all() ->
     case erlang:system_info(otp_release) of
         %% make them never run for now
         V when V =:= "22" ; V =:= "23" ->
-            [{group, shortname},
-             {group, longname},
-             {group, custom_replace_vars},
+            [{group, custom_replace_vars},
              {group, start_fail},
-             {group, extension_scripts},
              {group, hooks},
              {group, custom_setup}];
         _ ->
@@ -42,9 +39,7 @@ all() ->
     end.
 
 groups() ->
-    [{shortname, [], [remote_console]},
-     {longname, [], [remote_console]},
-     {custom_replace_vars, [], [replace_os_vars_twice,
+    [{custom_replace_vars, [], [replace_os_vars_twice,
                                 replace_os_vars_included_config,
                                 replace_os_vars_sys_config_vm_args_src,
                                 replace_os_vars_custom_location,
@@ -54,9 +49,6 @@ groups() ->
                                ]},
      {start_fail, [], [start_fail_when_no_name, start_fail_when_multiple_names, start_fail_when_circular_argsfiles,
                        start_fail_when_missing_argsfile, start_fail_when_relative_argsfile]},
-     {extension_scripts, [], [extension_script,
-                              extension_script_exit_code,
-                              extension_script_fail_when_no_exit]},
      {hooks, [], [custom_start_script_hooks, custom_start_script_hooks_console,
                   builtin_wait_for_vm_start_script_hook, builtin_pid_start_script_hook,
                   builtin_wait_for_process_start_script_hook, mixed_custom_and_builtin_start_script_hooks]},
@@ -80,70 +72,6 @@ init_per_suite(Config) ->
 end_per_suite(_Config) ->
     ok.
 
-init_per_group(shortname, Config) ->
-    LibDir1 = ?config(lib_dir, Config),
-
-    PrivDir = ?config(priv_dir, Config),
-    DirName = rlx_test_utils:create_random_name("shortname-extended-testcase-output"),
-    OutputDir = filename:join(PrivDir, DirName),
-    ok = rlx_file_utils:mkdir_p(OutputDir),
-
-    SysConfig = filename:join([OutputDir, "sys.config"]),
-    rlx_test_utils:write_config(SysConfig,
-                                [[{goal_app_1,
-                                   [{var1, "${VAR1}"},
-                                    {var2, "${VAR2}"}]}]]),
-
-    VmArgs = filename:join([OutputDir, "vm.args"]),
-    rlx_file_utils:write(VmArgs, "-sname ${NODENAME}@localhost\n\n"
-                         "-setcookie ${COOKIE}\n"),
-
-    RelxConfig =[{release, {foo, "0.0.1"},
-                  [goal_app_1]},
-                 {lib_dirs, [filename:join(LibDir1, "*")]},
-                 {sys_config, SysConfig},
-                 {vm_args, VmArgs},
-                 {generate_start_script, true},
-                 {extended_start_script, true}
-                ],
-
-    {ok, _State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
-                                            {output_dir, OutputDir} | RelxConfig]),
-
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
-    timer:sleep(?SLEEP_TIME),
-    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
-
-    [{out_dir, OutputDir} | Config];
-init_per_group(longname, Config) ->
-    LibDir1 = ?config(lib_dir, Config),
-
-    PrivDir = ?config(priv_dir, Config),
-    DirName = rlx_test_utils:create_random_name("longname-extended-testcase-output"),
-    OutputDir = filename:join(PrivDir, DirName),
-    ok = rlx_file_utils:mkdir_p(OutputDir),
-
-    VmArgs = filename:join([OutputDir, "vm.args"]),
-    rlx_file_utils:write(VmArgs, "-name ${NODENAME}@127.0.0.1\n\n"
-                         "-setcookie ${COOKIE}\n"),
-
-    RelxConfig =[{release, {foo, "0.0.1"},
-                  [goal_app_1]},
-                 {lib_dirs, [filename:join(LibDir1, "*")]},
-                 {vm_args, VmArgs},
-                 {generate_start_script, true},
-                 {extended_start_script, true}
-                ],
-
-    {ok, _State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
-                                            {output_dir, OutputDir} | RelxConfig]),
-
-
-    ?assertMatch({ok, _}, sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]))),
-    timer:sleep(?SLEEP_TIME),
-    ?assertMatch({ok, "pong"}, sh(filename:join([OutputDir, "foo", "bin", "foo ping"]))),
-
-    [{out_dir, OutputDir} | Config];
 init_per_group(start_fail, Config) ->
     PrivDir = ?config(priv_dir, Config),
     DirName = rlx_test_utils:create_random_name("longname-extended-testcase-output"),
@@ -228,15 +156,6 @@ os_var_timeouts(Config) ->
     {error,1,"RPC to " ++ _Rest} = sh(filename:join([OutputDir, "foo", "bin",
                                                      "foo rpcterms timer sleep 2000."]),
                                       [{"NODETOOL_TIMEOUT", "500"}]).
-
-remote_console(Config) ->
-    OutputDir = ?config(out_dir, Config),
-
-    {ok, _} = sh(filename:join([OutputDir, "foo", "bin", "foo remote_console &"])),
-    timer:sleep(?SLEEP_TIME),
-    {ok, NodesStr} = sh(filename:join([OutputDir, "foo", "bin", "foo eval 'nodes(connected).'"])),
-    Nodes = rlx_test_utils:list_to_term(NodesStr),
-    ?assertEqual(1, length(Nodes)).
 
 replace_os_vars_sys_config_vm_args_src(Config) ->
     LibDir1 = ?config(lib_dir, Config),
@@ -1619,43 +1538,6 @@ start_fail_when_circular_argsfiles(Config) ->
     rlx_file_utils:write(VmArgs3, "-args_file " ++ VmArgs2 ++ "\n"),
     start_fail_with_vmargs([{out_dir, OutputDir} | Config], VmArgs, 5).
 
-extension_script(Config) ->
-    ExtensionScript =
-        "#!/bin/bash\n"
-        "echo \\{bar, $REL_NAME, \\'$NAME\\', $COOKIE\\}.\n"
-        "exit 0",
-    OutputDir = setup_extension_script(Config, ExtensionScript),
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo daemon"])),
-    timer:sleep(?SLEEP_TIME),
-    {ok, "pong"} = sh(filename:join([OutputDir, "foo", "bin", "foo ping"])),
-    %% write the extension script output to a file
-    {ok, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
-    rlx_file_utils:write(filename:join([OutputDir, "bar.txt"]), Str),
-    os:cmd(filename:join([OutputDir, "foo", "bin", "foo stop"])),
-    {ok, [Term]} = file:consult(filename:join([OutputDir, "bar.txt"])),
-    {ok, {bar, foo, _, foo} = Term}.
-
-extension_script_exit_code(Config) ->
-    ExtensionScript =
-        "#!/bin/bash\n"
-        "echo teststring\n"
-        "exit 42\n",
-    OutputDir = setup_extension_script(Config, ExtensionScript),
-    %% check that the invocation exit code is the expected one
-    {error, 42, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
-    %% check that the extension script ran
-    {ok, "teststring" = Str}.
-
-extension_script_fail_when_no_exit(Config) ->
-    ExtensionScript =
-        "#!/bin/bash\n"
-        "echo teststring\n",
-    OutputDir = setup_extension_script(Config, ExtensionScript),
-    %% check that the invocation exit code is non-zero
-    {error, 1, Str} = sh(filename:join([OutputDir, "foo", "bin", "foo bar"])),
-    %% check that the extension script ran
-    {ok, "teststring" = Str}.
-
 %%-------------------------------------------------------------------
 %% Helper Function for start_fail_when_* tests
 %%-------------------------------------------------------------------
@@ -1678,40 +1560,6 @@ start_fail_with_vmargs(Config, VmArgs, ExpectedCode) ->
 
     %% now start/stop the release to make sure the extended script is working
     ?assertMatch({error, ExpectedCode, _}, sh(filename:join([OutputDir, "foo", "bin", "foo daemon"]))).
-
-%%-------------------------------------------------------------------
-%% Helper Functions for extension_script* tests
-%%-------------------------------------------------------------------
-setup_extension_script(Config, ExtensionScript) ->
-    LibDir = ?config(lib_dir, Config),
-    PrivDir = ?config(priv_dir, Config),
-    DirName = rlx_test_utils:create_random_name("start-fail-testcase-output"),
-    OutputDir = filename:join(PrivDir, DirName),
-    ok = rlx_file_utils:mkdir_p(OutputDir),
-
-    rlx_test_utils:create_full_app(OutputDir, "goal_app", "0.0.1",
-                                   [stdlib,kernel], []),
-
-    RelxConfig= [{release, {foo, "0.0.1"},
-                  [goal_app]},
-                 {generate_start_script, true},
-                 {extended_start_script, true},
-                 {extended_start_script_extensions, [
-                                                     {bar, "extensions/bar"}
-                                                    ]},
-                 {overlay, [
-                            {copy, "./bar", "bin/extensions/bar"}]}
-                ],
-
-    %% write the extension script
-    ok = file:write_file(filename:join([OutputDir, "./bar"]),
-                         ExtensionScript),
-
-    {ok, _State} = relx:build_release(foo, [{root_dir, OutputDir}, {lib_dirs, [OutputDir, LibDir]},
-                                            {output_dir, OutputDir} | RelxConfig]),
-
-
-    OutputDir.
 
 %%%===================================================================
 %%% Helper Functions
