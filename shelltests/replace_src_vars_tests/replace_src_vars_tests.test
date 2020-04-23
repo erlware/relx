@@ -1,0 +1,64 @@
+$ rebar3 release
+> / Release successfully assembled: /
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 VAR1=101 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+101
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
+>
+"node1"
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erlang:get_cookie().'
+>
+cookie1
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 VAR1=201 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+
+$ sleep 1
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+201
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
+>
+"node2"
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erlang:get_cookie().'
+>
+cookie2
+>= 0
+
+# fail to shutdown node1 which was already stopped
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 1
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0

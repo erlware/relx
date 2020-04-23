@@ -1,0 +1,2 @@
+-sname ${NODENAME}@localhost
+-setcookie ${COOKIE}
