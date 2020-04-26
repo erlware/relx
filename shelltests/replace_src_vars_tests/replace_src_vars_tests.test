@@ -119,7 +119,9 @@ $ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/r
 $ RELX_MULTI_NODE=1 NODENAME=node2 COOKIE=cookie2 VAR1=201 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
 >= 0
 
-$ ls ./_build/default/rel/replace_os_vars_tests/releases/0.1.0/sys.node2*.config
+$ ls ./_build/default/rel/replace_os_vars_tests/releases/0.1.0/sys.node2@localhost.config
+>
+./_build/default/rel/replace_os_vars_tests/releases/0.1.0/sys.node2@localhost.config
 >= 0
 
 $ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
