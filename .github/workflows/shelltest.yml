@@ -12,14 +12,20 @@ on:
 
 jobs:
   build:
-    name: Test relx generated shell scripts
-    runs-on: [ubuntu-latest]
+    name: Test on OTP ${{ matrix.otp_version }} and ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        # important to check a pre-23 version that still uses nodetool
+        otp_version: [22, 23]
+        os: [ubuntu-latest]
 
     steps:
     - uses: actions/checkout@v2
     - uses: gleam-lang/setup-erlang@v1.0.0
       with:
-        otp-version: 22.3.2
+        otp-version: ${{ matrix.otp_version }}
 
     - uses: actions/setup-haskell@v1
       with:
