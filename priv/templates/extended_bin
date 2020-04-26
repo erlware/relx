@@ -38,6 +38,7 @@ ERTS_VSN="{{ erts_vsn }}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 export ESCRIPT_NAME="${ESCRIPT_NAME-$SCRIPT}"
+RPC_TIMEOUT=${RPC_TIMEOUT:-60} # in seconds
 
 # start/stop/install/upgrade pre/post hooks
 PRE_START_HOOKS="{{{ pre_start_hooks }}}"
@@ -251,17 +252,24 @@ relx_get_nodename() {
 
 # Connect to a remote node
 relx_rem_sh() {
-    # Generate a unique id used to allow multiple remsh to the same node
-    # transparently
-    id="remsh$(relx_gen_id)-${NAME}"
+    # Remove remote_nodename when OTP-23 is the oldest version supported by rebar3/relx.
+    # sort the used erts version against 11.0 to see if it is less than 11.0 (OTP-23)
+    # if it is then we must generate a node name to use for the remote node
+    if [  "11.0" = "$(printf "%s\n11.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
+        # OTP-16616: erl -remsh now uses the dynamic node names feature by default
+        remote_nodename=""
+    else
+        # Generate a unique id used to allow multiple remsh to the same node transparently
+        remote_nodename="${NAME_TYPE} remsh$(relx_gen_id)-${NAME}"
+    fi
 
-    # Get the node's ticktime so that we use the same thing.
+    # Get the node's ticktime so that we use the same one
     TICKTIME="$(erl_rpc net_kernel get_net_ticktime)"
 
     # Setup remote shell command to control node
     # -dist_listen is new in OTP-23. It keeps the remote node from binding to a listen port
     # and implies the option -hidden
-    exec "$BINDIR/erl" "$NAME_TYPE" "$id" -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
+    exec "$BINDIR/erl" "${remote_nodename}" -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
          -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME" \
          -dist_listen false \
@@ -276,7 +284,7 @@ erl_rpc() {
         *)
             command=$*
 
-            result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" -R -c "${COOKIE}" -a "${command}")
+            result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" -R -c "${COOKIE}" -timeout "${RPC_TIMEOUT}" -a "${command}")
             code=$?
             if [ $code -eq 0 ]; then
                 echo "$result" | tr -d "\n"
@@ -295,7 +303,7 @@ erl_eval() {
         *)
             command=$*
 
-            result=$(echo "${command}" | "$ERL_RPC" "$NAME_TYPE" "$NAME" -R -c "${COOKIE}" -e)
+            result=$(echo "${command}" | "$ERL_RPC" "$NAME_TYPE" "$NAME" -R -timeout "${RPC_TIMEOUT}" -c "${COOKIE}" -e)
             code=$?
             if [ $code -eq 0 ]; then
                 echo "$result" | sed 's/^{ok, \(.*\)}$/\1/' | tr -d "\n"
