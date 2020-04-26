@@ -1,4 +1,5 @@
 _build
+.rebar3
 deps/*
 ebin/*
 *.beam

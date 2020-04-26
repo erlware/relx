@@ -18,12 +18,14 @@ $ _build/default/rel/extension_tests/bin/extension_tests bar
 >= 0
 
 $ _build/default/rel/extension_tests/bin/extension_tests foo
-> teststring
+>
+teststring
 >= 42
 
 # fail if there is no explicit exit 0 in the extension script
 $ _build/default/rel/extension_tests/bin/extension_tests baz
-> teststring
+>
+teststring
 >= 1
 
 $ ./_build/default/rel/extension_tests/bin/extension_tests stop
