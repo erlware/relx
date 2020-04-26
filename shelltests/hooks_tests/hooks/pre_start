@@ -1,0 +1,3 @@
+#!/bin/bash
+# $*
+echo \{pre_start, $REL_NAME, \'$NAME\', $COOKIE\}. >> test

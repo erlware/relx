@@ -1,0 +1,39 @@
+$ rebar3 release
+> / Release successfully assembled: /
+>= 0
+
+$ ./_build/default/rel/hooks_tests/bin/hooks_tests daemon
+>= 0
+
+# no need to sleep because of the wait_for_vm_start hook
+
+$ ./_build/default/rel/hooks_tests/bin/hooks_tests ping
+>
+pong
+>= 0
+
+$ ./_build/default/rel/hooks_tests/bin/hooks_tests status
+>
+{status, hooks_tests, 'hooks_tests@localhost', hooks_tests}.
+>= 0
+
+$ ./_build/default/rel/hooks_tests/bin/hooks_tests stop
+>= 0
+
+$ ls ./_build/default/rel/hooks_tests/foo.pid
+>
+./_build/default/rel/hooks_tests/foo.pid
+>= 0
+
+$ cat ./_build/default/rel/hooks_tests/test
+>
+{pre_start, hooks_tests, 'hooks_tests@localhost', hooks_tests}.
+{post_start, hooks_tests, 'hooks_tests@localhost', hooks_tests}.
+{pre_stop, hooks_tests, 'hooks_tests@localhost', hooks_tests}.
+{post_stop, hooks_tests, 'hooks_tests@localhost', hooks_tests}.
+>= 0
+
+$ rm ./_build/default/rel/hooks_tests/test
+>
+>= 0
+
