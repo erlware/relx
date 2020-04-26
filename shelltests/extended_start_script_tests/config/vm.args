@@ -1,0 +1,3 @@
+-args_file /tmp/vm-2.args
+
+-setcookie cookie1

@@ -1,0 +1,128 @@
+$ rebar3 release
+> / Release successfully assembled: /
+>= 0
+
+$ RELX_OUT_FILE_PATH=/tmp NODENAME=node1 COOKIE=cookie1 VAR1=101 VAR2=201:-test2-2 VAR3=VA:-test3-2 VAR4=VAR4:-test4-2 VAR5=test5-2 VAR6=test6:-6-2 VAR7=test7:-7:-7-2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+# verify out file path works
+$ ls /tmp/sys.config
+>
+/tmp/sys.config
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+101
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var2), V.'
+>
+"201:-test2-2"
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var3), V.'
+>
+"VA:-test3-2"
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var4), V.'
+>
+"VAR4:-test4-2"
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var5), V.'
+>
+"test5-2"
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var6), V.'
+>
+"test6:-6-2"
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var7), V.'
+>
+"test7:-7:-7-2"
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var8), V.'
+>
+888
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
+>
+"node1"
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erlang:get_cookie().'
+>
+cookie1
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
+
+# start without defaults being overridden
+$ NODENAME=node2 COOKIE=cookie2 VAR1=201 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+
+$ sleep 1
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+201
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var2), V.'
+>
+"201"
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var6), V.'
+>
+"test6:-6"
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
+>
+"node2"
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erlang:get_cookie().'
+>
+cookie2
+>= 0
+
+# fail to shutdown node1 which was already stopped
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 1
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
+
+# test RELX_MULTI_NODE creates a sys.config with the node in the name
+$ RELX_MULTI_NODE=1 NODENAME=node2 COOKIE=cookie2 VAR1=201 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+>= 0
+
+$ ls ./_build/default/rel/replace_os_vars_tests/releases/0.1.0/sys.node2@localhost.config
+>
+./_build/default/rel/replace_os_vars_tests/releases/0.1.0/sys.node2@localhost.config
+>= 0
+
+$ NODENAME=node2 COOKIE=cookie2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0

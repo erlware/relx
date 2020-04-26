@@ -1,0 +1,120 @@
+# -args_file must be absolute so we copy them to /tmp
+# vm-5.args references vm-6.args. We copy it to vm-2.args
+# since that is the one included by vm.args and are testing
+# that the script catches circular references
+$ cp config/vm-5.args /tmp/vm-2.args
+>= 0
+
+# vm-6.args references vm-5.args
+$ cp config/vm-6.args /tmp/vm-6.args
+>= 0
+
+$ rebar3 release
+> / Release successfully assembled: /
+>= 0
+
+# circular args_file must fail
+$ RELX_REPLACE_OS_VARS=1 VAR1=101 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+>
+circular reference to /tmp/vm-2.args encountered in /tmp/vm-6.args
+>= 5
+
+$ cp config/vm-4.args /tmp/vm-2.args
+>= 0
+
+# pass args_file that doesn't exist to verify script catches it
+$ RELX_REPLACE_OS_VARS=1 VAR1=101 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+>
+/tmp/vm-3.args not found
+>= 3
+
+$ cp config/vm-2.args /tmp/vm-2.args
+>= 0
+
+# pass arg directly to verify it also works
+$ RELX_REPLACE_OS_VARS=1 VAR1=101 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon -replace_os_vars_tests baz "\"bat zing\""
+>= 0
+
+$ sleep 1
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+# check install_upgrade escript through its versions command
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests versions
+>
+Installed versions:
+* 0.1.0	permanent
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+"101"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, baz), V.'
+>
+"bat zing"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1_included), V.'
+>
+"${VAR1}"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
+>
+"node1"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erlang:get_cookie().'
+>
+cookie1
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
+
+# run without RELX_REPLACE_OS_VARS and VAR1 should not be replaced
+$ VAR1=201 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+
+$ sleep 1
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+"${VAR1}"
+>= 0
+
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1_included), V.'
+>
+"${VAR1}"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
+>
+"node1"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erlang:get_cookie().'
+>
+cookie1
+>= 0
+
+# verify timeout. using a whole second because we will be moving to a second based timeout
+$ NODETOOL_TIMEOUT=1000 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests rpc timer sleep "[2000]."
+>
+RPC to node1@localhost failed: timeout
+>= 1
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0

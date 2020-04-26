@@ -1,0 +1,49 @@
+$ rebar3 tar
+> /===> Tarball successfully created:/
+>= 0
+
+$ ./_build/default/rel/extended_script_tests/bin/extended_script_tests daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ ./_build/default/rel/extended_script_tests/bin/extended_script_tests ping
+>
+pong
+>= 0
+
+$ ./_build/default/rel/extended_script_tests/bin/extended_script_tests pid > /tmp/est_pid1
+>= 0
+
+$ ./_build/default/rel/extended_script_tests/bin/extended_script_tests reboot && sleep 1
+>= 0
+
+# takes a little bit for the reboot to complete
+$ while ! ./_build/default/rel/extended_script_tests/bin/extended_script_tests ping  > /dev/null 2>&1 ; do sleep 1 ; done
+>= 0
+
+$ ./_build/default/rel/extended_script_tests/bin/extended_script_tests pid > /tmp/est_pid2
+>= 0
+
+# should be different pids. command cmp will error with status code 1
+$ cmp -s /tmp/est_pid1 /tmp/est_pid2
+>= 1
+
+# now test restart which does not result in a new pid
+$ ./_build/default/rel/extended_script_tests/bin/extended_script_tests pid > /tmp/est_pid1
+>= 0
+
+$ ./_build/default/rel/extended_script_tests/bin/extended_script_tests restart
+>= 0
+
+$ ./_build/default/rel/extended_script_tests/bin/extended_script_tests pid > /tmp/est_pid2
+>= 0
+
+# should be different pids. command cmp will error with status code 1
+$ cmp -s /tmp/est_pid1 /tmp/est_pid2
+>= 0
+
+# kill heart to stop the release
+$ pkill heart
+>= 0

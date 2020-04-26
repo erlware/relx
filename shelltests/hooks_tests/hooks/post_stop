@@ -1,0 +1,3 @@
+#!/bin/bash
+# $*
+echo \{post_stop, $REL_NAME, \'$NAME\', $COOKIE\}. >> test

@@ -1,0 +1,8 @@
+[{replace_os_vars_tests, [{var1, ${VAR1}},
+                          {var2, "${VAR2:-201}"},
+                          {var3, "${VAR3:-VA:-test3}"},
+                          {var4, "${VAR4:-VAR4:-test4}"},
+                          {var5, "${VAR5}"},
+                          {var6, "${VAR6:-test6:-6}"},
+                          {var7, "${VAR7:-test7:-7:-7}"},
+                          {var8, ${VAR8:-888}}]}].

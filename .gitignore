@@ -1,4 +1,5 @@
 _build
+.rebar3
 deps/*
 ebin/*
 *.beam
@@ -12,9 +13,6 @@ src/rcl_goal.erl
 logs
 test/*_data
 _rel/*
-.*
-!.circleci
-!.cirrus.yml
 erl_crash.dump
 rebar
 TEST-*

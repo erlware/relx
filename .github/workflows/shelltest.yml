@@ -1,0 +1,42 @@
+name: ShellTestRunner
+
+on:
+  pull_request:
+    branches:
+      - '4.0.0'
+      - 'master'
+  push:
+    branches:
+      - '4.0.0'
+      - 'master'
+
+jobs:
+  build:
+    name: Test on OTP ${{ matrix.otp_version }} and ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        # important to check a pre-23 version that still uses nodetool
+        # plus 23 once it is released
+        otp_version: [22.3.2]
+        os: [ubuntu-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: gleam-lang/setup-erlang@v1.0.0
+      with:
+        otp-version: ${{ matrix.otp_version }}
+
+    - uses: actions/setup-haskell@v1
+      with:
+        ghc-version: '8.6.5'
+        cabal-version: '3.0'
+
+    - name: Update cabal
+      run: cabal update
+    - name: Install shelltestrunner
+      run: cabal install shelltestrunner-1.9
+
+    - name: Run shell tests
+      run: shelltests/run_tests.sh

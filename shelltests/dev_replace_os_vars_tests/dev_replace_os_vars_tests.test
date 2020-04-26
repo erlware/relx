@@ -1,0 +1,93 @@
+$ rebar3 release
+> / Release successfully assembled: /
+>= 0
+
+$ RELX_REPLACE_OS_VARS=1 VAR1=101 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+"101"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
+>
+"node1"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erlang:get_cookie().'
+>
+cookie1
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
+
+# run without RELX_REPLACE_OS_VARS and VAR1 should not be replaced
+$ VAR1=201 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+
+$ sleep 1
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+"${VAR1}"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
+>
+"node1"
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erlang:get_cookie().'
+>
+cookie1
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
+
+$ rebar3 as dev release
+> / Release successfully assembled: /
+>= 0
+
+$ file _build/dev/rel/replace_os_vars_tests/releases/0.1.0/sys.config
+> / symbolic link /
+>= 0
+
+$ RELX_REPLACE_OS_VARS=1 VAR1=101 ./_build/dev/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ ./_build/dev/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ ls _build/dev/rel/replace_os_vars_tests/releases/0.1.0/sys.config.orig
+>
+_build/dev/rel/replace_os_vars_tests/releases/0.1.0/sys.config.orig
+>= 0
+
+$ ./_build/dev/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var1), V.'
+>
+"101"
+>= 0
+
+$ ./_build/dev/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
