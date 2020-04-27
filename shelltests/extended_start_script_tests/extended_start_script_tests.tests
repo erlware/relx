@@ -110,11 +110,22 @@ $ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval 'erl
 cookie1
 >= 0
 
-# verify timeout. using a whole second because we will be moving to a second based timeout
+# verify NODETOOL_TIMEOUT still works and is converted to an integer
 $ NODETOOL_TIMEOUT=1000 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests rpc timer sleep "[2000]."
 >
 RPC to node1@localhost failed: timeout
 >= 1
+
+# verify RELX_RPC_TIMEOUT variable works
+$ RELX_RPC_TIMEOUT=1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests rpc timer sleep "[2000]."
+>
+RPC to node1@localhost failed: timeout
+>= 1
+
+# fail if NODETOOL_TIMEOUT is not a number
+$ NODETOOL_TIMEOUT=foo ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests rpc timer sleep "[2000]."
+>2 /Illegal number:/
+>= 2
 
 $ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
 >= 0
