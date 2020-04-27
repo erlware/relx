@@ -27,12 +27,13 @@ main(Args) ->
     end,
 
     Timeout =
-        case os:getenv("NODETOOL_TIMEOUT") of
+        case os:getenv("RELX_RPC_TIMEOUT") of
             false ->
                 60000;
             StrVal ->
                 try
-                    list_to_integer(StrVal)
+                    %% RELX_RPC_TIMEOUT is in seconds
+                    list_to_integer(StrVal) * 1000
                 catch _:_ ->
                         60000
                 end
