@@ -38,7 +38,21 @@ ERTS_VSN="{{ erts_vsn }}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
 export ESCRIPT_NAME="${ESCRIPT_NAME-$SCRIPT}"
-RPC_TIMEOUT=${RPC_TIMEOUT:-60} # in seconds
+
+
+# if RELX_RPC_TIMEOUT is set then use that
+# otherwise check for NODETOOL_TIMEOUT and convert to seconds
+if [ -z "$RELX_RPC_TIMEOUT" ]; then
+    # if NODETOOL_TIMEOUT exists then turn the old nodetool timeout into the rpc timeout
+    if [ -n "$NODETOOL_TIMEOUT" ]; then
+        # will exit the script if NODETOOL_TIMEOUT isn't a number
+        RELX_RPC_TIMEOUT=$((NODETOOL_TIMEOUT / 1000))
+    else
+        RELX_RPC_TIMEOUT=60
+    fi
+fi
+
+export RELX_RPC_TIMEOUT
 
 # start/stop/install/upgrade pre/post hooks
 PRE_START_HOOKS="{{{ pre_start_hooks }}}"
