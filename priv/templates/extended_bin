@@ -298,7 +298,7 @@ erl_rpc() {
         *)
             command=$*
 
-            result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" -R -c "${COOKIE}" -timeout "${RPC_TIMEOUT}" -a "${command}")
+            result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" -R -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
             code=$?
             if [ $code -eq 0 ]; then
                 echo "$result" | tr -d "\n"
@@ -317,7 +317,7 @@ erl_eval() {
         *)
             command=$*
 
-            result=$(echo "${command}" | "$ERL_RPC" "$NAME_TYPE" "$NAME" -R -timeout "${RPC_TIMEOUT}" -c "${COOKIE}" -e)
+            result=$(echo "${command}" | "$ERL_RPC" "$NAME_TYPE" "$NAME" -R -timeout "${RELX_RPC_TIMEOUT}" -c "${COOKIE}" -e)
             code=$?
             if [ $code -eq 0 ]; then
                 echo "$result" | sed 's/^{ok, \(.*\)}$/\1/' | tr -d "\n"
