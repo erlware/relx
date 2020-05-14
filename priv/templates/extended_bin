@@ -271,7 +271,7 @@ relx_rem_sh() {
     # if it is then we must generate a node name to use for the remote node
     if [  "11.0" = "$(printf "%s\n11.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
         # OTP-16616: erl -remsh now uses the dynamic node names feature by default
-        remote_nodename=""
+        remote_nodename="${NAME_TYPE} undefined"
     else
         # Generate a unique id used to allow multiple remsh to the same node transparently
         remote_nodename="${NAME_TYPE} remsh$(relx_gen_id)-${NAME}"
@@ -299,7 +299,11 @@ erl_rpc() {
         *)
             command=$*
 
-            result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" -R -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
+            if [ "$ERL_DIST_PORT" ]; then
+                result=$("$ERL_RPC" -r -c "${COOKIE}" -address "${ERL_DIST_PORT}"  -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
+            else
+                result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" -R -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
+            fi
             code=$?
             if [ $code -eq 0 ]; then
                 echo "$result" | tr -d "\n"
@@ -634,6 +638,10 @@ fi
 EPMD_MODULE="$(grep '^-epmd_module' "$VMARGS_PATH" || true)"
 if [ "$EPMD_MODULE" ]; then
     MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} ${EPMD_MODULE}"
+fi
+
+if [ "$ERL_DIST_PORT" ]; then
+    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
 fi
 
 # Extract the target cookie
