@@ -70,6 +70,8 @@
          extended_start_script_hooks/2,
          extended_start_script_extensions/1,
          extended_start_script_extensions/2,
+         start_script_type/1,
+         start_script_type/2,
          overlay/1,
          overlay/2,
          overlay_vars_values/1,
@@ -127,6 +129,7 @@
                   extended_start_script_hooks=[] :: list(),
                   extended_start_script_extensions=[] :: list(),
                   generate_start_script=true :: boolean(),
+                  start_script_type=[] :: list(),
 
                   %% `dev_mode' is for backwards compatibility
                   dev_mode=false :: boolean(),
@@ -372,6 +375,14 @@ extended_start_script(#state_t{extended_start_script=ExtendedStartScript}) ->
 -spec extended_start_script(t(), boolean()) -> t().
 extended_start_script(S, ExtendedStartScript) ->
     S#state_t{extended_start_script=ExtendedStartScript}.
+
+-spec start_script_type(t()) -> list() | undefined.
+start_script_type(#state_t{start_script_type=StartScriptType}) ->
+    StartScriptType.
+
+-spec start_script_type(t(), list()) -> t().
+start_script_type(S, StartScriptType) ->
+    S#state_t{start_script_type=StartScriptType}.
 
 -spec generate_start_script(t()) -> boolean() | undefined.
 generate_start_script(#state_t{generate_start_script=GenerateStartScript}) ->

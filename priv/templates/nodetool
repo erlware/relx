@@ -86,6 +86,22 @@ main(Args) ->
                     io:format("RPC to ~p failed: ~p~n", [TargetNode, Reason]),
                     halt(1)
             end;
+        ["ping"] ->
+            % As this has already succeeded above, simply output "pong"
+            io:format("pong~n"),
+            ok;
+        ["stop"] ->
+            io:format("Not implemented~n"),
+            ok;
+        ["restart"] ->
+            io:format("Not implemented~n"),
+            ok;
+        ["reboot"] ->
+            io:format("Not implemented~n"),
+            ok;
+        ["rpcterms"] ->
+            io:format("Not implemented~n"),
+            ok;
         Other ->
             io:format("Other: ~p~n", [Other]),
             io:format("Usage: nodetool {ping|stop|restart|reboot|rpc|rpcterms|eval [Terms]} [RPC]~n")
