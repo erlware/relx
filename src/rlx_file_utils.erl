@@ -159,7 +159,7 @@ win32_make_junction(Source, Target) ->
 win32_make_junction_cmd(Source, Target) ->
     S = unicode:characters_to_list(Source),
     T = unicode:characters_to_list(Target),
-    Cmd = "cmd /c mklink /j " ++ filename:nativename(T) ++ " " ++ filename:nativename(S),
+    Cmd = "cmd /c mklink /j \"" ++ filename:nativename(T) ++ "\" \"" ++ filename:nativename(S) ++ "\"",
     case os:cmd(Cmd) of
         "Junction created " ++ _ ->
             ok;
