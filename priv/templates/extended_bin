@@ -268,8 +268,9 @@ relx_get_nodename() {
 relx_rem_sh() {
     # Remove remote_nodename when OTP-23 is the oldest version supported by rebar3/relx.
     # sort the used erts version against 11.0 to see if it is less than 11.0 (OTP-23)
-    # if it is then we must generate a node name to use for the remote node
-    if [  "11.0" = "$(printf "%s\n11.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
+    # if it is then we must generate a node name to use for the remote node.
+    # But this feature is only for short names. So first check if `NAME_TYPE` is `sname`
+    if [ "${NAME_TYPE}" = "-sname" ] && [  "11.0" = "$(printf "%s\n11.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
         # OTP-16616: erl -remsh now uses the dynamic node names feature by default
         remote_nodename="${NAME_TYPE} undefined"
     else
@@ -284,7 +285,7 @@ relx_rem_sh() {
     # -dist_listen is new in OTP-23. It keeps the remote node from binding to a listen port
     # and implies the option -hidden
     # shellcheck disable=SC2086
-    exec "$BINDIR/erl" "${remote_nodename}" -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
+    exec "$BINDIR/erl" ${remote_nodename} -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
          -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME" \
          -dist_listen false \
@@ -357,7 +358,7 @@ relx_nodetool() {
         ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
                  "$ERTS_DIR/bin/escript" \
                  "$ROOTDIR/bin/nodetool" \
-                 "$START_EPMD" "$NAME_TYPE" "$NAME" "$command" "$@"
+                 $START_EPMD "$NAME_TYPE" "$NAME" "$command" "$@"
     fi
 }
 
