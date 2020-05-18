@@ -129,7 +129,7 @@
                   extended_start_script_hooks=[] :: list(),
                   extended_start_script_extensions=[] :: list(),
                   generate_start_script=true :: boolean(),
-                  start_script_type=[] :: list(),
+                  start_script_type="" :: string(),
 
                   %% `dev_mode' is for backwards compatibility
                   dev_mode=false :: boolean(),
