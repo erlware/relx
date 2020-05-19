@@ -33,6 +33,14 @@ if (!(Test-Path variable:global:PSScriptRoot)) {
     $PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
 }
 
+# Ensure we have PSCommandPath
+if (!(Test-Path variable:global:PSCommandPath)) {
+    # Support powershell 2.0
+    $PSCommandPath = $MyInvocation.PSCommandPath
+}
+
+$PSCriptName = Split-Path -Leaf -Path $PSCommandPath
+
 # Import psutil helper functions
 . $PSScriptRoot\psutil.ps1
 
@@ -50,9 +58,26 @@ $nodetool = "$rootdir\bin\nodetool"
 
 $bindir = "$erts_dir\bin"
 $werl = "$bindir\werl.exe"
+$erl = "$bindir\erl.exe"
 $erlsrv = "$bindir\erlsrv.exe"
 $epmd = "$bindir\epmd.exe"
 $escript = "$bindir\escript.exe"
+
+# Added in OTP-23
+$erl_call = "$bindir\erl_call.exe"
+
+# if RELX_RPC_TIMEOUT is set then use that
+# otherwise check for NODETOOL_TIMEOUT and convert to seconds
+if (Test-Path env:RELX_RPC_TIMEOUT) {
+    $relx_rpc_timeout = $env:RELX_RPC_TIMEOUT
+}
+elseif (Test-Path env:NODETOOL_TIMEOUT) {
+    # will exit the script if NODETOOL_TIMEOUT isn't a number
+    $relx_rpc_timeout = $env:NODETOOL_TIMEOUT / 1000
+}
+else {
+    $relx_rpc_timeout = 60
+}
 
 $extensions = @("{{ extensions }}" -split '[|]' | Where-Object { $_ -ne 'undefined' })
 
@@ -90,6 +115,13 @@ if (!(Test-Path "$rel_dir\start.boot")) {
 
 # List of supported commands, help, etc
 $commands = @{
+    'help' = @{
+        'ShortHelp' = 'Show help';
+        'LongHelp' = 'Shows help for <command>';
+        'Usage' = '<command>';
+        'Invoke' = 'Usage';
+        'PassArgs' = $true
+`    };
     'install' = @{
         'ShortHelp' = 'Install the service';
         'LongHelp' = 'Installs release <version> as a windows service';
@@ -108,7 +140,8 @@ $commands = @{
         'ShortHelp' = 'Start the service';
         'LongHelp' = 'Starts the installed windows service';
         'Usage' = '';
-        'Invoke' = 'Start-SVC'
+        'Invoke' = 'Start-SVC';
+        'Aliases' = @('daemon')
     };
     'stop' = @{
         'ShortHelp' = 'Stop the service';
@@ -142,6 +175,12 @@ $commands = @{
         'Usage' = '';
         'Invoke' = 'Console'
     };
+    'foreground' = @{
+        'ShortHelp' = 'Start the release with a non-interactive shell';
+        'LongHelp' = 'Starts the release with a non-interactive shell';
+        'Usage' = '';
+        'Invoke' = 'Foreground'
+    };
     'ping' = @{
         'ShortHelp' = 'Print pong if the node is alive';
         'LongHelp' = 'Checks if the service (or console) is running';
@@ -158,15 +197,40 @@ $commands = @{
         'ShortHelp' = 'Connect remote shell to running node';
         'LongHelp' = 'Connects to running service or console shell';
         'Usage' = '';
-        'Invoke' = 'Attach'
+        'Invoke' = 'Attach';
+        'Aliases' = @('remote_console', 'remote', 'remsh', 'daemon_attach')
     };
-    'remote_console' = @{
-        'ShortHelp' = 'Connect remote shell to running node';
-        'LongHelp' = 'Connects to running service or console shell';
+    'rpc' = @{
+        'ShortHelp' = 'Applies the specified function and returns the result';
+        'LongHelp' = "Applies the specified function and returns the result.`n" `
+                   + "Mod must be specified. However, start and [] are assumed`n" `
+                   + "for unspecified Fun and Args, respectively. Args is to`n" `
+                   + "be in the same format as for erlang:apply/3 in ERTS."
+        'Usage' = '<mod> [<func> [<args>]]';
+        'Invoke' = @('PingOrExit', 'Rpc');
+        'PassArgs' = $true
+    };
+    'eval' = @{
+        'ShortHelp' = 'Executes a sequence of Erlang expressions';
+        'LongHelp' = 'Executes a sequence of Erlang expressions, separated by`n' `
+                   + 'comma (,) and ended with a full stop (.)'
+        'Usage' = '[<exprs>]';
+        'Invoke' = @('PingOrExit', 'Eval');
+        'PassArgs' = $true
+    };
+    'versions' = @{
+        'ShortHelp' = 'Print versions of the release available';
+        'LongHelp' = 'Print versions of the release available'
         'Usage' = '';
-        'Invoke' = 'Attach'
+        'Invoke' = 'Versions'
     }
 }
+
+# Build easy aliases
+$aliases = @{}
+$commands.GetEnumerator() | 
+    Where-Object { $_.Value.ContainsKey('Aliases') } | 
+    ForEach-Object { $target = $_.Key; $_.Value.Aliases | Foreach-Object { $aliases += @{ $_ = $target } }; }
 
 # Output usage
 function Usage() {
@@ -176,14 +240,25 @@ function Usage() {
     switch ($Command) {
         {$commands.ContainsKey($Command)} {
             $cmd = $commands.item($_)
-            "Usage: $($MyInvocation.MyCommand.Name) $Command $($cmd.Usage)"
+            "Usage: $PSCriptName $Command $($cmd.Usage)"
+            ""
             "$($cmd.LongHelp)"
+            ""
+        }
+        {$aliases.ContainsKey($Command)} {
+            $cmd = $commands.item($aliases.item($_))
+            "Usage: $PSCriptName $Command $($cmd.Usage)"
+            ""
+            "$($cmd.LongHelp)"
+            ""
         }
         {$extensions -contains $_} { RunExtension $_ help }
         Default {
             "Usage: $($MyInvocation.MyCommand.Name) <command> <args>"
             "Commands:"
-            $commands.keys | ForEach-Object { @{"$_" = $commands.item($_).ShortHelp } } | Format-Table -HideTableHeaders
+            $commands.keys | Sort-Object | ForEach-Object {
+                @{"$_" = $commands.item($_).ShortHelp }
+            } | Format-Table -HideTableHeaders
         }
     }
 }
@@ -243,9 +318,8 @@ function Relup() {
     param(
         [string]$Version
     )
-    $params = @("$rootdir/bin/install_upgrade.escript", 'install', `
-        "{'$rel_name', `"$node_type`", '${node_name}${hostname}', '$cookie'}", `
-        $Version)
+    PingOrExit
+    $params = @("$rootdir/bin/install_upgrade.escript", 'install', "{'$rel_name', `"$node_type`", '${node_name}${hostname}', '$cookie'}", $Version)
     & $escript $params @args
 }
 
@@ -261,10 +335,74 @@ function Console() {
     & $werl $params
 }
 
+# Start a non-interactive console
+function Foreground() {
+    # Set the ERL_LIBS environment variable
+    $env:ERL_LIBS = "$rootdir\lib"
+
+    # Start the release in an `erl` shell
+    $params = @($erl_opts, '-boot', $boot_script, '-noshell', '-noinput', '+Bd')
+    if (![string]::IsNullOrEmpty($sys_config)) { $params += '-config', $sys_config }
+    if (![string]::IsNullOrEmpty($vm_args))    { $params += '-args_file', $vm_args }
+    & $erl $params
+}
+
+# Execute erl_call.exe
+function ErlCall()
+{
+    param(
+        [string]$Type
+    )
+    $params = @($node_type, $node_name, '-R', '-c', $cookie, '-timeout', $relx_rpc_timeout)
+    switch($Type) {
+        '-a' { & $erl_call $params @args }
+        '-e' { "$args" | & $erl_call $params }
+        Default {
+            Write-Error "Unsupported erlcall ($_)"
+        }
+    }
+    & $erl_call $params @args
+}
+
+# Execute escript.exe nodetool
+function Nodetool()
+{
+    $params = @($node_type, $node_name, '-setcookie', $cookie)
+    & $escript $nodetool $params @args
+}
+
+# Execute an RPC call
+function Rpc()
+{
+    if (Test-Path $erl_call) {
+        ErlCall '-a' @args
+    }
+    else {
+        Nodetool rpc @args
+    }
+}
+
+function Eval()
+{
+    if (Test-Path $erl_call) {
+        ErlCall '-e' @args
+    }
+    else {
+        Nodetool eval @args
+    }
+}
+
+# Ping node and error (exit) if not running
+function PingOrExit() {
+    if ((Rpc erlang is_alive) -ne "true") {
+        Write-Error "Node is not running!"
+    }
+}
+
 # Ping the running node
 function Ping() {
-    $params = @($nodetool, 'ping', $node_type, "${node_name}${hostname}", '-setcookie', $cookie)
-    & $escript $params
+    PingOrExit
+    "pong"
 }
 
 # List installed Erlang services
@@ -274,12 +412,22 @@ function List() {
 
 # Attach to a running node
 function Attach() {
+    PingOrExit
     $params = @('-boot', "$rel_dir\start_clean", `
         '-remsh', "${node_name}${hostname}", `
         $node_type, "console_${node_name}_$(Get-Random -maximum 99999)", `
         '-setcookie', $cookie)
     & $werl $params
 }
+
+# Print versions of the release available
+function Versions()
+{
+    PingOrExit
+    $params = @("$rootdir\bin\install_upgrade.escript", 'versions', "{'$rel_name', `"$node_type`", '${node_name}${hostname}', '$cookie'}")
+    & $escript $params @args
+}
+
 
 # Run a command
 function RunCommand()
@@ -300,6 +448,9 @@ switch ($Command)
     "" { Usage }
     {$commands.ContainsKey($_)} {
         RunCommand $_ @args
+    }
+    {$aliases.ContainsKey($Command)} {
+        RunCommand $aliases.item($_) @args
     }
     {$extensions -contains $_} {
         RunExtension $_ @args
