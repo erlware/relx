@@ -240,13 +240,16 @@ replace_os_vars() {
             var=substr($0,RSTART+2,RLENGTH -3)
             slen=split(var,arr,":-")
             v=arr[1]
-            e=ENVIRON[v]
-            if(slen > 1 && e=="") {
+            if(slen > 1 && !(v in ENVIRON)) {
                 i=index(var, ":-"arr[2])
                 def=substr(var,i+2)
                 gsub("[$]{"var"}",def)
-            } else {
+            } else if(v in ENVIRON) {
+                e=ENVIRON[v]
                 gsub("[$]{"var"}",e)
+            } else {
+                err=sprintf("RELX_REPLACE_VAR_NOT_SET: {$%s}", v)
+                gsub("[$]{"var"}",err)
             }
         }
     }1' < "$1" > "$2"
@@ -508,6 +511,22 @@ esac
 
 # Export the variable so that it's available in the 'eval' calls
 export NAME
+
+# Check if there are errors in vm.args
+RELX_REPLACE_ERROR_VMARGS="$(grep -m 1 'RELX_REPLACE_VAR_NOT_SET:' "$VMARGS_PATH" || true)"
+if [ -n "$RELX_REPLACE_ERROR_VMARGS" ]; then
+    echo "Error: an ENV variable in vm.args is not set: "
+    echo $RELX_REPLACE_ERROR_VMARGS
+    exit 1
+fi
+
+# Check if there are errors in sys.config
+RELX_REPLACE_ERROR_SYSCONIG="$(grep -m 1 'RELX_REPLACE_VAR_NOT_SET:' "$RELX_CONFIG_PATH" || true)"
+if [ -n "$RELX_REPLACE_ERROR_SYSCONIG" ]; then
+    echo "Error: an ENV variable in sys.config is not set: "
+    echo $RELX_REPLACE_ERROR_SYSCONIG
+    exit 1
+fi
 
 test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
