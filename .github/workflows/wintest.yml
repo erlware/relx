@@ -1,0 +1,30 @@
+name: Windows Test
+
+on:
+  pull_request:
+    branches:
+      - '4.0.0'
+      - 'master'
+  push:
+    branches:
+      - '4.0.0'
+      - 'master'
+
+jobs:
+  build:
+    name: Test on OTP ${{ matrix.otp_version }} and ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        otp_version: [19, 20, 21, 22, 23]
+        os: [windows-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: gleam-lang/setup-erlang@v1.0.0
+      with:
+        otp-version: ${{ matrix.otp_version }}
+
+    - name: Run test
+      run: shelltests/wintest.ps1
