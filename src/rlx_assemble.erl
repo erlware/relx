@@ -294,15 +294,17 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
         false ->
             ok;
         _ ->
-            VsnRelStartFile = case OsFamily of
-                unix -> VsnRel;
-                win32 -> rlx_string:concat(VsnRel, ".cmd")
+            VsnRelStartFile = case {OsFamily, BinType} of
+                {unix, _} -> VsnRel;
+                {win32, "powershell"} -> rlx_string:concat(VsnRel, ".ps1");
+                {win32, _} -> rlx_string:concat(VsnRel, ".cmd")
             end,
             ok = file:write_file(VsnRelStartFile, StartFile),
             ok = file:change_mode(VsnRelStartFile, 8#755),
-            BareRelStartFile = case OsFamily of
-                unix -> BareRel;
-                win32 -> rlx_string:concat(BareRel, ".cmd")
+            BareRelStartFile = case {OsFamily, BinType} of
+                {unix, _} -> BareRel;
+                {win32, "powershell"} -> rlx_string:concat(BareRel, ".ps1");
+                {win32, _} -> rlx_string:concat(BareRel, ".cmd")
             end,
             ok = file:write_file(BareRelStartFile, StartFile),
             ok = file:change_mode(BareRelStartFile, 8#755),
@@ -412,7 +414,7 @@ include_nodetool(BinDir) ->
 
 include_psutil(BinDir) ->
     PSUtilFile = psutil_contents(),
-    PSUtil = filename:join([BinDir, "psutil"]),
+    PSUtil = filename:join([BinDir, "psutil.ps1"]),
     ok = file:write_file(PSUtil, PSUtilFile),
     ok = file:change_mode(PSUtil, 8#755).
 
