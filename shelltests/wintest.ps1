@@ -16,7 +16,6 @@ $ErrorActionPreference = "Stop"
 # Add erlpath to PATH
 "*** Add to PATH $erlpath\bin"
 $env:PATH = "$env:PATH;$erlpath\bin"
-#$env:PATH = "$env:PATH;$erlpath\erts-$erts_vsn\bin"
 ""
 
 # CD to script location (shelltests)
