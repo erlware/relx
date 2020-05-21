@@ -17,13 +17,17 @@ jobs:
 
     strategy:
       matrix:
-        otp_version: [23]
+        otp_version: [19]
         os: [windows-latest]
 
     steps:
     - uses: actions/checkout@v2
+    # - name: Install Erlang
+    #   run: shelltests/win-install-erl.ps1 ${{ matrix.otp_version }}
+    #   id: install_erlang
+    # - name: Run test
+    #   run: shelltests/wintest.ps1 "${{ steps.install_erlang.outputs.erlpath }}"
     - name: Install Erlang
-      run: shelltests/win-install-erl.ps1 ${{ matrix.otp_version }}
-      id: install_erlang
+      run: choco install erlang
     - name: Run test
-      run: shelltests/wintest.ps1 "${{ steps.install_erlang.outputs.erlpath }}"
+      run: shelltests/wintest.ps1

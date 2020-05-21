@@ -354,10 +354,10 @@ function ErlCall()
         [string]$Type
     )
     $params = @($node_type, $node_name, '-R', '-c', $cookie, '-timeout', $relx_rpc_timeout)
-    "*** DEBUG $erl_call $params $args"
+    "*** DEBUG $erl_call $params -a $args"
     switch($Type) {
-        '-a' { & $erl_call $params @args }
-        '-e' { "$args" | & $erl_call $params }
+        '-a' { & $erl_call $params '-a' @args }
+        '-e' { "$args" | & $erl_call $params '-e' }
         Default {
             Write-Error "Unsupported erlcall ($_)"
         }
