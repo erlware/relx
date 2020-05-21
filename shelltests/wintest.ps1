@@ -1,8 +1,8 @@
 #! /usr/bin/pwsh
-# param (
-#     [Parameter(Mandatory=$true, Position=0)]
-#     [string]$erlpath
-# )
+param (
+    [Parameter(Mandatory=$true, Position=0)]
+    [string]$erlpath
+)
 
 # Test build, install, start, ping, stop, uninstall of powershell_release
 $release = "powershell_release"
@@ -13,11 +13,11 @@ $ErrorActionPreference = "Stop"
 # Get ERTS version
 # $erts_vsn = & "$erlpath\bin\erl.exe" -boot no_dot_erlang -noshell -eval 'io:format(\"~s\", [erlang:system_info(version)]), halt().'
 
-# # Add erlpath to PATH
-# "*** Add to PATH $erlpath\bin"
-# "*** Add to PATH $erlpath\erts-$erts_vsn\bin"
-# $env:PATH = "$erlpath\erts-$erts_vsn\bin;$erlpath\bin;$env:PATH"
-# ""
+# Add erlpath to PATH
+"*** Add to PATH $erlpath\bin"
+$env:PATH = "$env:PATH;$erlpath\bin"
+#$env:PATH = "$env:PATH;$erlpath\erts-$erts_vsn\bin"
+""
 
 # CD to script location (shelltests)
 Set-Location $PSScriptRoot
@@ -46,7 +46,7 @@ Pop-Location
 ""
 
 # Function to run rebar3
-function Rebar() { & escript.exe "$rebar3_dir\rebar3" @args }
+function Rebar() { & $erlpath\bin\escript.exe "$rebar3_dir\rebar3" @args }
 
 # Our release source
 Set-Location ".\$release\"

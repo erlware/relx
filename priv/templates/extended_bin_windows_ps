@@ -274,7 +274,7 @@ function Install() {
         return
     }
     # Install the service
-    $args = "$erl_opts -setcookie $cookie ++ -rootdir $erts_root -reldir $rootdir\releases"
+    $args = "$erl_opts -setcookie $cookie ++ -rootdir `"`"$erts_root`"`" -reldir `"`"$rootdir\releases`"`""
     $start_erl = "$erts_dir\bin\start_erl.exe"
     $description = "Erlang node ${node_name}${hostname} in $rootdir"
     $params = @('add', $service_name, $node_type, "${node_name}${hostname}", `
@@ -354,9 +354,8 @@ function ErlCall()
         [string]$Type
     )
     $params = @($node_type, $node_name, '-R', '-c', $cookie, '-timeout', $relx_rpc_timeout)
-    "*** DEBUG $erl_call $params -a $args"
     switch($Type) {
-        '-a' { & $erl_call $params '-a' @args }
+        '-a' { & $erl_call $params '-a' "`"$args`"" }
         '-e' { "$args" | & $erl_call $params '-e' }
         Default {
             Write-Error "Unsupported erlcall ($_)"
