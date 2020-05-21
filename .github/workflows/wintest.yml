@@ -22,9 +22,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: gleam-lang/setup-erlang@v1.0.0
-      with:
-        otp-version: ${{ matrix.otp_version }}
-
+    - name: Install Erlang
+      run: shelltests/win-install-erl.ps1 ${{ matrix.otp_version }}
     - name: Run test
       run: shelltests/wintest.ps1
