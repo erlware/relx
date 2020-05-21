@@ -354,6 +354,7 @@ function ErlCall()
         [string]$Type
     )
     $params = @($node_type, $node_name, '-R', '-c', $cookie, '-timeout', $relx_rpc_timeout)
+    "*** DEBUG $erl_call $params $args"
     switch($Type) {
         '-a' { & $erl_call $params @args }
         '-e' { "$args" | & $erl_call $params }
@@ -361,7 +362,6 @@ function ErlCall()
             Write-Error "Unsupported erlcall ($_)"
         }
     }
-    & $erl_call $params @args
 }
 
 # Execute escript.exe nodetool
@@ -394,8 +394,9 @@ function Eval()
 
 # Ping node and error (exit) if not running
 function PingOrExit() {
-    if ((Rpc erlang is_alive) -ne "true") {
-        Write-Error "Node is not running!"
+    $result = (Rpc erlang is_alive)
+    if ($result -ne "true") {
+        Write-Error "Node is not running! ($result)"
     }
 }
 
