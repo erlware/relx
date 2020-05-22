@@ -23,23 +23,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    
-    # Temporary, merge request outstanding
-    - uses: reganheath/setup-erlang@add-windows-support
+    - uses: gleam-lang/setup-erlang@v1.1.0
       with:
         otp-version: ${{ matrix.otp_version }}
       id: install_erlang
-
-    # Final, once merged
-    # - uses: gleam-lang/setup-erlang@master # check for tag
-    #   with:
-    #     otp-version: ${{ matrix.otp_version }}
-    #   id: install_erlang
-
-    # Intermediate local implementation
-    # - name: Install Erlang
-    #   run: shelltests/win-install-erl.ps1 ${{ matrix.otp_version }}
-    #   id: install_erlang
-
     - name: Run test
       run: shelltests/wintest.ps1 "${{ steps.install_erlang.outputs.erlpath }}"
