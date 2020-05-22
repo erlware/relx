@@ -393,9 +393,6 @@ function Eval()
 
 # Ping node and error (exit) if not running
 function PingOrExit() {
-    "erl.exe is in $((Get-Command erl).source)"
-    Eval "io:format(`"~s`", [filename:nativename(code:root_dir())])."
-    Eval "os:find_executable(epmd)."
     $result = (Rpc erlang is_alive)
     if ($result -ne "true") {
         Write-Error "Node is not running! ($result)"
