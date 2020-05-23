@@ -640,9 +640,9 @@ EPMD_MODULE="$(grep '^-epmd_module' "$VMARGS_PATH" || true)"
 if [ "$EPMD_MODULE" ]; then
     MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} ${EPMD_MODULE}"
 fi
-
+ERL_DIST_PORT=${ERL_DIST_PORT:-"$(grep '^-erl_epmd_port' "$VMARGS_PATH" | cut -f2 -d' ' || true)"}
 if [ "$ERL_DIST_PORT" ]; then
-    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
+    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -erl_epmd_port ${ERL_DIST_PORT} -kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
 fi
 
 # Extract the target cookie
