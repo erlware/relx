@@ -264,6 +264,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
     VsnRel = filename:join(BinDir, rlx_release:canonical_name(Release)),
     BareRel = filename:join(BinDir, RelName),
     {OsFamily, _OsName} = rlx_util:os_type(State),
+    BinType = rlx_state:start_script_type(State),
 
     StartFile = case rlx_state:extended_start_script(State) of
                     false ->
@@ -273,7 +274,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                             false ->
                                 ok
                         end,
-                        bin_file_contents(OsFamily, RelName, RelVsn,
+                        bin_file_contents(OsFamily, BinType, RelName, RelVsn,
                                           rlx_release:erts(Release));
                     true ->
                         %% extended start script needs nodetool so it's
@@ -283,7 +284,7 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
                                              rlx_state:extended_start_script_hooks(State),
                                              State),
                         Extensions = rlx_state:extended_start_script_extensions(State),
-                        extended_bin_file_contents(OsFamily, RelName, RelVsn,
+                        extended_bin_file_contents(OsFamily, BinType, RelName, RelVsn,
                                                    rlx_release:erts(Release),
                                                    Hooks, Extensions)
                 end,
@@ -293,18 +294,26 @@ write_bin_file(State, Release, OutputDir, RelDir) ->
         false ->
             ok;
         _ ->
-            VsnRelStartFile = case OsFamily of
-                unix -> VsnRel;
-                win32 -> rlx_string:concat(VsnRel, ".cmd")
+            VsnRelStartFile = case {OsFamily, BinType} of
+                {unix, _} -> VsnRel;
+                {win32, "powershell"} -> rlx_string:concat(VsnRel, ".ps1");
+                {win32, _} -> rlx_string:concat(VsnRel, ".cmd")
             end,
             ok = file:write_file(VsnRelStartFile, StartFile),
             ok = file:change_mode(VsnRelStartFile, 8#755),
-            BareRelStartFile = case OsFamily of
-                unix -> BareRel;
-                win32 -> rlx_string:concat(BareRel, ".cmd")
+            BareRelStartFile = case {OsFamily, BinType} of
+                {unix, _} -> BareRel;
+                {win32, "powershell"} -> rlx_string:concat(BareRel, ".ps1");
+                {win32, _} -> rlx_string:concat(BareRel, ".cmd")
             end,
             ok = file:write_file(BareRelStartFile, StartFile),
-            ok = file:change_mode(BareRelStartFile, 8#755)
+            ok = file:change_mode(BareRelStartFile, 8#755),
+            case BinType of
+                "powershell" ->
+                    include_psutil(BinDir);
+                _ ->
+                    ok
+            end
     end,
     ReleasesDir = filename:join(OutputDir, "releases"),
     generate_start_erl_data_file(Release, ReleasesDir),
@@ -402,6 +411,12 @@ include_nodetool(BinDir) ->
     InstallUpgrade = filename:join([BinDir, "install_upgrade.escript"]),
     ok = file:write_file(NodeTool, NodeToolFile),
     ok = file:write_file(InstallUpgrade, InstallUpgradeFile).
+
+include_psutil(BinDir) ->
+    PSUtilFile = psutil_contents(),
+    PSUtil = filename:join([BinDir, "psutil.ps1"]),
+    ok = file:write_file(PSUtil, PSUtilFile),
+    ok = file:change_mode(PSUtil, 8#755).
 
 %% @doc generate a start_erl.data file
 -spec generate_start_erl_data_file(rlx_release:t(), file:name()) ->
@@ -782,18 +797,20 @@ ensure_not_exist(RelConfPath)     ->
             rlx_file_utils:remove(RelConfPath)
     end.
 
-bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn) ->
-    Template = case OsFamily of
-        unix -> bin;
-        win32 -> bin_windows
+bin_file_contents(OsFamily, BinType, RelName, RelVsn, ErtsVsn) ->
+    Template = case {OsFamily, BinType} of
+        {unix, _} -> bin;
+        {win32, "powershell"} -> bin_windows_ps;
+        {win32, _} -> bin_windows
     end,
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}]).
 
-extended_bin_file_contents(OsFamily, RelName, RelVsn, ErtsVsn, Hooks, Extensions) ->
-    Template = case OsFamily of
-        unix -> extended_bin;
-        win32 -> extended_bin_windows
+extended_bin_file_contents(OsFamily, BinType, RelName, RelVsn, ErtsVsn, Hooks, Extensions) ->
+    Template = case {OsFamily, BinType} of
+        {unix, _} -> extended_bin;
+        {win32, "powershell"} -> extended_bin_windows_ps;
+        {win32, _} -> extended_bin_windows
     end,
     %% turn all the hook lists into space separated strings
     PreStartHooks = rlx_string:join(proplists:get_value(pre_start, Hooks, []), " "),
@@ -837,6 +854,9 @@ install_upgrade_escript_contents() ->
 
 nodetool_contents() ->
     render(nodetool).
+
+psutil_contents() ->
+    render(psutil).
 
 sys_config_file() ->
     render(sys_config).

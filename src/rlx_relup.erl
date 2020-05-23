@@ -19,8 +19,6 @@ format_error({relfile_not_found, {Name, Vsn}}) ->
     io_lib:format("Release ~p-~s not found", [Name, Vsn]);
 format_error({bad_rel_tuple, Release}) ->
     io_lib:format("Release format ~p not recognized. Should be of the form {Name, Vsn}.", [Release]);
-format_error({no_upfrom_release_found, Vsn})->
-    io_lib:format("No previous version of release found for building relup to version ~s", [Vsn]);
 format_error({relup_generation_error, CurrentName, UpFromName}) ->
     io_lib:format("Unknown internal release error generating the relup from ~s to ~s",
                   [UpFromName, CurrentName]);

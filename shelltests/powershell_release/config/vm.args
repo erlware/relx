@@ -1,0 +1,6 @@
+-sname powershell_release
+
+-setcookie powershell_release_cookie
+
++K true
++A30
