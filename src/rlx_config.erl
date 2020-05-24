@@ -243,6 +243,8 @@ load_terms({release, {RelName, Vsn}, Applications, Config}, {ok, State0}) ->
             Release2 = rlx_release:config(Release1, Config),
             {ok, rlx_state:add_configured_release(State0, Release2)}
         end;
+load_terms({env_file, EnvFile}, {ok, State}) ->
+    {ok, rlx_state:env_file(State, filename:absname(EnvFile))};
 load_terms({vm_args, false}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, false)};
 load_terms({vm_args, VmArgs}, {ok, State}) ->

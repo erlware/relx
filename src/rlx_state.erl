@@ -53,6 +53,8 @@
          prepend_hook/3,
          append_hook/3,
          hooks/2,
+         env_file/1,
+         env_file/2,
          vm_args/1,
          vm_args/2,
          vm_args_src/1,
@@ -111,6 +113,7 @@
                   providers=[] :: [providers:t()],
                   available_apps=[] :: [rlx_app_info:t()],
                   default_configured_release :: {rlx_release:name() | undefined, rlx_release:vsn() |undefined} | undefined,
+                  env_file :: file:filename() | undefined,
                   vm_args :: file:filename() | false | undefined,
                   vm_args_src :: file:filename() | undefined,
                   sys_config :: file:filename() | false | undefined,
@@ -289,6 +292,14 @@ cli_args(State, CliArgs) ->
 -spec providers(t()) -> [providers:t()].
 providers(#state_t{providers=Providers}) ->
     Providers.
+
+-spec env_file(t()) -> file:filename() | undefined.
+env_file(#state_t{env_file=EnvFile}) ->
+    EnvFile.
+
+-spec env_file(t(), undefined | file:filename()) -> t().
+env_file(State, EnvFile) ->
+    State#state_t{env_file=EnvFile}.
 
 -spec vm_args(t()) -> file:filename() | false | undefined.
 vm_args(#state_t{vm_args=VmArgs}) ->
