@@ -9,7 +9,8 @@
 make_tar(Release, OutputDir, State) ->
     Name = rlx_release:name(Release),
     Vsn = rlx_release:vsn(Release),
-    ?log_info("Building release tarball...", []),
+    TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
+    ?log_info("Building release tarball ~s...", [filename:basename(TarFile)]),
 
     ExtraFiles = extra_files(Release, OutputDir, State),
     Opts = make_tar_opts(ExtraFiles, Release, OutputDir, State),
@@ -18,7 +19,6 @@ make_tar(Release, OutputDir, State) ->
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
-            TarFile = filename:join(OutputDir, [Name, "-", Vsn, ".tar.gz"]),
             {ok, State1} = case rlx_state:is_relx_sasl(State) of
                                true ->
                                    %% we used extra_files to copy in the overlays

@@ -8,7 +8,7 @@
 
 do(Release, State) ->
     RelName = rlx_release:name(Release),
-    ?log_info("Assembling release... ~p-~s", [RelName, rlx_release:vsn(Release)]),
+    ?log_info("Assembling release ~p-~s...", [RelName, rlx_release:vsn(Release)]),
     OutputDir = filename:join(rlx_state:base_output_dir(State), RelName),
     ?log_debug("Release output dir ~s", [OutputDir]),
     ok = create_output_dir(OutputDir),
@@ -611,17 +611,17 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
                {variables, make_boot_script_variables(Release, State)},
                silent | make_script_options(State)],
     Name = atom_to_list(rlx_release:name(Release)),
-    ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
     IsRelxSasl = rlx_state:is_relx_sasl(State),
     case make_start_script(Name, RelDir, Options, IsRelxSasl) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
             ?log_debug("release start script created"),
-            create_RELEASES(State, OutputDir, ReleaseFile),
+            create_RELEASES(State, Release, OutputDir),
             create_no_dot_erlang(RelDir, OutputDir, Options, State),
             create_start_clean(RelDir, OutputDir, Options, State);
         error ->
+            ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
             erlang:error(?RLX_ERROR({release_script_generation_error, ReleaseFile}));
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
@@ -747,7 +747,7 @@ copy_boot_to_bin(RelDir, OutputDir, Name) ->
     end.
 
 %% this file must exist for release_handler functions to work
-create_RELEASES(State, OutputDir, ReleaseFile) ->
+create_RELEASES(State, Release, OutputDir) ->
     case rlx_state:system_libs(State) of
         false ->
             ?log_debug("*WARNING* Not creating RELEASES file because system libs are not included "
@@ -756,27 +756,37 @@ create_RELEASES(State, OutputDir, ReleaseFile) ->
             %% remove the RELEASES file in case it exists from a previous release build
             _ = rlx_file_utils:remove(filename:join([OutputDir, "releases", "RELEASES"]));
         _ ->
-            {ok, OldCWD} = file:get_cwd(),
-            try
-                %% set cwd to the outputdir so that the paths used for applications
-                %% in RELEASES start with ./lib/ and not the path of the output dir
-                %% which is a development path only.
-                ok = file:set_cwd(OutputDir),
-                case release_handler:create_RELEASES("./",
-                                                     "releases",
-                                                     ReleaseFile,
-                                                     []) of
-                    ok ->
-                        ok;
-                    {error, _Reason} ->
-                        ?log_debug("*WARNING* Creating RELEASES file failed. "
-                                   "The RELEASES file is required before release_handler can be used "
-                                   "to install a release."),
-                        ok
-                end
-            after
-                file:set_cwd(OldCWD)
+            case create_RELEASES(OutputDir, Release) of
+                ok ->
+                    ok;
+                {error, Reason} ->
+                    ?log_debug("*WARNING* Creating RELEASES file failed for reason: ~p "
+                               "The RELEASES file is required before release_handler can be used "
+                               "to install a release.", [Reason]),
+                    ok
             end
+    end.
+
+create_RELEASES(OutputDir, Release) ->
+    RelName = atom_to_list(rlx_release:name(Release)),
+    RelVsn = rlx_release:vsn(Release),
+    ErtsVsn = rlx_release:erts(Release),
+    Apps = [{Name, Vsn, filename:join("./lib", [Name, "-", Vsn])}
+            || #{name := Name,
+                 vsn := Vsn,
+                 dir := _Dir} <- rlx_release:applications(Release)],
+
+    do_write_release(filename:join(OutputDir, "releases"),
+                     {release, RelName, RelVsn, ErtsVsn, Apps, permanent}).
+
+do_write_release(Dir, Release) ->
+    case file:open(filename:join(Dir, "RELEASES"), [write,{encoding,utf8}]) of
+        {ok, Fd} ->
+            ok = io:format(Fd, "%% ~ts~n~tp.~n",
+                           [epp:encoding_to_string(utf8), [Release]]),
+            ok = file:close(Fd);
+        {error, Reason} ->
+            {error, Reason}
     end.
 
 %% write a default file unless the file at Path already exists
