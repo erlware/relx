@@ -295,29 +295,50 @@ sub_files(From) ->
     {ok, SubFiles} = file:list_dir(From),
     [filename:join(From, SubFile) || SubFile <- SubFiles].
 
-%% @doc delete a file. Use the recursive option for directories.
+%% @doc delete a file. Use the recursive option for whole directory trees.
 -spec remove(file:name(), [] | [recursive]) -> ok | {error, term()}.
 remove(Path, Options) ->
     case lists:member(recursive, Options) of
-        false -> file:delete(Path);
+        false -> remove(Path);
         true  -> remove_recursive(Path, Options)
     end.
 
-%% @doc delete a file.
+%% @doc delete a file or directory, including symlinks and junctions
 -spec remove(file:name()) -> ok | {error, term()}.
 remove(Path) ->
-    remove(Path, []).
+    case is_symlink(Path) of
+        true -> remove_symlink(Path);
+        false ->
+            case is_dir(Path) of
+                true -> file:del_dir(Path);
+                false -> file:delete(Path)
+            end
+    end.
 
 -spec remove_recursive(file:name(), list()) -> ok | {error, term()}.
 remove_recursive(Path, Options) ->
     case is_dir(Path) of
         false ->
-            file:delete(Path);
+            remove(Path);
         true ->
             lists:foreach(fun(ChildPath) ->
                                   remove_recursive(ChildPath, Options)
                           end, sub_files(Path)),
             file:del_dir(Path)
+    end.
+
+-spec remove_symlink(file:name()) -> ok | {error, term()}.
+remove_symlink(Path) ->
+    case os:type() of
+        {win32, _} ->
+            % On windows we remove symlinks and junctions differently if they refer to directories.
+            case filelib:is_dir(Path) of
+                true -> file:del_dir(Path);
+                false -> file:delete(Path)
+            end;
+        _ ->
+            % On other systems we use can use file:delete() in all cases.
+            file:delete(Path)
     end.
 
 %% returns the path for printing to logs. if get_cwd succeeds it
