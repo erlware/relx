@@ -54,6 +54,10 @@ Set-Location ".\$release\"
 Rebar release
 ""
 
+"*** Rebuild release (test for symlink issues)"
+Rebar release
+""
+
 # Go to release
 Set-Location "_build\default\rel\$release\bin"
 
