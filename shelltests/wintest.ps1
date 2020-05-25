@@ -45,7 +45,12 @@ Pop-Location
 ""
 
 # Function to run rebar3
-function Rebar() { & $erlpath\bin\escript.exe "$rebar3_dir\rebar3" @args }
+function Rebar() {
+    & $erlpath\bin\escript.exe "$rebar3_dir\rebar3" @args
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "rebar3 ${args} exited with status $LASTEXITCODE"
+    }
+}
 
 # Our release source
 Set-Location ".\$release\"
@@ -64,20 +69,35 @@ Set-Location "_build\default\rel\$release\bin"
 
 "*** Install service"
 & ".\$release.ps1" install
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to install service"
+}
 ""
 
 "*** Start service"
 & ".\$release.ps1" start
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to start service"
+}
 ""
 
 "*** Ping service"
 & ".\$release.ps1" ping
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to ping service"
+}
 ""
 
 "*** Stop service"
 & ".\$release.ps1" stop
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to stop service"
+}
 ""
 
 "*** Uninstall service"
 & ".\$release.ps1" uninstall
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to uninstall service"
+}
 ""
