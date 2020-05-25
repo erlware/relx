@@ -54,8 +54,9 @@ Set-Location ".\$release\"
 Rebar release
 ""
 
-"*** Rebuild release (test for symlink issues)"
-Rebar release
+"*** Rebuild dev release (test for symlink issues)"
+Rebar as dev release
+Rebar as dev release
 ""
 
 # Go to release
