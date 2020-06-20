@@ -161,7 +161,7 @@ Commands:
 
   foreground              Start release with output to stdout
   remote_console          Connect remote shell to running node
-  rpc [Mod [Fun [Args]]]] Run apply(Mod, Fun Args) on running node
+  rpc [Mod [Fun [Args]]]] Run apply(Mod, Fun, Args) on running node
   eval [Exprs]            Run expressions on running node
   stop                    Stop the running node
   restart                 Restart the applications but not the VM
