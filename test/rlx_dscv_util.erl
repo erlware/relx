@@ -22,7 +22,7 @@
 -export([do/2,
          format_error/1]).
 
--include("relx.hrl").
+-include("../src/relx.hrl").
 
 %%============================================================================
 %% Types
