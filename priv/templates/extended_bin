@@ -715,15 +715,13 @@ case "$1" in
                           "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS --relx-disable-hooks"
 
         # Wait for node to be up before running any hooks
-		if [ -n "$POST_START_HOOKS" ]; then
-            while ! erl_rpc erlang is_alive > /dev/null 2>&1
-            do
-                sleep 1
-            done
+		while ! erl_rpc erlang is_alive > /dev/null 2>&1
+        do
+            sleep 1
+		done
 
-            relx_run_hooks "$POST_START_HOOKS"
-		fi
-        ;;
+        relx_run_hooks "$POST_START_HOOKS"
+		;;
 
     stop)
         relx_run_hooks "$PRE_STOP_HOOKS"
@@ -738,14 +736,12 @@ case "$1" in
         done
 
         # Wait for node to be down before running any hooks
-		if [ -n "$POST_STOP_HOOKS" ]; then
-            while erl_rpc erlang is_alive > /dev/null 2>&1
-            do
-                sleep 1
-            done
+	    while erl_rpc erlang is_alive > /dev/null 2>&1
+        do
+            sleep 1
+        done
 
-            relx_run_hooks "$POST_STOP_HOOKS"
-		fi
+        relx_run_hooks "$POST_STOP_HOOKS"
         ;;
 
     restart)
