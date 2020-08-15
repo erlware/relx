@@ -341,7 +341,7 @@ function Foreground() {
     $env:ERL_LIBS = "$rootdir\lib"
 
     # Start the release in an `erl` shell
-    $params = @($erl_opts, '-boot', $boot_script, '-noshell', '-noinput', '+Bd')
+    $params = @($erl_opts, '-boot', $boot_script, '-noinput', '+Bd')
     if (![string]::IsNullOrEmpty($sys_config)) { $params += '-config', $sys_config }
     if (![string]::IsNullOrEmpty($vm_args))    { $params += '-args_file', $vm_args }
     & $erl $params

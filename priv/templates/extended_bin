@@ -851,7 +851,7 @@ case "$1" in
                 else
                   BOOTFILE="$REL_DIR/start"
                 fi
-                FOREGROUNDOPTIONS="-noshell -noinput +Bd"
+                FOREGROUNDOPTIONS="-noinput +Bd"
                 ;;
             console_clean)
                 # if not set by user use interactive mode for console_clean
