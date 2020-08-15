@@ -66,16 +66,8 @@ main(Args) ->
                       )
                     ),
 
-            % then just as a convenience to users, if they forgot a trailing
-            % '.' add it for them.
-            Normalized =
-              case lists:reverse(String) of
-                [$. | _] -> String;
-                R -> lists:reverse([$. | R])
-              end,
-
             % then scan and parse the string
-            {ok, Scanned, _} = erl_scan:string(Normalized),
+            {ok, Scanned, _} = erl_scan:string(String),
             {ok, Parsed } = erl_parse:parse_exprs(Scanned),
 
             % and evaluate it on the remote node
