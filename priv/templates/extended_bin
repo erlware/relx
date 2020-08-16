@@ -714,14 +714,14 @@ case "$1" in
         "$BINDIR/run_erl" -daemon "$PIPE_DIR" "$RUNNER_LOG_DIR" \
                           "exec \"$RELEASE_ROOT_DIR/bin/$REL_NAME\" \"$START_OPTION\" $ARGS --relx-disable-hooks"
 
-        # Wait for node to be up before running any hooks
-		while ! erl_rpc erlang is_alive > /dev/null 2>&1
+        # wait for node to be up before running hooks
+        while ! erl_rpc erlang is_alive > /dev/null 2>&1
         do
             sleep 1
-		done
+        done
 
         relx_run_hooks "$POST_START_HOOKS"
-		;;
+        ;;
 
     stop)
         relx_run_hooks "$PRE_STOP_HOOKS"
@@ -735,8 +735,8 @@ case "$1" in
             sleep 1
         done
 
-        # Wait for node to be down before running any hooks
-	    while erl_rpc erlang is_alive > /dev/null 2>&1
+        # wait for node to be down before running hooks
+        while erl_rpc erlang is_alive > /dev/null 2>&1
         do
             sleep 1
         done
