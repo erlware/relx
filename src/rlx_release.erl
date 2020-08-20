@@ -81,7 +81,11 @@
 -type parsed_goal() :: #{name := name(),
                          vsn => vsn() | undefined,
                          type => type(),
-                         included_applications => incl_apps()}.
+                         included_applications => incl_apps(),
+                         %% Index of the goal in the release spec
+                         %% Keeping track of it since maps (parsed_goals() is a map)
+                         %% are unordered and .rel file will end up reordering goals.
+                         index => pos_integer()}.
 
 -type parsed_goals() :: #{name() => parsed_goal()}.
 
@@ -306,12 +310,15 @@ maybe_with_type(Tuple, Type) ->
 
 -spec parse_goals([application_spec()]) -> parsed_goals().
 parse_goals(ConfigGoals) ->
-    lists:foldl(fun(ConfigGoal, Acc) ->
+  {Result, _} = lists:foldl(fun(ConfigGoal, {Acc, Index}) ->
                         Goal=#{name := Name} = parse_goal(ConfigGoal),
-                        Acc#{Name => maps:merge(#{vsn=> undefined,
+                        Acc1 = Acc#{Name => maps:merge(#{vsn=> undefined,
                                                   type => undefined,
-                                                  included_applications => undefined}, Goal)}
-              end, #{}, ConfigGoals).
+                                                  included_applications => undefined,
+                                                  index => Index}, Goal)},
+                        {Acc1, Index + 1}
+              end, {#{}, 1}, ConfigGoals),
+  Result.
 
 -spec parse_goal(relx:goal()) -> parsed_goal().
 parse_goal(AppName) when is_atom(AppName) ->

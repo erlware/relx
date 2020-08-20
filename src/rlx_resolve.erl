@@ -30,10 +30,14 @@ solve_release(Release, State0) ->
             erlang:error(?RLX_ERROR({no_goals_specified, {RelName, RelVsn}}));
         Goals ->
             LibDirs = rlx_state:lib_dirs(State1),
-            Pkgs = subset(maps:to_list(Goals), AllApps, LibDirs),
+            OrderedGoals = lists:sort(fun compare_goals/2, maps:to_list(Goals)),
+            Pkgs = subset(OrderedGoals, AllApps, LibDirs),
             Pkgs1 = remove_exclude_apps(Pkgs, State1),
             set_resolved(Release, Pkgs1, State1)
     end.
+
+compare_goals({_, #{index := IndexA}}, {_, #{index := IndexB}}) ->
+    IndexA < IndexB.
 
 %% find the app_info records for each application and its deps needed for the release
 subset(Apps, World, LibDirs) ->
