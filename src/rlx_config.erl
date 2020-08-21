@@ -244,14 +244,14 @@ add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, State0) -
     Release0 = rlx_release:new(RelName, NewVsn),
     ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn2),
     Applications1 = rlx_release:goals(ExtendRelease),
-    Release1 = rlx_release:goals(Release0, merge_application_goals(Applications, Applications1)),
+    Release1 = rlx_release:parsed_goals(Release0, merge_application_goals(Applications, Applications1)),
     {ok, rlx_state:add_configured_release(State0, Release1)}.
 
 add_extended_release(RelName, NewVsn, RelName2, NewVsn2, Applications, Config, State0) ->
     Release0 = rlx_release:new(RelName, NewVsn),
     ExtendRelease = rlx_state:get_configured_release(State0, RelName2, NewVsn2),
     Applications1 = rlx_release:goals(ExtendRelease),
-    Release1 = rlx_release:goals(Release0, merge_application_goals(Applications, Applications1)),
+    Release1 = rlx_release:parsed_goals(Release0, merge_application_goals(Applications, Applications1)),
     Release2 = rlx_release:config(Release1, Config),
     {ok, rlx_state:add_configured_release(State0, Release2)}.
 
@@ -266,5 +266,6 @@ list_of_overlay_vars_files(FileName) when is_list(FileName) ->
     [FileName].
 
 merge_application_goals(Goals, BaseGoals) ->
-    ParsedGoals = rlx_release:parse_goals(Goals),
-    maps:merge(BaseGoals, ParsedGoals).
+    lists:foldl(fun({Key, Goal}, Acc) ->
+                        lists:keystore(Key, 1, Acc, {Key, Goal})
+                end, BaseGoals, rlx_release:parse_goals(Goals)).

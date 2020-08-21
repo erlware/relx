@@ -26,11 +26,11 @@ solve_release(Release, State0) ->
     Config = rlx_release:config(Release),
     {ok, State1} = lists:foldl(fun rlx_config:load/2, {ok, State0}, Config),
     case rlx_release:goals(Release) of
-        Goals when map_size(Goals) =:= 0 ->
+        [] ->
             erlang:error(?RLX_ERROR({no_goals_specified, {RelName, RelVsn}}));
         Goals ->
             LibDirs = rlx_state:lib_dirs(State1),
-            Pkgs = subset(maps:to_list(Goals), AllApps, LibDirs),
+            Pkgs = subset(Goals, AllApps, LibDirs),
             Pkgs1 = remove_exclude_apps(Pkgs, State1),
             set_resolved(Release, Pkgs1, State1)
     end.
