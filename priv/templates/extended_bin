@@ -647,7 +647,9 @@ fi
 
 # Extract the target cookie
 # Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
-if [ -z "$COOKIE" ]; then
+if [ -n "$ERLX_COOKIE" ]; then
+    COOKIE="$ERLX_COOKIE"
+else
     COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
     DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
     if [ -z "$COOKIE_ARG" ]; then
