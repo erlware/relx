@@ -647,17 +647,21 @@ fi
 
 # Extract the target cookie
 # Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
-COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
-DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
-if [ -z "$COOKIE_ARG" ]; then
-    if [ -f "$DEFAULT_COOKIE_FILE" ]; then
-        COOKIE="$(cat "$DEFAULT_COOKIE_FILE")"
-    else
-        echo "No cookie is set or found. This limits the scripts functionality, installing, upgrading, rpc and getting a list of versions will not work."
-    fi
+if [ -n "$RELX_COOKIE" ]; then
+    COOKIE="$RELX_COOKIE"
 else
-    # Extract cookie name from COOKIE_ARG
-    COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
+    COOKIE_ARG="$(grep '^-setcookie' "$VMARGS_PATH" || true)"
+    DEFAULT_COOKIE_FILE="$HOME/.erlang.cookie"
+    if [ -z "$COOKIE_ARG" ]; then
+        if [ -f "$DEFAULT_COOKIE_FILE" ]; then
+            COOKIE="$(cat "$DEFAULT_COOKIE_FILE")"
+        else
+            echo "No cookie is set or found. This limits the scripts functionality, installing, upgrading, rpc and getting a list of versions will not work."
+        fi
+    else
+        # Extract cookie name from COOKIE_ARG
+        COOKIE="$(echo "$COOKIE_ARG" | awk '{print $2}')"
+    fi
 fi
 
 # User can specify an sname without @hostname
