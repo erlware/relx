@@ -29,6 +29,7 @@
          parse_goals/1,
          goals/2,
          goals/1,
+         parsed_goals/2,
          name/1,
          vsn/1,
          realize/2,
@@ -83,7 +84,7 @@
                          type => type(),
                          included_applications => incl_apps()}.
 
--type parsed_goals() :: #{name() => parsed_goal()}.
+-type parsed_goals() :: [{name(), parsed_goal()}].
 
 -type application_spec() :: {name(), vsn()} |
                             {name(), vsn(), type() | incl_apps()} |
@@ -124,15 +125,17 @@ erts(Release, Vsn) ->
 erts(#release_t{erts=Vsn}) ->
     Vsn.
 
--spec goals(t(), [relx:goal()] | parsed_goals()) -> t().
-goals(Release, ParsedGoals) when is_map(ParsedGoals) ->
-    Release#release_t{goals=ParsedGoals};
+-spec goals(t(), [relx:goal()]) -> t().
 goals(Release, ConfigGoals) ->
     Release#release_t{goals=parse_goals(ConfigGoals)}.
 
 -spec goals(t()) -> parsed_goals().
 goals(#release_t{goals=Goals}) ->
     Goals.
+
+-spec parsed_goals(t(), parsed_goals()) -> t().
+parsed_goals(Release, ParsedGoals) ->
+    Release#release_t{goals=ParsedGoals}.
 
 -spec realize(t(), [rlx_app_info:t()]) ->
                      {ok, t()}.
@@ -216,7 +219,7 @@ format(Indent, #release_t{name=Name,
     [BaseIndent, "release: ", rlx_util:to_string(Name), "-", Vsn, "\n",
      rlx_util:indent(Indent + 1), "erts: ", ErtsVsn, "\n",
      rlx_util:indent(Indent + 1), "goals: \n",
-     [[rlx_util:indent(Indent + 2),  format_goal(Goal), "\n"] || Goal <- maps:values(Goals)],
+     [[rlx_util:indent(Indent + 2),  format_goal(Goal), "\n"] || {_, Goal} <- Goals],
      case Realized of
          true ->
              [rlx_util:indent(Indent + 1), "applications: \n",
@@ -278,8 +281,8 @@ create_app_spec(App, Goals, WorldIncludedApps) ->
 
     #{type := Type,
       included_applications := IncludedApplications} =
-        maps:get(AppName, Goals, #{type => TypeAnnot,
-                                   included_applications => undefined}),
+        list_find(AppName, Goals, #{type => TypeAnnot,
+                                    included_applications => undefined}),
 
     case {Type, IncludedApplications} of
         {undefined, undefined} ->
@@ -298,6 +301,14 @@ create_app_spec(App, Goals, WorldIncludedApps) ->
             error(?RLX_ERROR({bad_app_goal, {AppName, Vsn, Type, IncludedApplications}}))
     end.
 
+list_find(Key, List, Default) ->
+    case lists:keyfind(Key, 1, List) of
+        {Key, Value} ->
+            Value;
+        false ->
+            Default
+    end.
+
 %% keep a clean .rel file by only included non-defaults
 maybe_with_type(Tuple, permanent) ->
     Tuple;
@@ -306,12 +317,12 @@ maybe_with_type(Tuple, Type) ->
 
 -spec parse_goals([application_spec()]) -> parsed_goals().
 parse_goals(ConfigGoals) ->
-    lists:foldl(fun(ConfigGoal, Acc) ->
-                        Goal=#{name := Name} = parse_goal(ConfigGoal),
-                        Acc#{Name => maps:merge(#{vsn=> undefined,
-                                                  type => undefined,
-                                                  included_applications => undefined}, Goal)}
-              end, #{}, ConfigGoals).
+    lists:map(fun(ConfigGoal) ->
+                      Goal = #{name := Name} = parse_goal(ConfigGoal),
+                      {Name, maps:merge(#{vsn=> undefined,
+                                          type => undefined,
+                                          included_applications => undefined}, Goal)}
+              end, ConfigGoals).
 
 -spec parse_goal(relx:goal()) -> parsed_goal().
 parse_goal(AppName) when is_atom(AppName) ->

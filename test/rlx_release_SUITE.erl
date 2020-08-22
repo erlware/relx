@@ -41,7 +41,7 @@ groups() ->
        make_exclude_modules_release, make_release_with_sys_config_vm_args_src,
        make_exclude_app_release, make_overridden_release, make_goalless_release,
        make_one_app_top_level_release, make_release_twice, make_erts_release,
-       make_erts_config_release, make_included_nodetool_release]},
+       make_erts_config_release, make_included_nodetool_release, make_release_goal_order]},
      {dev_mode, [shuffle], [make_dev_mode_template_release,
                             make_dev_mode_release,
                             make_release_twice_dev_mode]},
@@ -96,6 +96,21 @@ make_release(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+make_release_goal_order(Config) ->
+  LibDir = ?config(lib_dir, Config),
+  OutputDir = ?config(out_dir, Config),
+
+  RelxConfig = [{release, {ordered_foo, "0.0.1"},
+    [goal_app_2, goal_app_1]}
+  ],
+
+  {ok, State} = relx:build_release(ordered_foo, [{root_dir, LibDir}, {lib_dirs, [LibDir]},
+    {output_dir, OutputDir} | RelxConfig]),
+
+  [{{ordered_foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+  AppSpecs = rlx_release:app_specs(Release),
+  ?assertMatch([{goal_app_2, "0.0.1"}, {goal_app_1, "0.0.1"} | _], AppSpecs).
 
 make_config_release(Config) ->
     DataDir = ?config(priv_dir, Config),
