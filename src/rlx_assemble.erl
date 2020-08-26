@@ -643,7 +643,7 @@ maybe_check_for_undefined_functions(State, Release) ->
     end.
 
 maybe_check_for_undefined_functions_(State, Release) ->
-    xref:start(?XREF_SERVER, [{xref_mode, functions}]),
+    {ok, _} = xref:start(?XREF_SERVER, [{xref_mode, functions}]),
 
     %% for every app in the release add it to the xref apps to be analyzed if
     %% it is a project app as specified by rebar3.

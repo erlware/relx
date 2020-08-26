@@ -73,7 +73,7 @@
 
 -spec new(atom(), string(), file:name(), [atom()], [atom()]) -> t().
 new(Name, Vsn, Dir, Applications, IncludedApplications) ->
-    new(Name, Vsn, Dir, Applications, IncludedApplications, false).
+    new(Name, Vsn, Dir, Applications, IncludedApplications, dep).
 
 -spec new(atom(), string(), file:name(), [atom()], [atom()], app_type()) -> t().
 new(Name, Vsn, Dir, Applications, IncludedApplications, AppType) ->
