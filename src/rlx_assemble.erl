@@ -6,6 +6,8 @@
 -include("relx.hrl").
 -include("rlx_log.hrl").
 
+-define(XREF_SERVER, rlx_xref).
+
 do(Release, State) ->
     RelName = rlx_release:name(Release),
     ?log_info("Assembling release ~p-~s...", [RelName, rlx_release:vsn(Release)]),
@@ -606,12 +608,17 @@ include_erts(State, Release, OutputDir, RelDir) ->
 
 -spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok.
 make_boot_script(State, Release, OutputDir, RelDir) ->
-    Options = [{path, [RelDir | rlx_util:get_code_paths(Release, OutputDir)]},
+    Paths = [RelDir | rlx_util:get_code_paths(Release, OutputDir)],
+    Options = [{path, Paths},
                {outdir, RelDir},
                {variables, make_boot_script_variables(Release, State)},
                silent | make_script_options(State)],
     Name = atom_to_list(rlx_release:name(Release)),
     IsRelxSasl = rlx_state:is_relx_sasl(State),
+
+    %% relx built-in form of systools exref feature
+    maybe_check_for_undefined_functions(State, Release),
+
     case make_start_script(Name, RelDir, Options, IsRelxSasl) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
@@ -626,6 +633,70 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
     end.
+
+maybe_check_for_undefined_functions(State, Release) ->
+    case rlx_state:check_for_undefined_functions(State) of
+        true ->
+            maybe_check_for_undefined_functions_(State, Release);
+        _ ->
+            ok
+    end.
+
+maybe_check_for_undefined_functions_(State, Release) ->
+    {ok, _} = xref:start(?XREF_SERVER, [{xref_mode, functions}]),
+
+    %% for every app in the release add it to the xref apps to be analyzed if
+    %% it is a project app as specified by rebar3.
+    add_project_apps_to_xref(rlx_release:app_specs(Release), State),
+
+    %% without adding the erts application there will be warnings about missing
+    %% functions from the preloaded modules even though they are in the runtime.
+    ErtsApp = code:lib_dir(erts, ebin),
+
+    %% xref library path is what is searched for functions used by the project apps.
+    %% we only add applications depended on by the release so that we catch
+    %% modules not included in the release to warn the user about.
+    CodePath = [ErtsApp | [filename:join(rlx_app_info:dir(App), "ebin") ||
+                              App <- rlx_release:applications(Release)]],
+    _ = xref:set_library_path(?XREF_SERVER, CodePath),
+
+    %% check for undefined function calls from project apps in the release
+    case xref:analyze(?XREF_SERVER, undefined_function_calls) of
+        {ok, Warnings} ->
+            format_xref_warning(Warnings);
+        {error, _} = Error ->
+            ?log_warn("Error running xref analyze: ~s", [xref:format_error(Error)])
+    end,
+
+    xref:stop(?XREF_SERVER).
+add_project_apps_to_xref([], _) ->
+    ok;
+add_project_apps_to_xref([AppSpec | Rest], State) ->
+    case maps:find(element(1, AppSpec), rlx_state:available_apps(State)) of
+        {ok, App=#{app_type := project}} ->
+            case xref:add_application(?XREF_SERVER,
+                                      rlx_app_info:dir(App),
+                                      [{name, rlx_app_info:name(App)}, {warnings, false}]) of
+                {ok, _} ->
+                    ok;
+                {error, _} = Error ->
+                    ?log_warn("Error adding application ~s to xref context: ~s",
+                              [rlx_app_info:name(App), xref:format_error(Error)])
+            end;
+        _ ->
+            ok
+    end,
+    add_project_apps_to_xref(Rest, State).
+
+format_xref_warning([]) ->
+    ok;
+format_xref_warning(Warnings) ->
+    ?log_warn("There are missing function calls in the release.", []),
+    ?log_warn("Make sure all applications needed at runtime are included in the release.", []),
+    lists:map(fun({{M1, F1, A1}, {M2, F2, A2}}) ->
+                      ?log_warn("~w:~tw/~w calls undefined function ~w:~tw/~w",
+                                [M1, F1, A1, M2, F2, A2])
+              end, Warnings).
 
 %% setup options for warnings as errors, src_tests and exref
 make_script_options(State) ->

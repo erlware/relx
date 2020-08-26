@@ -82,7 +82,8 @@ make_release(Config) ->
                     goal_app_2]},
                   {release, {foo, "0.0.2"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -102,11 +103,11 @@ make_release_goal_order(Config) ->
   OutputDir = ?config(out_dir, Config),
 
   RelxConfig = [{release, {ordered_foo, "0.0.1"},
-    [goal_app_2, goal_app_1]}
-  ],
+                 [goal_app_2, goal_app_1]},
+                  {check_for_undefined_functions, false}],
 
   {ok, State} = relx:build_release(ordered_foo, [{root_dir, LibDir}, {lib_dirs, [LibDir]},
-    {output_dir, OutputDir} | RelxConfig]),
+                                                 {output_dir, OutputDir} | RelxConfig]),
 
   [{{ordered_foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
   AppSpecs = rlx_release:app_specs(Release),
@@ -129,6 +130,7 @@ make_config_release(Config) ->
                    [{goal_app_1, "0.0.2"},
                     goal_app_2],
                    [{some, config2}]},
+                  {check_for_undefined_functions, false},
                   {lib_dirs, [LibDir1]}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
@@ -178,6 +180,7 @@ make_extend_release_versioned(Config) ->
                     goal_app_2]},
                   {release, {foo_test, "0.0.3", {extend, {foo, "0.0.2"}}},
                    [goal_app_2]},
+                  {check_for_undefined_functions, false},
                   {lib_dirs, [filename:join(LibDir1, "*")]}],
 
     {ok, State} = relx:build_release(foo_test, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
@@ -202,6 +205,7 @@ make_extend_config_release(Config) ->
                   {release, {foo_test, "0.0.1", {extend, foo}},
                    [goal_app_2],
                    [{some, config}]},
+                  {check_for_undefined_functions, false},
                   {lib_dirs, [filename:join(LibDir1, "*")]}],
 
     {ok, State} = relx:build_release(foo_test, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
@@ -224,7 +228,8 @@ make_scriptless_release(Config) ->
     RelxConfig = [{generate_start_script, false},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -259,7 +264,8 @@ make_overridden_release(Config) ->
                    [goal_app_1,
                     OverrideAppName,
                     goal_app_2]},
-                  {dev_mode, true}],
+                  {dev_mode, true},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir}, {lib_dirs, [OverrideDir1, LibDir]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -291,7 +297,8 @@ make_exclude_app_release(Config) ->
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1]},
-                  {exclude_apps, [non_goal_1]}],
+                  {exclude_apps, [non_goal_1]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -308,7 +315,8 @@ make_app_type_none_release(Config) ->
     OutputDir = ?config(out_dir, Config),
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
-                    {goal_app_2, none}]}],
+                    {goal_app_2, none}]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -357,7 +365,8 @@ overlay_release(Config) ->
                              {copy, "{{erts_dir}}/bin/erl", "bin/copy.erl"}]},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
     VarsFile1 = filename:join([LibDir1, "vars1.config"]),
     %% `tpl_var' is defined in vars1, but redifined in vars2 using template.
@@ -474,7 +483,8 @@ make_goalless_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
     OutputDir = ?config(out_dir, Config),
     RelxConfig = [{release, {foo, "0.0.1"},
-                   []}],
+                   []},
+                  {check_for_undefined_functions, false}],
 
     ?assertError({error, {rlx_resolve, {no_goals_specified, {foo, "0.0.1"}}}},
                  relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
@@ -489,7 +499,8 @@ make_one_app_top_level_release(Config) ->
     %% Use non_goal_2 here because this is to test when a top level app
     %% has no dependencies of its own
     RelxConfig = [{release, {foo, "0.0.1"},
-                   [{non_goal_2, "0.0.1"}]}],
+                   [{non_goal_2, "0.0.1"}]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -515,7 +526,8 @@ make_dev_mode_release(Config) ->
                   {vm_args, VmArgs},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -573,7 +585,8 @@ make_dev_mode_template_release(Config) ->
                               "releases/{{release_version}}/vm.args"}]},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
@@ -605,7 +618,8 @@ make_release_twice(Config) ->
 
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State1} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
                                             {output_dir, OutputDir} | RelxConfig]),
@@ -646,7 +660,8 @@ make_release_twice_dev_mode(Config) ->
     RelxConfig = [{release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]},
-                  {dev_mode, true}],
+                  {dev_mode, true},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [OtherAppsDir, LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -681,7 +696,8 @@ make_erts_release(Config) ->
 
     ErtsVsn = erlang:system_info(version),
     RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
-                   [goal_app_1]}],
+                   [goal_app_1]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -699,7 +715,8 @@ make_erts_config_release(Config) ->
     ErtsVsn = erlang:system_info(version),
     RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
                    [goal_app_1],
-                   [{some, config}]}],
+                   [{some, config}]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -719,7 +736,8 @@ make_included_nodetool_release(Config) ->
     RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
                    [goal_app_1]},
                   {extended_start_script, true},
-                  {include_nodetool, true}],
+                  {include_nodetool, true},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -739,7 +757,8 @@ make_not_included_nodetool_release(Config) ->
     RelxConfig = [{release, {foo, "0.0.1"}, {erts, ErtsVsn},
                    [goal_app_1]},
                   {extended_start_script, true},
-                  {include_nodetool, false}],
+                  {include_nodetool, false},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -762,7 +781,8 @@ make_src_release(Config) ->
                    [goal_app_1]},
                   {extended_start_script, true},
                   {include_erts, true},
-                  {include_src, true}],
+                  {include_src, true},
+                  {check_for_undefined_functions, false}],
 
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
@@ -785,7 +805,8 @@ make_excluded_src_release(Config) ->
                    [goal_app_1]},
                   {extended_start_script, true},
                   {include_erts, true},
-                  {include_src, false}],
+                  {include_src, false},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -853,7 +874,8 @@ make_release_with_sys_config_vm_args_src(Config) ->
                   {vm_args_src, VmArgsSrc},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -908,7 +930,8 @@ make_prod_mode_release(Config) ->
                   {vm_args, VmArgs},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
@@ -955,7 +978,8 @@ make_minimal_mode_release(Config) ->
                   {vm_args, VmArgs},
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
-                    goal_app_2]}],
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),

@@ -91,6 +91,8 @@
          src_tests/2,
          exref/1,
          exref/2,
+         check_for_undefined_functions/1,
+         check_for_undefined_functions/2,
          is_relx_sasl/1]).
 
 -type mode() :: dev | prod | minimal.
@@ -120,6 +122,7 @@
                   upfrom :: string() | binary() | undefined,
                   warnings_as_errors=false :: boolean(),
                   src_tests=true :: boolean(),
+                  check_for_undefined_functions=true :: boolean(),
                   exref=false :: boolean() | [atom()],
                   overlay=[] :: list(),
                   include_nodetool=true :: boolean(),
@@ -441,6 +444,14 @@ src_tests(#state_t{src_tests=SrcTests}) ->
 -spec src_tests(t(), boolean()) -> t().
 src_tests(State, SrcTests) ->
     State#state_t{src_tests=SrcTests}.
+
+-spec check_for_undefined_functions(t()) -> boolean().
+check_for_undefined_functions(#state_t{check_for_undefined_functions=CheckForUndefinedFunctions}) ->
+    CheckForUndefinedFunctions.
+
+-spec check_for_undefined_functions(t(), boolean()) -> t().
+check_for_undefined_functions(State, CheckForUndefinedFunctions) ->
+    State#state_t{check_for_undefined_functions=CheckForUndefinedFunctions}.
 
 -spec exref(t()) -> boolean() | [atom()].
 exref(#state_t{exref=ExRef}) ->

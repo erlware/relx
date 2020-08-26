@@ -37,6 +37,7 @@
 -module(rlx_app_info).
 
 -export([new/5,
+         new/6,
          name/1,
          vsn/1,
          dir/1,
@@ -50,6 +51,7 @@
 
 -include("relx.hrl").
 
+-type app_type() :: project | dep | checkout | system.
 -type t() :: #{name                  := atom() | undefined,
                vsn                   := string() | undefined,
 
@@ -57,12 +59,24 @@
                included_applications := [atom()],
 
                dir                   := file:name() | undefined,
-               link                  := boolean() | undefined}.
+               link                  := boolean() | undefined,
 
--export_type([t/0]).
+               %% `project' app is one the user is actively developing on
+               %% `dep' is dependency fetched by rebar3
+               %% `checkout' is a dependency linked to from the _checkouts dir
+               %% and treated like a project app
+               %% `system' applications are dependencies from Erlang/OTP
+               app_type              := app_type()}.
+
+-export_type([t/0,
+              app_type/0]).
 
 -spec new(atom(), string(), file:name(), [atom()], [atom()]) -> t().
 new(Name, Vsn, Dir, Applications, IncludedApplications) ->
+    new(Name, Vsn, Dir, Applications, IncludedApplications, dep).
+
+-spec new(atom(), string(), file:name(), [atom()], [atom()], app_type()) -> t().
+new(Name, Vsn, Dir, Applications, IncludedApplications, AppType) ->
     #{name => Name,
       vsn => Vsn,
 
@@ -70,7 +84,9 @@ new(Name, Vsn, Dir, Applications, IncludedApplications) ->
       included_applications => IncludedApplications,
 
       dir => Dir,
-      link => false}.
+      link => false,
+
+      app_type => AppType}.
 
 -spec name(t()) -> atom().
 name(#{name := Name}) ->
