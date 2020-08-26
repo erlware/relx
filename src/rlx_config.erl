@@ -115,6 +115,8 @@ load({src_tests, SrcTests}, {ok, State}) ->
     {ok, rlx_state:src_tests(State, SrcTests)};
 load({exref, ExRef}, {ok, State}) ->
     {ok, rlx_state:exref(State, ExRef)};
+load({check_for_undefined_functions, CheckForUndefinedFunctions}, {ok, State}) ->
+    {ok, rlx_state:check_for_undefined_functions(State, CheckForUndefinedFunctions)};
 load({include_erts, IncludeErts}, {ok, State}) ->
     {ok, rlx_state:include_erts(State, IncludeErts)};
 load({system_libs, SystemLibs}, {ok, State}) ->

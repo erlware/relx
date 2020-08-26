@@ -37,6 +37,7 @@
 -module(rlx_app_info).
 
 -export([new/5,
+         new/6,
          name/1,
          vsn/1,
          dir/1,
@@ -57,12 +58,18 @@
                included_applications := [atom()],
 
                dir                   := file:name() | undefined,
-               link                  := boolean() | undefined}.
+               link                  := boolean() | undefined,
+
+               is_project_app        := boolean()}.
 
 -export_type([t/0]).
 
 -spec new(atom(), string(), file:name(), [atom()], [atom()]) -> t().
 new(Name, Vsn, Dir, Applications, IncludedApplications) ->
+    new(Name, Vsn, Dir, Applications, IncludedApplications, false).
+
+-spec new(atom(), string(), file:name(), [atom()], [atom()], boolean()) -> t().
+new(Name, Vsn, Dir, Applications, IncludedApplications, IsProjectApp) ->
     #{name => Name,
       vsn => Vsn,
 
@@ -70,7 +77,9 @@ new(Name, Vsn, Dir, Applications, IncludedApplications) ->
       included_applications => IncludedApplications,
 
       dir => Dir,
-      link => false}.
+      link => false,
+
+      is_project_app => IsProjectApp}.
 
 -spec name(t()) -> atom().
 name(#{name := Name}) ->
