@@ -616,7 +616,7 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
     Name = atom_to_list(rlx_release:name(Release)),
     IsRelxSasl = rlx_state:is_relx_sasl(State),
 
-    %% relx built in form of systools exref feature
+    %% relx built-in form of systools exref feature
     maybe_check_for_undefined_functions(State, Release),
 
     case make_start_script(Name, RelDir, Options, IsRelxSasl) of
