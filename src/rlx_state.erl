@@ -122,7 +122,7 @@
                   upfrom :: string() | binary() | undefined,
                   warnings_as_errors=false :: boolean(),
                   src_tests=true :: boolean(),
-                  check_for_undefined_functions=false :: boolean(),
+                  check_for_undefined_functions=true :: boolean(),
                   exref=false :: boolean() | [atom()],
                   overlay=[] :: list(),
                   include_nodetool=true :: boolean(),

@@ -639,11 +639,11 @@ maybe_check_for_undefined_functions(State, Release) ->
         true ->
             maybe_check_for_undefined_functions_(State, Release);
         _ ->
-            false
+            ok
     end.
 
 maybe_check_for_undefined_functions_(State, Release) ->
-    {ok, _} = xref:start(?XREF_SERVER, [{xref_mode, functions}]),
+    xref:start(?XREF_SERVER, [{xref_mode, functions}]),
 
     %% for every app in the release add it to the xref apps to be analyzed if
     %% it is a project app as specified by rebar3.
@@ -673,7 +673,7 @@ add_project_apps_to_xref([], _) ->
     ok;
 add_project_apps_to_xref([AppSpec | Rest], State) ->
     case maps:find(element(1, AppSpec), rlx_state:available_apps(State)) of
-        {ok, App=#{is_project_app := true}} ->
+        {ok, App=#{app_type := project}} ->
             case xref:add_application(?XREF_SERVER,
                                       rlx_app_info:dir(App),
                                       [{name, rlx_app_info:name(App)}, {warnings, false}]) of
