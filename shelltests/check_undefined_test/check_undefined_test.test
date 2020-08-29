@@ -1,0 +1,12 @@
+$ TERM=dumb rebar3 release
+>
+===> Verifying dependencies...
+===> Analyzing applications...
+===> Compiling check_undefined_test
+===> Assembling release check_undefined_test-0.1.0...
+===> There are missing function calls in the release.
+===> Make sure all applications needed at runtime are included in the release.
+===> check_undefined_test_app:start/2 calls undefined function crypto:start/0
+===> check_undefined_test_app:start/2 calls undefined function notamodule:dosomething/0
+===> Release successfully assembled: _build/default/rel/check_undefined_test
+>= 0

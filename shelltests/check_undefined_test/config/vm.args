@@ -1,0 +1,6 @@
+-sname check_undefined_test
+
+-setcookie check_undefined_test_cookie
+
++K true
++A30
