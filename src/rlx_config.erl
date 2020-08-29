@@ -129,8 +129,8 @@ load({extended_start_script, ExtendedStartScript}, {ok, State}) ->
     {ok, rlx_state:extended_start_script(State, ExtendedStartScript)};
 load({extended_start_script_extensions, ExtendedStartScriptExtensions}, {ok, State}) ->
     {ok, rlx_state:extended_start_script_extensions(State, ExtendedStartScriptExtensions)};
-load({start_script_type, StartScriptType}, {ok, State}) ->
-    {ok, rlx_state:start_script_type(State, StartScriptType)};
+load({include_start_scripts_for, IncludeStartScriptsFor}, {ok, State}) when is_list(IncludeStartScriptsFor) ->
+    {ok, rlx_state:include_start_scripts_for(State, IncludeStartScriptsFor)};
 load({generate_start_script, GenerateStartScript}, {ok, State}) ->
     {ok, rlx_state:generate_start_script(State, GenerateStartScript)};
 load({include_nodetool, IncludeNodetool}, {ok, State}) ->

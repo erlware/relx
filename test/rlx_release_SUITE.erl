@@ -36,7 +36,8 @@ groups() ->
     [{regular_mode, [shuffle, parallel],
       [make_release, make_config_release, overlay_release,
        make_extend_release, make_extend_release_versioned, make_extend_config_release,
-       make_scriptless_release, make_app_type_none_release,
+       make_scriptless_release, make_app_type_none_release, include_powershell,
+       include_unix_powershell_win32,
        make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
        make_exclude_modules_release, make_release_with_sys_config_vm_args_src,
        make_exclude_app_release, make_overridden_release, make_goalless_release,
@@ -229,13 +230,16 @@ make_scriptless_release(Config) ->
                   {release, {foo, "0.0.1"},
                    [goal_app_1,
                     goal_app_2]},
+                  %% the generate_start_script should take precedence
+                  {include_start_scripts_for, [unix]},
                   {check_for_undefined_functions, false}],
 
     {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                            {output_dir, OutputDir} | RelxConfig]),
 
-    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "bin", "foo"]))),
-    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "bin", "foo-0.0.1"]))),
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo"]))),
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo-0.0.1"]))),
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "psutil.ps1"]))),
 
     [{{foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
     AppSpecs = rlx_release:app_specs(Release),
@@ -246,6 +250,44 @@ make_scriptless_release(Config) ->
     ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
+
+include_powershell(Config) ->
+    LibDir1 = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+    RelxConfig = [{release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]},
+                  {include_start_scripts_for, [powershell]},
+                  {check_for_undefined_functions, false}],
+
+    {ok, _} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                       {output_dir, OutputDir} | RelxConfig]),
+
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo"]))),
+    ?assert(not rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo-0.0.1"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo.ps1"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo-0.0.1.ps1"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "psutil.ps1"]))).
+
+include_unix_powershell_win32(Config) ->
+    LibDir1 = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+    RelxConfig = [{release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]},
+                  {include_start_scripts_for, [powershell, unix, win32]},
+                  {check_for_undefined_functions, false}],
+
+    {ok, _} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                       {output_dir, OutputDir} | RelxConfig]),
+
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo-0.0.1"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo.cmd"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo-0.0.1.cmd"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo.ps1"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "foo-0.0.1.ps1"]))),
+    ?assert(rlx_file_utils:exists(filename:join([OutputDir, "foo", "bin", "psutil.ps1"]))).
 
 make_overridden_release(Config) ->
     DataDir = ?config(priv_dir, Config),
