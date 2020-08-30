@@ -190,7 +190,7 @@ no_dot_erlang_metadata(#release_t{erts=ErtsVsn,
     {value, StdLib, _Apps2} = lists:keytake(stdlib, 1, Apps1),
     {release, {"no_dot_erlang", "1.0"}, {erts, ErtsVsn}, [Kernel, StdLib]}.
 
-%% @doc produce the canonical name (<name>-<vsn>) for this release
+%% @doc produce the canonical name `<name>-<vsn>' for this release
 -spec canonical_name(t()) -> string().
 canonical_name(#release_t{name=Name, vsn=Vsn}) ->
     erlang:binary_to_list(erlang:iolist_to_binary([erlang:atom_to_list(Name), "-", Vsn])).
