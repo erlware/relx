@@ -155,7 +155,14 @@ consult([]) ->
 consult(Bin) when is_binary(Bin)->
     consult(binary_to_list(Bin));
 consult(Str) when is_list(Str) ->
-    case erl_scan:string(Str) of
+    %% add '.' if the string doesn't end in one
+    Normalized =
+        case lists:reverse(Str) of
+            [$. | _] -> Str;
+            R -> lists:reverse([$. | R])
+        end,
+
+    case erl_scan:string(Normalized) of
         {ok, Tokens, _} ->
             case erl_parse:parse_term(Tokens) of
                 {ok, Args} ->

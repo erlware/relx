@@ -55,6 +55,18 @@ $ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok
 "101"
 >= 0
 
+# rpc works with and without dot at the end of arguments
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests rpc application get_env "[replace_os_vars_tests, var1, ok]"
+>
+"101"
+>= 0
+
+# rpc works with and without dot at the end of arguments
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests rpc application get_env "[replace_os_vars_tests, var1, ok]."
+>
+"101"
+>= 0
+
 $ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, baz), V.'
 >
 "bat zing"
