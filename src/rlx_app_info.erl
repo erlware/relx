@@ -31,8 +31,8 @@
 %%%  App. That is the things in the `applications' property of the application
 %%%  metadata </li>
 %%%  <li> `included_applications' - The apps in the `included_applications' property
-%%%  of the application metadata.
-%%%  </ul>
+%%%  of the application metadata.</li>
+%%% </ul>
 %%%
 -module(rlx_app_info).
 
