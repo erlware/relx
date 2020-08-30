@@ -3,15 +3,13 @@ name: Common Test
 on:
   pull_request:
     branches:
-      - '4.0.0'
       - 'master'
   push:
     branches:
-      - '4.0.0'
       - 'master'
 
 jobs:
-  build:
+  linux:
     name: Test on OTP ${{ matrix.otp_version }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
@@ -33,3 +31,18 @@ jobs:
       run: rebar3 xref
     - name: Dialyzer
       run: rebar3 dialyzer
+
+  macos:
+    name: Test on MacOS
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Erlang
+      run: brew install erlang
+    - name: Install rebar3
+      run: |
+        wget https://s3.amazonaws.com/rebar3/rebar3
+        chmod +x rebar3
+    - name: CT tests
+      run: ./rebar3 ct
