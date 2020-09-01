@@ -226,19 +226,19 @@ build_vsn_string(Vsn, RawRef, RawCount) ->
     %% Cleanup the tag and the Ref information. Basically leading 'v's and
     %% whitespace needs to go away.
     RefTag = [".ref", re:replace(RawRef, "\\s", "", [global])],
-    Count = re:replace(RawCount, "\\s", "", [global]),
+    Count = re:replace(RawCount, "\\D", "", [global]),
 
     %% Create the valid [semver](http://semver.org) version from the tag
-    case Count of
+    case iolist_to_binary(Count) of
         <<"0">> ->
             lists:flatten(Vsn);
-        _ ->
-            lists:flatten([Vsn, "+build.", Count, RefTag])
+        CountBin ->
+            binary_to_list(iolist_to_binary([Vsn, "+build.", CountBin, RefTag]))
     end.
 
 parse_tags() ->
     Tag = rlx_util:sh("git describe --abbrev=0 --tags"),
-    Vsn = rlx_string:trim(rlx_string:trim(Tag, leading, "v"), leading, "\n"),
+    Vsn = rlx_string:trim(rlx_string:trim(Tag, leading, "v"), trailing, "\n"),
     {Tag, Vsn}.
 
 

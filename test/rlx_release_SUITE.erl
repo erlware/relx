@@ -34,7 +34,7 @@ all() ->
 %% Tests using dev_mode can't run in parallel because they write to the same directories
 groups() ->
     [{regular_mode, [shuffle, parallel],
-      [make_release, make_config_release, overlay_release,
+      [make_release, make_config_release, make_release_semver, overlay_release,
        make_extend_release, make_extend_release_versioned, make_extend_config_release,
        make_scriptless_release, make_app_type_none_release, include_powershell,
        include_unix_powershell_win32,
@@ -147,6 +147,29 @@ make_config_release(Config) ->
     ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
     ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)),
     ?assertEqual([{some, config2}], rlx_release:config(Release)).
+
+make_release_semver(Config) ->
+    LibDir1 = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    RelxConfig = [{release, {foo, semver},
+                   [goal_app_1,
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
+
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
+
+    [{{foo, Vsn}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    {match, _} = re:run(Vsn, "[0-9\\.]+(\\+build\\.\\d+\\.ref[a-d0-9]+)?"),
+    AppSpecs = rlx_release:app_specs(Release),
+    ?assert(lists:keymember(stdlib, 1, AppSpecs)),
+    ?assert(lists:keymember(kernel, 1, AppSpecs)),
+    ?assert(lists:member({non_goal_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({non_goal_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_1, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({goal_app_2, "0.0.1"}, AppSpecs)),
+    ?assert(lists:member({lib_dep_1, "0.0.1", load}, AppSpecs)).
 
 make_extend_release(Config) ->
     LibDir1 = ?config(lib_dir, Config),
