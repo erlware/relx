@@ -225,7 +225,7 @@ get_patch_count(RawRef) ->
 build_vsn_string(Vsn, RawRef, RawCount) ->
     %% Cleanup the tag and the Ref information. Basically leading 'v's and
     %% whitespace needs to go away.
-    RefTag = [".ref", re:replace(RawRef, "\\W", "", [global])],
+    RefTag = [".ref", re:replace(RawRef, "\\s", "", [global])],
     Count = re:replace(RawCount, "\\D", "", [global]),
 
     %% Create the valid [semver](http://semver.org) version from the tag
