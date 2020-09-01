@@ -250,7 +250,7 @@ relx_get_nodename() {
                       -mode interactive \
                       -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
-                      "${START_EPMD}" \
+                      ${START_EPMD} \
                       -noshell "${NAME_TYPE}" "$id"
     else
         # running with setcookie prevents a ~/.erlang.cookie from being created
@@ -259,7 +259,7 @@ relx_get_nodename() {
                       -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
                       -setcookie "${COOKIE}" \
-                      "${START_EPMD}" \
+                      ${START_EPMD} \
                       -noshell "${NAME_TYPE}" "$id"
     fi
 }
