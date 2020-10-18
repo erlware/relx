@@ -5,6 +5,7 @@
 
 -include("relx.hrl").
 -include("rlx_log.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -define(XREF_SERVER, rlx_xref).
 
@@ -26,6 +27,16 @@ do(Release, State) ->
         andalso rlx_state:mode(State1) =/= dev of
         true ->
             ?log_debug("Stripping release beam files", []),
+            %% make *.beam to be writeable for strip.
+            Files = rlx_file_utils:wildcard_paths([OutputDir ++ "/**/*.beam"]),
+            [ begin 
+                {ok, #file_info{mode = Mode}} = file:read_file_info(F), 
+                case Mode band 8#0600 =:= 8#0600 of
+                    true -> ok;
+                    false -> file:change_mode(F, Mode bor 8#0600)
+                end
+              end
+            || F <- Files ],
             case beam_lib:strip_release(OutputDir) of
                 {ok, _} ->
                     {ok, State1};
