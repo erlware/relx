@@ -163,11 +163,15 @@ win32_make_junction_cmd(Source, Target) ->
     case os:cmd(Cmd) of
         "Junction created " ++ _ ->
             ok;
-        [] ->
-            % When mklink fails it prints the error message to stderr which
-            % is not picked up by os:cmd() hence this case switch is for
-            % an empty message
-            cp_r(Source, Target)
+        _ ->
+            % When not English output, success out will not match, so just recheck link target
+            % if target is source, then also do nothing
+            case file:read_link(Target) of
+                {ok, Source} ->
+                    ok;
+                _ ->
+                    cp_r(Source, Target)
+            end
     end.
 
 -spec copy(file:name(), file:name()) -> ok | {error, term()}.
