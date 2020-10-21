@@ -28,20 +28,27 @@ do(Release, State) ->
         true ->
             ?log_debug("Stripping release beam files", []),
             %% make *.beam to be writeable for strip.
-            Files = rlx_file_utils:wildcard_paths([OutputDir ++ "/**/*.beam"]),
-            [ begin 
-                {ok, #file_info{mode = Mode}} = file:read_file_info(F), 
-                case Mode band 8#0600 =:= 8#0600 of
-                    true -> ok;
-                    false -> file:change_mode(F, Mode bor 8#0600)
+            ModeChangedFiles = [ 
+                OrigFileMode
+            || File <- rlx_file_utils:wildcard_paths([OutputDir ++ "/**/*.beam"]), 
+                OrigFileMode <- begin
+                    {ok, #file_info{mode = OrigMode}} = file:read_file_info(File), 
+                    case OrigMode band 8#0200 =/= 8#0200 of
+                        true ->
+                            file:change_mode(File, OrigMode bor 8#0200),
+                            [{File, OrigMode}];
+                        false -> []
                 end
-              end
-            || F <- Files ],
-            case beam_lib:strip_release(OutputDir) of
+            end ],
+            try beam_lib:strip_release(OutputDir) of
                 {ok, _} ->
                     {ok, State1};
                 {error, _, Reason} ->
                     erlang:error(?RLX_ERROR({strip_release, Reason}))
+            after
+                %% revert file permissions after strip.
+                [ file:change_mode(File, OrigMode) 
+                    || {File, OrigMode} <- ModeChangedFiles ]
             end;
         false ->
             {ok, State1}
