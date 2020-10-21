@@ -269,9 +269,13 @@ relx_rem_sh() {
     # Remove remote_nodename when OTP-23 is the oldest version supported by rebar3/relx.
     # sort the used erts version against 11.0 to see if it is less than 11.0 (OTP-23)
     # if it is then we must generate a node name to use for the remote node.
-    # But this feature is only for short names. So first check if `NAME_TYPE` is `sname`
+    # But this feature is only for short names in 23.0 (erts 11.0). It can be used
+    # for long names with 23.1 (erts 11.1) and above.
     if [ "${NAME_TYPE}" = "-sname" ] && [  "11.0" = "$(printf "%s\n11.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
-        # OTP-16616: erl -remsh now uses the dynamic node names feature by default
+
+        remote_nodename="${NAME_TYPE} undefined"
+    # if the name type is longnames then make sure this is erts 11.1+
+    elif [ "${NAME_TYPE}" = "-name" ] && [  "11.1" = "$(printf "%s\n11.1" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
         remote_nodename="${NAME_TYPE} undefined"
     else
         # Generate a unique id used to allow multiple remsh to the same node transparently
@@ -300,10 +304,17 @@ erl_rpc() {
         *)
             command=$*
 
-            if [ "$ERL_DIST_PORT" ]; then
-                result=$("$ERL_RPC" -r -c "${COOKIE}" -address "${ERL_DIST_PORT}"  -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
+            # erl_call -R is recommended for generating dynamic node name but is only available in 23.0+
+            if [  "11.0" = "$(printf "%s\n11.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
+                DYNAMIC_NAME="-R"
             else
-                result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" -R -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
+                DYNAMIC_NAME="-r"
+            fi
+
+            if [ "$ERL_DIST_PORT" ]; then
+                result=$("$ERL_RPC" "${DYNAMIC_NAME}" -c "${COOKIE}" -address "${ERL_DIST_PORT}"  -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
+            else
+                result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" "${DYNAMIC_NAME}" -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
             fi
             code=$?
             if [ $code -eq 0 ]; then
@@ -642,7 +653,16 @@ if [ "$EPMD_MODULE" ]; then
 fi
 
 if [ "$ERL_DIST_PORT" ]; then
-    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
+    if [  "11.1" = "$(printf "%s\n11.1" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
+        # unless set by the user, set start_epmd to false when ERL_DIST_PORT is used
+        if [ ! "$START_EPMD" ]; then
+            MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -erl_epmd_port ${ERL_DIST_PORT} -start_epmd false"
+        else
+            MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -erl_epmd_port ${ERL_DIST_PORT}"
+        fi
+    else
+        MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
+    fi
 fi
 
 # Extract the target cookie
@@ -885,7 +905,8 @@ case "$1" in
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH" -- "$@"
+            -args_file "$VMARGS_PATH" \
+            $MAYBE_DIST_ARGS -- "$@"
         echo "Root: $ROOTDIR"
 
         # Log the startup
@@ -900,7 +921,8 @@ case "$1" in
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH" -- "$@"
+            -args_file "$VMARGS_PATH" \
+            $MAYBE_DIST_ARGS -- "$@"
         # exec will replace the current image and nothing else gets
         # executed from this point on, this explains the absence
         # of the pre start hook
