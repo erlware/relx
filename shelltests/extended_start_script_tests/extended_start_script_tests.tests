@@ -141,3 +141,16 @@ $ NODETOOL_TIMEOUT=foo ./_build/default/rel/replace_os_vars_tests/bin/replace_os
 
 $ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
 >= 0
+
+$ ERL_DIST_PORT=8001 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+
+$ sleep 1
+>= 0
+
+$ ERL_DIST_PORT=8001 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ ERL_DIST_PORT=8001 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
