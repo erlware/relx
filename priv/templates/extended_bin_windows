@@ -57,7 +57,7 @@ for /f "usebackq tokens=1-2" %%I in (`findstr /b "\-name \-sname" "%vm_args%"`) 
   set node_name=%%J
 )
 
-for /f "delims= tokens=1-2" %%I in ("%node_name%") do (
+for /f "delims=@ tokens=1-2" %%I in ("%node_name%") do (
     set node_name=%%I
     set hostname=%%J
 )
@@ -76,9 +76,9 @@ if "" == "%hostname%" (
         )
     )
 )
-:: Add  to hostname if not empty so that we can just concatenate values safely
+:: Add @ to hostname if not empty so that we can just concatenate values safely
 if not "" == "%hostname%" (
-    set "hostname=%hostname%"
+    set "hostname=@%hostname%"
 )
 
 :: Extract the target cookie
