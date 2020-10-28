@@ -318,7 +318,7 @@ erl_rpc() {
             fi
             code=$?
             if [ $code -eq 0 ]; then
-                echo "$result" | tr -d "\n"
+                echo "$result"
             else
                 return $code
             fi
@@ -337,7 +337,7 @@ erl_eval() {
             result=$(echo "${command}" | "$ERL_RPC" "$NAME_TYPE" "$NAME" -R -timeout "${RELX_RPC_TIMEOUT}" -c "${COOKIE}" -e)
             code=$?
             if [ $code -eq 0 ]; then
-                echo "$result" | sed 's/^{ok, \(.*\)}$/\1/' | tr -d "\n"
+                echo "$result" | sed 's/^{ok, \(.*\)}$/\1/'
             else
                 return $code
             fi
