@@ -1,0 +1,23 @@
+$ rebar3 release
+> / Release successfully assembled: /
+>= 0
+
+$ RELX_OUT_FILE_PATH=/tmp NODENAME=node1 ./_build/default/rel/vm_args_inclusion_tests/bin/vm_args_inclusion_tests daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ NODENAME=node1 ./_build/default/rel/vm_args_inclusion_tests/bin/vm_args_inclusion_tests ping
+>
+pong
+>= 0
+
+$ NODENAME=node1 ./_build/default/rel/vm_args_inclusion_tests/bin/vm_args_inclusion_tests eval 'erlang:system_info(port_parallelism).'
+>
+true
+>= 0
+
+$ NODENAME=node1 ./_build/default/rel/vm_args_inclusion_tests/bin/vm_args_inclusion_tests stop
+>= 0
+
