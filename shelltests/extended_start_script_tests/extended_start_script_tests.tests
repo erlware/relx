@@ -161,3 +161,17 @@ pong
 
 $ ERL_DIST_PORT=8001 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
 >= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests start
+
+$ sleep 1
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0
+
