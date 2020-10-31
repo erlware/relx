@@ -226,7 +226,7 @@ find_erl_call() {
 
 # Get node pid
 relx_get_pid() {
-    if output="$(erl_rpc os getpid)"
+    if output="$(erl_rpc os getpid 2>/dev/null)"
     then
         echo "$output" | sed -e 's/"//g'
         return 0
@@ -749,7 +749,7 @@ case "$1" in
         relx_run_hooks "$PRE_STOP_HOOKS"
         # Wait for the node to completely stop...
         PID="$(relx_get_pid)"
-        if ! erl_rpc init stop > /dev/null; then
+        if ! erl_rpc init stop > /dev/null 2>&1; then
             exit 1
         fi
         while kill -s 0 "$PID" 2>/dev/null;
