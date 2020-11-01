@@ -141,3 +141,23 @@ $ NODETOOL_TIMEOUT=foo ./_build/default/rel/replace_os_vars_tests/bin/replace_os
 
 $ ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
 >= 0
+
+# we run these tests only on 23.1 so we can test that ERL_DIST_PORT causes epmd to not start
+$ pkill epmd
+
+$ ERL_DIST_PORT=8001 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+
+$ sleep 1
+>= 0
+
+# verify epmd isn't running
+$ pidof epmd
+>= 1
+
+$ ERL_DIST_PORT=8001 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests ping
+>
+pong
+>= 0
+
+$ ERL_DIST_PORT=8001 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests stop
+>= 0

@@ -3,11 +3,9 @@ name: ShellTestRunner
 on:
   pull_request:
     branches:
-      - '4.0.0'
       - 'master'
   push:
     branches:
-      - '4.0.0'
       - 'master'
 
 jobs:
@@ -19,7 +17,7 @@ jobs:
       matrix:
         # important to check a pre-23 version that still uses nodetool
         # plus 23 once it is released
-        otp_version: [22.3.2]
+        otp_version: [22.3.2, 23.1]
         os: [ubuntu-latest]
 
     steps:

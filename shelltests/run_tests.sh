@@ -22,4 +22,4 @@ sed -i 's_relx\(.*\)build/default/lib/_relx\1checkouts_' rebar.config
 
 popd
 
-PATH="${rebar3_dir}":~/.cabal/bin/:$PATH shelltest -c --diff --all --debug --execdir -- */*.test
+PATH="${rebar3_dir}":~/.cabal/bin/:$PATH shelltest -c --diff --all --execdir -- */*.test
