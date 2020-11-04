@@ -1,0 +1,4 @@
+-sname ${NODENAME}@localhost
+
+-setcookie cookie1
+-args_file releases/{{release_version}}/vm.extended.args

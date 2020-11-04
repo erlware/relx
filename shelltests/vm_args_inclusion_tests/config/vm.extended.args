@@ -1,0 +1,3 @@
+# Sets default scheduler hint for port parallelism.
+#   erlang:system_info(port_parallelism) gives us this value
++spp true

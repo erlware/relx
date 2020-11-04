@@ -573,21 +573,14 @@ RELX_CONFIG_PATH=$(check_replace_os_vars sys.config "$RELX_CONFIG_PATH")
 set +e
 TMP_NAME_ARG=$(awk 'function check_name(file)
 {
-    if (system("test -f "file)) {
-        print file" not found"
-        exit 3
-    }
-    if (system("test -r "file)) {
+    # if file exists, then it should be readable
+    if (system("test -f "file) == 0 && system("test -r "file) != 0) {
         print file" not readable"
         exit 3
     }
     while ((getline line<file)>0) {
         if (line~/^-args_file +/) {
             gsub(/^-args_file +| *$/, "", line)
-            if (!(line~/^\//)) {
-                print "relative path "line" encountered in "file
-                exit 4
-            }
             if (line in files) {
                 print "circular reference to "line" encountered in "file
                 exit 5
