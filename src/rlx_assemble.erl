@@ -5,6 +5,7 @@
 
 -include("relx.hrl").
 -include("rlx_log.hrl").
+-include_lib("kernel/include/file.hrl").
 
 -define(XREF_SERVER, rlx_xref).
 
@@ -26,11 +27,29 @@ do(Release, State) ->
         andalso rlx_state:mode(State1) =/= dev of
         true ->
             ?log_debug("Stripping release beam files", []),
-            case beam_lib:strip_release(OutputDir) of
+            %% make *.beam to be writeable for strip.
+            ModeChangedFiles = [ 
+                OrigFileMode
+                || File <- rlx_file_utils:wildcard_paths([OutputDir ++ "/**/*.beam"]), 
+                    OrigFileMode <- begin
+                        {ok, #file_info{mode = OrigMode}} = file:read_file_info(File), 
+                        case OrigMode band 8#0200 =/= 8#0200 of
+                            true ->
+                                file:change_mode(File, OrigMode bor 8#0200),
+                                [{File, OrigMode}];
+                            false -> []
+                        end
+                    end
+                ],
+            try beam_lib:strip_release(OutputDir) of
                 {ok, _} ->
                     {ok, State1};
                 {error, _, Reason} ->
                     erlang:error(?RLX_ERROR({strip_release, Reason}))
+            after
+                %% revert file permissions after strip.
+                [ file:change_mode(File, OrigMode) 
+                    || {File, OrigMode} <- ModeChangedFiles ]
             end;
         false ->
             {ok, State1}
