@@ -30,16 +30,17 @@ do(Release, State) ->
             %% make *.beam to be writeable for strip.
             ModeChangedFiles = [ 
                 OrigFileMode
-            || File <- rlx_file_utils:wildcard_paths([OutputDir ++ "/**/*.beam"]), 
-                OrigFileMode <- begin
-                    {ok, #file_info{mode = OrigMode}} = file:read_file_info(File), 
-                    case OrigMode band 8#0200 =/= 8#0200 of
-                        true ->
-                            file:change_mode(File, OrigMode bor 8#0200),
-                            [{File, OrigMode}];
-                        false -> []
-                end
-            end ],
+                || File <- rlx_file_utils:wildcard_paths([OutputDir ++ "/**/*.beam"]), 
+                    OrigFileMode <- begin
+                        {ok, #file_info{mode = OrigMode}} = file:read_file_info(File), 
+                        case OrigMode band 8#0200 =/= 8#0200 of
+                            true ->
+                                file:change_mode(File, OrigMode bor 8#0200),
+                                [{File, OrigMode}];
+                            false -> []
+                        end
+                    end
+                ],
             try beam_lib:strip_release(OutputDir) of
                 {ok, _} ->
                     {ok, State1};
