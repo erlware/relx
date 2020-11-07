@@ -695,7 +695,7 @@ cd "$ROOTDIR"
 
 # Check the first argument for instructions
 case "$1" in
-    daemon|daemon_boot)
+    start|daemon|daemon_boot)
         case "$1" in
             daemon)
                 shift
@@ -706,6 +706,15 @@ case "$1" in
                 shift
                 START_OPTION="console_boot"
                 HEART_OPTION="daemon_boot"
+                ;;
+            start)
+                # TODO, add here the right annoying message asking users to consider
+                # instead using systemd or some such other init system
+                echo "'start' has been deprecated, replaced by 'daemon' and will be removed in the short-term, please consult rebar3.org on why you should be"\
+                     "using 'foreground' and an init tool such as 'systemd'"
+                shift
+                START_OPTION="console"
+                HEART_OPTION="daemon"
                 ;;
         esac
 
@@ -795,7 +804,15 @@ case "$1" in
         fi
         ;;
 
-    daemon_attach)
+    daemon_attach|attach)
+        case "$1" in
+            attach)
+                # TODO, add here the right annoying message asking users to consider
+                # instead using systemd or some such other init system
+                echo "'attach' has been deprecated, replaced by 'daemon_attach' and will be removed in the short-term, please consult rebar3.org on why you should be"\
+                     "using 'foreground' and an init tool such as 'systemd'"
+                ;;
+        esac
         # Make sure a node IS running
         ping_or_exit
 
