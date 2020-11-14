@@ -119,8 +119,9 @@ load({check_for_undefined_functions, CheckForUndefinedFunctions}, {ok, State}) -
     {ok, rlx_state:check_for_undefined_functions(State, CheckForUndefinedFunctions)};
 load({include_erts, IncludeErts}, {ok, State}) ->
     {ok, rlx_state:include_erts(State, IncludeErts)};
-load({system_libs, SystemLibs}, {ok, State}) when is_boolean(SystemLibs) ;
-                                                  is_list(SystemLibs) ->
+load({system_libs, SystemLibs}, {ok, State}) when is_boolean(SystemLibs) ->
+    {ok, rlx_state:system_libs(State, SystemLibs)};
+load({system_libs, SystemLibs}, {ok, State}) when is_list(SystemLibs) ->
     case filelib:is_dir(SystemLibs) of
         true ->
             {ok, rlx_state:system_libs(State, SystemLibs)};

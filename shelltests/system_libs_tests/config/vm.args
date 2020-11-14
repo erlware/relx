@@ -1,0 +1,6 @@
+-sname system_libs_tests
+
+-setcookie system_libs_tests_cookie
+
++K true
++A30

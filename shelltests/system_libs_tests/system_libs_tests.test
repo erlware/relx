@@ -1,0 +1,31 @@
+$ TERM=dumb rebar3 release
+> /Release successfully assembled:/
+>= 0
+
+$ TERM=dumb rebar3 tar
+> /Release successfully assembled:/
+>= 0
+
+$ ls _build/default/rel/system_libs_tests/lib/kernel-7.1-test
+> /ebin/
+>= 0
+
+$ ls _build/default/rel/system_libs_tests/lib/stdlib-3.13.2-test
+> /ebin/
+>= 0
+
+$ TERM=dumb rebar3 as bad_system_libs release
+> /Application needed for release not found: kernel/
+>= 1
+
+$ TERM=dumb rebar3 as false_system_libs release
+> /Release successfully assembled:/
+>= 0
+
+$ ls _build/false_system_libs/rel/system_libs_tests/lib/kernel*
+>2 /cannot access/
+>= 2
+
+$ TERM=dumb rebar3 as false_system_libs tar
+> /Release successfully assembled:/
+>= 0
