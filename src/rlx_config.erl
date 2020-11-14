@@ -119,8 +119,14 @@ load({check_for_undefined_functions, CheckForUndefinedFunctions}, {ok, State}) -
     {ok, rlx_state:check_for_undefined_functions(State, CheckForUndefinedFunctions)};
 load({include_erts, IncludeErts}, {ok, State}) ->
     {ok, rlx_state:include_erts(State, IncludeErts)};
-load({system_libs, SystemLibs}, {ok, State}) ->
-    {ok, rlx_state:system_libs(State, SystemLibs)};
+load({system_libs, SystemLibs}, {ok, State}) when is_boolean(SystemLibs) ;
+                                                  is_list(SystemLibs) ->
+    case filelib:is_dir(SystemLibs) of
+        true ->
+            {ok, rlx_state:system_libs(State, SystemLibs)};
+        false ->
+            erlang:error(?RLX_ERROR({bad_system_libs, SystemLibs}))
+    end;
 load({overlay, Overlay}, {ok, State}) ->
     {ok, rlx_state:overlay(State, Overlay)};
 load({extended_start_script_hooks, ExtendedStartScriptHooks}, {ok, State}) ->
@@ -147,6 +153,9 @@ load(InvalidTerm, {ok, State}) ->
             {ok, State}
     end.
 
+format_error({bad_system_libs, SetSystemLibs}) ->
+    io_lib:format("Config value for system_libs must be a boolean or directory but found: ~p",
+                  [SetSystemLibs]);
 format_error({invalid_term, InvalidTerm}) ->
     io_lib:format("Unknown term found in relx configuration: ~p", [InvalidTerm]).
 

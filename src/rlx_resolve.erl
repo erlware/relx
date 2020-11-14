@@ -11,10 +11,10 @@ format_error({no_goals_specified, {RelName, RelVsn}}) ->
     io_lib:format("No applications configured to be included in release ~s-~s", [RelName, RelVsn]);
 format_error({release_erts_error, Dir}) ->
     io_lib:format("Unable to find erts in ~s", [Dir]);
+format_error({app_not_found, AppName, undefined}) ->
+    io_lib:format("Application needed for release not found: ~p", [AppName]);
 format_error({app_not_found, AppName, AppVsn}) ->
-    io_lib:format("Application needed for release not found: ~p-~s", [AppName, AppVsn]);
-format_error({app_not_found, AppName}) ->
-    io_lib:format("Application needed for release not found: ~p", [AppName]).
+    io_lib:format("Application needed for release not found: ~p-~s", [AppName, AppVsn]).
 
 solve_release(Release, State0) ->
     RelName = rlx_release:name(Release),
@@ -30,29 +30,45 @@ solve_release(Release, State0) ->
             erlang:error(?RLX_ERROR({no_goals_specified, {RelName, RelVsn}}));
         Goals ->
             LibDirs = rlx_state:lib_dirs(State1),
-            Pkgs = subset(Goals, AllApps, LibDirs),
+
+
+            {CheckCodeLibDirs, LibDirs1} =
+                case rlx_state:system_libs(State0) of
+                    B when is_boolean(B) ->
+                        %% even if we don't include system libs (`system_libs' being false)
+                        %% here we still want to check for the system apps in the code path.
+                        %% so return `true' for `CheckCodeLibDirs'
+                        {true, LibDirs};
+                    SystemLibs ->
+                        ?log_debug("System libs dir to search for apps ~ts", [SystemLibs]),
+                        {false, [SystemLibs | LibDirs]}
+                end,
+
+            Pkgs = subset(Goals, AllApps, LibDirs1, CheckCodeLibDirs),
             Pkgs1 = remove_exclude_apps(Pkgs, State1),
             set_resolved(Release, Pkgs1, State1)
     end.
 
 %% find the app_info records for each application and its deps needed for the release
-subset(Apps, World, LibDirs) ->
-    subset(Apps, World, sets:new(), LibDirs, []).
+subset(Apps, World, LibDirs, CheckCodeLibDirs) ->
+    subset(Apps, World, sets:new(), LibDirs, CheckCodeLibDirs, []).
 
-subset([], _World, _Seen, _LibDirs, Acc) ->
+subset([], _World, _Seen, _LibDirs, _CheckCodeLibDirs, Acc) ->
     Acc;
-subset([Goal | Rest], World, Seen, LibDirs, Acc) ->
+subset([Goal | Rest], World, Seen, LibDirs, CheckCodeLibDirs, Acc) ->
     {Name, Vsn} = name_version(Goal),
     case sets:is_element(Name, Seen) of
         true ->
-            subset(Rest, World, Seen, LibDirs, Acc);
+            subset(Rest, World, Seen, LibDirs, CheckCodeLibDirs, Acc);
         _ ->
             AppInfo=#{applications := Applications,
-                      included_applications := IncludedApplications} = find_app(Name, Vsn, World, LibDirs),
+                      included_applications := IncludedApplications} =
+                find_app(Name, Vsn, World, LibDirs, CheckCodeLibDirs),
             subset(Rest ++ Applications ++ IncludedApplications,
                    World,
                    sets:add_element(Name, Seen),
                    LibDirs,
+                   CheckCodeLibDirs,
                    Acc ++ [AppInfo])
     end.
 
@@ -105,7 +121,7 @@ find_and_remove(ExcludeName, [H | Rest]) ->
 %% directories is searched for the application under `<dir>/*/ebin/Name.app'.
 %% Lastly, if the application still isn't found then the code path is checked
 %% using `code:lib_dir'.
-find_app(Name, Vsn, Apps, LibDirs) ->
+find_app(Name, Vsn, Apps, LibDirs, CheckCodeLibDirs) ->
     case maps:find(Name, Apps) of
         {ok, AppInfo} ->
             %% verify the app is the version we want and if not try
@@ -114,21 +130,26 @@ find_app(Name, Vsn, Apps, LibDirs) ->
                 true ->
                     AppInfo;
                 false ->
-                    search_for_app(Name, Vsn, LibDirs)
+                    search_for_app(Name, Vsn, LibDirs, CheckCodeLibDirs)
             end;
         error ->
-            search_for_app(Name, Vsn, LibDirs)
+            search_for_app(Name, Vsn, LibDirs, CheckCodeLibDirs)
     end.
 
-search_for_app(Name, Vsn, LibDirs) ->
+search_for_app(Name, Vsn, LibDirs, CheckCodeLibDirs) ->
     case find_app_in_dir(Name, Vsn, LibDirs) of
-        not_found ->
+        not_found when CheckCodeLibDirs =:= true ->
             find_app_in_code_path(Name, Vsn);
+        not_found when CheckCodeLibDirs =:= false ->
+            %% app not found in any lib dir we are configured to search
+            %% and user set a custom `system_libs' directory so we do
+            %% not look in `code:lib_dir'
+            erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}));
         AppInfo ->
             case check_app(Name, Vsn, AppInfo) of
                 true ->
                     AppInfo;
-                false ->
+                false when CheckCodeLibDirs =:= true  ->
                     find_app_in_code_path(Name, Vsn)
             end
     end.
@@ -154,13 +175,13 @@ find_app_in_dir(Name, Vsn, [Dir | Rest]) ->
 find_app_in_code_path(Name, Vsn) ->
     case code:lib_dir(Name) of
         {error, bad_name} ->
-            erlang:error(?RLX_ERROR({app_not_found, Name}));
+            erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}));
         Dir ->
             case to_app(Name, Vsn, filename:join([Dir, "ebin", [Name, ".app"]])) of
                 {true, AppInfo} ->
                     AppInfo;
                 false ->
-                    erlang:error(?RLX_ERROR({app_not_found, Name}))
+                    erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}))
             end
     end.
 
