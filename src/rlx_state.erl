@@ -118,7 +118,7 @@
                   realized_releases :: releases(),
                   include_src :: boolean() | undefined,
                   include_erts=false :: boolean() | file:filename(),
-                  system_libs=true :: boolean(),
+                  system_libs=true :: boolean() | file:filename(),
                   upfrom :: string() | binary() | undefined,
                   warnings_as_errors=false :: boolean(),
                   src_tests=true :: boolean(),
@@ -403,11 +403,11 @@ include_src(#state_t{include_src=IncludeSrc}) ->
 include_src(S, IncludeSrc) ->
     S#state_t{include_src=IncludeSrc}.
 
--spec system_libs(t()) -> boolean() | undefined.
+-spec system_libs(t()) -> boolean() | file:filename() | undefined.
 system_libs(#state_t{system_libs=SystemLibs}) ->
     SystemLibs.
 
--spec system_libs(t(), boolean()) -> t().
+-spec system_libs(t(), boolean() | file:filename()) -> t().
 system_libs(S, SystemLibs) ->
     S#state_t{system_libs=SystemLibs}.
 

@@ -104,11 +104,11 @@ maybe_extra_files(ExtraFiles, _Release, _OutputDir, State) ->
 
 maybe_system_libs(_ExtraFiles, _Release, _OutputDir, State) ->
     case rlx_state:system_libs(State) of
-        true ->
-            [];
         false ->
             [{variables, [{"SYSTEM_LIB_DIR", code:lib_dir()}]},
-             {var_tar, omit}]
+             {var_tar, omit}];
+        _SystemLibDir ->
+            []
     end.
 
 %% additional files to add to the release tarball that
