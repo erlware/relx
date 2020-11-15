@@ -1,0 +1,6 @@
+-sname force_nodetool_tests
+
+-setcookie force_nodetool_tests_cookie
+
++K true
++A30

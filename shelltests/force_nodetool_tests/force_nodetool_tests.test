@@ -1,0 +1,24 @@
+$ TERM=dumb rebar3 release
+> /Release successfully assembled:/
+>= 0
+
+$ ERL_DIST_PORT=8001 ./_build/default/rel/force_nodetool_tests/bin/force_nodetool_tests daemon
+
+$ sleep 1
+>= 0
+
+# force nodetool so that stdout is printed from rpc calls
+$ USE_NODETOOL=true ./_build/default/rel/force_nodetool_tests/bin/force_nodetool_tests rpc io format "[\"hello\\n\"]"
+>
+hello
+ok
+>= 0
+
+# using erl_call instead of nodetool means no stdout from the node
+$ ./_build/default/rel/force_nodetool_tests/bin/force_nodetool_tests rpc io format "[\"hello\\n\"]"
+>
+ok
+>= 0
+
+$ ./_build/default/rel/force_nodetool_tests/bin/force_nodetool_tests stop
+>= 0
