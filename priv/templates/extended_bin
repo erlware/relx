@@ -213,14 +213,20 @@ find_erts_dir() {
 }
 
 find_erl_call() {
-    # only OTP-23 and above have erl_call in the erts bin directory
-    # and only those versions have the features and bug fixes needed
-    # to work properly with this script
-    __erl_call="$ERTS_DIR/bin/erl_call"
-    if [ -f "$__erl_call" ]; then
-        ERL_RPC="$__erl_call";
-    else
+    # users who depend on stdout when running rpc calls must still use nodetool
+    # so we have an overload option to force use of nodetool instead of erl_call
+    if [ "$USE_NODETOOL" ]; then
         ERL_RPC=relx_nodetool
+    else
+        # only OTP-23 and above have erl_call in the erts bin directory
+        # and only those versions have the features and bug fixes needed
+        # to work properly with this script
+        __erl_call="$ERTS_DIR/bin/erl_call"
+        if [ -f "$__erl_call" ]; then
+            ERL_RPC="$__erl_call";
+        else
+            ERL_RPC=relx_nodetool
+        fi
     fi
 }
 
