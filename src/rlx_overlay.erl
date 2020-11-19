@@ -120,8 +120,11 @@ check_overlay_inclusion(State, RelativeRoot, Terms) ->
 -spec check_overlay_inclusion(rlx_state:t(), string(), proplists:proplist(), proplists:proplist()) ->
                               proplists:proplist().
 check_overlay_inclusion(State, RelativeRoot, [File|T], Terms) when is_list(File) ->
-    IncludedTerms = merge_overlay_vars(State, [filename:join(RelativeRoot, File)]),
-    check_overlay_inclusion(State, RelativeRoot, T, Terms ++ IncludedTerms);
+    %% merge terms from the file into the current terms of the system
+    %% passing the Terms ensures duplicates delete the existing pair
+    %% while keeping the order of terms the same, as is done in `merge_overlay_vars'
+    IncludedTerms = merge_overlay_vars(State, Terms, [filename:join(RelativeRoot, File)]),
+    check_overlay_inclusion(State, RelativeRoot, T, IncludedTerms);
 check_overlay_inclusion(State, RelativeRoot, [Tuple|T], Terms) ->
     check_overlay_inclusion(State, RelativeRoot, T, Terms ++ [Tuple]);
 check_overlay_inclusion(_State, _RelativeRoot, [], Terms) ->
@@ -130,6 +133,9 @@ check_overlay_inclusion(_State, _RelativeRoot, [], Terms) ->
 -spec merge_overlay_vars(rlx_state:t(), [file:name()]) ->
                                 proplists:proplist().
 merge_overlay_vars(State, FileNames) ->
+    merge_overlay_vars(State, [], FileNames).
+
+merge_overlay_vars(State, Terms0, FileNames) ->
     RelativeRoot = get_relative_root(State),
     lists:foldl(fun(FileName, Acc) when is_list(FileName) ->
                         RelativePath = filename:join(RelativeRoot, iolist_to_binary(FileName)),
@@ -150,7 +156,7 @@ merge_overlay_vars(State, FileNames) ->
                         end;
                    (Var, Acc) ->
                         lists:keystore(element(1, Var), 1, Acc, Var)
-                end, [], FileNames).
+                end, Terms0, FileNames).
 
 -spec render_overlay_vars(proplists:proplist(), proplists:proplist(),
                           proplists:proplist()) ->

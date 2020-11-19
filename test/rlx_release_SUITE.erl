@@ -410,7 +410,7 @@ overlay_release(Config) ->
     TestFileFull = filename:join(TestDirFull, TestFile),
     SecondTestDir = "second_test_dir",
     RelxConfig = [{overlay_vars, [{var_list_dir, "non-file-variable-list"},
-                                  OverlayVars1, OverlayVars2, OverlayVars4]},
+                                  OverlayVars1, OverlayVars2]},
                   {overlay, [{mkdir, "{{target_dir}}/fooo"},
                              {mkdir, "{{target_dir}}/{{var_list_dir}}"},
                              {copy, "{{goal_app_1}}/priv/subdir/foo.txt",
@@ -440,18 +440,23 @@ overlay_release(Config) ->
                                             {yahoo2, [{foo, "bar"}]},
                                             {foo_yahoo, "foo_{{yahoo}}"},
                                             {foo_dir, "foodir"},
+                                            {prop2, 1},
                                             {tpl_var, "defined in vars1"},
                                             {api_caller_var, "{{api_caller_var}}"}]),
 
+    %% regression test for #827
+    %% OverlayVars4 must take precedence over OverlayVars3, meaning prop2 should equal 2 not 3
     VarsFile2 = filename:join([LibDir1, "vars2.config"]),
     rlx_test_utils:write_config(VarsFile2, [{google, "yahoo"},
                                             {yahoo2, "foo"},
                                             {tpl_arg, "a template value"},
                                             {tpl_var, "Redefined in vars2 with {{tpl_arg}}"},
-                                            OverlayVars3]),
+                                            OverlayVars3,
+                                            OverlayVars4]),
 
     VarsFile3 = filename:join([LibDir1, "vars3.config"]),
     rlx_test_utils:write_config(VarsFile3, [{google, "yahoo"},
+                                            {prop2, 3},
                                             {yahoo4, "{{yahoo}}/{{yahoo2}}4"}]),
 
     VarsFile4 = filename:join([LibDir1, "vars4.config"]),
@@ -465,8 +470,6 @@ overlay_release(Config) ->
     ok = file:write_file(TemplateFile, rlx_test_utils:test_template_contents()),
     {ok, FileInfo} = file:read_file_info(TemplateFile),
     ok = file:write_file_info(TemplateFile, FileInfo#file_info{mode=8#00777}),
-
-
 
     ApiCallerVarValue = "api-caller-var",
     ApiCallerReleaseNameValue = "release-var-conflict",
