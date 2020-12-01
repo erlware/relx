@@ -37,7 +37,8 @@ groups() ->
       [make_release, make_config_release, make_release_semver, overlay_release,
        make_extend_release, make_extend_release_versioned, make_extend_config_release,
        make_scriptless_release, make_app_type_none_release, include_powershell,
-       include_unix_powershell_win32,
+       include_unix_powershell_win32, make_release_with_default_sys_config_vm_args_src,
+       make_release_with_default_sys_config_vm_args,
        make_not_included_nodetool_release, make_src_release, make_excluded_src_release,
        make_exclude_modules_release, make_release_with_sys_config_vm_args_src,
        make_exclude_app_release, make_overridden_release, make_goalless_release,
@@ -982,6 +983,76 @@ make_release_with_sys_config_vm_args_src(Config) ->
             ?assert(not filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
                                                        "vm.args"])))
     end.
+
+make_release_with_default_sys_config_vm_args_src(Config) ->
+    LibDir1 = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+    RootDir = filename:join(LibDir1, "make_release_with_default_sys_config_vm_args_src"),
+
+    %% the .src versions should take precedence and the others are not copied
+    SysConfig = filename:join([RootDir, "config", "sys.config"]),
+    rlx_test_utils:write_config(SysConfig, [{this_is_a_test, "yup it is"}]),
+
+    SysConfigSrc = filename:join([RootDir, "config", "sys.config.src"]),
+    rlx_test_utils:write_config(SysConfigSrc, [{this_is_a_test, "yup it is"}]),
+
+    VmArgs = filename:join([RootDir, "config", "vm.args"]),
+    rlx_file_utils:write(VmArgs, ""),
+
+    VmArgsSrc = filename:join([RootDir, "config", "vm.args.src"]),
+    rlx_file_utils:write(VmArgsSrc, ""),
+
+    RelxConfig = [{dev_mode, false},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
+
+    {ok, State} = relx:build_release(foo, [{root_dir, RootDir}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
+
+    [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
+
+    ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                           "sys.config.src"]))),
+    ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                           "vm.args.src"]))),
+
+    %% check that sys.config and vm.args don't exist because .src was used instead
+    ?assert(not filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                               "sys.config"]))),
+    ?assert(not filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                               "vm.args"]))),
+    ok.
+
+make_release_with_default_sys_config_vm_args(Config) ->
+    LibDir1 = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+    RootDir = filename:join(LibDir1, "make_release_with_default_sys_config_vm_args"),
+
+    %% no .src versions of the files means these get used
+    SysConfig = filename:join([RootDir, "config", "sys.config"]),
+    rlx_test_utils:write_config(SysConfig, [{this_is_a_test, "yup it is"}]),
+
+    VmArgs = filename:join([RootDir, "config", "vm.args"]),
+    rlx_file_utils:write(VmArgs, ""),
+
+    RelxConfig = [{mode, prod},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
+
+    {ok, State} = relx:build_release(foo, [{root_dir, RootDir}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
+
+    [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
+
+    ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                           "sys.config"]))),
+    ?assert(filelib:is_file(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                           "vm.args"]))),
+    ok.
 
 make_prod_mode_release(Config) ->
     LibDir1 = proplists:get_value(lib_dir, Config),

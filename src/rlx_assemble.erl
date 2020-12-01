@@ -472,17 +472,42 @@ generate_start_erl_data_file(Release, ReleasesDir) ->
 %% @doc copy vm.args or generate one to releases/VSN/vm.args
 -spec copy_or_generate_vmargs_file(rlx_state:t(), rlx_release:t(), file:name()) -> ok.
 copy_or_generate_vmargs_file(State, Release, RelDir) ->
+    RootDir = rlx_state:root_dir(State),
+
+    %% default paths to check for the args file
+    DefaultVmArgsSrcPath = filename:join([RootDir, "config", "vm.args.src"]),
+    DefaultVmArgsPath = filename:join([RootDir, "config", "vm.args"]),
+
+    %% paths to copy to in the release
     RelVmargsPath = filename:join([RelDir, "vm.args"]),
     RelVmargsSrcPath = filename:join([RelDir, "vm.args.src"]),
-    case rlx_state:vm_args_src(State) of
+
+    VmArgsSrc = rlx_state:vm_args_src(State),
+    VmArgs = rlx_state:vm_args(State),
+
+    case VmArgsSrc of
         undefined ->
-            case rlx_state:vm_args(State) of
+            case VmArgs of
                 false ->
+                    %% when vm_args_src is not set and vm_args is false, do nothing
                     ok;
                 undefined ->
-                    RelName = erlang:atom_to_list(rlx_release:name(Release)),
-                    unless_exists_write_default(RelVmargsPath, vm_args_file(RelName));
+                    %% if neither is defined but the files exist at the default paths, include those
+                    case filelib:is_regular(DefaultVmArgsSrcPath) of
+                        false ->
+                            case filelib:is_regular(DefaultVmArgsPath) of
+                                false ->
+                                    %% if neither is defined and neither exists then create a default vm.args
+                                    RelName = erlang:atom_to_list(rlx_release:name(Release)),
+                                    unless_exists_write_default(RelVmargsPath, vm_args_file(RelName));
+                                true ->
+                                    copy_or_symlink_config_file(State, DefaultVmArgsPath, RelVmargsPath)
+                            end;
+                        true ->
+                            copy_or_symlink_config_file(State, DefaultVmArgsSrcPath, RelVmargsSrcPath)
+                    end;
                 ArgsPath ->
+                    %% include the vm_args file if it exists
                     case filelib:is_regular(ArgsPath) of
                         false ->
                             erlang:error(?RLX_ERROR({vmargs_does_not_exist, ArgsPath}));
@@ -492,7 +517,7 @@ copy_or_generate_vmargs_file(State, Release, RelDir) ->
             end;
         ArgsSrcPath ->
             %% print a warning if vm_args is also set
-            case rlx_state:vm_args(State) of
+            case VmArgs of
                 undefined ->
                     ok;
                 _->
