@@ -72,6 +72,8 @@ init_per_testcase(_, Config) ->
     [{out_dir, OutputDir} | Config].
 
 end_per_testcase(_, _) ->
+    %% prevents failures in tests when xref fails to stop
+    application:stop(xref),
     ok.
 
 make_release(Config) ->
