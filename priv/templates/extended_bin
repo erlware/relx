@@ -301,7 +301,8 @@ relx_rem_sh() {
          -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME" \
          -dist_listen false \
-         $MAYBE_DIST_ARGS
+         $DIST_ARGS \
+         $EXTRA_DIST_ARGS
 }
 
 erl_rpc() {
@@ -368,13 +369,13 @@ relx_nodetool() {
     nodetool_id="maint$(relx_gen_id)-${NAME}"
 
     if [ -z "${START_EPMD}" ]; then
-        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
+        ERL_FLAGS="${ERL_FLAGS} ${DIST_ARGS} ${EXTRA_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
                  "$ERTS_DIR/bin/escript" \
                  "$ROOTDIR/bin/nodetool" \
                  "$NAME_TYPE" "$NAME" \
                  "$command" "$@"
     else
-        ERL_FLAGS="${ERL_FLAGS} ${MAYBE_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
+        ERL_FLAGS="${ERL_FLAGS} ${DIST_ARGS} ${EXTRA_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
                  "$ERTS_DIR/bin/escript" \
                  "$ROOTDIR/bin/nodetool" \
                  $START_EPMD "$NAME_TYPE" "$NAME" "$command" "$@"
@@ -639,30 +640,30 @@ NAME_TYPE="$(echo "$NAME_ARG" | awk '{print $1}')"
 NAME="$(echo "$NAME_ARG" | awk '{print $2}')"
 
 # Extract dist arguments
-MAYBE_DIST_ARGS=""
+DIST_ARGS=""
 PROTO_DIST="$(grep '^-proto_dist' "$VMARGS_PATH" || true)"
 if [ "$PROTO_DIST" ]; then
-    MAYBE_DIST_ARGS="${PROTO_DIST}"
+    DIST_ARGS="${PROTO_DIST}"
 fi
 START_EPMD="$(grep '^-start_epmd' "$VMARGS_PATH" || true)"
 if [ "$START_EPMD" ]; then
-    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} ${START_EPMD}"
+    DIST_ARGS="${DIST_ARGS} ${START_EPMD}"
 fi
 EPMD_MODULE="$(grep '^-epmd_module' "$VMARGS_PATH" || true)"
 if [ "$EPMD_MODULE" ]; then
-    MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} ${EPMD_MODULE}"
+    DIST_ARGS="${DIST_ARGS} ${EPMD_MODULE}"
 fi
 
 if [ "$ERL_DIST_PORT" ]; then
     if [  "11.1" = "$(printf "%s\n11.1" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
         # unless set by the user, set start_epmd to false when ERL_DIST_PORT is used
         if [ ! "$START_EPMD" ]; then
-            MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -erl_epmd_port ${ERL_DIST_PORT} -start_epmd false"
+            EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT} -start_epmd false"
         else
-            MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -erl_epmd_port ${ERL_DIST_PORT}"
+            EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT}"
         fi
     else
-        MAYBE_DIST_ARGS="${MAYBE_DIST_ARGS} -kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
+        EXTRA_DIST_ARGS="-kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
     fi
 fi
 
@@ -924,7 +925,7 @@ case "$1" in
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" \
-            $MAYBE_DIST_ARGS -- "$@"
+            $EXTRA_DIST_ARGS -- "$@"
         echo "Root: $ROOTDIR"
 
         # Log the startup
@@ -940,7 +941,7 @@ case "$1" in
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" \
-            $MAYBE_DIST_ARGS -- "$@"
+            $EXTRA_DIST_ARGS -- "$@"
         # exec will replace the current image and nothing else gets
         # executed from this point on, this explains the absence
         # of the pre start hook
