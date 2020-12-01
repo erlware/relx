@@ -16,7 +16,7 @@ Documentation
 
 `relx` is a library used by [rebar3](https://www.rebar3.org/). Documentation on
 using `rebar3` for building releases with `relx` can be found on
-[rebar3.org](https://www.rebar3.org/docs/releases).
+[rebar3.org](https://rebar3.org/docs/deployment/releases/).
 
 Also see [Adopting Erlang's Releases
 chapter](https://adoptingerlang.org/docs/production/releases/). 
