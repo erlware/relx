@@ -181,6 +181,7 @@ make_extend_release(Config) ->
                     goal_app_2]},
                   {release, {foo_test, "0.0.1", {extend, foo}},
                    [goal_app_2]},
+                  {check_for_undefined_functions, false},
                   {lib_dirs, [filename:join(LibDir1, "*")]}],
 
     {ok, State} = relx:build_release(foo_test, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
