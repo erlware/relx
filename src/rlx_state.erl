@@ -107,9 +107,9 @@
                   config_file=[] :: file:filename() | undefined,
                   available_apps=#{} :: #{atom() => rlx_app_info:t()},
                   vm_args :: file:filename() | false | undefined,
-                  vm_args_src :: file:filename() | undefined,
+                  vm_args_src :: file:filename() | false | undefined,
                   sys_config :: file:filename() | false | undefined,
-                  sys_config_src :: file:filename() | undefined,
+                  sys_config_src :: file:filename() | false | undefined,
                   overrides=[] :: [{AppName::atom(), Directory::file:filename()}],
                   exclude_apps=[] :: [AppName::atom()],
                   exclude_modules=[] :: [{App::atom(), [Module::atom()]}],
@@ -229,11 +229,11 @@ vm_args(#state_t{vm_args=VmArgs}) ->
 vm_args(State, VmArgs) ->
     State#state_t{vm_args=VmArgs}.
 
--spec vm_args_src(t()) -> file:filename() | undefined.
+-spec vm_args_src(t()) -> file:filename() | false | undefined.
 vm_args_src(#state_t{vm_args_src=VmArgs}) ->
     VmArgs.
 
--spec vm_args_src(t(), undefined | file:filename()) -> t().
+-spec vm_args_src(t(), undefined | false | file:filename()) -> t().
 vm_args_src(State, VmArgs) ->
     State#state_t{vm_args_src=VmArgs}.
 
@@ -241,15 +241,15 @@ vm_args_src(State, VmArgs) ->
 sys_config(#state_t{sys_config=SysConfig}) ->
     SysConfig.
 
--spec sys_config(t(), false | file:filename()) -> t().
+-spec sys_config(t(), false | undefined | file:filename()) -> t().
 sys_config(State, SysConfig) ->
     State#state_t{sys_config=SysConfig}.
 
--spec sys_config_src(t()) -> file:filename() | undefined.
+-spec sys_config_src(t()) -> file:filename() | false | undefined.
 sys_config_src(#state_t{sys_config_src=SysConfigSrc}) ->
     SysConfigSrc.
 
--spec sys_config_src(t(), file:filename() | undefined) -> t().
+-spec sys_config_src(t(), file:filename() | false | undefined) -> t().
 sys_config_src(State, SysConfigSrc) ->
     State#state_t{sys_config_src=SysConfigSrc}.
 

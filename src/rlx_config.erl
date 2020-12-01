@@ -86,14 +86,26 @@ load({release, {RelName, Vsn}, Applications, Config}, {ok, State0}) ->
     {ok, rlx_state:add_configured_release(State0, Release2)};
 load({vm_args, false}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, false)};
+load({vm_args, undefined}, {ok, State}) ->
+    {ok, rlx_state:vm_args(State, undefined)};
 load({vm_args, VmArgs}, {ok, State}) ->
     {ok, rlx_state:vm_args(State, filename:absname(VmArgs))};
+load({vm_args_src, false}, {ok, State}) ->
+    {ok, rlx_state:vm_args_src(State, false)};
+load({vm_args_src, undefined}, {ok, State}) ->
+    {ok, rlx_state:vm_args_src(State, undefined)};
 load({vm_args_src, VmArgs}, {ok, State}) ->
     {ok, rlx_state:vm_args_src(State, filename:absname(VmArgs))};
 load({sys_config, false}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, false)};
+load({sys_config, undefined}, {ok, State}) ->
+    {ok, rlx_state:sys_config(State, undefined)};
 load({sys_config, SysConfig}, {ok, State}) ->
     {ok, rlx_state:sys_config(State, filename:absname(SysConfig))};
+load({sys_config_src, false}, {ok, State}) ->
+    {ok, rlx_state:sys_config_src(State, false)};
+load({sys_config_src, undefined}, {ok, State}) ->
+    {ok, rlx_state:sys_config_src(State, undefined)};
 load({sys_config_src, SysConfigSrc}, {ok, State}) ->
     {ok, rlx_state:sys_config_src(State, filename:absname(SysConfigSrc))};
 load({root_dir, Root}, {ok, State}) ->
