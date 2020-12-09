@@ -252,6 +252,7 @@ ping_or_exit() {
 relx_get_nodename() {
     id="longname$(relx_gen_id)-${NAME}"
     if [ -z "$COOKIE" ]; then
+        # shellcheck disable=SC2086
         "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
                       -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
@@ -261,6 +262,7 @@ relx_get_nodename() {
                       -noshell "${NAME_TYPE}" "$id"
     else
         # running with setcookie prevents a ~/.erlang.cookie from being created
+        # shellcheck disable=SC2086
         "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
                       -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
@@ -375,6 +377,7 @@ relx_nodetool() {
                  "$NAME_TYPE" "$NAME" \
                  "$command" "$@"
     else
+        # shellcheck disable=SC2086
         ERL_FLAGS="${ERL_FLAGS} ${DIST_ARGS} ${EXTRA_DIST_ARGS} ${NAME_TYPE} $nodetool_id -setcookie ${COOKIE}" \
                  "$ERTS_DIR/bin/escript" \
                  "$ROOTDIR/bin/nodetool" \

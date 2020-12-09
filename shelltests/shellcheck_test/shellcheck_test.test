@@ -1,0 +1,6 @@
+$ TERM=dumb rebar3 release
+> /Release successfully assembled:/
+>= 0
+
+$ shellcheck _build/default/rel/shellcheck_test/bin/shellcheck_test
+>= 0

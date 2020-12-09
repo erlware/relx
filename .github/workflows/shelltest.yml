@@ -36,5 +36,8 @@ jobs:
     - name: Install shelltestrunner
       run: cabal install shelltestrunner-1.9
 
+    - name: Install shellcheck
+      run: cabal install ShellCheck
+
     - name: Run shell tests
       run: shelltests/run_tests.sh
