@@ -283,10 +283,10 @@ relx_rem_sh() {
     # for long names with 23.1 (erts 11.1) and above.
     if [ "${NAME_TYPE}" = "-sname" ] && [  "11.0" = "$(printf "%s\n11.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
 
-        remote_nodename="${NAME_TYPE} undefined"
+        remote_nodename="${NAME_TYPE} undefined@${RELX_HOSTNAME}"
     # if the name type is longnames then make sure this is erts 11.1+
     elif [ "${NAME_TYPE}" = "-name" ] && [  "11.1" = "$(printf "%s\n11.1" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
-        remote_nodename="${NAME_TYPE} undefined"
+        remote_nodename="${NAME_TYPE} undefined@${RELX_HOSTNAME}"
     else
         # Generate a unique id used to allow multiple remsh to the same node transparently
         remote_nodename="${NAME_TYPE} remsh$(relx_gen_id)-${NAME}"
@@ -699,6 +699,9 @@ esac
 
 # Export the variable so that it's available in the 'eval' calls
 export NAME
+
+# create a variable of just the hostname part of the nodename
+RELX_HOSTNAME=$(echo "${NAME}" | cut -d'@' -f2)
 
 test -z "$PIPE_DIR" && PIPE_BASE_DIR='/tmp/erl_pipes/'
 PIPE_DIR="${PIPE_DIR:-/tmp/erl_pipes/$NAME/}"
