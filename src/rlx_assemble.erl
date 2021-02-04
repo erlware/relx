@@ -7,8 +7,6 @@
 -include("rlx_log.hrl").
 -include_lib("kernel/include/file.hrl").
 
--define(XREF_SERVER, rlx_xref).
-
 do(Release, State) ->
     RelName = rlx_release:name(Release),
     ?log_info("Assembling release ~p-~s...", [RelName, rlx_release:vsn(Release)]),
@@ -708,50 +706,66 @@ maybe_check_for_undefined_functions(State, Release) ->
     end.
 
 maybe_check_for_undefined_functions_(State, Release) ->
-    {ok, _} = xref:start(?XREF_SERVER, [{xref_mode, functions}]),
+    Rf = rlx_release:name(Release),
+    try xref:start(Rf, [{xref_mode, functions}]) of
+        {ok, Pid} when is_pid(Pid) ->
+            % Link to ensure internal errors don't go unnoticed.
+            link(Pid),
 
-    %% for every app in the release add it to the xref apps to be analyzed if
-    %% it is a project app as specified by rebar3.
-    add_project_apps_to_xref(rlx_release:app_specs(Release), State),
+            %% for every app in the release add it to the xref apps to be 
+            %% analyzed if it is a project app as specified by rebar3.
+            add_project_apps_to_xref(Rf, rlx_release:app_specs(Release), State),
 
-    %% without adding the erts application there will be warnings about missing
-    %% functions from the preloaded modules even though they are in the runtime.
-    ErtsApp = code:lib_dir(erts, ebin),
+            %% without adding the erts application there will be warnings about 
+            %% missing functions from the preloaded modules even though they 
+            %% are in the runtime.
+            ErtsApp = code:lib_dir(erts, ebin),
 
-    %% xref library path is what is searched for functions used by the project apps.
-    %% we only add applications depended on by the release so that we catch
-    %% modules not included in the release to warn the user about.
-    CodePath = [ErtsApp | [filename:join(rlx_app_info:dir(App), "ebin") ||
-                              App <- rlx_release:applications(Release)]],
-    _ = xref:set_library_path(?XREF_SERVER, CodePath),
+            %% xref library path is what is searched for functions used by the 
+            %% project apps. 
+            %% we only add applications depended on by the release so that we
+            %% catch modules not included in the release to warn the user about.
+            CodePath = 
+                [ErtsApp | [filename:join(rlx_app_info:dir(App), "ebin") 
+                    || App <- rlx_release:applications(Release)]],
+            _ = xref:set_library_path(Rf, CodePath),
 
-    %% check for undefined function calls from project apps in the release
-    case xref:analyze(?XREF_SERVER, undefined_function_calls) of
-        {ok, Warnings} ->
-            format_xref_warning(Warnings);
-        {error, _} = Error ->
-            ?log_warn("Error running xref analyze: ~s", [xref:format_error(Error)])
-    end,
+            %% check for undefined function calls from project apps in the 
+            %% release
+            case xref:analyze(Rf, undefined_function_calls) of
+                {ok, Warnings} ->
+                    format_xref_warning(Warnings);
+                {error, _} = Error ->
+                    ?log_warn(
+                        "Error running xref analyze: ~s", 
+                        [xref:format_error(Error)])
+            end
+    after
+        %% Even if the code crashes above, always ensure the xref server is 
+        %% stopped.
+        stopped = xref:stop(Rf)
+    end.
 
-    xref:stop(?XREF_SERVER).
-add_project_apps_to_xref([], _) ->
+add_project_apps_to_xref(_Rf, [], _) ->
     ok;
-add_project_apps_to_xref([AppSpec | Rest], State) ->
+add_project_apps_to_xref(Rf, [AppSpec | Rest], State) ->
     case maps:find(element(1, AppSpec), rlx_state:available_apps(State)) of
         {ok, App=#{app_type := project}} ->
-            case xref:add_application(?XREF_SERVER,
-                                      rlx_app_info:dir(App),
-                                      [{name, rlx_app_info:name(App)}, {warnings, false}]) of
+            case xref:add_application(
+                    Rf,
+                    rlx_app_info:dir(App),
+                    [{name, rlx_app_info:name(App)}, {warnings, false}]) 
+            of
                 {ok, _} ->
                     ok;
                 {error, _} = Error ->
                     ?log_warn("Error adding application ~s to xref context: ~s",
                               [rlx_app_info:name(App), xref:format_error(Error)])
             end;
-        _ ->
+        error ->
             ok
     end,
-    add_project_apps_to_xref(Rest, State).
+    add_project_apps_to_xref(Rf, Rest, State).
 
 format_xref_warning([]) ->
     ok;
