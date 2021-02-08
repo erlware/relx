@@ -936,7 +936,12 @@ case "$1" in
 
         # Log the startup
         echo "$RELEASE_ROOT_DIR"
-        logger -t "${REL_NAME}[$$]" "Starting up"
+        if ! command -v logger &> /dev/null
+        then
+            echo "${REL_NAME}[$$] Starting up"
+        else
+            logger -t "${REL_NAME}[$$]" "Starting up"
+        fi
 
         relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
