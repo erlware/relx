@@ -7,6 +7,11 @@ set rel_vsn={{ rel_vsn }}
 set erts_vsn={{ erts_vsn }}
 set erl_opts={{ erl_opts }}
 
+:: export these to match mix release environment variables
+set RELEASE_NAME={{ rel_name }}
+set RELEASE_VSN={{ rel_vsn }}
+set RELEASE_PROG=%~nx0
+
 :: Set the root release directory based on the location of this batch file
 set script_dir=%~dp0
 for %%A in ("%script_dir%\..") do (

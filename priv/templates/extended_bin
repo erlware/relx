@@ -34,6 +34,12 @@ RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 # Make the value available to variable substitution calls below
 export REL_NAME="{{ rel_name }}"
 REL_VSN="{{ rel_vsn }}"
+
+# export these to match mix release environment variables
+export RELEASE_NAME="{{ rel_name }}"
+export RELEASE_VSN="{{ rel_vsn }}"
+export RELEASE_PROG="${SCRIPT}"
+
 ERTS_VSN="{{ erts_vsn }}"
 REL_DIR="$RELEASE_ROOT_DIR/releases/$REL_VSN"
 RUNNER_LOG_DIR="${RUNNER_LOG_DIR:-$RELEASE_ROOT_DIR/log}"
