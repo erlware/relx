@@ -50,6 +50,17 @@ main(Args) ->
                         {badrpc, Reason} ->
                             io:format("RPC to ~p failed: ~p~n", [TargetNode, Reason]),
                             halt(1);
+                        rpc_ok ->
+                            %% code doesn't want any output
+                            ok;
+                        {rpc_error, Code} when is_integer(Code) ->
+                            %% code failed, halt with a supplied code
+                            halt(Code);
+                        {rpc_error, Code, Output} when is_integer(Code) ->
+                            %% code failed, halt with a supplied code
+                            %% and log output to stderr
+                            io:format(standard_error, "~p~n", [Output]),
+                            halt(Code);
                         Other ->
                             io:format("~p~n", [Other])
                     end;
