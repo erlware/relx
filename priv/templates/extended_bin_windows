@@ -21,6 +21,11 @@ set rel_vsn={{ rel_vsn }}
 set erts_vsn={{ erts_vsn }}
 set erl_opts={{ erl_opts }}
 
+:: export these to match mix release environment variables
+set RELEASE_NAME={{ rel_name }}
+set RELEASE_VSN={{ rel_vsn }}
+set RELEASE_PROG=%~nx0
+
 :: Make sure `findstr` is accessible
 set PATH=%PATH%;%SystemRoot%\System32
 

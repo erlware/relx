@@ -27,6 +27,11 @@ $rel_vsn = '{{ rel_vsn }}'
 $erts_vsn = '{{ erts_vsn }}'
 $erl_opts = '{{ erl_opts }}'
 
+# export these to match mix release environment variables
+$RELEASE_NAME = '{{ rel_name }}'
+$RELEASE_VERSION = '{{ rel_vsn }}'
+$RELEASE_PROG = $MyInvocation.MyCommand.Name
+
 # Ensure we have PSScriptRoot
 if (!(Test-Path variable:global:PSScriptRoot)) {
     # Support powershell 2.0
