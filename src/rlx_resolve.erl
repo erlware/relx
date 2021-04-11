@@ -194,7 +194,10 @@ check_app(Name, Vsn, App) ->
         andalso rlx_app_info:vsn(App) =:= Vsn.
 
 to_app(Name, Vsn, AppFilePath) ->
-    {ok, [{application, _AppName, AppData}]} = file:consult(AppFilePath),
+    AppData = case file:consult(AppFilePath) of
+                  {ok, [{application, _Name, Data}]} -> Data;
+                  Other -> erlang:error(?RLX_ERROR({bad_app_file, AppFilePath, Other}))
+              end,
     Applications = proplists:get_value(applications, AppData, []),
     IncludedApplications = proplists:get_value(included_applications, AppData, []),
 
