@@ -32,6 +32,7 @@
          format_error/1]).
 
 -include("relx.hrl").
+-include("rlx_log.hrl").
 
 -type error() :: {error, {Module::module(), Reason::term()}}.
 -type goal() :: rlx_release:name() |
@@ -174,11 +175,20 @@ build_release_(#{name := RelName,
 
 pick_release(State) ->
     %% Here we will just get the highest versioned release and run that.
-    case lists:sort(fun release_sort/2, maps:to_list(rlx_state:configured_releases(State))) of
+    NameVersions = maps:keys(rlx_state:configured_releases(State)),
+    ?log_debug("releases ~p ~n", [NameVersions]),
+    try
+        case lists:sort(fun release_sort/2, maps:to_list(rlx_state:configured_releases(State))) of
         [{{RelName, RelVsn}, _} | _] ->
             {RelName, RelVsn};
         [] ->
             erlang:error(?RLX_ERROR(no_releases_in_system))
+        end
+    catch _:_ ->
+            NameVersions = maps:keys(rlx_state:configured_releases(State)),
+            {_Names, Versions} = lists:unzip(NameVersions),
+            ?log_error("Bad semver version in ~p", [Versions]),
+            erlang:error(?RLX_ERROR(unparsable_release))
     end.
 
 pick_release_version(undefined, State) ->
@@ -202,7 +212,7 @@ release_sort({{RelName, RelVsnA}, _},
     rlx_util:parsed_vsn_lte(rlx_util:parse_vsn(RelVsnB), rlx_util:parse_vsn(RelVsnA));
 release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
     %% The release names are different. When the releases are named differently
-    %% we can not just take the lastest version. You *must* provide a default
+    %% we can not just take the latest version. You *must* provide a default
     %% release name at least. So we throw an error here that the top can catch
     %% and return
     error(?RLX_ERROR({multiple_release_names, RelA, RelB})).
