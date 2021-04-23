@@ -23,7 +23,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: gleam-lang/setup-erlang@v1.1.0
+    - uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp_version }}
       id: install_erlang
