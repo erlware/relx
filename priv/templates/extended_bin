@@ -19,7 +19,7 @@ fi
 
 # OSX does not support readlink '-f' flag, work
 # around that
-# shellcheck disable=SC2039
+# shellcheck disable=SC2039,SC3000-SC4000
 case $OSTYPE in
     darwin*)
         SCRIPT=$(readlink "$0" || true)
