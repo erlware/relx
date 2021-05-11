@@ -153,11 +153,12 @@ nodename(Name) ->
     end.
 
 append_node_suffix(Name, Suffix) ->
+    random:seed(os:timestamp()),
     case re:split(Name, "@", [{return, list}, unicode]) of
         [Node, Host] ->
-            list_to_atom(lists:concat([Node, Suffix, os:getpid(), "@", Host]));
+            list_to_atom(lists:concat([Node, Suffix, random:uniform(1000), "@", Host]));
         [Node] ->
-            list_to_atom(lists:concat([Node, Suffix, os:getpid()]))
+            list_to_atom(lists:concat([Node, Suffix, random:uniform(1000)]))
     end.
 
 %% convert string to erlang term
