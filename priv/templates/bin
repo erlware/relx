@@ -79,4 +79,6 @@ set -- "$ERL_OPTS"
 set -- "$@" -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" -boot "$REL_DIR/$BOOTFILE" "$ARGS"
 
 # Boot the release
-exec "$BINDIR/erlexec" "$@"
+#   don't quote $@ to keep the arguments split
+# shellcheck disable=SC2068
+exec "$BINDIR/erlexec" $@
