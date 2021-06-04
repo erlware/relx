@@ -368,8 +368,8 @@ relx_gen_id() {
     # To prevent exhastion of atoms on target node, optionally avoid
     # generation of random node prefixes, if it is guaranteed calls
     # are entirely sequential.
-    if [ x != x"$NODETOOL_NODE_PREFIX" ]; then
-        echo "$NODETOOL_NODE_PREFIX"
+    if [ -n "${NODETOOL_NODE_PREFIX}" ]; then
+        echo "${NODETOOL_NODE_PREFIX}"
     else
         dd count=1 bs=4 if=/dev/urandom 2> /dev/null | od -x  | head -n1 | awk '{print $2$3}'
     fi
