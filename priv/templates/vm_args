@@ -7,7 +7,7 @@
 ## Time warp mode
 ##
 ##  There are three time warp modes available in ERTS which will be covered in brief below and in recommended 
-##  order.
+##  order. See https://erlang.org/doc/apps/erts/time_correction.html for a more detailed explanation. 
 ##
 ## multi_time_warp :
 ##
