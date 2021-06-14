@@ -4,6 +4,44 @@
 ## Cookie for distributed erlang
 -setcookie {{ rel_name }}
 
+## Time warp mode
+##
+##  There are three time warp modes available in ERTS which will be covered in brief below and in recommended 
+##  order.
+##
+## multi_time_warp :
+##
+##   Multi-time warp mode in combination with time correction is the preferred configuration. Only Erlang runtime 
+##   systems executing on ancient platforms benefit from another configuration. In this mode the time offset can change 
+##   at any time without any limitations to provide good system time, and the Erlang monotonic clock frequency can be 
+##   adjusted by the VM to be as accurate as possible. This is what you want to specify on any modern platform, and 
+##   tends to have provide better performance, scalaibility, accuracy, and behaviour.
+##
+## single_time_warp : 
+## 
+##    This is a special hybrid mode to be used on embedded hardware when you know Erlang boots before the OS clock is 
+##    synchronized (for example, you boot your software before NTP synchronization can take place). When the VM boots,
+##    the Erlang monotonic## clock is kept as stable as possible, but no system time adjustments are made. Once time 
+##    synchronization is done at the OS level, the user calls erlang:system_flag(time_offset, finalize), the Erlang 
+##    system time warps once to match the OS system time, and then the clocks become equivalent to those under 
+##
+## no_time_warp :
+##
+##   This mode is the default in ERTS, but is not the best mode nor the recommended mode. It is only the default 
+##   for backwards compatibility with ERTS versions prior 7.0. In this mode the time offset is chosen at VM start time, 
+##   and then is never modified. Instead, the monotonic clock is sped up or slowed down using a purposefully faulty
+##   frequency to slowly correct time drift. That purposeful faulty frequency can result in errors as large as 1%
+##   affecting all time measurements in the run time system. 
+##
+## Per the above change to a different mode if really needed. 
++C multi_time_warp 
+
+## Scheduler busy wait threshold
+##
+## The default threshold is medium, but you may see the best performance if set to none when operating inside
+## containers. Otherwise it recommended to tune and measure or simply go with the default of medium. 
+## +sbwt none
+
 ## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
 ## (Disabled by default..use with caution!)
 ##-heart
