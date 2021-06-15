@@ -52,7 +52,7 @@ basic_tar(Config) ->
                   {sys_config_src, SysConfigSrc},
                   {vm_args_src, VmArgsSrc}],
 
-    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+    {ok, Release, _State} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                          {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
@@ -89,7 +89,7 @@ exclude_erts(Config) ->
                     goal_app_2]},
                   {include_erts, false}
                  ],
-    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+    {ok, Release, _State} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                          {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
@@ -117,7 +117,7 @@ exclude_src(Config) ->
                     goal_app_2]},
                   {include_src, false}],
 
-    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+    {ok, Release, _State} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                          {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
@@ -144,7 +144,7 @@ include_src(Config) ->
                     goal_app_2]},
                   {include_src, true}],
 
-    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+    {ok, Release, _State} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                          {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),
@@ -233,7 +233,7 @@ overlay_archive(Config) ->
     {ok, FileInfo} = file:read_file_info(TemplateFile),
     ok = file:write_file_info(TemplateFile, FileInfo#file_info{mode=8#00777}),
 
-    {ok, Release} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+    {ok, Release, _State} = relx:build_tar(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
                                          {output_dir, OutputDir} | RelxConfig]),
 
     AppSpecs = rlx_release:app_specs(Release),

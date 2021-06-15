@@ -93,7 +93,9 @@
          exref/2,
          check_for_undefined_functions/1,
          check_for_undefined_functions/2,
-         is_relx_sasl/1]).
+         is_relx_sasl/1,
+         xref_warnings/1,
+         add_xref_warnings/2]).
 
 -type mode() :: dev | prod | minimal.
 
@@ -133,6 +135,7 @@
                   extended_start_script_extensions=[] :: list(),
                   generate_start_script=true :: boolean(),
                   include_start_scripts_for=undefined :: [atom()] | undefined,
+                  xref_warnings = [] :: [{mfa(), mfa()}],
 
                   %% `dev_mode' is for backwards compatibility
                   dev_mode=false :: boolean(),
@@ -188,7 +191,7 @@ exclude_apps(State, ExcludeApps) ->
 exclude_modules(#state_t{exclude_modules=Modules}) ->
     Modules.
 
-%% @doc modules to be excluded from the release 
+%% @doc modules to be excluded from the release
 -spec exclude_modules(t(), [{App::atom(), [Module::atom()]}]) -> t().
 exclude_modules(State, SkipModules) ->
     State#state_t{exclude_modules=SkipModules}.
@@ -335,6 +338,15 @@ include_nodetool(#state_t{include_nodetool=IncludeNodetool}) ->
 include_nodetool(S, IncludeNodetool) ->
     S#state_t{include_nodetool=IncludeNodetool}.
 
+
+-spec add_xref_warnings(t(), [{mfa(), mfa()}]) -> t().
+add_xref_warnings(#state_t{xref_warnings = Warnings} = S, XrefWarning) ->
+    S#state_t{xref_warnings = XrefWarning ++ Warnings}.
+
+-spec xref_warnings(t()) -> [{mfa(), mfa()}].
+xref_warnings(#state_t{xref_warnings = Warnings}) ->
+    Warnings.
+
 -spec overlay(t()) -> list() | undefined.
 overlay(#state_t{overlay=Overlay}) ->
     Overlay.
@@ -420,7 +432,7 @@ format(Mod) ->
     format(Mod, 0).
 
 -spec format(t(), non_neg_integer()) -> iolist().
-format(#state_t{output_dir=OutDir, 
+format(#state_t{output_dir=OutDir,
                 lib_dirs=LibDirs},
        Indent) ->
     [rlx_util:indent(Indent),
