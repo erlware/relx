@@ -26,11 +26,11 @@ do(Release, State) ->
         true ->
             ?log_debug("Stripping release beam files", []),
             %% make *.beam to be writeable for strip.
-            ModeChangedFiles = [ 
+            ModeChangedFiles = [
                 OrigFileMode
-                || File <- rlx_file_utils:wildcard_paths([OutputDir ++ "/**/*.beam"]), 
+                || File <- rlx_file_utils:wildcard_paths([OutputDir ++ "/**/*.beam"]),
                     OrigFileMode <- begin
-                        {ok, #file_info{mode = OrigMode}} = file:read_file_info(File), 
+                        {ok, #file_info{mode = OrigMode}} = file:read_file_info(File),
                         case OrigMode band 8#0200 =/= 8#0200 of
                             true ->
                                 file:change_mode(File, OrigMode bor 8#0200),
@@ -46,7 +46,7 @@ do(Release, State) ->
                     erlang:error(?RLX_ERROR({strip_release, Reason}))
             after
                 %% revert file permissions after strip.
-                [ file:change_mode(File, OrigMode) 
+                [ file:change_mode(File, OrigMode)
                     || {File, OrigMode} <- ModeChangedFiles ]
             end;
         false ->
@@ -272,8 +272,8 @@ create_release(State0, Release0, OutputDir) ->
     ok = rlx_file_utils:write_term(ReleaseFile, ReleaseSpec),
     ok = rlx_file_utils:write_term(StartCleanFile, StartCleanMeta),
     ok = rlx_file_utils:write_term(NoDotErlFile, NoDotErlMeta),
-    write_bin_file(State1, Release1, OutputDir, ReleaseDir),
-    {ok, State1}.
+    State2 = write_bin_file(State1, Release1, OutputDir, ReleaseDir),
+    {ok, State2}.
 
 write_bin_file(State, Release, OutputDir, RelDir) ->
     BinDir = filename:join([OutputDir, "bin"]),
@@ -622,7 +622,7 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
     end.
 
 %% @doc Optionally add erts directory to release, if defined.
--spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) -> ok.
+-spec include_erts(rlx_state:t(), rlx_release:t(),  file:name(), file:name()) -> rlx_state:t().
 include_erts(State, Release, OutputDir, RelDir) ->
     Prefix = case rlx_state:include_erts(State) of
                  false ->
@@ -644,7 +644,8 @@ include_erts(State, Release, OutputDir, RelDir) ->
             {OsFamily, _OsName} = rlx_util:os_type(State),
             case rlx_file_utils:is_dir(ErtsBinDir) of
                 false ->
-                    erlang:error(?RLX_ERROR({specified_erts_does_not_exist, Prefix, ErtsVersion}));
+                    erlang:error(?RLX_ERROR({specified_erts_does_not_exist, Prefix, ErtsVersion})),
+                    State;
                 true ->
                     ok = rlx_file_utils:mkdir_p(LocalErtsBin),
                     ok = rlx_file_utils:copy(ErtsBinDir, LocalErtsBin,
@@ -669,7 +670,7 @@ include_erts(State, Release, OutputDir, RelDir) ->
             end
     end.
 
--spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> ok.
+-spec make_boot_script(rlx_state:t(), rlx_release:t(), file:name(), file:name()) -> rlx_state:t().
 make_boot_script(State, Release, OutputDir, RelDir) ->
     Paths = [RelDir | rlx_util:get_code_paths(Release, OutputDir)],
     Options = [{path, Paths},
@@ -680,29 +681,30 @@ make_boot_script(State, Release, OutputDir, RelDir) ->
     IsRelxSasl = rlx_state:is_relx_sasl(State),
 
     %% relx built-in form of systools exref feature
-    maybe_check_for_undefined_functions(State, Release),
+    State2 = maybe_check_for_undefined_functions(State, Release),
 
     case make_start_script(Name, RelDir, Options, IsRelxSasl) of
         Result when Result =:= ok orelse (is_tuple(Result) andalso
                                           element(1, Result) =:= ok) ->
             maybe_print_warnings(Result),
             ?log_debug("release start script created"),
-            create_RELEASES(State, Release, OutputDir),
-            create_no_dot_erlang(RelDir, OutputDir, Options, State),
-            create_start_clean(RelDir, OutputDir, Options, State);
+            create_RELEASES(State2, Release, OutputDir),
+            create_no_dot_erlang(RelDir, OutputDir, Options, State2),
+            create_start_clean(RelDir, OutputDir, Options, State2);
         error ->
             ReleaseFile = filename:join([RelDir, [Name, ".rel"]]),
             erlang:error(?RLX_ERROR({release_script_generation_error, ReleaseFile}));
         {error, Module, Error} ->
             erlang:error(?RLX_ERROR({release_script_generation_error, Module, Error}))
-    end.
+    end,
+    State2.
 
 maybe_check_for_undefined_functions(State, Release) ->
     case rlx_state:check_for_undefined_functions(State) of
         true ->
             maybe_check_for_undefined_functions_(State, Release);
         _ ->
-            ok
+            State
     end.
 
 maybe_check_for_undefined_functions_(State, Release) ->
@@ -712,36 +714,37 @@ maybe_check_for_undefined_functions_(State, Release) ->
             % Link to ensure internal errors don't go unnoticed.
             link(Pid),
 
-            %% for every app in the release add it to the xref apps to be 
+            %% for every app in the release add it to the xref apps to be
             %% analyzed if it is a project app as specified by rebar3.
             add_project_apps_to_xref(Rf, rlx_release:app_specs(Release), State),
 
-            %% without adding the erts application there will be warnings about 
-            %% missing functions from the preloaded modules even though they 
+            %% without adding the erts application there will be warnings about
+            %% missing functions from the preloaded modules even though they
             %% are in the runtime.
             ErtsApp = code:lib_dir(erts, ebin),
 
-            %% xref library path is what is searched for functions used by the 
-            %% project apps. 
+            %% xref library path is what is searched for functions used by the
+            %% project apps.
             %% we only add applications depended on by the release so that we
             %% catch modules not included in the release to warn the user about.
-            CodePath = 
-                [ErtsApp | [filename:join(rlx_app_info:dir(App), "ebin") 
+            CodePath =
+                [ErtsApp | [filename:join(rlx_app_info:dir(App), "ebin")
                     || App <- rlx_release:applications(Release)]],
             _ = xref:set_library_path(Rf, CodePath),
 
-            %% check for undefined function calls from project apps in the 
+            %% check for undefined function calls from project apps in the
             %% release
             case xref:analyze(Rf, undefined_function_calls) of
                 {ok, Warnings} ->
-                    format_xref_warning(Warnings);
+                    rlx_state:add_xref_warnings(State, Warnings);
                 {error, _} = Error ->
                     ?log_warn(
-                        "Error running xref analyze: ~s", 
-                        [xref:format_error(Error)])
+                        "Error running xref analyze: ~s",
+                        [xref:format_error(Error)]),
+                    State
             end
     after
-        %% Even if the code crashes above, always ensure the xref server is 
+        %% Even if the code crashes above, always ensure the xref server is
         %% stopped.
         stopped = xref:stop(Rf)
     end.
@@ -754,7 +757,7 @@ add_project_apps_to_xref(Rf, [AppSpec | Rest], State) ->
             case xref:add_application(
                     Rf,
                     rlx_app_info:dir(App),
-                    [{name, rlx_app_info:name(App)}, {warnings, false}]) 
+                    [{name, rlx_app_info:name(App)}, {warnings, false}])
             of
                 {ok, _} ->
                     ok;
@@ -767,15 +770,6 @@ add_project_apps_to_xref(Rf, [AppSpec | Rest], State) ->
     end,
     add_project_apps_to_xref(Rf, Rest, State).
 
-format_xref_warning([]) ->
-    ok;
-format_xref_warning(Warnings) ->
-    ?log_warn("There are missing function calls in the release.", []),
-    ?log_warn("Make sure all applications needed at runtime are included in the release.", []),
-    lists:map(fun({{M1, F1, A1}, {M2, F2, A2}}) ->
-                      ?log_warn("~w:~tw/~w calls undefined function ~w:~tw/~w",
-                                [M1, F1, A1, M2, F2, A2])
-              end, Warnings).
 
 %% setup options for warnings as errors, src_tests and exref
 make_script_options(State) ->
