@@ -196,8 +196,8 @@ parse_vsn({file, File}) ->
             end);
 parse_vsn(Vsn) when Vsn =:= semver ; Vsn =:= "semver" ->
     try_vsn(fun git_tag_vsn/0);
-parse_vsn({semver, _}) ->
-    try_vsn(fun git_tag_vsn/0);
+parse_vsn({semver, Prefix}) ->
+    try_vsn(fun() -> git_tag_vsn(Prefix) end);
 parse_vsn({cmd, Command}) ->
     try_vsn(fun() -> rlx_util:sh(Command) end);
 parse_vsn(Vsn) ->
@@ -227,15 +227,18 @@ git_ref(Arg) ->
     end.
 
 git_tag_vsn() ->
-    {Vsn, RawRef, RawCount} = collect_default_refcount(),
+    git_tag_vsn("v").
+
+git_tag_vsn(Prefix) ->
+    {Vsn, RawRef, RawCount} = collect_default_refcount(Prefix),
     build_vsn_string(Vsn, RawRef, RawCount).
 
-collect_default_refcount() ->
+collect_default_refcount(Prefix) ->
     %% Get the tag timestamp and minimal ref from the system. The
     %% timestamp is really important from an ordering perspective.
     RawRef = rlx_util:sh("git log -n 1 --pretty=format:'%h\n' "),
 
-    {Tag, Vsn} = parse_tags(),
+    {Tag, Vsn} = parse_tags(Prefix),
     RawCount = get_patch_count(Tag),
     {Vsn, RawRef, RawCount}.
 
@@ -258,9 +261,9 @@ build_vsn_string(Vsn, RawRef, RawCount) ->
             binary_to_list(iolist_to_binary([Vsn, "+build.", CountBin, RefTag]))
     end.
 
-parse_tags() ->
+parse_tags(Prefix) ->
     Tag = rlx_util:sh("git describe --abbrev=0 --tags"),
-    Vsn = rlx_string:trim(rlx_string:trim(Tag, leading, "v"), trailing, "\n"),
+    Vsn = rlx_string:trim(rlx_string:trim(Tag, leading, Prefix), trailing, "\n"),
     {Tag, Vsn}.
 
 

@@ -7,7 +7,7 @@
 -ifdef(unicode_str).
 concat(Str1, Str2) -> unicode:characters_to_list([Str1,Str2]).
 lexemes(Str, Separators) -> string:lexemes(Str, Separators).
-trim(Str, Direction, Cluster=[_]) -> string:trim(Str, Direction, Cluster).
+trim(Str, Direction, Cluster=[_|_]) -> string:trim(Str, Direction, Cluster).
 -else.
 concat(Str1, Str2) -> string:concat(Str1, Str2).
 lexemes(Str, Separators) -> string:tokens(Str, Separators).
