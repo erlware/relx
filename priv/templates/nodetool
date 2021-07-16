@@ -144,7 +144,7 @@ epmd_path() ->
 
 
 nodename(Name) ->
-    case re:split(Name, "@", [{return, list}, unicode]) of
+    case re:split(Name, "@", [unicode, {return, list}]) of
         [_Node, _Host] ->
             list_to_atom(Name);
         [Node] ->
