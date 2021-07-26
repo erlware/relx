@@ -47,7 +47,6 @@ set vm_args=%rel_dir%\vm.args
 set progname=erl.exe
 set clean_boot_script=%rel_dir%\start_clean
 set erlsrv="%bindir%\erlsrv.exe"
-set epmd="%bindir%\epmd.exe"
 set escript="%bindir%\escript.exe"
 set werl="%bindir%\werl.exe"
 set erl="%bindir%\erl.exe"
@@ -292,7 +291,6 @@ goto :eof
 :: Uninstall the Windows service
 :uninstall
 %erlsrv% remove %service_name%
-%epmd% -kill
 goto :eof
 
 :: Start the Windows service
