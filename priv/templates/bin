@@ -65,20 +65,31 @@ export BINDIR="$ERTS_DIR/bin"
 export EMU="beam"
 export PROGNAME="erl"
 export LD_LIBRARY_PATH="$ERTS_DIR/lib:$LD_LIBRARY_PATH"
-ERTS_LIB_DIR="$ERTS_DIR/../lib"
+SYSTEM_LIB_DIR="$(dirname "$ERTS_DIR")/lib"
 [ -f "$REL_DIR/$REL_NAME.boot" ] && BOOTFILE="$REL_NAME" || BOOTFILE=start
 cd "$ROOTDIR"
 
+{{! Define alternative field separator using ASCII US (unit separator). US is
+    not expected to appear in any argument. }}
+IFS_NORM="$IFS"
+IFS_ARGS="$(printf '\x1f')"
+
 # Save extra arguments
-ARGS=$*
+{{! Join extra arguments into a US-delimited string. }}
+IFS="$IFS_ARGS"
+ARGS="$*"
+IFS="$IFS_NORM"
 
 # Build arguments for erlexec
-set -- "$ERL_OPTS"
+set --
+[ "$ERL_OPTS" ] && set -- "$@" "$ERL_OPTS"
 [ "$SYS_CONFIG" ] && set -- "$@" -config "$SYS_CONFIG"
 [ "$VM_ARGS" ] && set -- "$@" -args_file "$VM_ARGS"
-set -- "$@" -boot_var ERTS_LIB_DIR "$ERTS_LIB_DIR" -boot "$REL_DIR/$BOOTFILE" "$ARGS"
+set -- "$@" -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" -boot "$REL_DIR/$BOOTFILE"
+{{! Split string with extra arguments back into an argument list. }}
+IFS="$IFS_ARGS"
+# shellcheck disable=SC2086
+set -- "$@" $ARGS
+IFS="$IFS_NORM"
 
-# Boot the release
-#   don't quote $@ to keep the arguments split
-# shellcheck disable=SC2068
-exec "$BINDIR/erlexec" $@
+exec "$BINDIR/erlexec" "$@"
