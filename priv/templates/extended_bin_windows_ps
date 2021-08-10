@@ -65,7 +65,6 @@ $bindir = "$erts_dir\bin"
 $werl = "$bindir\werl.exe"
 $erl = "$bindir\erl.exe"
 $erlsrv = "$bindir\erlsrv.exe"
-$epmd = "$bindir\epmd.exe"
 $escript = "$bindir\escript.exe"
 
 # Added in OTP-23
@@ -305,7 +304,6 @@ function Uninstall() {
     }
     # Uninstall the Windows service
     & $erlsrv remove $service_name
-    & $epmd -kill
 }
 
 # Start the Windows service
