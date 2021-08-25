@@ -329,7 +329,7 @@ erl_rpc() {
             fi
 
             if [ "$ERL_DIST_PORT" ]; then
-                result=$("$ERL_RPC" "${DYNAMIC_NAME}" -c "${COOKIE}" -address "${ERL_DIST_PORT}"  -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
+                result=$("$ERL_RPC" "${DYNAMIC_NAME}" -c "${COOKIE}" -address "${ERL_DIST_PORT}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
             else
                 result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" "${DYNAMIC_NAME}" -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
             fi
@@ -351,7 +351,11 @@ erl_eval() {
         *)
             command=$*
 
-            result=$(echo "${command}" | "$ERL_RPC" "$NAME_TYPE" "$NAME" -R -timeout "${RELX_RPC_TIMEOUT}" -c "${COOKIE}" -e)
+            if [ "$ERL_DIST_PORT" ]; then
+                result=$(echo "${command}" | "$ERL_RPC" "${DYNAMIC_NAME}" -c "${COOKIE}" -address "${ERL_DIST_PORT}" -timeout "${RELX_RPC_TIMEOUT}" -e)
+            else
+                result=$(echo "${command}" | "$ERL_RPC" "$NAME_TYPE" "$NAME" "${DYNAMIC_NAME}" -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -e)
+            fi
             code=$?
             if [ $code -eq 0 ]; then
                 echo "$result" | sed 's/^{ok, \(.*\)}$/\1/'

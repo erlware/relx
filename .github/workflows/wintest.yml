@@ -3,11 +3,9 @@ name: Windows Test
 on:
   pull_request:
     branches:
-      - '4.0.0'
       - 'master'
   push:
     branches:
-      - '4.0.0'
       - 'master'
 
 jobs:
@@ -18,14 +16,13 @@ jobs:
     strategy:
       matrix:
         # Cannot test OTP 21 due to https://bugs.erlang.org/browse/ERL-644 (see also https://github.com/elixir-lang/elixir/issues/7774)
-        otp_version: [22, 23]
+        otp_version: [22, 23, 24]
         os: [windows-latest]
 
     steps:
     - uses: actions/checkout@v2
-    - uses: gleam-lang/setup-erlang@v1.1.0
+    - uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp_version }}
-      id: install_erlang
     - name: Run test
-      run: shelltests/wintest.ps1 "${{ steps.install_erlang.outputs.erlpath }}"
+      run: shelltests/wintest.ps1
