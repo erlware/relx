@@ -369,7 +369,14 @@ erl_eval() {
 
 # Generate a random id
 relx_gen_id() {
-    dd count=1 bs=4 if=/dev/urandom 2> /dev/null | od -x  | head -n1 | awk '{print $2$3}'
+    # To prevent exhaustion of atoms on target node, optionally avoid
+    # generation of random node prefixes, if it is guaranteed calls
+    # are entirely sequential.
+    if [ -z "${NODETOOL_NODE_PREFIX}" ]; then
+        dd count=1 bs=4 if=/dev/urandom 2> /dev/null | od -x  | head -n1 | awk '{print $2$3}'
+    else
+        echo "${NODETOOL_NODE_PREFIX}"
+    fi
 }
 
 # Control a node with nodetool if erl_call isn't from OTP-23+
