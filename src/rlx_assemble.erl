@@ -734,7 +734,9 @@ maybe_check_for_undefined_functions_(State, Release) ->
             %% release
             case xref:analyze(Rf, undefined_function_calls) of
                 {ok, Warnings} ->
-                    format_xref_warning(Warnings);
+                    FilterMethod = rlx_state:filter_xref_warning(State),
+                    FilteredWarnings = FilterMethod(Warnings),
+                    format_xref_warning(FilteredWarnings);
                 {error, _} = Error ->
                     ?log_warn(
                         "Error running xref analyze: ~s", 
