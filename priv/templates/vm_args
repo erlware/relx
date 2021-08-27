@@ -36,10 +36,7 @@
 ## Per the above change to a different mode if really needed. 
 +C multi_time_warp 
 
-## Scheduler busy wait threshold
-##
-## The default threshold is medium, but you may see the best performance if set to none when operating inside
-## containers. Otherwise it recommended to tune and measure or simply go with the default of medium. 
+## Uncomment the following line if running in a container.
 ## +sbwt none
 
 ## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
