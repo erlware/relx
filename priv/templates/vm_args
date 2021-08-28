@@ -4,6 +4,13 @@
 ## Cookie for distributed erlang
 -setcookie {{ rel_name }}
 
+## Multi-time warp mode in combination with time correction is the preferred configuration. 
+## It is only not the default in Erlang itself because it could break older systems.
++C multi_time_warp 
+
+## Uncomment the following line if running in a container.
+## +sbwt none
+
 ## Heartbeat management; auto-restarts VM if it dies or becomes unresponsive
 ## (Disabled by default..use with caution!)
 ##-heart
