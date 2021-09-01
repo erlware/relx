@@ -93,7 +93,9 @@
          exref/2,
          check_for_undefined_functions/1,
          check_for_undefined_functions/2,
-         is_relx_sasl/1]).
+         is_relx_sasl/1,
+         filter_xref_warning/1,
+         filter_xref_warning/2]).
 
 -type mode() :: dev | prod | minimal.
 
@@ -133,6 +135,7 @@
                   extended_start_script_extensions=[] :: list(),
                   generate_start_script=true :: boolean(),
                   include_start_scripts_for=undefined :: [atom()] | undefined,
+                  filter_xref_warning = fun(Warnings) -> Warnings end :: fun((list({mfa(), mfa()})) -> list({mfa(), mfa()})),
 
                   %% `dev_mode' is for backwards compatibility
                   dev_mode=false :: boolean(),
@@ -260,6 +263,13 @@ root_dir(#state_t{root_dir=RootDir}) ->
 -spec root_dir(t(), file:filename()) -> t().
 root_dir(State, RootDir) ->
     State#state_t{root_dir=filename:absname(RootDir)}.
+
+-spec filter_xref_warning(t()) -> fun((list({mfa(), mfa()})) -> list({mfa(), mfa()})).
+filter_xref_warning(#state_t{filter_xref_warning=Filter}) -> Filter.
+
+-spec filter_xref_warning(t(), fun((list({mfa(), mfa()})) -> list({mfa(), mfa()}))) -> t().
+filter_xref_warning(State, Filter) -> State#state_t{filter_xref_warning=Filter}.
+
 
 -spec add_configured_release(t(), rlx_release:t()) -> t().
 add_configured_release(M=#state_t{configured_releases=Releases}, Release) ->
