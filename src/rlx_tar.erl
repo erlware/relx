@@ -76,7 +76,9 @@ make_tar_opts(ExtraFiles, Release, OutputDir, State) ->
 
 maybe_include_erts(_ExtraFiles, Release, OutputDir, State) ->
      case rlx_state:include_erts(State) of
-         true ->
+         false ->
+             [];
+         IncludeErts ->
              ErtsVersion = rlx_release:erts(Release),
              ErtsDir = filename:join([OutputDir, "erts-" ++ ErtsVersion]),
              case filelib:is_dir(ErtsDir) of
@@ -84,13 +86,11 @@ maybe_include_erts(_ExtraFiles, Release, OutputDir, State) ->
                      %% systools:make_tar looks for directory erts-vsn in
                      %% the dir passed to `erts'
                      [{erts, OutputDir}];
+                 false when IncludeErts =:= true ->
+                     [{erts, code:root_dir()}];
                  false ->
-                     [{erts, code:root_dir()}]
-             end;
-         false ->
-             [];
-         ErtsDir ->
-             [{erts, ErtsDir}]
+                     [{erts, IncludeErts}]
+             end
      end.
 
 maybe_extra_files(ExtraFiles, _Release, _OutputDir, State) ->
