@@ -610,7 +610,7 @@ copy_or_symlink_config_file(State, ConfigPath, RelConfPath) ->
                 ok ->
                     ok;
                 {error, Reason} ->
-                    erlang:error({error, {rlx_file_utils, Reason}})
+                    erlang:error(?RLX_ERROR({unable_to_make_symlink, ConfigPath, RelConfPath, Reason}))
             end;
         _ ->
             case rlx_file_utils:copy(ConfigPath, RelConfPath, [{file_info, [mode, time]}]) of
@@ -1071,9 +1071,9 @@ format_error({unable_to_create_output_dir, OutputDir}) ->
                   [OutputDir]);
 format_error({release_script_generation_error, Module, Errors}) ->
     ["Error generating release: \n", Module:format_error(Errors)];
-format_error({unable_to_make_symlink, AppDir, TargetDir, Reason}) ->
-    io_lib:format("Unable to symlink directory ~s to ~s because \n~s~s",
-                  [AppDir, TargetDir, rlx_util:indent(2),
+format_error({unable_to_make_symlink, Path, TargetPath, Reason}) ->
+    io_lib:format("Unable to symlink ~s to ~s because \n~s~s",
+                  [Path, TargetPath, rlx_util:indent(2),
                    file:format_error(Reason)]);
 format_error({boot_script_generation_error, Name}) ->
     io_lib:format("Unknown internal release error generating ~s.boot", [Name]);
