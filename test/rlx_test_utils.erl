@@ -5,25 +5,34 @@
 -compile(export_all).
 
 create_app(Dir, Name, Vsn, Deps, LibDeps) ->
+    create_app(Dir, Name, Vsn, Deps, LibDeps, []).
+
+create_app(Dir, Name, Vsn, Deps, LibDeps, OptionalDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
-    write_app_file(AppDir, Name, Vsn, app_modules(Name), Deps, LibDeps),
+    write_app_file(AppDir, Name, Vsn, app_modules(Name), Deps, LibDeps, OptionalDeps),
     write_src_file(AppDir, Name),
     write_priv_file(AppDir),
     compile_src_files(AppDir),
-    rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir, Deps, []).
+    rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir, Deps, LibDeps, OptionalDeps).
 
 create_full_app(Dir, Name, Vsn, Deps, LibDeps) ->
+    create_full_app(Dir, Name, Vsn, Deps, LibDeps, []).
+
+create_full_app(Dir, Name, Vsn, Deps, LibDeps, OptionalDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
-    write_full_app_files(AppDir, Name, Vsn, Deps, LibDeps),
+    write_full_app_files(AppDir, Name, Vsn, Deps, LibDeps, OptionalDeps),
     compile_src_files(AppDir),
     rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
-                     Deps, []).
+                     Deps, LibDeps, OptionalDeps).
 
 create_empty_app(Dir, Name, Vsn, Deps, LibDeps) ->
+    create_empty_app(Dir, Name, Vsn, Deps, LibDeps, []).
+
+create_empty_app(Dir, Name, Vsn, Deps, LibDeps, OptionalDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
-    write_app_file(AppDir, Name, Vsn, [], Deps, LibDeps),
+    write_app_file(AppDir, Name, Vsn, [], Deps, LibDeps, OptionalDeps),
     rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
-                     Deps, []).
+                     Deps, LibDeps, OptionalDeps).
 
 app_modules(Name) ->
     [list_to_atom(M ++ Name) ||
@@ -47,11 +56,11 @@ write_appup_file(AppInfo, DownVsn) ->
     ok = filelib:ensure_dir(Filename),
     ok = rlx_file_utils:write_term(Filename, {Vsn, [{DownVsn, []}], [{DownVsn, []}]}).
 
-write_app_file(Dir, Name, Version, Modules, Deps, LibDeps) ->
+write_app_file(Dir, Name, Version, Modules, Deps, LibDeps, OptionalDeps) ->
     Filename = filename:join([Dir, "ebin", Name ++ ".app"]),
     ok = filelib:ensure_dir(Filename),
     ok = rlx_file_utils:write_term(Filename, get_app_metadata(Name, Version, Modules,
-                                                       Deps, LibDeps)).
+                                                              Deps, LibDeps, OptionalDeps)).
 
 compile_src_files(Dir) ->
     %% compile all *.erl files in src to ebin
@@ -70,21 +79,22 @@ compile_src_files(Dir) ->
 
     ok.
 
-get_app_metadata(Name, Vsn, Modules, Deps, LibDeps) ->
+get_app_metadata(Name, Vsn, Modules, Deps, LibDeps, OptionalDeps) ->
     {application, erlang:list_to_atom(Name),
      [{description, ""},
       {vsn, Vsn},
       {modules, Modules},
       {included_applications, LibDeps},
+      {optional_applications, OptionalDeps},
       {registered, []},
       {applications, Deps}]}.
 
-write_full_app_files(Dir, Name, Vsn, Deps, LibDeps) ->
+write_full_app_files(Dir, Name, Vsn, Deps, LibDeps, OptionalDeps) ->
     %% write out the .app file
     AppFilename = filename:join([Dir, "ebin", Name ++ ".app"]),
     ok = filelib:ensure_dir(AppFilename),
     ok = rlx_file_utils:write_term(AppFilename,
-                            get_full_app_metadata(Name, Vsn, Deps, LibDeps)),
+                            get_full_app_metadata(Name, Vsn, Deps, LibDeps, OptionalDeps)),
     %% write out the _app.erl file
     ApplicationFilename = filename:join([Dir, "src", Name ++ "_app.erl"]),
     ok = filelib:ensure_dir(ApplicationFilename),
@@ -99,7 +109,7 @@ write_full_app_files(Dir, Name, Vsn, Deps, LibDeps) ->
     ok = file:write_file(GenServerFilename, gen_server_contents(Name)),
     ok.
 
-get_full_app_metadata(Name, Vsn, Deps, LibDeps) ->
+get_full_app_metadata(Name, Vsn, Deps, LibDeps, OptionalDeps) ->
     {application, erlang:list_to_atom(Name),
     [{description, ""},
      {vsn, Vsn},
@@ -107,6 +117,7 @@ get_full_app_metadata(Name, Vsn, Deps, LibDeps) ->
      {mod, {erlang:list_to_atom(Name ++  "_app"),
             []}},
      {included_applications, LibDeps},
+     {optional_applications, OptionalDeps},
      {registered, []},
      {applications, Deps}]}.
 

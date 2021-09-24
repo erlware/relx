@@ -129,6 +129,7 @@ rewrite_app_file(State, App, TargetDir) ->
     Name = rlx_app_info:name(App),
     Applications = rlx_app_info:applications(App),
     IncludedApplications = rlx_app_info:included_applications(App),
+    OptionalApplications = rlx_app_info:optional_applications(App),
 
     %% TODO: should really read this in when creating rlx_app:t() and keep it
     AppFile = filename:join([TargetDir, "ebin", [Name, ".app"]]),
@@ -141,7 +142,7 @@ rewrite_app_file(State, App, TargetDir) ->
     end,
 
     %% maybe replace excluded apps
-    AppData1 = maybe_exclude_apps(Applications, IncludedApplications,
+    AppData1 = maybe_exclude_apps(Applications, IncludedApplications, OptionalApplications,
                                   AppData0, rlx_state:exclude_apps(State)),
 
     AppData2 = maybe_exclude_modules(AppData1, proplists:get_value(Name,
@@ -156,17 +157,23 @@ rewrite_app_file(State, App, TargetDir) ->
             erlang:error(?RLX_ERROR({rewrite_app_file, AppFile, Error}))
     end.
 
-maybe_exclude_apps(_Applications, _IncludedApplications, AppData, []) ->
+maybe_exclude_apps(_Applications, _IncludedApplications, _OptionalApplications, AppData, []) ->
     AppData;
-maybe_exclude_apps(Applications, IncludedApplications, AppData, ExcludeApps) ->
+maybe_exclude_apps(Applications, IncludedApplications, OptionalApplications, AppData, ExcludeApps) ->
     AppData1 = lists:keyreplace(applications,
                                 1,
                                 AppData,
                                 {applications, Applications -- ExcludeApps}),
-    lists:keyreplace(included_applications,
+    AppData2 = lists:keyreplace(included_applications,
+                                1,
+                                AppData1,
+                                {included_applications, IncludedApplications -- ExcludeApps}),
+
+    %% not absolutely necessary since they are already seen as optional, but may as well
+    lists:keyreplace(optional_applications,
                      1,
-                     AppData1,
-                     {included_applications, IncludedApplications -- ExcludeApps}).
+                     AppData2,
+                     {optional_applications, OptionalApplications -- ExcludeApps}).
 
 maybe_exclude_modules(AppData, []) ->
     AppData;
