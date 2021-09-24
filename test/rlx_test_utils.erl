@@ -10,20 +10,20 @@ create_app(Dir, Name, Vsn, Deps, LibDeps) ->
     write_src_file(AppDir, Name),
     write_priv_file(AppDir),
     compile_src_files(AppDir),
-    rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir, Deps, []).
+    rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir, Deps, [], []).
 
 create_full_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
     write_full_app_files(AppDir, Name, Vsn, Deps, LibDeps),
     compile_src_files(AppDir),
     rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
-                     Deps, []).
+                     Deps, [], []).
 
 create_empty_app(Dir, Name, Vsn, Deps, LibDeps) ->
     AppDir = filename:join([Dir, Name ++ "-" ++ Vsn]),
     write_app_file(AppDir, Name, Vsn, [], Deps, LibDeps),
     rlx_app_info:new(erlang:list_to_atom(Name), Vsn, AppDir,
-                     Deps, []).
+                     Deps, [], []).
 
 app_modules(Name) ->
     [list_to_atom(M ++ Name) ||

@@ -56,20 +56,32 @@ subset(Apps, World, LibDirs, CheckCodeLibDirs) ->
 subset([], _World, _Seen, _LibDirs, _CheckCodeLibDirs, Acc) ->
     Acc;
 subset([Goal | Rest], World, Seen, LibDirs, CheckCodeLibDirs, Acc) ->
-    {Name, Vsn} = name_version(Goal),
+    {Name, Vsn, Optional} = name_version(Goal),
     case sets:is_element(Name, Seen) of
         true ->
             subset(Rest, World, Seen, LibDirs, CheckCodeLibDirs, Acc);
         _ ->
-            AppInfo=#{applications := Applications,
-                      included_applications := IncludedApplications} =
-                find_app(Name, Vsn, World, LibDirs, CheckCodeLibDirs),
-            subset(Rest ++ Applications ++ IncludedApplications,
+            {Rest1, Acc1} =
+                case find_app(Name, Vsn, World, LibDirs, CheckCodeLibDirs) of
+                    not_found when Optional == true ->
+                        {Rest, Acc};
+                    not_found ->
+                        erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}));
+                    AppInfo = #{applications := Applications,
+                                included_applications := IncludedApplications,
+                                optional_applications := OptionalApplications0
+                               } ->
+                        OptionalApplications = [{optional, OApp} || OApp <- OptionalApplications0],
+                       {Rest ++ (Applications -- OptionalApplications0)
+                        ++ IncludedApplications ++ OptionalApplications,
+                        Acc ++ [AppInfo]}
+                end,
+            subset(Rest1,
                    World,
                    sets:add_element(Name, Seen),
                    LibDirs,
                    CheckCodeLibDirs,
-                   Acc ++ [AppInfo])
+                   Acc1)
     end.
 
 
@@ -96,9 +108,13 @@ set_resolved(Release0, Pkgs, State) ->
     end.
 
 name_version(Name) when is_atom(Name) ->
-    {Name, undefined};
+    {Name, undefined, false};
 name_version({Name, #{vsn := Vsn}}) ->
-    {Name, Vsn}.
+    {Name, Vsn, false};
+name_version({optional, Name}) when is_atom(Name) ->
+    {Name, undefined, true};
+name_version({optional, {Name, #{vsn := Vsn}}}) ->
+    {Name, Vsn, true}.
 
 remove_exclude_apps(AllApps, State) ->
     ExcludeApps = rlx_state:exclude_apps(State),
@@ -144,7 +160,7 @@ search_for_app(Name, Vsn, LibDirs, CheckCodeLibDirs) ->
             %% app not found in any lib dir we are configured to search
             %% and user set a custom `system_libs' directory so we do
             %% not look in `code:lib_dir'
-            erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}));
+            not_found;
         AppInfo ->
             case check_app(Name, Vsn, AppInfo) of
                 true ->
@@ -175,13 +191,13 @@ find_app_in_dir(Name, Vsn, [Dir | Rest]) ->
 find_app_in_code_path(Name, Vsn) ->
     case code:lib_dir(Name) of
         {error, bad_name} ->
-            erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}));
+            not_found;
         Dir ->
             case to_app(Name, Vsn, filename:join([Dir, "ebin", [Name, ".app"]])) of
                 {true, AppInfo} ->
                     AppInfo;
                 false ->
-                    erlang:error(?RLX_ERROR({app_not_found, Name, Vsn}))
+                    not_found
             end
     end.
 
@@ -200,6 +216,7 @@ to_app(Name, Vsn, AppFilePath) ->
               end,
     Applications = proplists:get_value(applications, AppData, []),
     IncludedApplications = proplists:get_value(included_applications, AppData, []),
+    OptionalApplications = proplists:get_value(optional_applications, AppData, []),
 
     case lists:keyfind(vsn, 1, AppData) of
         {_, Vsn1} when Vsn =:= undefined ;
@@ -209,6 +226,7 @@ to_app(Name, Vsn, AppFilePath) ->
 
                      applications => Applications,
                      included_applications => IncludedApplications,
+                     optional_applications => OptionalApplications,
 
                      dir => filename:dirname(filename:dirname(AppFilePath)),
                      link => false}};
