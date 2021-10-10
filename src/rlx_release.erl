@@ -140,7 +140,12 @@ parsed_goals(Release, ParsedGoals) ->
 -spec realize(t(), [rlx_app_info:t()]) ->
                      {ok, t()}.
 realize(Rel, Pkgs0) ->
-    process_specs(realize_erts(Rel), Pkgs0).
+    case rlx_topo:sort_apps(Pkgs0) of
+        {ok, Pkgs1} ->
+            process_specs(realize_erts(Rel), Pkgs1);
+        {error, _}=Error ->
+            erlang:error(Error)
+    end.
 
 applications(#release_t{applications=Apps}) ->
     Apps.

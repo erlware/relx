@@ -113,7 +113,8 @@ make_release_goal_order(Config) ->
 
   [{{ordered_foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
   AppSpecs = rlx_release:app_specs(Release),
-  ?assertMatch([{goal_app_2, "0.0.1"}, {goal_app_1, "0.0.1"} | _], AppSpecs).
+  ?assertMatch([{goal_app_2, "0.0.1"}, {non_goal_2, "0.0.1"}, {goal_app_1, "0.0.1"} | _],
+               lists:reverse(AppSpecs)).
 
 make_config_release(Config) ->
     DataDir = ?config(priv_dir, Config),

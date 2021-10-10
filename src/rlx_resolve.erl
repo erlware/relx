@@ -111,7 +111,13 @@ find_and_remove(_, []) ->
 find_and_remove(ExcludeName, [#{name := Name} | Rest]) when ExcludeName =:= Name ->
     Rest;
 find_and_remove(ExcludeName, [H | Rest]) ->
-    [H | find_and_remove(ExcludeName, Rest)].
+    [remove_from_deps(ExcludeName, H) | find_and_remove(ExcludeName, Rest)].
+
+%% remove the excluded app from any applications/included_applications list
+remove_from_deps(ExcludeName, App=#{applications := Applications,
+                                   included_applications := IncludedApplications}) ->
+    App#{applications => [A || A <- Applications, A =/= ExcludeName],
+         included_applications => [A || A <- IncludedApplications, A =/= ExcludeName]}.
 
 %% Applications are first searched for in the `Apps' variable which is a map
 %% of application name to `rlx_app_info' map. This variable is passed to `relx'
