@@ -122,8 +122,8 @@ names_to_apps(Names, Apps) ->
 
 -spec find_app_by_name(atom(), [rlx_app_info:t()]) -> rlx_app_info:t().
 find_app_by_name(Name, Apps) ->
-    {ok, App1} =
-        ec_lists:find(fun(App) ->
+    {value, App1} =
+        lists:search(fun(App) ->
                               rlx_app_info:name(App) =:= Name
                       end, Apps),
     App1.

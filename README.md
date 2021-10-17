@@ -11,6 +11,11 @@ applications it will generate a release output.
 It is generally used through the Erlang/OTP build tool
 [rebar3](https://www.rebar3.org/) which provides a cli interface.
 
+Requirements
+-----------
+
+OTP 21+
+
 Documentation
 -----------
 
