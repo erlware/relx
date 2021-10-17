@@ -72,9 +72,9 @@ subset([Goal | Rest], World, Seen, LibDirs, CheckCodeLibDirs, Acc) ->
                                 optional_applications := OptionalApplications0
                                } ->
                         OptionalApplications = [{optional, OApp} || OApp <- OptionalApplications0],
-                       {Rest ++ (Applications -- OptionalApplications0)
-                        ++ IncludedApplications ++ OptionalApplications,
-                        Acc ++ [AppInfo]}
+                        {Rest ++ (Applications -- OptionalApplications0)
+                         ++ IncludedApplications ++ OptionalApplications,
+                         Acc ++ [AppInfo]}
                 end,
             subset(Rest1,
                    World,
