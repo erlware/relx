@@ -36,7 +36,8 @@
 %%%
 -module(rlx_app_info).
 
--export([new/6,
+-export([new/5,
+         new/6,
          new/7,
          name/1,
          vsn/1,
@@ -73,9 +74,16 @@
 -export_type([t/0,
               app_type/0]).
 
--spec new(atom(), string(), file:name(), [atom()], [atom()], [atom()]) -> t().
-new(Name, Vsn, Dir, Applications, IncludedApplications, OptionalApplications) ->
-    new(Name, Vsn, Dir, Applications, IncludedApplications, OptionalApplications, dep).
+-spec new(atom(), string(), file:name(), [atom()], [atom()]) -> t().
+new(Name, Vsn, Dir, Applications, IncludedApplications) ->
+    new(Name, Vsn, Dir, Applications, IncludedApplications, [], dep).
+
+-spec new(atom(), string(), file:name(), [atom()], [atom()], [atom()] | atom()) -> t().
+new(Name, Vsn, Dir, Applications, IncludedApplications, OptionalApplications)
+  when is_list(OptionalApplications) ->
+    new(Name, Vsn, Dir, Applications, IncludedApplications, OptionalApplications, dep);
+new(Name, Vsn, Dir, Applications, IncludedApplications, AppType) when is_atom(AppType) ->
+    new(Name, Vsn, Dir, Applications, IncludedApplications, [], AppType).
 
 -spec new(atom(), string(), file:name(), [atom()], [atom()], [atom()], app_type()) -> t().
 new(Name, Vsn, Dir, Applications, IncludedApplications, OptionalApplications, AppType) ->
