@@ -58,6 +58,7 @@
 
                applications          := [atom()],
                included_applications := [atom()],
+               optional_applications := [atom()],
 
                dir                   := file:name() | undefined,
                link                  := boolean() | undefined,
