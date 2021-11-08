@@ -328,8 +328,8 @@ erl_rpc() {
                 DYNAMIC_NAME="-r"
             fi
 
-            if [ "$ERL_DIST_PORT" ]; then
-                result=$("$ERL_RPC" "${DYNAMIC_NAME}" -c "${COOKIE}" -address "${ERL_DIST_PORT}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
+            if [ "$ADDRESS" ]; then
+                result=$("$ERL_RPC" "${DYNAMIC_NAME}" -c "${COOKIE}" -address "${ADDRESS}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
             else
                 result=$("$ERL_RPC" "$NAME_TYPE" "$NAME" "${DYNAMIC_NAME}" -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -a "${command}")
             fi
@@ -352,7 +352,7 @@ erl_eval() {
             command=$*
 
             if [ "$ERL_DIST_PORT" ]; then
-                result=$(echo "${command}" | "$ERL_RPC" "${DYNAMIC_NAME}" -c "${COOKIE}" -address "${ERL_DIST_PORT}" -timeout "${RELX_RPC_TIMEOUT}" -e)
+                result=$(echo "${command}" | "$ERL_RPC" "${DYNAMIC_NAME}" -c "${COOKIE}" -address "${ADDRESS}" -timeout "${RELX_RPC_TIMEOUT}" -e)
             else
                 result=$(echo "${command}" | "$ERL_RPC" "$NAME_TYPE" "$NAME" "${DYNAMIC_NAME}" -c "${COOKIE}" -timeout "${RELX_RPC_TIMEOUT}" -e)
             fi
@@ -408,6 +408,22 @@ relx_escript() {
     export RELEASE_ROOT_DIR
 
     "$ERTS_DIR/bin/escript" "$ROOTDIR/$scriptpath" "$@"
+}
+
+# Convert {127,0,0,1} to 127.0.0.1 (inet:ntoa/1)
+addr_tuple_to_str() {
+    addr="$1"
+    saved_IFS="$IFS"
+    IFS="{,}'\" "
+    # shellcheck disable=SC2086
+    eval set -- $addr
+    IFS="$saved_IFS"
+
+    case $# in
+    4) printf '%u.%u.%u.%u' "$@";;
+    8) printf '%.4x:%.4x:%.4x:%.4x:%.4x:%.4x:%.4x:%.4x' "$@";;
+    *) echo "Cannot parse IP address tuple: '$addr'" 1>&2;;
+    esac
 }
 
 make_out_file_path() {
@@ -674,8 +690,17 @@ EPMD_MODULE="$(grep '^-epmd_module' "$VMARGS_PATH" || true)"
 if [ "$EPMD_MODULE" ]; then
     DIST_ARGS="${DIST_ARGS} ${EPMD_MODULE}"
 fi
+INET_DIST_USE_INTERFACE="$(grep '^-kernel  *inet_dist_use_interface' "$VMARGS_PATH" || true)"
+if [ "$INET_DIST_USE_INTERFACE" ]; then
+    DIST_ARGS="${DIST_ARGS} ${INET_DIST_USE_INTERFACE}"
+fi
 
 if [ "$ERL_DIST_PORT" ]; then
+    if [ "$INET_DIST_USE_INTERFACE" ]; then
+        ADDRESS="$(addr_tuple_to_str "${INET_DIST_USE_INTERFACE#*inet_dist_use_interface }"):$ERL_DIST_PORT"
+    else
+        ADDRESS="$ERL_DIST_PORT"
+    fi
     if [  "11.1" = "$(printf "%s\n11.1" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
         # unless set by the user, set start_epmd to false when ERL_DIST_PORT is used
         if [ ! "$START_EPMD" ]; then
