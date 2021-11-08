@@ -2,7 +2,7 @@ $ rebar3 release
 > / Release successfully assembled: /
 >= 0
 
-$ RELX_OUT_FILE_PATH=/tmp NODENAME=node1 COOKIE=cookie1 VAR1=101 VAR2=201:-test2-2 VAR3=VA:-test3-2 VAR4=VAR4:-test4-2 VAR5=test5-2 VAR6=test6:-6-2 VAR7=test7:-7:-7-2 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
+$ RELX_OUT_FILE_PATH=/tmp NODENAME=node1 COOKIE=cookie1 VAR1=101 VAR2=201:-test2-2 VAR3=VA:-test3-2 VAR4=VAR4:-test4-2 VAR5=test5-2 VAR6=test6:-6-2 VAR7=test7:-7:-7-2 VAR9="ab&cd" ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests daemon
 >= 0
 
 $ sleep 1
@@ -57,6 +57,11 @@ $ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/r
 $ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, V} = application:get_env(replace_os_vars_tests, var8), V.'
 >
 888
+>= 0
+
+$ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '{ok, [$a,$b,$&,$c,$d] = V} = application:get_env(replace_os_vars_tests, var9), V.'
+>
+"ab&cd"
 >= 0
 
 $ NODENAME=node1 COOKIE=cookie1 ./_build/default/rel/replace_os_vars_tests/bin/replace_os_vars_tests eval '[Node,_] = re:split(atom_to_list(node()), "@"),binary_to_list(Node).'
