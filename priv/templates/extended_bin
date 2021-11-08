@@ -683,7 +683,7 @@ if [ "$ERL_DIST_PORT" ]; then
         else
             EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT}"
         fi
-    else
+    elif [  "11.0" = "$(printf "%s\n11.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
         EXTRA_DIST_ARGS="-kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
     fi
 fi
