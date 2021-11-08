@@ -435,6 +435,7 @@ replace_os_vars() {
             slen=split(var,arr,":-")
             v=arr[1]
             e=ENVIRON[v]
+            gsub("&","\\\\\\&",e)
             if(slen > 1 && e=="") {
                 i=index(var, ":-"arr[2])
                 def=substr(var,i+2)
