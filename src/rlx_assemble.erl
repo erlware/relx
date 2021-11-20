@@ -1096,7 +1096,7 @@ format_error({consult_app_file, AppFile, enoent}) ->
     io_lib:format("Unable to consult .app file ~ts (file not found).",
                   [AppFile]);
 format_error({consult_app_file, AppFile, Error}) ->
-    io_lib:format("Unable to consult .app file ~s due to ~p",
-                  [AppFile, Error]);
+    io_lib:format("Unable to consult .app file ~ts due to ~ts",
+                  [AppFile, file:format_error(Error)]);
 format_error({create_RELEASES, Reason}) ->
     io_lib:format("Unable to create RELEASES file needed by release_handler: ~p", [Reason]).
