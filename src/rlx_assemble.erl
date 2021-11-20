@@ -132,7 +132,13 @@ rewrite_app_file(State, App, TargetDir) ->
 
     %% TODO: should really read this in when creating rlx_app:t() and keep it
     AppFile = filename:join([TargetDir, "ebin", [Name, ".app"]]),
-    {ok, [{application, AppName, AppData0}]} = file:consult(AppFile),
+    ?log_debug("Rewriting .app file: ~s", [AppFile]),
+    [{application, AppName, AppData0}] = case file:consult(AppFile) of
+        {ok, AppTerms} ->
+            AppTerms;
+        {error, ConsultError} ->
+            erlang:error(?RLX_ERROR({consult_app_file, AppFile, ConsultError}))
+    end,
 
     %% maybe replace excluded apps
     AppData1 = maybe_exclude_apps(Applications, IncludedApplications,
@@ -1086,5 +1092,11 @@ format_error({strip_release, Reason}) ->
 format_error({rewrite_app_file, AppFile, Error}) ->
     io_lib:format("Unable to rewrite .app file ~s due to ~p",
                   [AppFile, Error]);
+format_error({consult_app_file, AppFile, enoent}) ->
+    io_lib:format("Unable to consult .app file ~ts (file not found).",
+                  [AppFile]);
+format_error({consult_app_file, AppFile, Error}) ->
+    io_lib:format("Unable to consult .app file ~ts due to ~ts",
+                  [AppFile, file:format_error(Error)]);
 format_error({create_RELEASES, Reason}) ->
     io_lib:format("Unable to create RELEASES file needed by release_handler: ~p", [Reason]).
