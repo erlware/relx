@@ -208,8 +208,8 @@ find_erts_dir() {
             __erts_version="$("$__erl" -boot no_dot_erlang -sasl errlog_type error -noshell -eval "$erts_version_code")"
             ERTS_DIR="${__erl_root}/erts-${__erts_version}"
             if [ -d "$ERTS_DIR" ]; then
-                ERTS_VSN=${__erts_version}
                 echo "Exact ERTS version (${ERTS_VSN}) match not found, instead using ${__erts_version}. The release may fail to run." 1>&2
+                ERTS_VSN=${__erts_version}
             else
                 echo "Can not run the release. There is no ERTS bundled with the release or found on the system."
                 exit 1
