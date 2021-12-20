@@ -50,28 +50,34 @@ solve_release(Release, State0) ->
     end.
 
 %% find the app_info records for each application and its deps needed for the release
-subset(Apps, World, LibDirs, CheckCodeLibDirs) ->
-    subset(Apps, World, sets:new(), LibDirs, CheckCodeLibDirs, []).
+subset(Goals, World, LibDirs, CheckCodeLibDirs) ->
+    {Apps, _} = fold_apps(Goals, World, sets:new(), LibDirs, CheckCodeLibDirs),
+    Apps.
 
-subset([], _World, _Seen, _LibDirs, _CheckCodeLibDirs, Acc) ->
-    Acc;
-subset([Goal | Rest], World, Seen, LibDirs, CheckCodeLibDirs, Acc) ->
+subset(Goal, World, Seen, LibDirs, CheckCodeLibDirs) ->
     {Name, Vsn} = name_version(Goal),
     case sets:is_element(Name, Seen) of
         true ->
-            subset(Rest, World, Seen, LibDirs, CheckCodeLibDirs, Acc);
+            {[], Seen};
         _ ->
             AppInfo=#{applications := Applications,
                       included_applications := IncludedApplications} =
                 find_app(Name, Vsn, World, LibDirs, CheckCodeLibDirs),
-            subset(Rest ++ Applications ++ IncludedApplications,
-                   World,
-                   sets:add_element(Name, Seen),
-                   LibDirs,
-                   CheckCodeLibDirs,
-                   Acc ++ [AppInfo])
+            {Apps, Seen2} = fold_apps(Applications ++ IncludedApplications,
+                                      World,
+                                      sets:add_element(Name, Seen),
+                                      LibDirs,
+                                      CheckCodeLibDirs),
+            %% place the deps of the App ahead of it
+            {Apps ++ [AppInfo], Seen2}
     end.
 
+fold_apps(Apps, World, Seen, LibDirs, CheckCodeLibDirs) ->
+    lists:foldl(fun(App, {AppAcc, SeenAcc}) ->
+                        {NewApps, SeenAcc1} = subset(App, World, SeenAcc, LibDirs, CheckCodeLibDirs),
+                        %% put new apps after the existing list to keep the user defined order
+                        {AppAcc ++ NewApps, SeenAcc1}
+                end, {[], Seen}, Apps).
 
 set_resolved(Release0, Pkgs, State) ->
     case rlx_release:realize(Release0, Pkgs) of
