@@ -44,34 +44,49 @@ solve_release(Release, State0) ->
                         {false, [SystemLibs | LibDirs]}
                 end,
 
-            Pkgs = subset(Goals, AllApps, LibDirs1, CheckCodeLibDirs),
-            Pkgs1 = remove_exclude_apps(Pkgs, State1),
-            set_resolved(Release, Pkgs1, State1)
+            ExcludeApps = rlx_state:exclude_apps(State1),
+            Pkgs = subset(Goals, AllApps, LibDirs1, CheckCodeLibDirs, ExcludeApps),
+            set_resolved(Release, Pkgs, State1)
     end.
 
 %% find the app_info records for each application and its deps needed for the release
-subset(Apps, World, LibDirs, CheckCodeLibDirs) ->
-    subset(Apps, World, sets:new(), LibDirs, CheckCodeLibDirs, []).
+subset(Goals, World, LibDirs, CheckCodeLibDirs, ExcludeApps) ->
+    {Apps, _} = fold_apps(Goals, World, sets:new(), LibDirs, CheckCodeLibDirs, ExcludeApps),
+    Apps.
 
-subset([], _World, _Seen, _LibDirs, _CheckCodeLibDirs, Acc) ->
-    Acc;
-subset([Goal | Rest], World, Seen, LibDirs, CheckCodeLibDirs, Acc) ->
+subset(Goal, World, Seen, LibDirs, CheckCodeLibDirs, ExcludeApps) ->
     {Name, Vsn} = name_version(Goal),
     case sets:is_element(Name, Seen) of
         true ->
-            subset(Rest, World, Seen, LibDirs, CheckCodeLibDirs, Acc);
+            {[], Seen};
         _ ->
             AppInfo=#{applications := Applications,
                       included_applications := IncludedApplications} =
                 find_app(Name, Vsn, World, LibDirs, CheckCodeLibDirs),
-            subset(Rest ++ Applications ++ IncludedApplications,
-                   World,
-                   sets:add_element(Name, Seen),
-                   LibDirs,
-                   CheckCodeLibDirs,
-                   Acc ++ [AppInfo])
+            {Apps, Seen2} = fold_apps(Applications ++ IncludedApplications,
+                                      World,
+                                      sets:add_element(Name, Seen),
+                                      LibDirs,
+                                      CheckCodeLibDirs,
+                                      ExcludeApps),
+
+            %% don't add excluded apps
+            %% TODO: should an excluded app's deps also be excluded?
+            case lists:member(Name, ExcludeApps) of
+                true ->
+                    {Apps, Seen2};
+                false ->
+                    %% place the deps of the App before it
+                    {Apps ++ [AppInfo], Seen2}
+            end
     end.
 
+fold_apps(Apps, World, Seen, LibDirs, CheckCodeLibDirs, ExcludeApps) ->
+    lists:foldl(fun(App, {AppAcc, SeenAcc}) ->
+                        {NewApps, SeenAcc1} = subset(App, World, SeenAcc, LibDirs, CheckCodeLibDirs, ExcludeApps),
+                        %% put new apps after the existing list to keep the user defined order
+                        {AppAcc ++ NewApps, SeenAcc1}
+                end, {[], Seen}, Apps).
 
 set_resolved(Release0, Pkgs, State) ->
     case rlx_release:realize(Release0, Pkgs) of
@@ -99,19 +114,6 @@ name_version(Name) when is_atom(Name) ->
     {Name, undefined};
 name_version({Name, #{vsn := Vsn}}) ->
     {Name, Vsn}.
-
-remove_exclude_apps(AllApps, State) ->
-    ExcludeApps = rlx_state:exclude_apps(State),
-    lists:foldl(fun(AppName, Acc) ->
-                        find_and_remove(AppName, Acc)
-                end, AllApps, ExcludeApps).
-
-find_and_remove(_, []) ->
-    [];
-find_and_remove(ExcludeName, [#{name := Name} | Rest]) when ExcludeName =:= Name ->
-    Rest;
-find_and_remove(ExcludeName, [H | Rest]) ->
-    [H | find_and_remove(ExcludeName, Rest)].
 
 %% Applications are first searched for in the `Apps' variable which is a map
 %% of application name to `rlx_app_info' map. This variable is passed to `relx'
