@@ -66,7 +66,7 @@ parse_vsn(Vsn) ->
                 "(\\+[0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*)?$", [{capture, [1,2,4,6,8], list}]) of
         %% OTP application's leave out patch version when it is .0
         %% this regex currently drops prerelease and build if the patch version is left out
-        %% so 3.11-0+meta would reutrn {{3,11,0},{[], []}} intsead of {{3,1,0},{"0","meta"}}
+        %% so 3.11-0+meta would return {{3,11,0},{[], []}} intsead of {{3,1,0},{"0","meta"}}
         {match, [Major, Minor, [], PreRelease, Build]} ->
             {{list_to_integer(Major), list_to_integer(Minor), 0}, {PreRelease, Build}};
         {match, [Major, Minor, Patch, PreRelease, Build]} ->

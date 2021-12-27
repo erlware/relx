@@ -835,7 +835,7 @@ copy_to_start(RelDir, Name) ->
         ok ->
             ok;
         {error, Reason} ->
-            %% it isn't absolutely necesary for start.boot to exist so just warn
+            %% it isn't absolutely necessary for start.boot to exist so just warn
             ?log_warn("Unable to copy boot file ~s to start.boot: ~p", [BootFile, Reason]),
             ok
     end.
