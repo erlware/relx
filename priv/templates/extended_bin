@@ -597,7 +597,7 @@ RELX_CONFIG_PATH=$(check_replace_os_vars sys.config "$RELX_CONFIG_PATH")
 #    - nonexisting -args_files
 #    - circular dependencies of -args_files
 #    - relative paths in -args_file parameters
-#    - multiple/mixed occurences of -name and -sname parameters
+#    - multiple/mixed occurrences of -name and -sname parameters
 #    - missing -name or -sname parameters
 # If all checks pass, extract the target node name
 set +e

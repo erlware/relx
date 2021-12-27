@@ -214,7 +214,7 @@ generate_state_vars(Release, State) ->
      {vm_args, rlx_state:vm_args(State)},
      {sys_config, rlx_state:sys_config(State)},
      {root_dir, rlx_state:root_dir(State)}
-     %% include a var for each application. makes it easier to copy a file from an applcation
+     %% include a var for each application. makes it easier to copy a file from an application
      | [{rlx_app_info:name(AppInfo), rlx_app_info:dir(AppInfo)}
         || AppInfo <- rlx_release:applications(Release)]].
 

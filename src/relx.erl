@@ -184,7 +184,7 @@ pick_release(State) ->
 pick_release_version(undefined, State) ->
     pick_release(State);
 pick_release_version(RelName, State) ->
-    %% Here we will just get the lastest version for name RelName and run that.
+    %% Here we will just get the latest version for name RelName and run that.
     AllReleases = maps:to_list(rlx_state:configured_releases(State)),
     SpecificReleases = [Rel || Rel={{PossibleRelName, _}, _} <- AllReleases, PossibleRelName =:= RelName],
     case lists:sort(fun release_sort/2, SpecificReleases) of
@@ -202,7 +202,7 @@ release_sort({{RelName, RelVsnA}, _},
     rlx_util:parsed_vsn_lte(rlx_util:parse_vsn(RelVsnB), rlx_util:parse_vsn(RelVsnA));
 release_sort({{RelA, _}, _}, {{RelB, _}, _}) ->
     %% The release names are different. When the releases are named differently
-    %% we can not just take the lastest version. You *must* provide a default
+    %% we can not just take the latest version. You *must* provide a default
     %% release name at least. So we throw an error here that the top can catch
     %% and return
     error(?RLX_ERROR({multiple_release_names, RelA, RelB})).
