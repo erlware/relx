@@ -57,7 +57,7 @@ To update the current branch to `upstream`, you can use the following commands.
 
 ``` bash
 $ git fetch upstream
-$ git rebase upstream/master
+$ git rebase upstream/main
 ```
 
 It may ask you to stash your changes, in which case you stash with:
@@ -77,10 +77,10 @@ submitting the pull request. If conflicts arise it is your responsibility
 to deal with them.
 
 You MUST create a new branch for your work. First make sure you have
-'fetched' `master`
+'fetched' `main`
 
 ``` bash
-$ git checkout -b $BRANCH upstream/master
+$ git checkout -b $BRANCH upstream/main
 ```
 
 You MUST use a an insightful branch name.
@@ -135,5 +135,5 @@ $ git push origin $BRANCH
 ```
 
 You MUST then submit the pull request by using the GitHub interface to
-the `master` branch. You SHOULD provide an explanatory message and refer
+the `main` branch. You SHOULD provide an explanatory message and refer
 to any previous ticket related to this patch.
