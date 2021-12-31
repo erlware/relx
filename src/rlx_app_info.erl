@@ -38,11 +38,13 @@
 
 -export([new/5,
          new/6,
+         new/7,
          name/1,
          vsn/1,
          dir/1,
          applications/1,
          included_applications/1,
+         optional_applications/1,
          link/1,
          link/2,
          format_error/1,
@@ -57,6 +59,7 @@
 
                applications          := [atom()],
                included_applications := [atom()],
+               optional_applications := [atom()],
 
                dir                   := file:name() | undefined,
                link                  := boolean() | undefined,
@@ -73,15 +76,23 @@
 
 -spec new(atom(), string(), file:name(), [atom()], [atom()]) -> t().
 new(Name, Vsn, Dir, Applications, IncludedApplications) ->
-    new(Name, Vsn, Dir, Applications, IncludedApplications, dep).
+    new(Name, Vsn, Dir, Applications, IncludedApplications, [], dep).
 
--spec new(atom(), string(), file:name(), [atom()], [atom()], app_type()) -> t().
-new(Name, Vsn, Dir, Applications, IncludedApplications, AppType) ->
+-spec new(atom(), string(), file:name(), [atom()], [atom()], [atom()] | atom()) -> t().
+new(Name, Vsn, Dir, Applications, IncludedApplications, OptionalApplications)
+  when is_list(OptionalApplications) ->
+    new(Name, Vsn, Dir, Applications, IncludedApplications, OptionalApplications, dep);
+new(Name, Vsn, Dir, Applications, IncludedApplications, AppType) when is_atom(AppType) ->
+    new(Name, Vsn, Dir, Applications, IncludedApplications, [], AppType).
+
+-spec new(atom(), string(), file:name(), [atom()], [atom()], [atom()], app_type()) -> t().
+new(Name, Vsn, Dir, Applications, IncludedApplications, OptionalApplications, AppType) ->
     #{name => Name,
       vsn => Vsn,
 
       applications => Applications,
       included_applications => IncludedApplications,
+      optional_applications => OptionalApplications,
 
       dir => Dir,
       link => false,
@@ -106,6 +117,10 @@ applications(#{applications := Deps}) ->
 
 -spec included_applications(t()) -> [atom()].
 included_applications(#{included_applications := Deps}) ->
+    Deps.
+
+-spec optional_applications(t()) -> [atom()].
+optional_applications(#{included_applications := Deps}) ->
     Deps.
 
 -spec link(t()) -> boolean().

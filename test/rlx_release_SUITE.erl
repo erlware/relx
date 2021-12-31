@@ -44,7 +44,9 @@ groups() ->
        make_exclude_app_release, make_overridden_release, make_goalless_release,
        make_one_app_top_level_release, make_release_twice, make_erts_release,
        make_erts_config_release, make_included_nodetool_release, make_release_goal_reorder,
-       make_release_keep_goal_order]},
+       make_release_keep_goal_order, optional_application, missing_optional_application,
+       missing_duplicated_optional_application, duplicated_optional_applications,
+       excluded_optional_applications]},
      {dev_mode, [shuffle], [make_dev_mode_template_release,
                             make_dev_mode_release,
                             make_release_twice_dev_mode]},
@@ -61,6 +63,14 @@ init_per_suite(Config) ->
     rlx_test_utils:create_app(LibDir, "goal_app_2", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], []),
     rlx_test_utils:create_app(LibDir, "non_goal_1", "0.0.1", [stdlib,kernel], [lib_dep_1]),
     rlx_test_utils:create_app(LibDir, "non_goal_2", "0.0.1", [stdlib,kernel], []),
+    rlx_test_utils:create_app(LibDir, "non_goal_3", "0.0.1", [stdlib,kernel,non_goal_2], []),
+    rlx_test_utils:create_app(LibDir, "non_goal_6", "0.0.1", [stdlib,kernel,non_existant_goal], [], []),
+
+    rlx_test_utils:create_app(LibDir, "goal_app_3", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], [], [non_goal_3]),
+    rlx_test_utils:create_app(LibDir, "goal_app_4", "0.0.1", [stdlib,kernel,goal_app_1,non_goal_2], [], [non_existant_goal]),
+    rlx_test_utils:create_app(LibDir, "goal_app_5", "0.0.1", [stdlib,kernel,non_goal_6], [], [non_existant_goal]),
+    rlx_test_utils:create_app(LibDir, "goal_app_6", "0.0.1", [stdlib,kernel,non_existant_goal,goal_app_5], [], []),
+
 
     [{lib_dir, LibDir} | Config].
 
@@ -143,6 +153,118 @@ make_release_keep_goal_order(Config) ->
                   {stdlib,_},
                   {non_goal_2,"0.0.1"},
                   {lib_dep_1,"0.0.1"}], AppSpecs).
+
+optional_application(Config) ->
+    LibDir = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    RelxConfig = [{release, {optional_foo, "0.0.1"},
+                   [goal_app_3]}],
+
+    {ok, State} = relx:build_release(optional_foo, [{root_dir, LibDir}, {lib_dirs, [LibDir]},
+                                                    {output_dir, OutputDir} | RelxConfig]),
+
+    [{{optional_foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:app_specs(Release),
+
+    %% goal_app_2 depends on goal_app_1, so the two are reordered when building the .rel file
+    ?assertMatch([{kernel,_},
+                  {stdlib,_},
+                  {lib_dep_1,"0.0.1",load},
+                  {non_goal_1,"0.0.1"},
+                  {goal_app_1,"0.0.1"},
+                  {non_goal_2,"0.0.1"},
+                  {non_goal_3,"0.0.1"},
+                  {goal_app_3,"0.0.1"}], AppSpecs).
+
+%% goal_app_4 has an optional application that doesn't exist
+%% since it is optional the build won't fail
+missing_optional_application(Config) ->
+    LibDir = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    RelxConfig = [{release, {missing_optional_foo, "0.0.1"},
+                   [goal_app_4]}],
+
+    {ok, State} = relx:build_release(missing_optional_foo, [{root_dir, LibDir}, {lib_dirs, [LibDir]},
+                                                            {output_dir, OutputDir} | RelxConfig]),
+
+    [{{missing_optional_foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:app_specs(Release),
+
+    ?assertMatch([{kernel,_},
+                  {stdlib,_},
+                  {lib_dep_1,"0.0.1",load},
+                  {non_goal_1,"0.0.1"},
+                  {goal_app_1,"0.0.1"},
+                  {non_goal_2,"0.0.1"},
+                  {goal_app_4,"0.0.1"}], AppSpecs).
+
+duplicated_optional_applications(Config) ->
+    LibDir = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    RelxConfig = [{release, {duplicated_optional_foo, "0.0.1"},
+                   [goal_app_3]}],
+
+    {ok, State} = relx:build_release(duplicated_optional_foo, [{root_dir, LibDir}, {lib_dirs, [LibDir]},
+                                                   {output_dir, OutputDir} | RelxConfig]),
+
+    [{{duplicated_optional_foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:app_specs(Release),
+
+    %% goal_app_2 depends on goal_app_1, so the two are reordered when building the .rel file
+    ?assertMatch([{kernel,_},
+                  {stdlib,_},
+                  {lib_dep_1,"0.0.1",load},
+                  {non_goal_1,"0.0.1"},
+                  {goal_app_1,"0.0.1"},
+                  {non_goal_2,"0.0.1"},
+                  {non_goal_3, "0.0.1"},
+                  {goal_app_3,"0.0.1"}], AppSpecs).
+
+missing_duplicated_optional_application(Config) ->
+    LibDir = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    RelxConfig = [{release, {missing_optional_foo, "0.0.1"},
+                   [goal_app_5]}],
+
+    %% non_existant_goal is an optional app on goal_app_5 but a required dep of
+    %% non_goal_app_6 which causes the build to fail
+    ?assertError({error,{rlx_resolve,{app_not_found,non_existant_goal,undefined}}},
+                  relx:build_release(missing_optional_foo, [{root_dir, LibDir}, {lib_dirs, [LibDir]},
+                                                            {output_dir, OutputDir} | RelxConfig])),
+
+    %% also test that if the app is required by the goal app but optional to
+    %% a dep of the goal it fails
+    RelxConfig1 = [{release, {missing_optional_foo, "0.0.1"},
+                    [goal_app_6]}],
+    ?assertError({error,{rlx_resolve,{app_not_found,non_existant_goal,undefined}}},
+                 relx:build_release(missing_optional_foo, [{root_dir, LibDir}, {lib_dirs, [LibDir]},
+                                                           {output_dir, OutputDir} | RelxConfig1 ])).
+
+excluded_optional_applications(Config) ->
+    LibDir = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    RelxConfig = [{release, {excluded_optional_foo, "0.0.1"},
+                   [goal_app_3]},
+                  {exclude_apps, [non_goal_2]}],
+
+    {ok, State} = relx:build_release(excluded_optional_foo, [{root_dir, LibDir}, {lib_dirs, [LibDir]},
+                                                   {output_dir, OutputDir} | RelxConfig]),
+
+    [{{excluded_optional_foo, "0.0.1"}, Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    AppSpecs = rlx_release:app_specs(Release),
+
+    ?assertMatch([{kernel,_},
+                  {stdlib,_},
+                  {lib_dep_1,"0.0.1",load},
+                  {non_goal_1,"0.0.1"},
+                  {goal_app_1,"0.0.1"},
+                  {non_goal_3, "0.0.1"},
+                  {goal_app_3,"0.0.1"}], AppSpecs).
 
 make_config_release(Config) ->
     DataDir = ?config(priv_dir, Config),
@@ -945,6 +1067,7 @@ make_exclude_modules_release(Config) ->
                          {vsn,"0.0.1"},
                          {modules,[]},
                          {included_applications,_},
+                         {optional_applications,_},
                          {registered,_},
                          {applications,_}]}]},
                  file:consult(filename:join([OutputDir, "foo", "lib",
