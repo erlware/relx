@@ -709,6 +709,13 @@ if [ "$ERL_DIST_PORT" ]; then
             EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT}"
         fi
     else
+        ERL_DIST_PORT_WARNING="ERL_DIST_PORT is set and used to set the port, but doing so on ERTS version ${ERTS_VSN} means remsh/rpc will not work for this release"
+        if ! command -v logger > /dev/null 2>&1
+        then
+            echo "WARNING: ${ERL_DIST_PORT_WARNING}"
+        else
+            logger -p warning -t "${REL_NAME}[$$]" "${ERL_DIST_PORT_WARNING}"
+        fi
         EXTRA_DIST_ARGS="-kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
     fi
 fi
