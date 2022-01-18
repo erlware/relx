@@ -5,6 +5,7 @@
          wildcard_paths/1,
          copy/2,
          copy/3,
+         ensure_writable/1,
          copy_file_info/3,
          exists/1,
          write/2,
@@ -19,6 +20,7 @@
          path_from_ancestor/2,
          format_error/1]).
 
+-include("relx.hrl").
 -include_lib("kernel/include/file.hrl").
 
 -spec mkdtemp() -> file:name() | {error, term()}.
@@ -199,6 +201,15 @@ copy_(From, To, Options) ->
             copy_file_info(To, From, proplists:get_value(file_info, Options, []));
         {error, Error} ->
             {error, {copy_failed, From, To, Error}}
+    end.
+
+ensure_writable(File) ->
+    {ok, #file_info{mode=CurrentMode}} = file:read_file_info(File),
+    case file:change_mode(File, CurrentMode bor 8#00200) of
+        ok ->
+            ok;
+        {error, Reason} ->
+            erlang:error(?RLX_ERROR({ensure_writable_failed, File, Reason}))
     end.
 
 copy_file_info(To, From, FileInfoToKeep) ->
@@ -389,11 +400,14 @@ canonical_path([_|Acc], [".."|Rest])  -> canonical_path(Acc, Rest);
 canonical_path([], [".."|Rest])       -> canonical_path([], Rest);
 canonical_path(Acc, [Component|Rest]) -> canonical_path([Component|Acc], Rest).
 
+format_error({ensure_writable_failed, File, Reason}) ->
+    io_lib:format("Making file ~ts writable failed with reason:~n~ts",
+                  [File, file:format_error(Reason)]);
 format_error({write_file_info_failed_for, From, To, Errors}) ->
-    io_lib:format("Writing file info during copy of ~s to ~s failed with reasons:~n~s",
+    io_lib:format("Writing file info during copy of ~ts to ~ts failed with reasons:~n~ts",
                   [From, To, [[file:format_error(Error), "\n"] || Error <- Errors]]);
 format_error({copy_failed, From, To, Reason}) ->
-    io_lib:format("Copying ~s to ~s failed with reason: ~s", [From, To, file:format_error(Reason)]);
+    io_lib:format("Copying ~ts to ~ts failed with reason: ~ts", [From, To, file:format_error(Reason)]);
 format_error({read_file_info_failed, From, To, Reason}) ->
-    io_lib:format("Reading file info failed during copy of ~s ~s with reason: ~s",
+    io_lib:format("Reading file info failed during copy of ~ts ~ts with reason: ~ts",
                   [From, To, file:format_error(Reason)]).

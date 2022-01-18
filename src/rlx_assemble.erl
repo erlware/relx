@@ -666,19 +666,24 @@ include_erts(State, Release, OutputDir, RelDir) ->
                     case OsFamily of
                         unix ->
                             DynErl = filename:join([LocalErtsBin, "dyn_erl"]),
-                            Erl = filename:join([LocalErtsBin, "erl"]),
-                            rlx_file_utils:copy(DynErl, Erl);
+                            Erl = filename:join([LocalErtsBin, "erl"]);
                         win32 ->
                             DynErl = filename:join([LocalErtsBin, "dyn_erl.ini"]),
-                            Erl = filename:join([LocalErtsBin, "erl.ini"]),
-                            rlx_file_utils:copy(DynErl, Erl)
+                            Erl = filename:join([LocalErtsBin, "erl.ini"])
                     end,
 
-                    %% drop yielding_c_fun binary if it exists
-                    %% it is large (1.1MB) and only used at compile time
-                    _ = rlx_file_utils:remove(filename:join([LocalErtsBin, "yielding_c_fun"])),
+                    ok = rlx_file_utils:ensure_writable(Erl),
 
-                    make_boot_script(State, Release, OutputDir, RelDir)
+                    case rlx_file_utils:copy(DynErl, Erl) of
+                        ok ->
+                            %% drop yielding_c_fun binary if it exists
+                            %% it is large (1.1MB) and only used at compile time
+                            _ = rlx_file_utils:remove(filename:join([LocalErtsBin, "yielding_c_fun"])),
+
+                            make_boot_script(State, Release, OutputDir, RelDir);
+                        {error, Reason}->
+                            erlang:error({error, {rlx_file_utils, Reason}})
+                    end
             end
     end.
 
