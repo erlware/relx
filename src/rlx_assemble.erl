@@ -39,7 +39,7 @@ do(Release, State) ->
                         end
                     end
                 ],
-            try beam_lib:strip_release(OutputDir) of
+            try beam_lib:strip_release(OutputDir,["Attr"]) of
                 {ok, _} ->
                     {ok, State1};
                 {error, _, Reason} ->
