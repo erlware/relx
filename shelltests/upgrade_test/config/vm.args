@@ -1,0 +1,6 @@
+-sname upgrade_test
+
+-setcookie upgrade_test_cookie
+
++K true
++A30

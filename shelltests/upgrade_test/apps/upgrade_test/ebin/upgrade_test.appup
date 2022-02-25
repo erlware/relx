@@ -1,0 +1,3 @@
+{"0.1.0",
+ [{<<".*">>, [{restart_application, upgrade_test}]}],
+ [{<<".*">>, [{restart_application, upgrade_test}]}]}.
