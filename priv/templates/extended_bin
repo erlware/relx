@@ -31,6 +31,7 @@ esac
 [ -z "$SCRIPT" ] && SCRIPT=$0
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT")" && pwd -P)"
 RELEASE_ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+ROOTDIR="$RELEASE_ROOT_DIR"
 # Make the value available to variable substitution calls below
 export REL_NAME="{{ rel_name }}"
 REL_VSN="{{ rel_vsn }}"
@@ -262,6 +263,7 @@ relx_get_nodename() {
         "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
                       -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
+                      -boot_var RELEASE_DIR "$RELEASE_ROOT_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
                       -dist_listen false \
                       ${START_EPMD} \
@@ -272,6 +274,7 @@ relx_get_nodename() {
         "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
                       -mode interactive \
                       -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
+                      -boot_var RELEASE_DIR "$RELEASE_ROOT_DIR" \
                       -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
                       -setcookie "${COOKIE}" \
                       -dist_listen false \
@@ -307,6 +310,7 @@ relx_rem_sh() {
     # shellcheck disable=SC2086
     exec "$BINDIR/erl" ${remote_nodename} -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
          -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
+         -boot_var RELEASE_DIR "$RELEASE_ROOT_DIR" \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME" \
          -dist_listen false \
          $DIST_ARGS \
@@ -597,7 +601,6 @@ process_internal_args "$@"
 
 find_erts_dir
 find_erl_call
-export ROOTDIR="$RELEASE_ROOT_DIR"
 export BINDIR="$ERTS_DIR/bin"
 export EMU="beam"
 export PROGNAME="erl"
@@ -979,6 +982,7 @@ case "$1" in
         echo "Exec: $BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
+            -boot_var RELEASE_DIR "$RELEASE_ROOT_DIR" \
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" \
             $EXTRA_DIST_ARGS -- "$@"
@@ -1000,6 +1004,7 @@ case "$1" in
         exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
+            -boot_var RELEASE_DIR "$RELEASE_ROOT_DIR" \
             -config "$RELX_CONFIG_PATH" \
             -args_file "$VMARGS_PATH" \
             $EXTRA_DIST_ARGS -- "$@"
