@@ -72,7 +72,12 @@ parse_vsn(Vsn) ->
         {match, [Major, Minor, Patch, PreRelease, Build]} ->
             {{list_to_integer(Major), list_to_integer(Minor), list_to_integer(Patch)}, {PreRelease, Build}};
         _ ->
-            0
+            try list_to_integer(Vsn) of
+                Major ->
+                    {{Major, 0, 0}, {"", ""}}
+            catch _:_ ->
+                {{0, 0, 0}, {"", ""}}
+            end
     end.
 
 %% less than or equal to comparison for versions parsed with `parse_vsn'
