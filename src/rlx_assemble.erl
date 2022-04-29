@@ -663,18 +663,17 @@ include_erts(State, Release, OutputDir, RelDir) ->
                     ok = rlx_file_utils:copy(ErtsBinDir, LocalErtsBin,
                                              [recursive, {file_info, [mode, time]}]),
 
-                    case OsFamily of
+                    Result = case OsFamily of
                         unix ->
                             DynErl = filename:join([LocalErtsBin, "dyn_erl"]),
-                            Erl = filename:join([LocalErtsBin, "erl"]);
+                            Erl = filename:join([LocalErtsBin, "erl"]),
+							ok = rlx_file_utils:ensure_writable(Erl),
+							rlx_file_utils:copy(DynErl, Erl);
                         win32 ->
-                            DynErl = filename:join([LocalErtsBin, "dyn_erl.ini"]),
-                            Erl = filename:join([LocalErtsBin, "erl.ini"])
+							ok
                     end,
 
-                    ok = rlx_file_utils:ensure_writable(Erl),
-
-                    case rlx_file_utils:copy(DynErl, Erl) of
+                    case Result of
                         ok ->
                             %% drop yielding_c_fun binary if it exists
                             %% it is large (1.1MB) and only used at compile time
