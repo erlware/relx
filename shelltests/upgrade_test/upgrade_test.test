@@ -1,0 +1,90 @@
+# create 0.1.0 tar archive and then the 0.1.1 tar 
+#
+#
+$ rebar3 as prod tar
+> / Release successfully assembled: /
+>= 0
+
+$ REBAR_CONFIG=rebar.config011 rebar3 as prod release -v 0.1.1
+> / Release successfully assembled: /
+>= 0
+
+$ REBAR_CONFIG=rebar.config011 rebar3 as prod relup -n upgrade_test -v 0.1.1 -u 0.1.0
+> / Release successfully assembled: /
+>= 0
+
+$ REBAR_CONFIG=rebar.config011 rebar3 as prod tar -v 0.1.1
+> / Release successfully assembled: /
+>= 0
+
+
+#
+# extract 0.1.0 into _build/n, start node and check versions
+#
+
+$ mkdir -p _build/n
+>= 0
+
+$ tar -C _build/n -xf ./_build/prod/rel/upgrade_test/upgrade_test-0.1.0.tar.gz
+>= 0
+
+$ _build/n/bin/upgrade_test daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ _build/n/bin/upgrade_test versions
+>
+Installed versions:
+* 0.1.0	permanent
+>= 0
+
+#
+# unpack 0.1.1 and check versions
+#
+
+$ cp _build/prod/rel/upgrade_test/upgrade_test-0.1.1.tar.gz _build/n/releases/
+>= 0
+
+$ _build/n/bin/upgrade_test unpack 0.1.1
+>
+Release 0.1.1 not found, attempting to unpack releases/upgrade_test-0.1.1.tar.gz
+Unpacked successfully: "0.1.1"
+>= 0
+
+$ _build/n/bin/upgrade_test versions
+>
+Installed versions:
+* 0.1.1	unpacked
+* 0.1.0	permanent
+>= 0
+
+#
+# upgrade to 0.1.1 and check versions
+#
+$ _build/n/bin/upgrade_test upgrade 0.1.1
+>
+Release 0.1.1 is already unpacked, now installing.
+Installed Release: 0.1.1
+Made release permanent: "0.1.1"
+>=
+
+$ _build/n/bin/upgrade_test versions
+>
+Installed versions:
+* 0.1.1	permanent
+* 0.1.0	old
+>= 0
+
+#
+# stop node and remove _build/n
+#
+$ _build/n/bin/upgrade_test stop
+>=0
+
+$ sleep 2
+>=0
+
+$ rm -rf _build/n
+>=0

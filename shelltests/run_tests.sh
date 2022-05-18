@@ -17,7 +17,8 @@ pushd "${rebar3_dir}"
 git clone https://github.com/erlang/rebar3 .
 mkdir _checkouts
 ln -s "$current_dir/../../relx" _checkouts/relx
-sed -i 's_relx\(.*\)build/default/lib/_relx\1checkouts_' rebar.config
+sed -i.bak 's_relx\(.*\)build/default/lib/_relx\1checkouts_' rebar.config
+rm rebar.config.bak
 ./bootstrap
 
 popd
