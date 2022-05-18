@@ -617,10 +617,16 @@ RELX_CONFIG_PATH=$(check_replace_os_vars sys.config "$RELX_CONFIG_PATH")
 #    - missing -name or -sname parameters
 # If all checks pass, extract the target node name
 set +e
-TMP_NAME_ARG=$(awk 'function check_name(file)
+TMP_NAME_ARG=$(awk 'function shell_quote(str)
+{
+    gsub(/'\''/,"'\'\\\\\'\''", str);
+    return "'\''" str "'\''"
+}
+
+function check_name(file)
 {
     # if file exists, then it should be readable
-    if (system("test -f "file) == 0 && system("test -r "file) != 0) {
+    if (system("test -f " shell_quote(file)) == 0 && system("test -r " shell_quote(file)) != 0) {
         print file" not readable"
         exit 3
     }
