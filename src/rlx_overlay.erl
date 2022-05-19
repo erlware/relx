@@ -17,7 +17,10 @@ render(Release, State) ->
             erlang:error(?RLX_ERROR(Reason));
         OverlayVars ->
             Files = rlx_util:template_files(),
-            do_overlay(State, Release, Files, OverlayVars)
+            case do_overlay(State, Release, Files, OverlayVars) of
+                {error, _} = E -> erlang:error(E);
+                {ok, State1} -> {ok, State1}
+            end
     end.
 
 -spec format_error(ErrorDetail::term()) -> iolist().
@@ -52,7 +55,15 @@ format_error({unable_to_compile_template, FromFile, Reason}) ->
                   [FromFile, [format_errors(F, Es) || {F, Es} <- Reason]]);
 format_error({unable_to_make_dir, Absolute, Error}) ->
     io_lib:format("Unable to make directory ~s because ~p",
-                  [Absolute, Error]).
+                  [Absolute, Error]);
+format_error({unable_to_chmod, Mode, File, Err}) ->
+    io_lib:format("Unable to chmod ~p ~s because of ~p",
+                  [Mode, File, Err]);
+format_error({link_failed, FromFile, ToFile, Err}) ->
+    io_lib:format("Unable to symlink ~s to ~s because of ~p",
+                  [FromFile, ToFile, Err]);
+format_error({malformed_overlay, Invalid}) ->
+    io_lib:format("Overlay section malformed: ~p", [Invalid]).
 
 %%%===================================================================
 %%% Internal Functions
@@ -312,7 +323,9 @@ do_individual_overlay(State, Release, _Files, OverlayVars, {template, From, To})
                                                                  absolute_path_from(State, FromFile),
                                                                  absolute_path_to(State, Release, ToFile))
                                           end)
-                   end).
+                   end);
+do_individual_overlay(_State, _Release, _Files, _OverlayVars, Invalid) ->
+    ?RLX_ERROR({malformed_overlay, Invalid}).
 
 -spec wildcard_copy(rlx_state:t(), rlx_release:t(), file:filename_all(), file:filename_all(),
       fun((file:filename_all(), file:filename_all()) -> ok | {error, term()}),
