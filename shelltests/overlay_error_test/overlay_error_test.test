@@ -1,0 +1,46 @@
+# baseline, no overlay
+$ rebar3 as prod release
+> / Release successfully assembled: /
+>= 0
+
+# {overlay, [{malformed, foo}]}
+$ rebar3 as malformed_error release
+> / Overlay section malformed: /
+>= 1
+
+
+# {overlay, [{mkdir, "releases/RELEASES"}]}
+$ rebar3 as mkdir_error release
+> / Unable to make directory /
+>= 1
+
+# {overlay, [{copy, "does_not_exist", "priv/something"}]}
+$ rebar3 as copy_error release
+> / Unable to copy from /
+>= 1
+
+# {overlay, [{template, "does_not_exist", "something"}]}
+$ rebar3 as template_read_error release
+> / Unable to read template file /
+>= 1
+
+# {overlay, [{template, "README.md", "releases"}]}
+$ rebar3 as template_write_error release
+> / Unable to write to /
+>= 1
+
+# {overlay, [{template, "README.md", "releases/RELEASES/foo"}]}
+$ rebar3 as template_dir_error release
+> / Unable to create enclosing directory for /
+>= 1
+
+# {overlay, [{chmod, "000", "does_not_exist"}]}
+$ rebar3 as chmod_error release
+> / Unable to chmod /
+>= 1
+
+# {mode, dev},
+# {overlay, [{link, "README.md", "../../../../../../../../../../../../../../../../../../../../../../../../f"}]}
+$ rebar3 as link_error release
+> / Unable to symlink /
+>= 1
