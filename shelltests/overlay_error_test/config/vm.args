@@ -1,0 +1,6 @@
+-sname overlay_error_test
+
+-setcookie overlay_error_test_cookie
+
++K true
++A30
