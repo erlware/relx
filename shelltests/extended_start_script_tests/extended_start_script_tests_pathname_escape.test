@@ -1,0 +1,34 @@
+$ rebar3 as pathname_escape tar -n pathname_escape
+> / Tarball successfully created: /
+>= 0
+
+# make a file _build/p that contains all bytes 0x01..0x0f except
+# 0x00 (NUL) and 0x2f (/) : because those must not be part of a POSIX filename 
+#
+# also exclude 0x22 ("), 0x60 (`) and anything > 0x0f : the extendend_bin
+# script can handle it but various parts of the erlang runtime (that exec /bin/sh
+# with unsanatized input) would fail. 
+#
+# use the content of the _build/p as filename component of the release ROOTDIR  
+# 
+$ for c in $(for x in $(seq 1 33) $(seq 35 46) $(seq 48 95) $(seq 97 127); do printf '%03o\n' $x; done); do printf \\$c ; done > ./_build/p
+>= 0
+
+$ mkdir -p "./_build/test/$(cat ./_build/p)"
+>= 0
+
+$tar -C "./_build/test/$(cat ./_build/p)" -xf ./_build/pathname_escape/rel/pathname_escape/pathname_escape-0.1.0.tar.gz
+
+$ "./_build/test/$(cat ./_build/p)/bin/pathname_escape" daemon
+>= 0
+
+$ sleep 1
+>= 0
+
+$ "./_build/test/$(cat ./_build/p)/bin/pathname_escape" ping
+>
+pong
+>= 0
+
+$ "./_build/test/$(cat ./_build/p)/bin/pathname_escape" stop
+>= 0
