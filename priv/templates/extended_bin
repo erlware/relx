@@ -259,24 +259,24 @@ relx_get_nodename() {
     id="longname$(relx_gen_id)-${NAME}"
     if [ -z "$COOKIE" ]; then
         # shellcheck disable=SC2086
-        "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
-                      -mode interactive \
-                      -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
-                      -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
-                      -dist_listen false \
-                      ${START_EPMD} \
-                      -noshell "${NAME_TYPE}" "$id"
+        "$BINDIR/erlexec" -boot "$REL_DIR"/start_clean \
+                          -mode interactive \
+                          -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
+                          -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
+                          -dist_listen false \
+                          ${START_EPMD} \
+                          -noshell "${NAME_TYPE}" "$id"
     else
         # running with setcookie prevents a ~/.erlang.cookie from being created
         # shellcheck disable=SC2086
-        "$BINDIR/erl" -boot "$REL_DIR"/start_clean \
-                      -mode interactive \
-                      -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
-                      -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
-                      -setcookie "${COOKIE}" \
-                      -dist_listen false \
-                      ${START_EPMD} \
-                      -noshell "${NAME_TYPE}" "$id"
+        "$BINDIR/erlexec" -boot "$REL_DIR"/start_clean \
+                          -mode interactive \
+                          -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
+                          -eval '[_,H]=re:split(atom_to_list(node()),"@",[unicode,{return,list}]), io:format("~s~n",[H]), halt()' \
+                          -setcookie "${COOKIE}" \
+                          -dist_listen false \
+                          ${START_EPMD} \
+                          -noshell "${NAME_TYPE}" "$id"
     fi
 }
 
@@ -305,7 +305,7 @@ relx_rem_sh() {
     # -dist_listen is new in OTP-23. It keeps the remote node from binding to a listen port
     # and implies the option -hidden
     # shellcheck disable=SC2086
-    exec "$BINDIR/erl" ${remote_nodename} -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
+    exec "$BINDIR/erlexec" ${remote_nodename} -remsh "$NAME" -boot "$REL_DIR"/start_clean -mode interactive \
          -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
          -setcookie "$COOKIE" -hidden -kernel net_ticktime "$TICKTIME" \
          -dist_listen false \
