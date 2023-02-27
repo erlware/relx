@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         # Cannot test OTP 21 due to https://bugs.erlang.org/browse/ERL-644 (see also https://github.com/elixir-lang/elixir/issues/7774)
-        otp_version: [22, 23, 24]
+        otp_version: [22, 23, 24, 25]
         os: [windows-latest]
 
     steps:
