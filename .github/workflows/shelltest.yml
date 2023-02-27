@@ -15,10 +15,10 @@ jobs:
 
     strategy:
       matrix:
-        # important to check a pre-23 version that still uses nodetool
-        # plus a newer one
-        otp_version: [22, 25]
-        os: [ubuntu-20.04] # latest only runs >= 24.2
+        # TODO: make a batch of tests that runs on nodetool rather
+        #       than the new connectivity mechanism
+        otp_version: [24, 25]
+        os: [ubuntu-latest] # latest only runs >= 24.2
 
     steps:
     - uses: actions/checkout@v2
