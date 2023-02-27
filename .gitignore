@@ -17,3 +17,4 @@ erl_crash.dump
 rebar
 TEST-*
 tags
+*.swp

@@ -15,14 +15,14 @@ jobs:
 
     strategy:
       matrix:
-        # important to check a pre-23 version that still uses nodetool
-        # plus 23 once it is released
-        otp_version: [23.1]
-        os: [ubuntu-latest]
+        # TODO: make a batch of tests that runs on nodetool rather
+        #       than the new connectivity mechanism
+        otp_version: [24, 25]
+        os: [ubuntu-latest] # latest only runs >= 24.2
 
     steps:
     - uses: actions/checkout@v2
-    - uses: gleam-lang/setup-erlang@v1.1.2
+    - uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp_version }}
 
