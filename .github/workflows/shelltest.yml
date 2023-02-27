@@ -18,11 +18,11 @@ jobs:
         # important to check a pre-23 version that still uses nodetool
         # plus a newer one
         otp_version: [22, 25]
-        os: [ubuntu-latest]
+        os: [ubuntu-20.04] # latest only runs >= 24.2
 
     steps:
     - uses: actions/checkout@v2
-    - uses: gleam-lang/setup-erlang@v1.1.2
+    - uses: erlef/setup-beam@v1
       with:
         otp-version: ${{ matrix.otp_version }}
 
