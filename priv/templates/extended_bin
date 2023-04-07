@@ -726,6 +726,11 @@ if [ "$ERL_DIST_PORT" ]; then
     fi
 fi
 
+# Force use of nodetool if proto_dist set as erl_call doesn't support proto_dist
+if [ "$PROTO_DIST" ]; then
+    ERL_RPC=relx_nodetool
+fi
+
 # Extract the target cookie
 # Do this before relx_get_nodename so we can use it and not create a ~/.erlang.cookie
 if [ -n "$RELX_COOKIE" ]; then
