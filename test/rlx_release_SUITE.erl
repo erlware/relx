@@ -829,6 +829,72 @@ make_dev_mode_template_release(Config) ->
     %% ensure that the original vm.args didn't get overwritten
     ?assertMatch({ok, <<"-sname {{nodename}}">>}, file:read_file(VmArgs)).
 
+make_multiple_overlay_vars_template_release(Config) ->
+    LibDir1 = ?config(lib_dir, Config),
+    OutputDir = ?config(out_dir, Config),
+
+    SysConfig = filename:join([LibDir1, "config", "sys.config"]),
+    SysConfigTerm = [{this_is_a_test, "yup it is"},
+                     {this_is_an_overlay_var, "{{var1}}"},
+                     {this_is_another_overlay_var, "{{var2}}"}],
+    rlx_test_utils:write_config(SysConfig, SysConfigTerm),
+
+    VarsFile1 = filename:join([LibDir1, "config", "vars1.config"]),
+    rlx_test_utils:write_config(VarsFile1, [{var1, "indeed it is"},
+                                            {var2, "and so"},
+                                            {nodename, "testnode"}]),
+
+    VarsFile2 = filename:join([LibDir1, "config", "vars2.config"]),
+    rlx_test_utils:write_config(VarsFile2, [{var1, "indeed it is and more"}]),
+
+    VarsFile3 = filename:join([LibDir1, "config", "vars3.config"]),
+    rlx_test_utils:write_config(VarsFile3, [{var1, "indeed it is and more"},
+                                            {var2, "and so on"}]),
+
+    RelxConfig = [{dev_mode, true},
+                  {mode, dev},
+                  {sys_config, SysConfig},
+                  {overlay_vars, [VarsFile1]},
+                  {overlay, [
+                             {template, "config/sys.config",
+                              "releases/{{release_version}}/sys.config"},
+                             {template, "config/sys.config",
+                              "releases/{{release_version}}/a/sys.config", VarsFile2},
+                             {template, "config/sys.config",
+                              "releases/{{release_version}}/b/sys.config", VarsFile3}]},
+                  {release, {foo, "0.0.1"},
+                   [goal_app_1,
+                    goal_app_2]},
+                  {check_for_undefined_functions, false}],
+
+
+    {ok, State} = relx:build_release(foo, [{root_dir, LibDir1}, {lib_dirs, [LibDir1]},
+                                           {output_dir, OutputDir} | RelxConfig]),
+
+    [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
+
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_1-0.0.1"]))),
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "non_goal_2-0.0.1"]))),
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_1-0.0.1"]))),
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "goal_app_2-0.0.1"]))),
+    ?assert(rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "lib", "lib_dep_1-0.0.1"]))),
+    ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1",
+                                                         "sys.config"]))),
+    ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1","a",
+                                                         "sys.config"]))),
+    ?assert(not rlx_file_utils:is_symlink(filename:join([OutputDir, "foo", "releases", "0.0.1","b",
+                                                         "sys.config"]))),
+    {ok, AConfig} = file:consult(filename:join([OutputDir, "foo", "releases", "0.0.1","a",
+                                                         "sys.config"])),
+    ?assertMatch("indeed it is and more", proplists:get_value(this_is_an_overlay_var, AConfig)),
+    ?assertMatch("and so", proplists:get_value(this_is_another_overlay_var, AConfig)),
+    {ok, BConfig} = file:consult(filename:join([OutputDir, "foo", "releases", "0.0.1","b",
+                                                         "sys.config"])),
+    ?assertMatch("indeed it is and more", proplists:get_value(this_is_an_overlay_var, BConfig)),
+    ?assertMatch("and so on", proplists:get_value(this_is_another_overlay_var, BConfig)),
+    %% ensure that the original sys.config didn't get overwritten
+    ?assertMatch({ok, SysConfigTerm}, file:consult(SysConfig)).
+
 %% verify that creating a new app with the same name after creating a release results in the
 %% newest version being used in the new release
 make_release_twice(Config) ->
