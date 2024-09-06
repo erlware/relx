@@ -90,7 +90,7 @@ function Find-FormatConfig()
         }
     }
 
-    return $out
+    return $out -replace '\.config$', ''
 }
 
 function Format-OSVars()
