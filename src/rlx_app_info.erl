@@ -120,7 +120,7 @@ included_applications(#{included_applications := Deps}) ->
     Deps.
 
 -spec optional_applications(t()) -> [atom()].
-optional_applications(#{included_applications := Deps}) ->
+optional_applications(#{optional_applications := Deps}) ->
     Deps.
 
 -spec link(t()) -> boolean().
