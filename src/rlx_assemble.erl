@@ -286,7 +286,25 @@ create_release(State0, Release0, OutputDir) ->
     ok = rlx_file_utils:write_term(StartCleanFile, StartCleanMeta),
     ok = rlx_file_utils:write_term(NoDotErlFile, NoDotErlMeta),
     write_bin_file(State1, Release1, OutputDir, ReleaseDir),
-    {ok, State1}.
+    % check for existing start script extensions and append
+    % the overlays necessary for them to be copied over to the
+    % release
+    State2 = apply_extension_overlays(
+                rlx_state:extended_start_script_extensions(State1), State1),
+    {ok, State2}.
+
+apply_extension_overlays([], State) -> State;
+apply_extension_overlays([{Name, ExtensionSrc} | Rest], State) ->
+    ExtensionTarget = extension_default_target(ExtensionSrc),
+    apply_extension_overlays([{Name, ExtensionSrc, ExtensionTarget} | Rest], State);
+apply_extension_overlays([{Name, ExtensionSrc, _ExtensionDescription} | Rest], State) ->
+    ExtensionTarget = extension_default_target(ExtensionSrc),
+    apply_extension_overlays([{Name, ExtensionSrc, ExtensionTarget, _ExtensionDescription} | Rest], State);
+apply_extension_overlays([{_, ExtensionSrc, ExtensionTarget, _} | Rest], State0) ->
+    State1 = rlx_state:overlay(State0,
+                               [{copy, ExtensionSrc, ExtensionTarget} | rlx_state:overlay(State0)]),
+    % create the overlay instruction that will copy the extension script to it's release location
+    apply_extension_overlays(Rest, State1).
 
 write_bin_file(State, Release, OutputDir, RelDir) ->
     BinDir = filename:join([OutputDir, "bin"]),
@@ -330,7 +348,7 @@ write_start_scripts_for(Type, Release, OutputDir, State) ->
                         %% extended start script needs nodetool so it's
                         %% always included
                         include_nodetool(BinDir),
-                        Hooks = expand_hooks(BinDir,
+                        Hooks = expand_hooks(OutputDir,
                                              rlx_state:extended_start_script_hooks(State),
                                              State),
                         Extensions = rlx_state:extended_start_script_extensions(State),
@@ -374,20 +392,20 @@ write_start_script(BaseName, Type, StartFile) ->
     ok = file:write_file(RelStartFile, StartFile),
     ok = file:change_mode(RelStartFile, 8#755).
 
-expand_hooks(_Bindir, [], _State) -> [];
-expand_hooks(BinDir, Hooks, _State) ->
-    expand_hooks(BinDir, Hooks, [], _State).
+expand_hooks(_OutputDir, [], _State) -> [];
+expand_hooks(OutputDir, Hooks, _State) ->
+    expand_hooks(OutputDir, Hooks, [], _State).
 
-expand_hooks(_BinDir, [], Acc, _State) -> Acc;
-expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc, State) ->
+expand_hooks(_OutputDir, [], Acc, _State) -> Acc;
+expand_hooks(OutputDir, [{Phase, Hooks0} | Rest], Acc, State) ->
     %% filter and expand hooks to their respective shell scripts
     Hooks =
         lists:foldl(
             fun(Hook, Acc0) ->
                 case validate_hook(Phase, Hook) of
                     true ->
-                        %% all hooks are relative to the bin dir
-                        HookScriptFilename = filename:join([BinDir,
+                        %% all hooks are relative to the release root dir
+                        HookScriptFilename = filename:join([OutputDir,
                                                             hook_filename(Hook)]),
                         %% write the hook script file to it's proper location
                         ok = render_hook(hook_template(Hook), HookScriptFilename, State),
@@ -399,7 +417,7 @@ expand_hooks(BinDir, [{Phase, Hooks0} | Rest], Acc, State) ->
                         Acc0
                 end
             end, [], Hooks0),
-    expand_hooks(BinDir, Rest, Acc ++ [{Phase, Hooks}], State).
+    expand_hooks(OutputDir, Rest, Acc ++ [{Phase, Hooks}], State).
 
 %% the pid script hook is only allowed in the
 %% post_start phase
@@ -412,43 +430,48 @@ validate_hook(post_start, wait_for_vm_start) -> true;
 validate_hook(post_start, {wait_for_process, _}) -> true;
 %% custom hooks are allowed in all phases
 validate_hook(_Phase, {custom, _}) -> true;
+validate_hook(_Phase, {custom, _, _}) -> true;
 %% as well as status hooks
 validate_hook(status, _) -> true;
 %% deny all others
 validate_hook(_, _) -> false.
 
-hook_filename({custom, CustomScript}) -> CustomScript;
-hook_filename(pid) -> "hooks/builtin/pid";
-hook_filename({pid, _}) -> "hooks/builtin/pid";
-hook_filename(wait_for_vm_start) -> "hooks/builtin/wait_for_vm_start";
-hook_filename({wait_for_process, _}) -> "hooks/builtin/wait_for_process";
-hook_filename(builtin_status) -> "hooks/builtin/status".
+% custom hook target location defaults to `bin/hooks`
+hook_filename({custom, Src}) ->
+    filename:join(["bin/hooks", filename:basename(Src)]);
+hook_filename({custom, _, Target}) -> Target;
+hook_filename(pid) -> "bin/hooks/builtin/pid";
+hook_filename({pid, _}) -> "bin/hooks/builtin/pid";
+hook_filename(wait_for_vm_start) -> "bin/hooks/builtin/wait_for_vm_start";
+hook_filename({wait_for_process, _}) -> "bin/hooks/builtin/wait_for_process";
+hook_filename(builtin_status) -> "bin/hooks/builtin/status".
 
-hook_invocation({custom, CustomScript}) -> CustomScript;
+hook_invocation({custom, Src}) ->
+    filename:join(["bin/hooks", filename:basename(Src)]);
+hook_invocation({custom, _, Target}) ->
+    Target;
 %% the pid builtin hook with no arguments writes to pid file
 %% at /var/run/{{ rel_name }}.pid
-hook_invocation(pid) -> rlx_string:join(["hooks/builtin/pid",
+hook_invocation(pid) -> rlx_string:join(["bin/hooks/builtin/pid",
                                          "/var/run/$REL_NAME.pid"], "|");
-hook_invocation({pid, PidFile}) -> rlx_string:join(["hooks/builtin/pid",
+hook_invocation({pid, PidFile}) -> rlx_string:join(["bin/hooks/builtin/pid",
                                                     PidFile], "|");
-hook_invocation(wait_for_vm_start) -> "hooks/builtin/wait_for_vm_start";
+hook_invocation(wait_for_vm_start) -> "bin/hooks/builtin/wait_for_vm_start";
 hook_invocation({wait_for_process, Name}) ->
     %% wait_for_process takes an atom as argument
     %% which is the process name to wait for
-    rlx_string:join(["hooks/builtin/wait_for_process",
+    rlx_string:join(["bin/hooks/builtin/wait_for_process",
                      atom_to_list(Name)], "|");
-hook_invocation(builtin_status) -> "hooks/builtin/status".
+hook_invocation(builtin_status) -> "bin/hooks/builtin/status".
 
-hook_template({custom, _}) -> custom;
+hook_template({custom, Src}) -> {file, Src};
+hook_template({custom, Src, _}) -> {file, Src};
 hook_template(pid) -> builtin_hook_pid;
 hook_template({pid, _}) -> builtin_hook_pid;
 hook_template(wait_for_vm_start) -> builtin_hook_wait_for_vm_start;
 hook_template({wait_for_process, _}) -> builtin_hook_wait_for_process;
 hook_template(builtin_status) -> builtin_hook_status.
 
-%% custom hooks are not rendered, they should
-%% be copied by the release overlays
-render_hook(custom, _, _) -> ok;
 render_hook(TemplateName, Script, _State) ->
     ?log_info("rendering ~p hook to ~s", [TemplateName, rlx_file_utils:print_path(Script)]),
     Template = render(TemplateName),
@@ -990,6 +1013,38 @@ bin_file_contents(Type, RelName, RelVsn, ErtsVsn) ->
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn}]).
 
+extension_default_target(Src) ->
+    filename:join("bin/extensions", filename:basename(Src)).
+
+extension_default_description(_) ->
+    "".
+
+extensions(Extensions) ->
+    extensions(Extensions, {[], [], []}).
+
+extensions([], {ExtensionsList0, ExtensionDeclarations0, ExtensionDescriptions0}) ->
+    % pipe separated string of extensions
+    % (eg. foo|bar|baz|undefined)
+    ExtensionsList = rlx_string:join(ExtensionsList0 ++ ["undefined"], "|"),
+    % command separated string of extension script declarations
+    % (eg. foo_extension="path/to/foo_script:bar_extension="path/to/bar_script")
+    ExtensionDeclarations = rlx_string:join(ExtensionDeclarations0, ";"),
+    % (eg. baz=baz description|foo=foo description|bar=)
+    ExtensionDescriptions = rlx_string:join(ExtensionDescriptions0, "|"),
+    {ExtensionsList, ExtensionDeclarations, ExtensionDescriptions};
+extensions([{Name, Src} | Rest], Acc) ->
+    extensions([{Name, Src, extension_default_target(Src), extension_default_description(Name)} | Rest], Acc);
+extensions([{Name, Src, Description} | Rest], Acc) ->
+    extensions([{Name, Src, extension_default_target(Src), Description} | Rest], Acc);
+extensions([{Name, _Src, Target, Description} | Rest],
+           {Acc0, Acc1, Acc2}) ->
+    NameStr = atom_to_list(Name),
+    % eg. bar_extension=bin/extensions/bar
+    ExtensionDeclaration = NameStr ++ "_extension=\"" ++ Target ++ "\"",
+    % eg. bar=bar description
+    ExtensionDescription = NameStr ++ "=" ++ Description,
+    extensions(Rest, {[atom_to_list(Name) | Acc0], [ExtensionDeclaration | Acc1], [ExtensionDescription | Acc2]}).
+
 extended_bin_file_contents(Type, RelName, RelVsn, ErtsVsn, Hooks, Extensions) ->
     Template = case Type of
                    unix -> extended_bin;
@@ -1006,21 +1061,7 @@ extended_bin_file_contents(Type, RelName, RelVsn, ErtsVsn, Hooks, Extensions) ->
     PostInstallUpgradeHooks = rlx_string:join(proplists:get_value(post_install_upgrade,
                                                  Hooks, []), " "),
     StatusHook = rlx_string:join(proplists:get_value(status, Hooks, []), " "),
-    {ExtensionsList1, ExtensionDeclarations1} =
-        lists:foldl(fun({Name, Script},
-                        {ExtensionsList0, ExtensionDeclarations0}) ->
-                            ExtensionDeclaration = atom_to_list(Name) ++
-                                                   "_extension=\"" ++
-                                                   Script ++ "\"",
-                            {ExtensionsList0 ++ [atom_to_list(Name)],
-                             ExtensionDeclarations0 ++ [ExtensionDeclaration]}
-                    end, {[], []}, Extensions),
-    % pipe separated string of extensions, to show on the start script usage
-    % (eg. foo|bar)
-    ExtensionsList = rlx_string:join(ExtensionsList1 ++ ["undefined"], "|"),
-    % command separated string of extension script declarations
-    % (eg. foo_extension="path/to/foo_script")
-    ExtensionDeclarations = rlx_string:join(ExtensionDeclarations1, ";"),
+    {ExtensionsList, ExtensionDeclarations, ExtensionDescriptions} = extensions(Extensions),
     render(Template, [{rel_name, RelName}, {rel_vsn, RelVsn},
                       {erts_vsn, ErtsVsn},
                       {pre_start_hooks, PreStartHooks},
@@ -1031,7 +1072,8 @@ extended_bin_file_contents(Type, RelName, RelVsn, ErtsVsn, Hooks, Extensions) ->
                       {post_install_upgrade_hooks, PostInstallUpgradeHooks},
                       {status_hook, StatusHook},
                       {extensions, ExtensionsList},
-                      {extension_declarations, ExtensionDeclarations}]).
+                      {extension_declarations, ExtensionDeclarations},
+                      {extension_descriptions, ExtensionDescriptions}]).
 
 install_upgrade_escript_contents() ->
     render(install_upgrade_escript).
@@ -1051,6 +1093,10 @@ vm_args_file(RelName) ->
 render(Template) ->
     render(Template, []).
 
+render({file, Name}, Data) ->
+    {ok, Tpl} = file:read_file(Name),
+    {ok, Content} = rlx_util:render(Tpl, Data),
+    Content;
 render(Template, Data) ->
     Files = rlx_util:template_files(),
     Tpl = rlx_util:load_file(Files, escript, atom_to_list(Template)),
