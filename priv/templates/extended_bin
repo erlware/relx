@@ -445,6 +445,7 @@ make_out_file_path() {
 
 # Replace environment variables
 replace_os_vars() {
+    TEMP_OUT=$(mktemp "$2".XXXXXX)
     awk '{
         while(match($0,"[$]{[^}]*}")) {
             var=substr($0,RSTART+2,RLENGTH -3)
@@ -460,7 +461,8 @@ replace_os_vars() {
                 gsub("[$]{"var"}",e)
             }
         }
-    }1' < "$1" > "$2"
+    }1' < "$1" >> "$TEMP_OUT"
+    mv "$TEMP_OUT" "$2"
 }
 
 add_path() {
