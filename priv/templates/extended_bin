@@ -996,7 +996,6 @@ case "$1" in
         echo "Root: $ROOTDIR"
 
         # Log the startup
-        echo "$RELEASE_ROOT_DIR"
         if ! command -v logger > /dev/null 2>&1
         then
             echo "${REL_NAME}[$$] Starting up"
