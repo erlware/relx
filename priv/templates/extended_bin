@@ -716,12 +716,7 @@ if [ "$ERL_DIST_PORT" ]; then
         fi
     else
         ERL_DIST_PORT_WARNING="ERL_DIST_PORT is set and used to set the port, but doing so on ERTS version ${ERTS_VSN} means remsh/rpc will not work for this release"
-        if ! command -v logger > /dev/null 2>&1
-        then
-            echo "WARNING: ${ERL_DIST_PORT_WARNING}"
-        else
-            logger -p warning -t "${REL_NAME}[$$]" "${ERL_DIST_PORT_WARNING}"
-        fi
+        echo "WARNING: ${ERL_DIST_PORT_WARNING}"
         EXTRA_DIST_ARGS="-kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
     fi
 fi
@@ -996,12 +991,7 @@ case "$1" in
         echo "Root: $ROOTDIR"
 
         # Log the startup
-        if ! command -v logger > /dev/null 2>&1
-        then
-            echo "${REL_NAME}[$$] Starting up"
-        else
-            logger -t "${REL_NAME}[$$]" "Starting up"
-        fi
+        echo "${REL_NAME}[$$] Starting up"
 
         relx_run_hooks "$PRE_START_HOOKS"
         # Start the VM
