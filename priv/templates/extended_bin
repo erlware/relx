@@ -69,6 +69,7 @@ PRE_INSTALL_UPGRADE_HOOKS="{{{ pre_install_upgrade_hooks }}}"
 POST_INSTALL_UPGRADE_HOOKS="{{{ post_install_upgrade_hooks }}}"
 STATUS_HOOK="{{{ status_hook }}}"
 EXTENSIONS="{{{ extensions }}}"
+EXTENSION_DESCRIPTIONS="{{{ extension_descriptions }}}"
 
 relx_usage() {
     command="$1"
@@ -188,7 +189,7 @@ Commands:
   versions                Print versions of the release available
   escript                 Run an escript in the same environment as the release
   status                  Verify node is running and then run status hook scripts
-  $EXTENSIONS"
+$(relx_extension_descriptions)"
             fi
             ;;
     esac
@@ -524,9 +525,9 @@ relx_run_hooks() {
         set $(echo "$hook" | sed -e 's/|/ /g')
         HOOK_SCRIPT=$1; shift
         # all hook locations are expected to be
-        # relative to the start script location
+        # relative to the release root
         # shellcheck disable=SC1090,SC2240
-        [ -f "$SCRIPT_DIR/$HOOK_SCRIPT" ] && . "$SCRIPT_DIR/$HOOK_SCRIPT" "$@"
+        [ -f "$RELEASE_ROOT_DIR/$HOOK_SCRIPT" ] && . "$RELEASE_ROOT_DIR/$HOOK_SCRIPT" "$@"
     done
 }
 
@@ -570,9 +571,23 @@ relx_run_extension() {
     EXTENSION_SCRIPT=$1
     shift
     # all extension script locations are expected to be
-    # relative to the start script location
+    # relative to the release root
     # shellcheck disable=SC1090,SC2240
-    [ -f "$SCRIPT_DIR/$EXTENSION_SCRIPT" ] && . "$SCRIPT_DIR/$EXTENSION_SCRIPT" "$@"
+    [ -f "$RELEASE_ROOT_DIR/$EXTENSION_SCRIPT" ] && . "$RELEASE_ROOT_DIR/$EXTENSION_SCRIPT" "$@"
+}
+
+relx_extension_descriptions() {
+    IFS0=$IFS
+    IFS='|'
+    for description in $EXTENSION_DESCRIPTIONS
+    do
+        cmd=$(echo "$description" |cut -d '=' -f1)
+        descr=$(echo "$description" |cut -d '=' -f2)
+        # 23 is the magic number of spaces that take up
+        # the space between a command and it's description
+        printf '  %-23s %s\n' "$cmd" "$descr"
+    done
+    IFS=$IFS0
 }
 
 # given a list of arguments, identify the internal ones
@@ -1028,7 +1043,7 @@ case "$1" in
         ping_or_exit
 
         # shellcheck disable=SC1090,SC2240
-        [ -n "${STATUS_HOOK}" ] && [ -f "$SCRIPT_DIR/$STATUS_HOOK" ] && . "$SCRIPT_DIR/$STATUS_HOOK" "$@"
+        [ -n "${STATUS_HOOK}" ] && [ -f "$RELEASE_ROOT_DIR/$STATUS_HOOK" ] && . "$RELEASE_ROOT_DIR/$STATUS_HOOK" "$@"
         ;;
     help)
         if [ -z "$2" ]; then
