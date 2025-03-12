@@ -55,6 +55,18 @@ set "extensions0={{ extensions }}"
 set "extensions1=%extensions0:|= %"
 set "extensions=%extensions1: undefined=%"
 
+:: Fetch OTP version using erl.exe
+for /f "delims=" %%a in ('"%erl%" -eval "io:format(\"~s\", ^
+  [erlang:system_info(otp_release)]), halt()." -noshell 2^>nul') ^
+do set otp_version=%%a
+
+:: Since OTP 26, werl.exe is a symlink to erl.exe - use same executable
+if defined otp_version (
+  if %otp_version% geq "26" (
+    set werl=%erl%
+  )
+)
+
 :: Extract node type and name from vm.args
 for /f "usebackq tokens=1-2" %%I in (`findstr /b "\-name \-sname" "%vm_args%"`) do (
   set node_type=%%I
