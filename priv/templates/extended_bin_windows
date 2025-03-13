@@ -60,9 +60,6 @@ for /f "delims=" %%a in ('call "%erl%" -boot no_dot_erlang -boot_var RELEASE_DIR
   set "otp_version=%%a"
 )
 
-echo Captured OTP Version: %otp_version%
-echo Should link werl.exe: if "%otp_version%" geq "26"
-
 :: Since OTP 26, werl.exe is a symlink to erl.exe - use same executable
 if defined otp_version (
   if %otp_version% geq "26" (
