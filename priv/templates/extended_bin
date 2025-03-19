@@ -985,7 +985,7 @@ case "$1" in
         echo "Exec: $BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
-            -config "$RELX_CONFIG_PATH" \
+            -config ${RELX_CONFIG_PATH%.config} \
             -args_file "$VMARGS_PATH" \
             $EXTRA_DIST_ARGS -- "$@"
         echo "Root: $ROOTDIR"
@@ -1000,7 +1000,7 @@ case "$1" in
         exec "$BINDIR/erlexec" $FOREGROUNDOPTIONS \
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
-            -config "$RELX_CONFIG_PATH" \
+            -config ${RELX_CONFIG_PATH%.config} \
             -args_file "$VMARGS_PATH" \
             $EXTRA_DIST_ARGS -- "$@"
         # exec will replace the current image and nothing else gets
