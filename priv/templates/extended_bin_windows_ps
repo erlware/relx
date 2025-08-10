@@ -62,7 +62,8 @@ $service_name = "${rel_name}_${rel_vsn}"
 $nodetool = "$rootdir\bin\nodetool"
 
 $bindir = "$erts_dir\bin"
-$werl = "$bindir\werl.exe"
+# since OTP-26, werl.exe is just erl.exe, so link it directly
+$werl = "$bindir\erl.exe"
 $erl = "$bindir\erl.exe"
 $erlsrv = "$bindir\erlsrv.exe"
 $escript = "$bindir\escript.exe"
