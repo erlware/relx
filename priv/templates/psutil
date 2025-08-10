@@ -17,13 +17,13 @@ function Find-ERTS()
 
     # Get the ERTS dir from erl
     $erl = (Get-Command erl).source
-    $erl_root = & $erl -boot no_dot_erlang -noshell -eval 'io:format(\"~s\", [filename:nativename(code:root_dir())]), halt().'
+    $erl_root = & $erl -boot no_dot_erlang -noshell -eval 'io:format("~s", [filename:nativename(code:root_dir())]), halt().'
     if (Test-Path "$erl_root\erts-$Vsn") {
         return @($erl_root, "$erl_root\erts-$Vsn")
     }
 
     # Expected $vsn but not found, get ERTS version installed
-    $erts_vsn = & $erl -boot no_dot_erlang -noshell -eval 'io:format(\"~s\", [erlang:system_info(version)]), halt().'
+    $erts_vsn = & $erl -boot no_dot_erlang -noshell -eval 'io:format("~s", [erlang:system_info(version)]), halt().'
     if (!(Test-Path "$erl_root\erts-$erts_vsn")) {
         Write-Error "Can not run the release. There is no ERTS bundled with the release or found on the system."
         # Terminates here due to $ErrorActionPreference = "Stop"
