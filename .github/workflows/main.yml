@@ -15,8 +15,8 @@ jobs:
 
     strategy:
       matrix:
-        otp_version: [23, 24, 26]
-        os: [ubuntu-20.04] # latest only runs >= 24.2
+        otp_version: [26, 27, 28]
+        os: [ubuntu-latest] # latest only runs >= 24.2
 
     container:
       image: erlang:${{ matrix.otp_version }}

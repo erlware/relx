@@ -17,7 +17,7 @@ jobs:
       matrix:
         # TODO: make a batch of tests that runs on nodetool rather
         #       than the new connectivity mechanism
-        otp_version: [25, 26]
+        otp_version: [26, 27, 28]
         os: [ubuntu-latest] # latest only runs >= 24.2
 
     steps:
