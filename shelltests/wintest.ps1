@@ -24,9 +24,11 @@ mkdir $rebar3_dir | Out-Null
 # Clone latest rebar3 and build with relx as a checkout
 Push-Location $rebar3_dir
 & git clone "https://github.com/erlang/rebar3" .
-mkdir _checkouts | Out-Null
-New-Item -ItemType SymbolicLink -Path "_checkouts\relx" -Target "$PSScriptRoot\..\..\relx" | Out-Null
-(Get-Content rebar.config) -replace 'relx(.*)build/default/lib/', 'relx$1checkouts' | Set-Content rebar.config -Encoding ASCII
+Remove-Item -Path "vendor\relx\*" -Recurse -Force
+Copy-Item -Path "$PSScriptRoot\..\..\relx\*" -Destination "vendor\relx" -Recurse -Exclude ".git" #| Out-Null
+#mkdir _checkouts | Out-Null
+#New-Item -ItemType SymbolicLink -Path "_checkouts\relx" -Target "$PSScriptRoot\..\..\relx" | Out-Null
+#(Get-Content rebar.config) -replace 'relx(.*)build/default/lib/', 'relx$1checkouts' | Set-Content rebar.config -Encoding ASCII
 cmd /c bootstrap.bat
 Pop-Location
 ""
