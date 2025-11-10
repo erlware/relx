@@ -128,7 +128,7 @@ build_tar(RelName, Apps, State) when is_atom(RelName) ->
     {ok, RealizedRelease}.
 
 -spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_config:t() | rlx_state:t())
-                 -> {ok, rlx_state:t()} | {error, term()}.
+                 -> {ok, rlx_state:t()}.
 build_relup(RelName, ToVsn, UpFromVsn, Config) when is_list(Config) ->
     {ok, State} = rlx_config:to_state(Config),
     build_relup(RelName, ToVsn, UpFromVsn, State);
