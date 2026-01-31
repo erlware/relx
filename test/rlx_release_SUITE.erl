@@ -1281,9 +1281,9 @@ make_prod_mode_release(Config) ->
     VmArgs = filename:join([LibDir1, "config", "vm.args"]),
     rlx_file_utils:write(VmArgs, ""),
 
-    RelxConfig = [{mode, prod},
-                  %% osx test fails if debug_info is strip
+    RelxConfig = [%% osx test fails if debug_info is strip
                   {debug_info, keep},
+                  {mode, prod},
                   {sys_config, SysConfig},
                   {vm_args, VmArgs},
                   {release, {foo, "0.0.1"},
@@ -1295,6 +1295,10 @@ make_prod_mode_release(Config) ->
                                            {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    
+    ?assert(has_debug_info(filename:join([OutputDir, "foo", "lib",
+                                                     "non_goal_1-0.0.1", "ebin",
+                                                     "a_real_beamnon_goal_1.beam"]))),
 
     case os:type() of
         {unix, _} ->
@@ -1329,9 +1333,9 @@ make_minimal_mode_release(Config) ->
     VmArgs = filename:join([LibDir1, "config", "vm.args"]),
     rlx_file_utils:write(VmArgs, ""),
 
-    RelxConfig = [{mode, minimal},
-                  %% osx test fails if debug_info is strip
+    RelxConfig = [%% osx test fails if debug_info is strip
                   {debug_info, keep},
+                  {mode, minimal},
                   {sys_config, SysConfig},
                   {vm_args, VmArgs},
                   {release, {foo, "0.0.1"},
@@ -1343,6 +1347,10 @@ make_minimal_mode_release(Config) ->
                                            {output_dir, OutputDir} | RelxConfig]),
 
     [{{foo, "0.0.1"}, _Release}] = maps:to_list(rlx_state:realized_releases(State)),
+    
+    ?assert(has_debug_info(filename:join([OutputDir, "foo", "lib",
+                                                     "non_goal_1-0.0.1", "ebin",
+                                                     "a_real_beamnon_goal_1.beam"]))),
 
     case os:type() of
         {unix, _} ->
@@ -1370,3 +1378,11 @@ make_minimal_mode_release(Config) ->
 %%%===================================================================
 %%% Helper Functions
 %%%===================================================================
+has_debug_info(BeamFile) ->
+    {ok, Bin} = file:read_file(BeamFile),
+    case beam_lib:chunks(Bin, [debug_info]) of
+        {ok, _} ->
+            true;
+        _ ->
+            false
+    end.
