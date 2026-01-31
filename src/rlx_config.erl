@@ -15,7 +15,11 @@
 to_state(Config) ->
     to_state(Config, rlx_state:new()).
 
-to_state(Config, State) ->
+to_state(Config0, State) ->
+    %% ensure 'mode' elements are at the head of the Config list,
+    %% this makes it possible to override options the modes expand
+    Modes = [V || {mode, _} = V <- Config0],
+    Config =  Modes ++ (Config0 -- Modes),
     %% setup warnings_as_errors before loading the rest so we can error on
     %% any warning during the load
     State1 = rlx_state:warnings_as_errors(State, proplists:get_bool(warnings_as_errors, Config)),
