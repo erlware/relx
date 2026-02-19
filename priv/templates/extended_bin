@@ -881,7 +881,7 @@ case "$1" in
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH" -- "$@"
+            -args_file "$VMARGS_PATH" "$@"
         echo "Root: $ROOTDIR"
 
         # Log the startup
@@ -896,7 +896,7 @@ case "$1" in
             -boot "$BOOTFILE" -mode "$CODE_LOADING_MODE" \
             -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" \
             -config "$RELX_CONFIG_PATH" \
-            -args_file "$VMARGS_PATH" -- "$@"
+            -args_file "$VMARGS_PATH" "$@"
         # exec will replace the current image and nothing else gets
         # executed from this point on, this explains the absence
         # of the pre start hook
