@@ -688,6 +688,10 @@ PROTO_DIST="$(grep '^-proto_dist' "$VMARGS_PATH" || true)"
 if [ "$PROTO_DIST" ]; then
     DIST_ARGS="${PROTO_DIST}"
 fi
+DIST_OPTFILE="$(grep '^-ssl_dist_optfile' "$VMARGS_PATH" || true)"
+if [ "$DIST_OPTFILE" ]; then
+    DIST_ARGS="${DIST_ARGS} ${DIST_OPTFILE}"
+fi
 START_EPMD="$(grep '^-start_epmd' "$VMARGS_PATH" || true)"
 if [ "$START_EPMD" ]; then
     DIST_ARGS="${DIST_ARGS} ${START_EPMD}"
