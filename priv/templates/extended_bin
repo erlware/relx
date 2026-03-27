@@ -714,14 +714,14 @@ if [ "$ERL_DIST_PORT" ]; then
     if [  "11.1" = "$(printf "%s\n11.1" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
         # unless set by the user, set start_epmd to false when ERL_DIST_PORT is used
         if [ ! "$START_EPMD" ]; then
-            EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT} -start_epmd false"
+            EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT} -start_epmd false ${EXTRA_DIST_ARGS}"
         else
-            EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT}"
+            EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT} ${EXTRA_DIST_ARGS}"
         fi
     else
         ERL_DIST_PORT_WARNING="ERL_DIST_PORT is set and used to set the port, but doing so on ERTS version ${ERTS_VSN} means remsh/rpc will not work for this release"
         logger -p warning -t "${REL_NAME}[$$]" "${ERL_DIST_PORT_WARNING}" 2>/dev/null || echo "WARNING: ${ERL_DIST_PORT_WARNING}"
-        EXTRA_DIST_ARGS="-kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT}"
+        EXTRA_DIST_ARGS="-kernel inet_dist_listen_min ${ERL_DIST_PORT} -kernel inet_dist_listen_max ${ERL_DIST_PORT} ${EXTRA_DIST_ARGS}"
     fi
 fi
 
