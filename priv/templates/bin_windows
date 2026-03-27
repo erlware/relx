@@ -41,7 +41,7 @@ echo Rootdir=%converted_rootdir% >> "%erl_ini%"
 
 :: Start the release in an `erl` shell
 set boot=-boot "%boot_script%" -boot_var RELEASE_DIR "%release_root_dir%"
-"%erl%" %erl_opts% %sys_config% %boot% %*
+"%erl%" %erl_opts% %sys_config:.config=% %boot% %*
 
 goto :eof
 

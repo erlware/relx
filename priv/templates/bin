@@ -83,7 +83,7 @@ IFS="$IFS_NORM"
 # Build arguments for erlexec
 set --
 [ "$ERL_OPTS" ] && set -- "$@" "$ERL_OPTS"
-[ "$SYS_CONFIG" ] && set -- "$@" -config "$SYS_CONFIG"
+[ "$SYS_CONFIG" ] && set -- "$@" -config "${SYS_CONFIG%.config}"
 [ "$VM_ARGS" ] && set -- "$@" -args_file "$VM_ARGS"
 set -- "$@" -boot_var SYSTEM_LIB_DIR "$SYSTEM_LIB_DIR" -boot "$REL_DIR/$BOOTFILE"
 {{! Split string with extra arguments back into an argument list. }}
