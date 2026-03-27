@@ -15,8 +15,8 @@ jobs:
 
     strategy:
       matrix:
-        otp_version: [24, 25, 26]
-        os: [windows-latest]
+        otp_version: [26, 27, 28]
+        os: [windows-2022]
 
     steps:
     - uses: actions/checkout@v2

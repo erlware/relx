@@ -711,7 +711,17 @@ if [ "$ERL_DIST_PORT" ]; then
     else
         ADDRESS="$ERL_DIST_PORT"
     fi
-    if [  "11.1" = "$(printf "%s\n11.1" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
+
+    # if erts >= 15 then use the kernel application variable for port number
+    if [  "15.0" = "$(printf "%s\n15.0" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
+        # unless set by the user, set start_epmd to false when ERL_DIST_PORT is used
+        if [ ! "$START_EPMD" ]; then
+            EXTRA_DIST_ARGS="-kernel erl_epmd_node_listen_port ${ERL_DIST_PORT} -start_epmd false"
+        else
+            EXTRA_DIST_ARGS="-kernel erl_epmd_node_listen_port ${ERL_DIST_PORT}"
+        fi
+    # if erts >= 11.1 then use the kernel application variable for port number
+    elif [  "11.1" = "$(printf "%s\n11.1" "${ERTS_VSN}" | sort -V | head -n1)" ] ; then
         # unless set by the user, set start_epmd to false when ERL_DIST_PORT is used
         if [ ! "$START_EPMD" ]; then
             EXTRA_DIST_ARGS="-erl_epmd_port ${ERL_DIST_PORT} -start_epmd false"
