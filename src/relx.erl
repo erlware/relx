@@ -127,6 +127,10 @@ build_tar(RelName, Apps, State) when is_atom(RelName) ->
     build_tar_(RealizedRelease, State),
     {ok, RealizedRelease}.
 
+%% Ignore Dialyzer warnings on this, `no_warn_sasl` is a valid option
+%% but the `systools:make_relup/4` spec is outdated and this causes
+%% warning as late as OTP-28, and all calls in the chain fail analysis in turn.
+-dialyzer({nowarn_function, [build_relup/4]}).
 -spec build_relup(rlx_release:name(), rlx_release:vsn(), rlx_release:vsn(), rlx_config:t() | rlx_state:t())
                  -> {ok, rlx_state:t()} | {error, term()}.
 build_relup(RelName, ToVsn, UpFromVsn, Config) when is_list(Config) ->

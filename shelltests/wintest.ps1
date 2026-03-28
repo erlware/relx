@@ -24,9 +24,12 @@ mkdir $rebar3_dir | Out-Null
 # Clone latest rebar3 and build with relx as a checkout
 Push-Location $rebar3_dir
 & git clone "https://github.com/erlang/rebar3" .
-mkdir _checkouts | Out-Null
-New-Item -ItemType SymbolicLink -Path "_checkouts\relx" -Target "$PSScriptRoot\..\..\relx" | Out-Null
-(Get-Content rebar.config) -replace 'relx(.*)build/default/lib/', 'relx$1checkouts' | Set-Content rebar.config -Encoding ASCII
+Remove-Item -Path "vendor\relx\src\*" -Recurse -Force
+Remove-Item -Path "vendor\relx\priv\*" -Recurse -Force
+Remove-Item -Path "vendor\relx\rebar*" -Force
+Copy-Item -Path "$PSScriptRoot\..\..\relx\src\*" -Destination "vendor\relx\src" -Recurse | Out-Null
+Copy-Item -Path "$PSScriptRoot\..\..\relx\priv\*" -Destination "vendor\relx\priv" -Recurse | Out-Null
+Copy-Item -Path "$PSScriptRoot\..\..\relx\rebar*" -Destination "vendor\relx" -Recurse #| Out-Null
 cmd /c bootstrap.bat
 Pop-Location
 ""
@@ -61,12 +64,18 @@ if ($LASTEXITCODE -ne 0) {
 }
 ""
 
+Get-Process | Out-String -Stream
+Get-Service -Name powershell_release_0.1.0 | Out-String -Stream
+
 "*** Start service"
 & ".\$release.ps1" start
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to start service"
 }
 ""
+
+Get-Process | Out-String -Stream
+Get-Service -Name powershell_release_0.1.0 | Out-String -Stream
 
 "*** Ping service"
 & ".\$release.ps1" ping

@@ -6,6 +6,10 @@
 -include("relx.hrl").
 -include("rlx_log.hrl").
 
+%% Ignore Dialyzer warnings on this, `no_warn_sasl` is a valid option
+%% but the `systools:make_relup/4` spec is outdated and this causes
+%% warning as late as OTP-28, and all calls in the chain fail analysis in turn.
+-dialyzer({nowarn_function, [do/4, make_upfrom_script/4]}).
 -spec do(atom(), string(), string() | undefined, rlx_state:t()) -> {ok, rlx_state:t()} | relx:error().
 do(RelName, ToVsn, undefined, State) ->
     OutputDir = rlx_state:base_output_dir(State),
