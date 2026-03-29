@@ -1,0 +1,3 @@
+#!/bin/bash
+# $*
+echo \{post_start2, $REL_NAME, \'$NAME\', $COOKIE\}. >> test
