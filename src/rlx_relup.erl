@@ -40,14 +40,14 @@ make_upfrom_script(Name, ToVsn, UpFromVsn, State) ->
     WarningsAsErrors = rlx_state:warnings_as_errors(State),
     Options = [{outdir, OutDir},
                {path, [filename:join([OutputDir, "*", "lib", "*", "ebin"])]},
-               {silent, true} | case WarningsAsErrors of
+               silent | case WarningsAsErrors of
                                     true -> [warnings_as_errors];
                                     false -> []
                                 end],
     CurrentRel = strip_dot_rel(find_rel_file(Name, ToVsn, OutputDir)),
     UpFromRel = strip_dot_rel(find_rel_file(Name, UpFromVsn, OutputDir)),
     ?log_debug("systools:make_relup(~p, ~p, ~p, ~p)", [CurrentRel, UpFromRel, UpFromRel, Options]),
-    case systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], [no_warn_sasl | Options]) of
+    case systools:make_relup(CurrentRel, [UpFromRel], [UpFromRel], Options) of
         ok ->
             ?log_info("relup from ~s to ~s successfully created!", [UpFromRel, CurrentRel]),
             {ok, State};
