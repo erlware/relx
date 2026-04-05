@@ -227,7 +227,7 @@ find_erl_call() {
         # only OTP-23 and above have erl_call in the erts bin directory
         # and only those versions have the features and bug fixes needed
         # to work properly with this script
-        __erl_call="$ERTS_DIR/bin/erl_call"
+        __erl_call="$ERTS_DIR/bin/erl_call -fetch_stdout"
         if [ -f "$__erl_call" ]; then
             ERL_RPC="$__erl_call";
         else

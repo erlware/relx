@@ -15,34 +15,34 @@ jobs:
 
     strategy:
       matrix:
-        otp_version: [23, 24, 26]
-        os: [ubuntu-20.04] # latest only runs >= 24.2
+        otp_version: [26, 27, 28]
+        os: [ubuntu-latest]
 
     container:
       image: erlang:${{ matrix.otp_version }}
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Compile
-      run: rebar3 compile
-    - name: CT tests
-      run: rebar3 ct
-    - name: Xref
-      run: rebar3 xref
-    - name: Dialyzer
-      run: rebar3 dialyzer
+      - uses: actions/checkout@v2
+      - name: Compile
+        run: rebar3 compile
+      - name: CT tests
+        run: rebar3 ct
+      - name: Xref
+        run: rebar3 xref
+      - name: Dialyzer
+        run: rebar3 dialyzer
 
   macos:
     name: Test on MacOS
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Erlang
-      run: brew install erlang
-    - name: Install rebar3
-      run: |
-        wget https://s3.amazonaws.com/rebar3/rebar3
-        chmod +x rebar3
-    - name: CT tests
-      run: ./rebar3 ct
+      - uses: actions/checkout@v2
+      - name: Install Erlang
+        run: brew install erlang
+      - name: Install rebar3
+        run: |
+          wget https://s3.amazonaws.com/rebar3/rebar3
+          chmod +x rebar3
+     - name: CT tests
+        run: ./rebar3 ct
